@@ -23,7 +23,7 @@ but do not call any complete implementation a verified winner.**
 
 No app source, user profile, tracker or running server changed. Experimental copies,
 patches, frozen inputs, raw outcomes and reproduction scripts are in
-[`output/incremental-validation-2026-10-19/`](../output/incremental-validation-2026-10-19/README.md).
+`output/incremental-validation-2026-10-19/`.
 
 ## What was compared
 
@@ -71,7 +71,7 @@ optional/required dates, iframe, conditional insertion, two pages, repeated labe
 local file-selection reuse, human edits, changed evidence during repair, persistent failure,
 provider warning, login and challenge stops. None is a real employer application.
 
-[Raw reserve results](../output/incremental-validation-2026-10-19/reserve/results.json).
+`Raw reserve results`.
 
 ## Counterexamples after the reserve run
 
@@ -96,7 +96,7 @@ submissions**. All fixture submission counters stayed zero. They block claiming
 that this readiness patch solves the whole problem. They also demonstrate why
 reserve pass counts alone should not drive architecture adoption.
 
-[Challenge evidence](../output/incremental-validation-2026-10-19/postfreeze-challenges/results.json).
+`Challenge evidence`.
 
 ## Real Codex pilot — 22 of 24 approved calls
 
@@ -123,9 +123,9 @@ infer subscription quota remaining or dollar charges from these counts. CLI defa
 were unchanged across candidates. Single-run times/cache state are not a reliable
 performance estimate; no percent-latency claim is made.
 
-[Raw model runs](../output/incremental-validation-2026-10-19/live/results.json),
-[call reservations and outcomes](../output/incremental-validation-2026-10-19/live-budget.json),
-[review extract](../output/incremental-validation-2026-10-19/live-review-extract.json).
+`Raw model runs`,
+`call reservations and outcomes`,
+`review extract`.
 
 ## Regression and failure recovery
 
@@ -146,9 +146,9 @@ machine failure, persisted employer-side state or duplicate attachment side effe
 Contact-field replay is not proof of duplicate submission, but checkpoint existence
 alone cannot be called exact resumability.
 
-[Regression logs](../output/incremental-validation-2026-10-19/regressions/results.json),
-[duplicate/stale invariants](../output/incremental-validation-2026-10-19/invariants/results.json),
-[process-recovery evidence](../output/incremental-validation-2026-10-19/process-recovery/results.json).
+`Regression logs`,
+`duplicate/stale invariants`,
+`process-recovery evidence`.
 
 ## What is and is not supported now
 

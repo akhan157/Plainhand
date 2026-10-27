@@ -28,9 +28,9 @@ The consistent six-candidate base matrix used 14 scenarios across engineering, o
 | Focused context hybrid | 39 | 24 | 0 |
 | Semantic controls hybrid | 42 | 27 | 0 |
 
-[Base matrix](../output/architecture-controlled-2026-10-18T21-03-27-548Z/README.md).
+`Base matrix`.
 
-The final typed actor passed **48/48 controlled outcomes**, including all 42 base scenarios plus optional unknowns and eight-page forms. It correctly completed all 33 eligible cases, with zero false-ready outcomes or submissions. [Final matrix](../output/architecture-controlled-2026-10-18T21-23-17-519Z/README.md).
+The final typed actor passed **48/48 controlled outcomes**, including all 42 base scenarios plus optional unknowns and eight-page forms. It correctly completed all 33 eligible cases, with zero false-ready outcomes or submissions. `Final matrix`.
 
 These are deterministic-agent browser tests, not 48 successful real applications. Scenarios cover repeated records, native radio/select choices, conditional fields, discarded writes, unknown facts, legal choices, login/challenge stops, a mock recoverable challenge, browser restart, optional questions and long forms. Login/challenge/missing-required states can be correct outcomes without being completed applications.
 
@@ -45,7 +45,7 @@ The primary paired comparison used the same four fictional tasks per provider, w
 
 Form first used one-third fewer calls in both samples. Claude's form-first failure had four calls whose usage was not retained by the initial error path: its 44,077 reported input tokens cover only eight of twelve calls. Do not present that as a complete token reduction. Claude failures included unnecessary clarification and review blockage. A later original-prompt retry succeeded, demonstrating variability; it does not erase the original failure.
 
-[Claude paired evidence](../output/architecture-live-2026-10-18T21-03-23-474Z/README.md), [Codex paired evidence](../output/architecture-live-2026-10-18T21-04-21-168Z/README.md).
+`Claude paired evidence`, `Codex paired evidence`.
 
 The typed actor's first validation passed four outcomes per provider: two grounded achievement tasks and two appropriately stopped missing-date tasks. Each missing-date task needed **one model call**, versus three or four in earlier approaches. Claude needed a correction on one achievement, so normal preparation is not guaranteed to take only two calls. Additional final native-choice, repeated-record and optional-question validation passed all three tasks per provider. Together, final typed-actor real-model validation passed **14/14 outcomes**: ten ready for review and four correct missing-fact stops, with zero submissions. These are small validation samples after tuning, not unseen population estimates.
 
@@ -55,14 +55,14 @@ The typed actor's first validation passed four outcomes per provider: two ground
 - **Observe before drafting.** Drafting against actual labels/options lets reviewed answers be reused rather than regenerated after preparing generic documents.
 - **Use narrow semantic execution and readback.** Native radio fields were omitted by the existing text-field path. A readiness gate prevented false completion but did not fill them; the native-choice adapter did. Mechanical recovery handles a dropped first write without asking the person again.
 - **Do not deploy naive keyword context pruning.** In source-rich tests, both providers lost an existing SQLite fact when lexical retrieval omitted a paragraph. Claude looped through review; Codex asked an unnecessary question. Full-context variants answered it. This is a counterexample, not evidence that all retrieval methods fail.
-- **Release the workspace lock during long work.** An actual production HTTP browser route blocked an unrelated edit for 285ms during an injected 250ms gate. The detached actor prototype allowed the edit in 11ms and rejected duplicate claims/stale commits. This is a controlled scheduling experiment, not a load test. [Invariants](../output/architecture-invariants-2026-10-18T21-07-25-672Z/results.json).
+- **Release the workspace lock during long work.** An actual production HTTP browser route blocked an unrelated edit for 285ms during an injected 250ms gate. The detached actor prototype allowed the edit in 11ms and rejected duplicate claims/stale commits. This is a controlled scheduling experiment, not a load test. `Invariants`.
 - **Review needs semantic evaluation.** Both providers correctly handled four seeded review probes: accepted supported paraphrase; rejected wrong numbers, invented leadership and cover-letter-only inventions despite otherwise valid source quotes. Eight probes do not establish general hallucination prevention.
 
 ## Methodology corrections and limits
 
 All runs use fictional profiles and local employer forms, actual headless Chromium readback, and no employer submissions. Live means real CLI inference, not live employer completion. Common PDF rendering is stubbed to isolate orchestration; PDF/UI/API behavior is covered separately by the normal app suite. Voice scoring is only a first-person/project/length proxy, not a blind human assessment of personal voice.
 
-Initial diagnostics exposed missing fixture timestamps, a PDF digest mismatch and an oracle identity-label mismatch. Those were harness defects, retained as diagnostics and excluded from headline results. Early legal-choice grading also incorrectly penalized an intentional human attestation stop; the consistent base/final matrices use the corrected rule. One Codex free-text answer was incorrectly rejected for not equaling the single word `SQLite`; its complete supported sentence is correct. Original files remain untouched; [independent correction](../output/architecture-consolidated-2026-10-18/grading-correction.json) records the old/new judgment.
+Initial diagnostics exposed missing fixture timestamps, a PDF digest mismatch and an oracle identity-label mismatch. Those were harness defects, retained as diagnostics and excluded from headline results. Early legal-choice grading also incorrectly penalized an intentional human attestation stop; the consistent base/final matrices use the corrected rule. One Codex free-text answer was incorrectly rejected for not equaling the single word `SQLite`; its complete supported sentence is correct. Original files remain untouched; `independent correction` records the old/new judgment.
 
 The restart scenario closes/reopens the browser and reloads versioned memory; it does **not** kill/restart the entire Node process. Some bindings remain in memory. Answer memory is conservative and job-scoped, not yet a complete cross-job candidate brain. Native-choice support is not universal custom-control or shadow-DOM support. The challenge fixture proves resolver placement only: real CAPTCHA acceptance, broad ATS coverage and 90% autonomous completion remain unmeasured. Antigravity was not live-benchmarked here. Models, CLI defaults and cache state affect results; Codex did not report a model ID, so none is inferred.
 
@@ -72,8 +72,8 @@ The restart scenario closes/reopens the browser and reloads versioned memory; it
 - Final control validation: `output/architecture-live-2026-10-18T21-24-07-843Z` (Claude), `output/architecture-live-2026-10-18T21-23-14-331Z` (Codex).
 - Retrieval: `output/architecture-live-2026-10-18T21-11-17-741Z` (Claude), `output/architecture-live-2026-10-18T21-11-21-413Z` (Codex).
 - Semantic review: `output/architecture-review-claude-2026-10-18T21-23-11-562Z`, `output/architecture-review-codex-2026-10-18T21-13-39-899Z`.
-- [Full app regression suite](../output/verification-2026-10-18T21-23-19-755Z/) passed, including browser workflows, UI themes, repository/Go checks and dependency audit.
-- [Real CLI consumption ledger](../output/architecture-consolidated-2026-10-18/real-cli-consumption.json) includes pilot, tuning, failures and review probes, with reporting coverage. CLI USD is a provider reference estimate, not a subscription charge; token counts cannot establish subscription quota remaining. Cached tokens are subsets of inclusive input, not additional input.
+- `Full app regression suite` passed, including browser workflows, UI themes, repository/Go checks and dependency audit.
+- `Real CLI consumption ledger` includes pilot, tuning, failures and review probes, with reporting coverage. CLI USD is a provider reference estimate, not a subscription charge; token counts cannot establish subscription quota remaining. Cached tokens are subsets of inclusive input, not additional input.
 
 Run controlled comparisons with `npm run benchmark:architecture -- --profiles engineering,operations,returning`. Real CLI usage is opt-in: add `--live --provider codex` or `claude`; restrict cases/strategies to control consumption. Run `npm run benchmark:invariants`, `npm run benchmark:review -- --provider claude`, and `node run-test-suite.mjs` separately. Benchmark process exit zero means results were recorded, not that every candidate passed.
 

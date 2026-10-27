@@ -15,7 +15,7 @@
 
 ## Checklist
 
-- [ ] I read [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md), including the rules that don't bend
+- [ ] I read [CONTRIBUTING.md](https://github.com/akhan157/plainhand/blob/main/CONTRIBUTING.md), including the rules that don't bend
 - [ ] `npm run test:plainhand` passes (and `npm run test:full` for UI or browser changes)
 - [ ] No personal data (resumes, profiles, real names, API keys), including screenshots and fixtures
 - [ ] No changes to user files (`cv.md`, `config/profile.yml`, `data/`, `output/`)
