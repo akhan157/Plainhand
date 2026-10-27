@@ -1,4 +1,25 @@
+<div align="center">
+
+<img src="docs/images/logo.svg" width="72" height="72" alt="">
+
 # Plainhand
+
+**Your job applications, in your own words.**
+A job-application assistant that runs on your computer with your own AI account. You review and submit every application.
+
+[![Release](https://img.shields.io/github/v/release/akhan157/plainhand?color=2f8a52)](https://github.com/akhan157/plainhand/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2f8a52)](LICENSE)
+![Node 22+](https://img.shields.io/badge/node-22%2B-2f8a52)
+![Runs locally](https://img.shields.io/badge/runs-locally-2f8a52)
+
+[Install](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
+  <img src="docs/images/home-light.png" alt="Plainhand's Home screen with the sample workspace: setup steps, today's briefing and the candidate brain" width="900">
+</picture>
+
+</div>
 
 Plainhand is a job-application assistant that runs on your own computer and uses
 your own AI subscription (Claude, ChatGPT or Gemini/Antigravity). You talk to
@@ -28,6 +49,14 @@ couldn't answer. **You review and submit every application yourself.**
   filled, what needs you and what to double-check.
 - **Your data stays with you.** Everything is stored in this folder. The AI
   provider sees only what a task needs, and you can exclude any source.
+
+## A look around
+
+| Jobs, scored for fit with the evidence | Applications, from packet to submitted |
+| --- | --- |
+| <img src="docs/images/jobs.png" alt="Jobs page with fit scores and stages"> | <img src="docs/images/applications.png" alt="Applications page"> |
+
+Screenshots use the built-in sample workspace (**Take a look around** on Home). The candidate and roles are fictional.
 
 ## What you need
 
