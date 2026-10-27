@@ -1,0 +1,16 @@
+# Copy to config/cover-letter.yml (gitignored) and write your own paragraphs.
+# Used only by the command-line generator (npm run cover-letter); the Plainhand app
+# drafts cover letters from your evidence instead. Everything here is fictional.
+intro: "I'm applying for the {role} position at {company}. I'm a mechanical engineering graduate (Example University, 2027) with hands-on experience in design, testing and fabrication."
+hooks:
+  # Optional. {company} and {practiceArea} are filled in. Defaults exist for
+  # aerospace, manufacturing, infrastructure, design and general.
+  general: "{company} is doing the kind of {practiceArea} work I want to grow into."
+paragraphs:
+  # Two paragraphs per focus; general is required, the others are optional.
+  general:
+    - "On my Formula SAE team I redesigned a suspension upright in SolidWorks and cut its weight by 18% while passing the same load tests."
+    - "I'm looking for an entry-level role where I can contribute quickly and keep learning from experienced engineers."
+  manufacturing:
+    - "During my internship at Example Pumps I wrote an impeller-wear test procedure the lab still uses and ran 40 bench tests on it."
+    - "I like work where buildability and practical problem solving matter as much as the design itself."

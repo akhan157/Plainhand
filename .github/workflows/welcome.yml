@@ -1,0 +1,28 @@
+name: Welcome
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@v3
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          pr_message: |
+            Welcome to Plainhand, @${{ github.actor }}! Thanks for your first pull request.
+
+            - Tests run automatically; check the status below.
+            - Features and design changes need a linked issue.
+            - Please read [CONTRIBUTING.md](https://github.com/akhan157/plainhand/blob/main/CONTRIBUTING.md), including the rules that don't bend.
+          issue_message: |
+            Thanks for opening your first issue, @${{ github.actor }}! We'll take a look soon.
+
+            Setup questions are often answered in the [install guide's troubleshooting table](https://github.com/akhan157/plainhand/blob/main/docs/INSTALL.md#troubleshooting).

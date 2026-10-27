@@ -1,0 +1,44 @@
+# Sample candidate for demos and integration runs. Public example data only.
+# Source: jsonresume/resume-schema sample.resume.json (MIT). Not a real person.
+candidate:
+  full_name: "Richard Hendriks"
+  email: "richard.hendriks@mail.com"
+  phone: "(912) 555-4321"
+  location: "San Francisco, CA"
+  linkedin: "linkedin.com/in/richardhendriks"
+  portfolio_url: "http://richardhendricks.example.com"
+
+target_roles:
+  primary:
+    - "Software Engineer"
+    - "Compression Engineer"
+  archetypes:
+    - name: "Backend / Systems Engineer"
+      level: "Mid"
+      fit: "primary"
+    - name: "Founding Engineer"
+      level: "Mid"
+      fit: "secondary"
+
+narrative:
+  headline: "Programmer working on lossless compression"
+  exit_story: "Built a compression platform and ran a small company end to end."
+  superpowers:
+    - "Lossless compression algorithms"
+    - "End-to-end product delivery"
+  proof_points:
+    - name: "Pied Piper compression platform"
+      hero_metric: "Lossless compression with a smaller payload than the reference"
+
+compensation:
+  target_range: "$120K-160K"
+  currency: "USD"
+
+location:
+  country: "United States"
+  city: "San Francisco"
+  timezone: "America/Los_Angeles"
+  visa_status: "No sponsorship needed"
+
+cv:
+  output_format: "html"

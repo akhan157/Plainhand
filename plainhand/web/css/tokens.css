@@ -1,0 +1,131 @@
+/* Plainhand design tokens. Components use only these variables, never raw colours.
+   Light and dark are complete token sets; theme.js sets data-theme before paint
+   (resolving "Follow system" itself). Text pairs are checked for WCAG AA. */
+:root {
+  color-scheme: light;
+  /* Surfaces */
+  --bg: #f5f6f1;
+  --surface: #ffffff;
+  --surface-2: #f1f4ec;
+  --surface-3: #e7ecdf;
+  --surface-raised: #ffffff;
+  --paper: #ffffff;
+  --paper-ink: #1d2a22;
+  --paper-muted: #4a5a4f;
+  --paper-line: #d9ded3;
+  --scrim: rgb(18 36 28 / 0.38);
+  /* Lines */
+  --border: #dfe4d8;
+  --border-strong: #c6d0bc;
+  /* Text */
+  --text: #172e24;
+  --text-2: #3f5247;
+  --text-3: #5a6a5e;
+  --link: #2a6440;
+  /* Brand */
+  --brand: #173d30;
+  --brand-hover: #1f4d3c;
+  --on-brand: #f3f8ec;
+  --accent: #d5ecba;
+  --accent-soft: #eaf4dc;
+  --accent-ink: #1c3a17;
+  --mark-bg: #173d30;
+  --mark-ink: #d5ecba;
+  --focus: #4f8a3a;
+  --selection: #d5ecba;
+  /* Status */
+  --success-bg: #e7f2dc; --success-text: #2c5520; --success-border: #cfe3bd;
+  --warn-bg: #fbf1dc; --warn-text: #6b470c; --warn-border: #efdcb0;
+  --danger-bg: #fbe9e5; --danger-text: #922f20; --danger-border: #f0cfc7;
+  --info-bg: #e6eef5; --info-text: #2a4d6b; --info-border: #cddbe8;
+  /* Company marks */
+  --mark-1-bg: #e8efe1; --mark-1-ink: #2f5233;
+  --mark-2-bg: #e4ecf4; --mark-2-ink: #33506e;
+  --mark-3-bg: #f5ece0; --mark-3-ink: #6d4f22;
+  --mark-4-bg: #ece8f4; --mark-4-ink: #54447a;
+
+  /* Type */
+  --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 19px;
+  --fs-2xl: 24px;
+  --fs-3xl: 30px;
+  --fs-display: 44px;
+  --lh-tight: 1.25;
+  --lh-body: 1.6;
+  --fw-medium: 550;
+  --fw-semibold: 620;
+
+  /* Space */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+  --sp-6: 24px; --sp-7: 28px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  /* Shape and depth */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 18px; --r-pill: 999px;
+  --shadow-sm: 0 1px 2px rgb(23 46 36 / 0.05);
+  --shadow-md: 0 1px 2px rgb(23 46 36 / 0.04), 0 6px 18px rgb(23 46 36 / 0.06);
+  --shadow-lg: 0 12px 40px rgb(16 36 27 / 0.16), 0 2px 6px rgb(16 36 27 / 0.06);
+
+  /* Layout */
+  --header-h: 60px;
+  --nav-w: 224px;
+  --context-w: 480px;
+  --content-max: 920px;
+  --motion: 160ms cubic-bezier(.2, .7, .2, 1);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0f10;
+  --surface: #18181a;
+  --surface-2: #202023;
+  --surface-3: #2a2a2e;
+  --surface-raised: #1d1d20;
+  --paper: #f8f8f4;
+  --scrim: rgb(0 0 0 / 0.55);
+  --border: #2e2e33;
+  --border-strong: #424249;
+  --text: #ececee;
+  --text-2: #c4c4ca;
+  --text-3: #9d9da6;
+  --link: #6fcf8f;
+  --brand: #2f8a52;
+  --brand-hover: #37a061;
+  --on-brand: #ffffff;
+  --accent: #6fcf8f;
+  --accent-soft: #1b2a20;
+  --accent-ink: #1c3a17;
+  --mark-bg: #2f8a52;
+  --mark-ink: #ffffff;
+  --focus: #5fbf80;
+  --selection: #245a38;
+  --success-bg: #17291d; --success-text: #b7dd9c; --success-border: #2d4a31;
+  --warn-bg: #33290f; --warn-text: #ecc987; --warn-border: #4d3d17;
+  --danger-bg: #3a1d18; --danger-text: #f4ad9f; --danger-border: #5a2d25;
+  --info-bg: #182736; --info-text: #a9c9e6; --info-border: #2a405a;
+  --mark-1-bg: #1c2b21; --mark-1-ink: #c7e3ad;
+  --mark-2-bg: #1f2c3a; --mark-2-ink: #b4cde6;
+  --mark-3-bg: #362b1c; --mark-3-ink: #e9cfa5;
+  --mark-4-bg: #2c2639; --mark-4-ink: #d3c6ee;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 0 0 / 0.25);
+  --shadow-lg: 0 16px 48px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.3);
+}
+
+/* If scripts are unavailable, still follow the device theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #0f0f10; --surface: #18181a; --surface-2: #202023; --surface-3: #2a2a2e;
+    --border: #2e2e33; --text: #ececee; --text-2: #c4c4ca; --text-3: #9d9da6;
+  }
+}
+
+@media (min-width: 1600px) {
+  :root { --context-w: 540px; --content-max: 980px; }
+}

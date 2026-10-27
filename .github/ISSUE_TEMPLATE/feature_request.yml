@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an improvement to Plainhand
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's hard or missing today
+      description: The situation you were in and what got in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Profile and story
+        - Writing (resume, cover letter, humanizer)
+        - Accuracy and claim grading
+        - Finding and evaluating jobs
+        - Applying (form filling)
+        - Tracking and follow-ups
+        - Assistant and MCP
+        - Setup and install
+        - Something else
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Plainhand's rules
+      options:
+        - label: This keeps the candidate in control (Plainhand never submits, never overstates, never answers personal or legal questions)
+          required: true

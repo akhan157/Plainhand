@@ -1,0 +1,21 @@
+name: "I got hired!"
+description: Share your success story with Plainhand
+labels: ["hired"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Congratulations! Share as much or as little as you like. Leave out anything you'd rather keep private.
+  - type: input
+    id: role
+    attributes:
+      label: Role (and company, if you want to share)
+    validations:
+      required: true
+  - type: textarea
+    id: story
+    attributes:
+      label: How Plainhand helped
+      description: What worked, and what would have helped more.
+    validations:
+      required: true

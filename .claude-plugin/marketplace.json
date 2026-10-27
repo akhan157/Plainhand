@@ -1,0 +1,18 @@
+{
+  "name": "plainhand",
+  "metadata": {
+    "description": "AI job search command center — evaluate offers, generate CVs, scan portals, track applications. Fork of career-ops."
+  },
+  "owner": {
+    "name": "santifer",
+    "url": "https://santifer.io"
+  },
+  "plugins": [
+    {
+      "name": "plainhand",
+      "source": "./",
+      "description": "AI job search pipeline — evaluate offers, generate CVs, scan portals, track applications",
+      "category": "productivity"
+    }
+  ]
+}

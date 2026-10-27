@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in Plainhand doesn't work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Don't paste your resume, profile, application answers or API keys.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Jobs
+        2. Add https://jobs.lever.co/...
+        3. Press Evaluate
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Setup or starting Plainhand
+        - Connections (AI account)
+        - Profile, story or resume format
+        - Standard application or packet
+        - Applying (form filling)
+        - Jobs, campaigns or evaluation
+        - Assistant conversation
+        - Something else
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: AI account
+      options: [Claude, ChatGPT (Codex), Google Antigravity, Not connected]
+  - type: input
+    id: env
+    attributes:
+      label: Computer, Node.js version and Plainhand version
+      placeholder: macOS 15, Node 22.11, Plainhand 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Output of npm run setup -- --check
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages or screenshots
+      description: Hide anything personal first.
