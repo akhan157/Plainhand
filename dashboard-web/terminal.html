@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="dashboard-data-url" content="/api/apps">
+  <title>Plainhand Dashboard</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/terminal.css">
+</head>
+<body class="terminal-dashboard">
+  <div class="terminal-shell">
+    <header class="terminal-header">
+      <div class="terminal-hero">
+        <div>
+          <p class="prompt-line">Plainhand</p>
+          <h1>Plainhand Dashboard</h1>
+          <p class="hero-copy">Tracker triage, report lookup, and apply-next decisions.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="refreshButton" class="terminal-button terminal-button-solid" type="button">Refresh</button>
+          <a class="terminal-button" href="/auth/logout">Logout</a>
+        </div>
+      </div>
+    </header>
+
+    <section id="summary" class="summary-grid"></section>
+
+    <section class="surface-switch terminal-panel">
+      <div class="controls-head">
+        <p class="prompt-line">dashboard scope</p>
+        <p class="panel-note">Switch between tracked applications and fresh scan queue.</p>
+      </div>
+      <div id="surfaceTabs" class="status-tabs"></div>
+    </section>
+
+    <section class="controls terminal-panel">
+      <div class="controls-head">
+        <p class="prompt-line">status filters</p>
+        <p id="statusPanelNote" class="panel-note">Hot path: filter, inspect, open artifacts, apply.</p>
+      </div>
+      <div id="statusTabs" class="status-tabs"></div>
+      <div class="control-row">
+        <label class="field-block">
+          <span class="field-label">query</span>
+          <input id="searchInput" type="search" placeholder="company role notes verdict">
+        </label>
+        <label class="field-block">
+          <span class="field-label">sort</span>
+          <select id="sortSelect" aria-label="Sort applications">
+            <option value="date-desc">newest first</option>
+            <option value="score-desc">highest score</option>
+            <option value="company-asc">company a-z</option>
+            <option value="status-asc">status</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <main>
+        <section id="pendingSection" class="pending-section" hidden>
+          <div class="section-head terminal-section-head">
+            <div>
+              <p class="prompt-line">scan queue</p>
+              <h2 id="pendingTitle">Pending Pipeline</h2>
+            </div>
+            <p id="pendingMeta" class="muted"></p>
+          </div>
+
+          <div class="table-wrap terminal-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>section</th>
+                  <th>company / role</th>
+                  <th>location</th>
+                  <th>comp</th>
+                  <th>links</th>
+                </tr>
+              </thead>
+              <tbody id="pendingRows"></tbody>
+            </table>
+          </div>
+
+          <div id="pendingMobileCards" class="mobile-cards"></div>
+        </section>
+
+        <section id="trackedSection">
+          <div class="section-head terminal-section-head">
+            <div>
+              <p class="prompt-line">tracker feed</p>
+              <h2 id="resultsTitle">Applications</h2>
+            </div>
+            <p id="resultsMeta" class="muted"></p>
+          </div>
+
+          <div class="table-wrap terminal-panel">
+            <table>
+              <thead>
+                <tr>
+                  <th>id</th>
+                  <th>company / role</th>
+                  <th>state</th>
+                  <th>score</th>
+                  <th>date</th>
+                  <th>links</th>
+                </tr>
+              </thead>
+              <tbody id="appRows"></tbody>
+            </table>
+          </div>
+
+          <div id="mobileCards" class="mobile-cards"></div>
+        </section>
+      </main>
+
+      <aside class="detail-panel">
+        <div id="detailEmpty" class="detail-empty terminal-panel">
+          <p class="prompt-line">inspection pane</p>
+          <h2>NO TARGET SELECTED</h2>
+          <p>Open a row/card to inspect report, artifact links, and job URL.</p>
+        </div>
+        <div id="detailContent" hidden></div>
+      </aside>
+    </section>
+  </div>
+
+  <div id="mobileSheet" class="mobile-sheet" hidden>
+    <div id="mobileSheetBackdrop" class="mobile-sheet-backdrop"></div>
+    <section class="mobile-sheet-panel" aria-label="Application details">
+      <div class="mobile-sheet-head">
+        <div id="mobileSheetHandle" class="mobile-sheet-handle-wrap">
+          <div class="mobile-sheet-handle"></div>
+        </div>
+        <button id="mobileSheetClose" class="sheet-back-button" type="button">Close</button>
+        <div class="mobile-sheet-labels">
+          <p class="prompt-line">application://selected</p>
+          <p class="mobile-sheet-subtitle">Details and artifacts</p>
+        </div>
+      </div>
+      <div id="mobileSheetContent"></div>
+    </section>
+  </div>
+
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>

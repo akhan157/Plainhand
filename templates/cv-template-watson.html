@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="{{LANG}}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{NAME}} - Resume</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 10.5pt;
+    line-height: 1.02;
+    letter-spacing: -0.3px;
+    /* DEFAULT TEMPLATE. TNR 10.5pt = visual match to Word 11pt. Margins in generate-pdf.mjs: top 0.31in, bottom 0.37in, left/right 0.5in */
+    color: #000;
+    background: #fff;
+  }
+
+  .page { width: 100%; max-width: {{PAGE_WIDTH}}; margin: 0 auto; padding: 0; }
+
+  /* === HEADER === */
+  .header { text-align: center; margin-bottom: 1px; }
+  .header h1 { font-size: 22pt; font-weight: 700; color: #000; margin-bottom: 0; line-height: 1.15; }
+  .contact-line { font-size: 9pt; color: #000; margin-bottom: 1px; }
+  .contact-line a { color: #000; text-decoration: none; }
+
+  /* === SECTIONS === */
+  .section { margin-bottom: 1px; }
+  .section-title {
+    font-size: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #000;
+    border-bottom: 1.5px solid #000;
+    padding-bottom: 1px;
+    margin-bottom: 1px;
+    line-height: 1.1;
+  }
+
+  /* === EDUCATION === */
+  .edu-school { font-size: inherit; font-weight: 700; }
+  .edu-degree-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .edu-degree { font-size: inherit; font-style: italic; }
+  .edu-date { font-size: inherit; font-style: italic; white-space: nowrap; }
+  .edu-coursework { font-size: inherit; margin-top: 1px; }
+  .edu-coursework strong { font-weight: 700; }
+
+  /* === SKILLS === */
+  .skills-list { list-style-type: disc; padding-left: 20px; margin-top: 1px; }
+  .skills-list li { font-size: inherit; line-height: 1.05; margin-bottom: 0px; }
+
+  /* === EXPERIENCE / PROJECTS === */
+  .entry { margin-bottom: 2px; }
+  .entry-header { display: flex; justify-content: space-between; align-items: baseline; }
+  .entry-company { font-size: inherit; font-weight: 700; }
+  .entry-location { font-size: inherit; white-space: nowrap; }
+  .entry-role-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .entry-role { font-size: inherit; font-style: italic; }
+  .entry-dates { font-size: inherit; font-style: italic; white-space: nowrap; }
+  .entry-subtitle { font-size: inherit; font-style: italic; margin-top: 1px; }
+  .entry-bullets { list-style-type: disc; padding-left: 20px; margin-top: 1px; }
+  .entry-bullets li { font-size: inherit; line-height: 1.05; margin-bottom: 0px; }
+
+  /* === PRINT === */
+  @page {
+    size: letter;
+    margin: 0.31in 0.5in 0.37in 0.5in;
+  }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { padding: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>{{NAME}}</h1>
+    <div class="contact-line">{{LOCATION}} | {{PHONE}} | {{EMAIL}} | <a href="{{LINKEDIN_URL}}">{{LINKEDIN_DISPLAY}}</a></div>
+  </div>
+
+  <!-- EDUCATION -->
+  <div class="section">
+    <div class="section-title">Education</div>
+    {{EDUCATION}}
+  </div>
+
+  <!-- PROFESSIONAL EXPERIENCE -->
+  <div class="section">
+    <div class="section-title">Professional Experience</div>
+    {{EXPERIENCE}}
+  </div>
+
+  <!-- PROJECT EXPERIENCE -->
+  <div class="section">
+    <div class="section-title">Project Experience</div>
+    {{PROJECTS}}
+  </div>
+
+  <!-- TECHNICAL SKILLS -->
+  <div class="section">
+    <div class="section-title">Technical Skills</div>
+    {{SKILLS}}
+  </div>
+
+</div>
+</body>
+</html>

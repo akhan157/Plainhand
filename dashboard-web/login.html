@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plainhand Login</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/login.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-panel">
+      <p class="login-eyebrow">Plainhand</p>
+      <h1>Dashboard Login</h1>
+      <p class="login-copy">Enter the password once. Use “Remember this device” on your desktop or phone to stay signed in there.</p>
+      <form id="loginForm" class="login-form" method="post" action="/auth/login">
+        <input id="nextInput" type="hidden" name="next" value="/">
+        <label class="field-block">
+          <span class="field-label">Password</span>
+          <input class="login-input" type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <label class="remember-row">
+          <input type="checkbox" name="remember">
+          <span>Remember this device</span>
+        </label>
+        <p id="loginError" class="login-error" hidden>Wrong password.</p>
+        <button class="login-button" type="submit">Enter Dashboard</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    const error = params.get('error');
+    if (next && next.startsWith('/') && !next.startsWith('//')) {
+      document.querySelector('#nextInput').value = next;
+    }
+    if (error === '1') {
+      document.querySelector('#loginError').hidden = false;
+    }
+  </script>
+</body>
+</html>

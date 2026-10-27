@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Install and setup help
+    url: https://github.com/akhan157/plainhand/blob/main/docs/INSTALL.md#troubleshooting
+    about: Most setup problems are covered in the install guide's troubleshooting table.
+  - name: Report a security problem privately
+    url: https://github.com/akhan157/plainhand/security/advisories/new
+    about: Please don't open a public issue for security problems.
