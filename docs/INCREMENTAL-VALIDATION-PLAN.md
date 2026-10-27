@@ -18,7 +18,7 @@ recommendation as permission or evidence for a production migration.
 - Changed no production code, candidate data, tracker or running server. All probe
   workspaces were temporary and fictional; retained evidence is under `output/`.
 
-[Baseline evidence and reproduction](../output/validation-baseline-2026-10-19/README.md).
+`Baseline evidence and reproduction`.
 
 ## Production-path baseline: what it actually shows
 

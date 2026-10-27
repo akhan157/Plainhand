@@ -98,7 +98,7 @@ fit were not evaluated. No model or application data was used for observation.
 
 ## Evidence and next boundary
 
-[Evidence index, frozen sources, patches and reproduction](../output/verification-round2-2026-10-19/README.md).
+`Evidence index, frozen sources, patches and reproduction`.
 
 Active app source hashes remain unchanged. Tests did not start or stop production
 service; no listener on port 3210 was detected at final check. There is now stronger
