@@ -183,5 +183,5 @@ or retries. Personal candidate voice was not evaluated (user chose fictional sam
 - Permitted usable CAPTCHA environment; current official demo refuses automation.
 
 These prevent declaring “all verified.” They do not justify changing production
-architecture wholesale. [Evidence index](../output/broad-verification-2026-10-19/README.md)
+architecture wholesale. `Evidence index`
 retains passes, negative outcomes, screenshots, telemetry and input fingerprints.

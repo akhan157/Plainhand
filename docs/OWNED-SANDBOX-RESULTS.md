@@ -71,7 +71,7 @@ migration or a change to active app.
 
 ## Evidence and model quality
 
-[Raw proof and reproduction](../output/owned-sandbox-2026-10-19/README.md).
+`Raw proof and reproduction`.
 
 The saved achievement was: “I built the monthly reconciliation checklist at
 Fictional Ledger. Review time fell from 6 hours to 3 hours. I used Excel.” Those
