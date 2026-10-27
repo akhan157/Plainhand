@@ -4,8 +4,7 @@
 
 - **[akhan157](https://github.com/akhan157)**: creator and maintainer.
 
-Built with [Claude Code](https://claude.com/claude-code). The humanizer pass
-uses [blader/humanizer](https://github.com/blader/humanizer) (MIT).
+The humanizer pass uses [blader/humanizer](https://github.com/blader/humanizer) (MIT).
 
 ## career-ops (upstream)
 
