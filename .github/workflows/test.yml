@@ -3,17 +3,28 @@ name: Tests
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: '22'
+          cache: npm
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26'
-      - run: npm install
-      - run: node test-all.mjs --quick
+      - run: npm ci
+      # The browser tests drive a real Chromium; PDF import tests use pdftotext.
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y --no-install-recommends poppler-utils xvfb
+      - run: xvfb-run -a node test-all.mjs --quick
