@@ -1,40 +1,46 @@
 # Scripts Reference
 
-All scripts live in the project root as `.mjs` modules and are exposed via `npm run <name>`.
+Scripts live in `lib/` (engine and CLI), `tests/`, `benchmarks/` and
+`dashboard/node/`; `npm run <name>` resolves the path for you.
 
 ## Quick Reference
 
 | Command | Script | Purpose |
 |---------|--------|---------|
 | `npm run doctor` | `doctor.mjs` | Validate setup prerequisites |
-| `npm run verify` | `verify-pipeline.mjs` | Check pipeline data integrity |
-| `npm run normalize` | `normalize-statuses.mjs` | Fix non-canonical statuses |
-| `npm run dedup` | `dedup-tracker.mjs` | Remove duplicate tracker entries |
-| `npm run merge` | `merge-tracker.mjs` | Merge batch TSVs into applications.md |
-| `npm run pdf` | `generate-pdf.mjs` | Convert HTML to ATS-optimized PDF |
-| `npm run sync-check` | `cv-sync-check.mjs` | Validate CV/profile consistency |
-| `npm run patterns` | `analyze-patterns.mjs` | Analyze tracker outcomes and report patterns |
-| `npm run update:check` | `update-system.mjs check` | Check for upstream updates |
-| `npm run update` | `update-system.mjs apply` | Apply upstream update |
-| `npm run rollback` | `update-system.mjs rollback` | Rollback last update |
-| `npm run liveness` | `check-liveness.mjs` | Test if job URLs are still active |
-| `npm run scan` | `scan.mjs` | Zero-token portal scanner |
-| `npm run sandbox:demo` | `sandbox-demo.mjs` | Build a personal-data-free local dashboard sandbox |
-| `npm run test:sandbox` | `test-sandbox.mjs` | End-to-end sandbox, lifecycle, API, and browser smoke test |
-| `npm run test:lifecycle` | `test-lifecycle-runner.mjs` | Lifecycle preflight contract |
-| `npm run test:onboarding-plan` | `test-onboarding-plan.mjs` | Review/preview-only onboarding plan contract |
-| `npm run test:outcome-recommendation-state` | `test-outcome-recommendation-state.mjs` | Candidate approval ledger for outcome recommendations |
-| `npm run test:dashboard-workflow` | `test-dashboard-workflow.mjs` | Read-only dashboard queue/health projection |
-| `npm run test:followup-cadence-core` | `test-followup-cadence-core.mjs` | Explicit-root read-only follow-up cadence analysis |
-| `npm run test:dashboard-data` | `test-dashboard-data.mjs` | Dashboard timeline projection contract |
-| `npm run test:scan-state` | `test-scan-state.mjs` | Scan persistence and journal contract |
-| `npm run test:notification-delivery` | `test-notification-delivery.mjs` | Local notification delivery/scheduling contract |
-| `npm run test:approval-state` | `test-approval-state.mjs` | Explicit approval ledger contract |
-| `npm run test:browser-checkpoints` | `test-browser-checkpoints.mjs` | Durable browser checkpoint contract |
-| `npm run test:one-job-coordinator` | `test-one-job-coordinator.mjs` | Dependency-injected one-job coordinator contract |
-| `npm run test:one-job-runner` | `test-one-job-runner.mjs` | Live one-job bridge contract with staged tracker TSV |
-| `npm run test:scheduler-runner` | `test-scheduler-runner.mjs` | Fixture/local-JSONL scheduler bridge contract |
+| `npm run verify` | `lib/verify-pipeline.mjs` | Check pipeline data integrity |
+| `npm run normalize` | `lib/normalize-statuses.mjs` | Fix non-canonical statuses |
+| `npm run dedup` | `lib/dedup-tracker.mjs` | Remove duplicate tracker entries |
+| `npm run merge` | `lib/merge-tracker.mjs` | Merge batch TSVs into applications.md |
+| `npm run pdf` | `lib/generate-pdf.mjs` | Convert HTML to ATS-optimized PDF |
+| `npm run sync-check` | `lib/cv-sync-check.mjs` | Validate CV/profile consistency |
+| `npm run patterns` | `lib/analyze-patterns.mjs` | Analyze tracker outcomes and report patterns |
+| `npm run update:check` | `lib/update-system.mjs check` | Check for upstream updates |
+| `npm run update` | `lib/update-system.mjs apply` | Apply upstream update |
+| `npm run rollback` | `lib/update-system.mjs rollback` | Rollback last update |
+| `npm run liveness` | `lib/check-liveness.mjs` | Test if job URLs are still active |
+| `npm run scan` | `lib/scan.mjs` | Zero-token portal scanner |
+| `npm run sandbox:demo` | `lib/sandbox-demo.mjs` | Build a personal-data-free local dashboard sandbox |
+| `npm run test:sandbox` | `tests/test-sandbox.mjs` | End-to-end sandbox, lifecycle, API, and browser smoke test |
+| `npm run test:lifecycle` | `tests/test-lifecycle-runner.mjs` | Lifecycle preflight contract |
+| `npm run test:onboarding-plan` | `tests/test-onboarding-plan.mjs` | Review/preview-only onboarding plan contract |
+| `npm run test:outcome-recommendation-state` | `tests/test-outcome-recommendation-state.mjs` | Candidate approval ledger for outcome recommendations |
+| `npm run test:dashboard-workflow` | `tests/test-dashboard-workflow.mjs` | Read-only dashboard queue/health projection |
+| `npm run test:followup-cadence-core` | `tests/test-followup-cadence-core.mjs` | Explicit-root read-only follow-up cadence analysis |
+| `npm run test:dashboard-data` | `tests/test-dashboard-data.mjs` | Dashboard timeline projection contract |
+| `npm run test:scan-state` | `tests/test-scan-state.mjs` | Scan persistence and journal contract |
+| `npm run test:notification-delivery` | `tests/test-notification-delivery.mjs` | Local notification delivery/scheduling contract |
+| `npm run test:approval-state` | `tests/test-approval-state.mjs` | Explicit approval ledger contract |
+| `npm run test:browser-checkpoints` | `tests/test-browser-checkpoints.mjs` | Durable browser checkpoint contract |
+| `npm run test:one-job-coordinator` | `tests/test-one-job-coordinator.mjs` | Dependency-injected one-job coordinator contract |
+| `npm run test:one-job-runner` | `tests/test-one-job-runner.mjs` | Live one-job bridge contract with staged tracker TSV |
+| `npm run test:scheduler-runner` | `tests/test-scheduler-runner.mjs` | Fixture/local-JSONL scheduler bridge contract |
 | `npm run test:roadmap` | `test-*.mjs` | Run focused contract tests for the implemented roadmap primitives |
+| `npm run dashboard:build-static` | `dashboard/node/build-dashboard-static.mjs` | Build the read-only dashboard into `dashboard-static/` (optional `--path`, `--code-root`, `--out`) |
+| `npm run dashboard:publish` | `dashboard/node/dashboard-auto-publish.mjs` | Build and deploy the read-only dashboard with the connected Vercel account |
+| `npm run dashboard:watch` | `dashboard/node/dashboard-publish-watcher.mjs` | Publish only when tracked inputs change; `--force` and `--dry-run` |
+| `npm run benchmark:status` | `benchmarks/benchmark-status.mjs` | List benchmarks, latest local evidence and whether each needs a live provider |
+| `npm run test:remote` | `tests/test-remote.mjs` | Remote-view publish flow against a local stand-in Vercel CLI |
 
 ---
 
@@ -136,13 +142,13 @@ npm run sync-check
 
 ## patterns
 
-Analyzes application outcomes, scores, archetypes, blockers, remote policy, and company size from `data/applications.md` and linked reports. New reports should include `## Machine Summary` YAML; `analyze-patterns.mjs` uses it first and falls back to legacy markdown parsing for older reports.
+Analyzes application outcomes, scores, archetypes, blockers, remote policy, and company size from `data/applications.md` and linked reports. New reports should include `## Machine Summary` YAML; `lib/analyze-patterns.mjs` uses it first and falls back to legacy markdown parsing for older reports.
 
 ```bash
 npm run patterns
 npm run patterns -- --summary
 npm run patterns -- --min-threshold 3
-node analyze-patterns.mjs --self-test
+node lib/lib/analyze-patterns.mjs --self-test
 ```
 
 **Exit codes:** `0` analysis succeeded, `1` insufficient data or parser self-test failure.
@@ -225,7 +231,7 @@ parser:
 
 Use `args` only for reusable parsers that intentionally accept runtime parameters such as `{careers_url}` or `{company}`.
 
-If a parser writes full extraction artifacts for debugging or audit, store them under `data/parser-output/{company}/`. `scan.mjs` reads stdout and does not require those JSON files after parsing. Keep generated JSON artifacts out of git; `.gitkeep` placeholders are the only exception for preserving directory structure.
+If a parser writes full extraction artifacts for debugging or audit, store them under `data/parser-output/{company}/`. `lib/scan.mjs` reads stdout and does not require those JSON files after parsing. Keep generated JSON artifacts out of git; `.gitkeep` placeholders are the only exception for preserving directory structure.
 
 ```bash
 npm run scan

@@ -14,7 +14,7 @@
 import { randomUUID } from 'node:crypto';
 import { digest, now, requireText, cleanText, syncTracker } from '../store.mjs';
 import { recordOf, setNextAction, calendarDate } from '../application-record.mjs';
-import { DEFAULT_CADENCE } from '../../followup-cadence-core.mjs';
+import { DEFAULT_CADENCE } from '../../lib/followup-cadence-core.mjs';
 import { KINDS, KIND_LABELS, CHANNELS, followupSources, checkFollowup, addBusinessDays, businessDaysBetween } from './followups/checks.mjs';
 import { FOLLOWUP_DRAFT_INSTRUCTION, FOLLOWUP_AUDIT_INSTRUCTION, FOLLOWUP_FINAL_INSTRUCTION } from './followups/instructions.mjs';
 

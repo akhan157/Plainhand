@@ -62,7 +62,7 @@ npx playwright install chromium
 
 ```bash
 node cv-sync-check.mjs      # Check configuration
-node verify-pipeline.mjs     # Check pipeline integrity
+node lib/verify-pipeline.mjs     # Check pipeline integrity
 ```
 
 ## Build Dashboard (Optional)

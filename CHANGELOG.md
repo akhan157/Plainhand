@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+- **One-command start.** `npx --yes github:akhan157/Plainhand` downloads the
+  app, installs Chromium on first run, starts the local server and opens the
+  browser. The workspace defaults to `~/.plainhand`; `--data-root`, `--port`
+  and `--check` are available.
+
+- **Repository layout cleanup.** Core modules moved to `lib/`, tests to
+  `tests/`, benchmarks to `benchmarks/`, dashboard Node tools to
+  `dashboard/node/`, and Windows launchers to `scripts/windows/`. The root
+  listing dropped from 193 files to 30; imports, npm scripts, CI, docs and the
+  agent mode files point at the new paths.
+- **Remote view through your own Vercel account.** Workspace → Remote view
+  connects the Vercel CLI, publishes a password-protected read-only dashboard,
+  verifies the deployed gate (including projects with Vercel Authentication,
+  through `vercel curl`), and can republish while Plainhand runs. The
+  interactive app and submissions stay local; the snapshot contains the
+  tracker, reports and `output/` files. Verified against a real Vercel project
+  on 4 November 2026.
+- **AI setup without the terminal.** Connections can download the Claude or
+  ChatGPT connector into Plainhand's own folder and open the provider's browser
+  sign-in from the app. Existing global or local CLIs are reused. Google
+  Antigravity still uses its official app. Setup no longer tells people to run
+  npm install or a CLI command.
+- **Cross-platform dashboard publishing.** `npm run dashboard:publish` and
+  `dashboard:watch` now use the same Node publisher on Linux, macOS and
+  Windows; the PowerShell-only script was removed. `npx vercel` is used when
+  the CLI is not installed.
+- **Benchmark status.** `npm run benchmark:status` lists each benchmark, its
+  local evidence and whether it needs a live provider. The invariant benchmark
+  fixture now gives its unrelated role the evaluation the selection action
+  requires.
+- Fixed the Insights band table overflowing its card by 4 px at 1440 px.
+- Fixed the static dashboard build without the optional `fonts/` folder and
+  with a separate `--data-root` workspace.
+- Restored the missing fictional sample CV used by `npm run demo:sample`.
+
 ## Plainhand 1.0.0 (2026-10-27)
 
 First release of Plainhand, the browser app built on career-ops.

@@ -15,20 +15,37 @@ function ProviderCard({ p }) {
   const selected = state.provider === p.id;
   const login = state.loginSessions?.find(l => l.provider === p.id && l.status === 'running');
   const signedIn = p.auth === 'signed-in' || !!p.lastVerifiedAt;
-  const installCommand = /^npm |^brew |^curl /.test(p.install) ? p.install : null;
+  const [setupBusy, setSetupBusy] = useState(false);
+  const installCommand = !p.installable && /^npm |^brew |^curl /.test(p.install) ? p.install : null;
+  const setup = async () => {
+    setSetupBusy(true);
+    try {
+      await api('provider/setup', { id: p.id });
+      await loadProviders();
+      toast(`${providerNames[p.id]} is ready. Now sign in to your account.`);
+      refresh();
+    } catch (error) { toast(error.message, true); }
+    finally { setSetupBusy(false); }
+  };
   const test = async () => { toast(`Checking ${providerNames[p.id]}… this takes a few seconds.`); await api('provider/test', { id: p.id }); await loadProviders(); toast(`${providerNames[p.id]} works. Plainhand will use it.`); refresh(); };
   const step = (n, done, title, body) => html`<li class=${'conn-step' + (done ? ' done' : '')}><span class="step-number">${done ? html`<${Icon} name="check" />` : n}</span><div><strong>${title}</strong>${body}</div></li>`;
   return html`<section class=${'provider' + (selected ? ' selected' : '')} aria-labelledby=${'provider-' + p.id}>
     <header><span class="provider-logo" aria-hidden="true">${providerSymbol(p.id)}</span><div><h2 id=${'provider-' + p.id}>${p.name}</h2><small>Uses ${ACCOUNT[p.id] || 'your account'}</small></div>${selected ? html`<${Pill} tone="success" icon="check">In use</${Pill}>` : null}</header>
     <ol class="conn-steps">
-      ${step(1, p.installed, 'Install', p.installed ? html`<p class="muted-text">Installed on this computer.</p>` : installCommand
-        ? html`<p class="muted-text">Run this once in a terminal, then press Recheck at the top.</p><div class="code-box"><code>${installCommand}</code><${IconButton} icon="copy" label=${`Copy the ${p.name} install command`} onClick=${() => copy(installCommand)} /></div>`
-        : html`<p class="muted-text">Install it from the official guide, then press Recheck at the top.</p><${LinkButton} class="small" href=${safeLink(p.docs)} external>Open the install guide</${LinkButton}>`)}
-      ${step(2, p.installed && signedIn, 'Sign in', !p.installed ? html`<p class="muted-text">After installing.</p>` : signedIn ? html`<p class="muted-text">Signed in.</p>` : html`
-        <p class="muted-text">Opens ${p.name}’s own sign-in. Plainhand never sees your password.</p>
+      ${step(1, p.installed, 'Set up', p.installed
+        ? html`<p class="muted-text">Ready on this computer.</p>`
+        : p.installable
+          ? html`<p class="muted-text">Plainhand downloads the connector once. No terminal needed.</p><${ActionButton} class="small" icon="download" disabled=${setupBusy} onClick=${setup}>${setupBusy ? html`<${Spinner} />Setting up…` : `Set up ${p.name}`}</${ActionButton}>`
+          : installCommand
+            ? html`<p class="muted-text">Run this once in a terminal, then press Recheck at the top.</p><div class="code-box"><code>${installCommand}</code><${IconButton} icon="copy" label=${'Copy the ' + p.name + ' install command'} onClick=${() => copy(installCommand)} /></div>`
+            : html`<p class="muted-text">Install it from the official guide, then press Recheck at the top.</p><${LinkButton} class="small" href=${safeLink(p.docs)} external>Open the install guide</${LinkButton}>`)}
+      ${step(2, p.installed && signedIn, 'Sign in', !p.installed
+        ? html`<p class="muted-text">Set it up first.</p>`
+        : signedIn ? html`<p class="muted-text">Signed in.</p>` : html`
+        <p class="muted-text">Opens ${p.name}’s own sign-in in your browser. Plainhand never sees your password.</p>
         ${login ? html`<${Notice} tone="info">${login.message}${login.url ? html` <a href=${safeLink(login.url)} target="_blank" rel="noreferrer">Continue sign-in</a>` : null}</${Notice}>` : null}
-        <${ActionButton} class="small" icon=${login ? undefined : 'external'} disabled=${!!login} onClick=${async () => { const r = await api('provider/login', { id: p.id }); if (r.manual) openDialog({ type: 'antigravity' }); else { toast('Finish signing in in the window that opened, then check it works.'); refresh(); } }}>${login ? html`<${Spinner} />Signing in…` : p.id === 'antigravity' ? 'How to sign in' : 'Sign in'}</${ActionButton}>`)}
-      ${step(3, selected && !!p.lastVerifiedAt, 'Check it works', !p.installed ? html`<p class="muted-text">After installing and signing in.</p>` : html`
+        <${ActionButton} class="small" icon=${login ? undefined : 'external'} disabled=${!!login} onClick=${async () => { const r = await api('provider/login', { id: p.id }); if (r.manual) openDialog({ type: 'antigravity' }); else { toast('Finish signing in in the browser, then check it works.'); refresh(); } }}>${login ? html`<${Spinner} />Signing in…` : p.id === 'antigravity' ? 'How to sign in' : 'Sign in'}</${ActionButton}>`)}
+      ${step(3, selected && !!p.lastVerifiedAt, 'Check it works', !p.installed ? html`<p class="muted-text">After setup and sign-in.</p>` : html`
         <p class="muted-text">Sends one tiny test request (none of your data) and sets ${p.name} as the AI Plainhand uses.</p>
         <${ActionButton} class=${selected ? 'small' : 'small primary'} icon="plug" onClick=${test}>${selected && p.lastVerifiedAt ? 'Check again' : 'Check and use'}</${ActionButton}>`)}
     </ol>
@@ -40,7 +57,7 @@ export function ConnectionsPage() {
   return html`
     <${PageHeading} title="Connections" subtitle="Connect the AI account you already use. Plainhand brings your career context; the AI does the writing and thinking."
       actions=${html`<${ActionButton} icon="refresh" onClick=${loadProviders}>Recheck</${ActionButton}>`} />
-    <${Notice} tone="info">You only need one. Pick the AI you already pay for and follow its three steps. Usage counts against that plan; Plainhand never sees your password.</${Notice}>
+    <${Notice} tone="info">You only need one. Pick the AI account you already have; Plainhand sets up the connector and opens its browser sign-in for you. Usage counts against your plan, and Plainhand never sees your password.</${Notice}>
     ${providers ? html`<div class="provider-grid">${providers.map(p => html`<${ProviderCard} key=${p.id} p=${p} />`)}</div>` : html`<${Card}><div class="loading-row"><${Spinner} />Checking your installed agents…</div></${Card}>`}
     <div class="two-col">
       <${Card} title="One portable understanding of you" icon="layers" id="portable-title">
@@ -177,6 +194,69 @@ async function exportWorkspace() {
   setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
 
+// Read-only remote view. Vercel hosts a snapshot; it cannot run Plainhand.
+function RemoteCard() {
+  const remote = store.state?.remote;
+  const [busy, setBusy] = useState(null);
+  const [project, setProject] = useState(remote?.project || 'plainhand-dashboard');
+  useEffect(() => { setProject(remote?.project || 'plainhand-dashboard'); }, [remote?.project]);
+  if (!remote || store.demo) return null;
+  const login = remote.login;
+  const run = async (label, action) => {
+    setBusy(label);
+    try { const result = await action(); await refresh(true); return result; }
+    catch (error) { toast(error.message, true); return null; }
+    finally { setBusy(null); }
+  };
+  const connect = () => run('connect', () => api('remote/connect', {}));
+  const check = () => run('check', async () => { const result = await api('remote/status'); toast(result.user ? `Signed in to Vercel as ${result.user}` : 'Vercel is not connected yet.'); return result; });
+  const publish = () => run('publish', async () => { const result = await api('remote/publish', {}); toast('Your dashboard is online.'); return result; });
+  const toggle = enabled => run('settings', () => api('remote/settings', { enabled }));
+  const saveProject = () => run('settings', async () => { await api('remote/settings', { project }); toast('Project name saved.'); });
+  const rotate = () => run('rotate', async () => { const result = await api('remote/rotate', {}); toast('A new password is live.'); return result; });
+  const forget = () => {
+    if (!window.confirm('Remove this link from Plainhand? The published page stays online until you delete the Vercel project, and its password is deleted here.')) return;
+    return run('forget', async () => { await api('remote/forget', {}); toast('Link removed here. Delete the Vercel project to take the page offline.'); });
+  };
+  const connected = Boolean(remote.user);
+  const publishing = busy === 'publish' || busy === 'rotate';
+  const loginLink = login?.url ? html`<div class="code-box"><a href=${safeLink(login.url)} target="_blank" rel="noreferrer">${login.url}</a></div>` : null;
+  const advanced = html`<details class="remote-advanced">
+    <summary>Advanced options</summary>
+    <div class="disclosure-body">
+      <div class="field"><label for="remote-project">Vercel project name</label><div class="action-row"><input id="remote-project" value=${project} disabled=${busy !== null} onInput=${event => setProject(event.currentTarget.value)} /><${Button} class="small" disabled=${busy !== null || project === remote.project} onClick=${saveProject}>Save</${Button}></div><small>Usually leave this as it is.</small></div>
+      <label class="checkbox"><input type="checkbox" role="switch" checked=${remote.enabled === true} disabled=${busy !== null} onChange=${event => toggle(event.currentTarget.checked)} /><span><strong>Update it automatically</strong> while Plainhand is running, at most every 15 minutes.</span></label>
+      <div class="action-row"><${Button} icon="refresh" disabled=${busy !== null} onClick=${rotate}>New password</${Button}><${Button} class="ghost small" icon="trash" disabled=${busy !== null} onClick=${forget}>Remove from Plainhand</${Button}></div>
+    </div>
+  </details>`;
+  return html`<${Card} title="Open from anywhere" icon="external" id="remote-title" subtitle="Put a read-only copy of your dashboard online. Your applications and files stay on this computer; this page is only for checking them.">
+    <p class="muted-text">Use a free Vercel account to host the page. You can sign in with Google, GitHub or email. Applying, submitting and your AI conversation still happen on this computer.</p>
+    ${!connected ? html`
+      <p class="muted-text"><strong>Connect your Vercel account</strong>, then publish. Nothing is uploaded until you press Publish.</p>
+      ${login?.status === 'running' ? html`<${Notice} tone="info">Finish signing in to Vercel in the browser. The link expires in about 10 minutes.${loginLink ? html`<p>If no tab opened, use this link:</p>${loginLink}` : null}</${Notice}>` : null}
+      ${login?.status === 'failed' ? html`<${Notice} tone="danger">${login.message}</${Notice}>` : null}
+      <div class="action-row">
+        <${ActionButton} class="primary" icon="plug" disabled=${busy !== null || login?.status === 'running'} onClick=${connect}>Connect with Vercel</${ActionButton}>
+        <${Button} icon="refresh" disabled=${busy !== null} onClick=${check}>I have signed in</${Button}>
+      </div>
+      <details class="remote-advanced"><summary>Having trouble connecting?</summary><div class="disclosure-body"><p class="muted-text">Open a terminal in the Plainhand folder and run <code>npx vercel login</code>. Finish in the browser, then press “I have signed in”.</p></div></details>`
+    : html`
+      <div class="action-row"><${Pill} tone="success" icon="checkCircle">Signed in to Vercel as ${remote.user}</${Pill}><${Button} class="ghost small" icon="refresh" disabled=${busy !== null} onClick=${check}>Check again</${Button}></div>
+      ${remote.url ? html`
+        <h3 class="sub-heading">Your dashboard is online</h3>
+        <div class="code-box"><a href=${safeLink(remote.url)} target="_blank" rel="noreferrer">${remote.url}</a><${Button} class="small" icon="external" onClick=${() => window.open(safeLink(remote.url), '_blank', 'noopener')}>Open</${Button}></div>
+        <div class="field"><label for="remote-password">Password for other devices</label><div class="code-box"><code id="remote-password">${remote.password || '—'}</code><${Button} class="small" icon="copy" onClick=${() => copy(remote.password || '')}>Copy</${Button}></div><small>${remote.verifiedAt ? 'Checked and working.' : 'Not checked yet.'} Open the link on your phone or another computer${remote.protected ? '; sign in to Vercel with the same account first' : ''}, then enter this password. Use “Remember this device” so you stay signed in.</small></div>
+        <div class="action-row"><${ActionButton} class="primary" icon="upload" disabled=${busy !== null} onClick=${publish}>${publishing ? 'Publishing…' : 'Publish again'}</${ActionButton}></div>
+        ${publishing ? html`<p class="muted-text"><${Spinner} /> Building and publishing; this usually takes a minute.</p>` : null}`
+      : html`<${Notice} tone="info">Ready to publish. This uploads a read-only copy of your applications, reports and PDFs; it does not expose Plainhand or let anyone apply.</${Notice}>
+        <div class="action-row"><${ActionButton} class="primary" icon="upload" disabled=${busy !== null} onClick=${publish}>${publishing ? 'Publishing…' : 'Publish my dashboard'}</${ActionButton}></div>
+        ${publishing ? html`<p class="muted-text"><${Spinner} /> Building and publishing; this usually takes a minute.</p>` : null}`}
+      ${advanced}
+      ${remote.lastError ? html`<${Notice} tone="danger" title="Publishing did not finish">${remote.lastError}</${Notice}>` : null}`}
+    <${Notice} tone="warn">Only a read-only copy is uploaded. Anyone with the password can read your applications, reports and PDFs. Your AI account, conversations, browser sessions and the ability to apply stay on this computer. Delete the Vercel project to take the page offline.</${Notice}>
+  </${Card}>`;
+}
+
 function AutonomyCard() {
   const a = store.state.autonomy || { enabled: false, perDay: 3, minScore: 4 };
   const ready = store.state.standardStatus === 'approved';
@@ -201,6 +281,7 @@ export function WorkspacePage() {
         <small>Follow system tracks your device, including changes while Plainhand is open.</small></div>
     </${Card}>
     <${AutonomyCard} />
+    <${RemoteCard} />
     <div class="two-col">
       <${Card} title="Your files & context" icon="file" id="files-title">
         <p class="muted-text">Identity and targets are saved to <code>config/profile.yml</code>. Your resume stays in <code>cv.md</code>, and existing structured resume sources are respected. Conversation, voice, task history and application checkpoints live in <code>data/plainhand/workspace.json</code>.</p>

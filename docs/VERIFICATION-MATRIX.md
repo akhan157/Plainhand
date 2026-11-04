@@ -1,5 +1,28 @@
 # Plainhand verification matrix
 
+## Local rerun, 3 November 2026
+
+This checkout had no user workspace (`node lib/doctor.mjs` reports the four expected
+onboarding files missing) and no Go toolchain. Results below were produced on
+Node.js 26.11.1 with the installed Playwright Chromium.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Plainhand core | PASS | `npm run test:plainhand`: **304/304** |
+| Full repository suite | PASS except two environment checks | `npm run test:full`: **42 of 44 jobs passed**; repository checks **350 passed, 1 failed, 2 warnings**. The failures are `go` missing: the Go dashboard build and `go test ./...` (`spawn go ENOENT`). |
+| Browser workflow and themes | PASS | `test-plainhand-ui`: desktop/mobile, light/dark/system, real PDFs, form fill/upload/handoff |
+| Insights band table | PASS after fix | `test-feature-insights-ui`; the table exceeded its card by 4 px at 1440 px and was tightened |
+| Remote view (local stand-in) | PASS | `npm run test:remote`: sign-in link capture, build, deploy arguments, password redirect, wrong-password rejection, signed-in `dashboard-data.json` |
+| Dashboard build | PASS | Missing optional `fonts/` no longer fails; `--data-root` uses the app shell; tracker-relative `../reports/...` links resolve; only artifacts the payload links are copied |
+| Static dashboard link projection | PASS | `test-application-timeline`, `test-dashboard-data` |
+| Dependency audit | PASS | `npm audit --audit-level=high` |
+| Benchmarks | PASS, offline | 49/49 simulation, 3/3 invariants, 16/16 controlled subset, rules-only calibration 18/27; see [the local rerun](METRICS-INVENTORY.md#7-local-rerun-3-november-2026) |
+| Real Vercel deploy | PASS, 4 November 2026 | Production deployment `https://plainhand-dashboard.vercel.app` reached `READY`; the project has Vercel Authentication enabled, so Plainhand verified the dashboard password gate through `vercel curl` (302 to `/login/`, accepted password, HTTP 200 `dashboard-data.json`). The snapshot has 0 applications because this checkout has no tracker data. |
+| Live provider benchmarks | NOT RUN | No signed-in Claude/Codex/Antigravity account; live runs use account quota and remain opt-in. |
+
+The two Go failures are not code failures; CI installs Go 1.26 and runs the same
+suite. Re-run `npm run test:full` on a machine with Go before claiming a clean
+local suite.
 
 ## Plainhand 1.0, 27 October 2026
 

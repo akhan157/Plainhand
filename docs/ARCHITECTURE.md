@@ -93,11 +93,11 @@ Scripts maintain data consistency:
 
 | Script | Purpose |
 |--------|---------|
-| `merge-tracker.mjs` | Merges batch TSV additions into applications.md |
-| `verify-pipeline.mjs` | Health check: statuses, duplicates, links |
-| `dedup-tracker.mjs` | Removes duplicate entries by company+role |
-| `normalize-statuses.mjs` | Maps status aliases to canonical values |
-| `cv-sync-check.mjs` | Validates setup consistency |
+| `lib/merge-tracker.mjs` | Merges batch TSV additions into applications.md |
+| `lib/verify-pipeline.mjs` | Health check: statuses, duplicates, links |
+| `lib/dedup-tracker.mjs` | Removes duplicate entries by company+role |
+| `lib/normalize-statuses.mjs` | Maps status aliases to canonical values |
+| `lib/cv-sync-check.mjs` | Validates setup consistency |
 
 ## Dashboard TUI
 

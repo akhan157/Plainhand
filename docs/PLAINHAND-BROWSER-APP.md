@@ -72,19 +72,21 @@ resume. Existing tracker rows remain visible. There is no destructive migration.
 
 ## Connect an agent
 
-Plainhand delegates account authentication and execution to installed CLIs:
+Plainhand uses the provider's own desktop sign-in. The browser is the only
+account surface the candidate needs:
 
-| Account | CLI | Sign-in | Execution |
-| --- | --- | --- | --- |
-| ChatGPT | `codex` | `codex login` | `codex exec` with an ephemeral read-only workspace |
-| Claude | `claude` | `claude auth login` | `claude -p`, tools disabled and explicit empty MCP configuration |
-| Google Antigravity | `agy` | Launch `agy` interactively and sign in | Streaming JSON on stdin/stdout, plan mode, sandbox enabled |
+| Account | What Plainhand does | Execution |
+| --- | --- | --- |
+| ChatGPT | Downloads the Codex connector locally and opens its browser sign-in | `codex exec` with an ephemeral read-only workspace |
+| Claude | Downloads the Claude Code connector locally and opens its browser sign-in | `claude -p`, tools disabled and explicit empty MCP configuration |
+| Google Antigravity | Links to its official app; the candidate signs in there | Streaming JSON on stdin/stdout, plan mode, sandbox enabled |
 
-The Connections screen detects installation, checks the available local auth
-status, starts Codex/Claude sign-in, and provides Antigravity sign-in instructions.
-When a sign-in flow prints a recognized provider authorization link, the screen
-offers it to the user. Authentication can always be completed in the terminal.
-Antigravity's interactive account/keyring setup is not replicated in Plainhand.
+The Connections screen shows three steps: **Set up**, **Sign in**, **Check it
+works**. The set-up step downloads the connector into Plainhand's own
+`node_modules` (no global install and no terminal), or uses an existing global
+or local installation. A sign-in link printed by the connector is shown on the
+screen. Antigravity still needs its official app; Plainhand links to it rather
+than replicating its account/keyring setup.
 
 **Check and use** sends a minimal request without candidate context.
 **Select existing connection** only selects the CLI; it does not establish that
@@ -344,6 +346,58 @@ desktop notification (through the existing notify-send adapter and delivery
 journal) is sent only when enabled for the campaign, says where the role was
 found and why, and is never sent twice for the same role.
 
+## Remote view (optional, Vercel)
+
+**Workspace → Remote view (Vercel)** publishes a read-only copy of the dashboard
+to a Vercel project in your own account, so you can check applications from a
+phone or another computer without Tailscale. It is not the app: the local server,
+assistant, form filling and submission stay on this computer and are not exposed.
+
+- **Connect:** press **Connect Vercel account**. Plainhand starts the Vercel CLI
+  sign-in and shows the link if the CLI prints one; approve it in the browser,
+  then press **Check connection**. If the flow does not complete, run
+  `npx vercel login` in a terminal and check again. Plainhand does not read or
+  store a Vercel token; keep using `VERCEL_TOKEN` only for headless/CI runs.
+- **Publish:** Plainhand builds the static dashboard from
+  `data/applications.md`, reports, `output/` and the application timeline, then
+  deploys it with production environment variables. It creates the
+  `plainhand-dashboard` project if it does not exist (change the name in the
+  card). The deployment has its own generated password and signed cookie; the
+  password is shown in the card and can be rotated (rotation republishes).
+- **Verify:** after deploying, Plainhand loads the URL without a cookie, checks
+  that it redirects to `/login/`, rejects a wrong password, accepts the generated
+  one, and reads `dashboard-data.json` with the resulting cookie. A deployment
+  that fails those checks is reported as a failure, not marked published. When
+  the Vercel project has **Vercel Authentication** enabled, unauthenticated
+  requests are answered before the dashboard middleware; Plainhand repeats the
+  same checks through `vercel curl`, which adds the project's protection bypass,
+  so the password gate is still proven in that configuration.
+- **Keep it fresh:** **Publish automatically after changes** republishes while
+  Plainhand is running when the tracker, reports, generated files or workspace
+  changed, at most once every 15 minutes (plus a check 30 seconds after start).
+  The manual **Publish now** button always runs. The old scheduling entry point
+  still exists for a cron job: `npm run dashboard:publish` or
+  `npm run dashboard:watch`.
+- **Privacy:** the published copy contains your applications, reports and the
+  files under `output/` (including generated PDFs). It is protected by the
+  dashboard password and HTTPS, but it is hosted by Vercel and anyone with the
+  password can read it. It does not include conversation history, provider
+  credentials, browser cookies or the workspace control token. **Forget
+  deployment** removes the saved URL/password locally; the site stays online
+  until you delete the project in Vercel.
+- **Limits:** read-only status and artifacts. You cannot talk to Plainhand, run
+  tasks or apply remotely. Assets under `/assets/` are UI shell files and are not
+  gated; all personal data is behind the password middleware. If you enable
+  Vercel's own Deployment Protection, visitors may also need a Vercel session.
+  A `--data-root` workspace works: the builder reads data from the workspace and
+  the dashboard shell from the app folder.
+
+Verified with a local stand-in Vercel CLI and a local password-gated deployment
+(`test-remote.mjs`): sign-in link capture, build, deploy arguments, generated
+password, redirect, wrong-password rejection and signed-in data. A real Vercel
+account, project protection setting and custom domain are environment checks;
+they are not exercised by the offline suite.
+
 ## Current limits
 
 - Discovery uses user-configured company boards, on demand or through scheduled
@@ -386,7 +440,7 @@ found and why, and is never sent twice for the same role.
 npm run test:plainhand
 npm run test:plainhand-ui
 npm run test:full
-node test-all.mjs --quick
+node tests/test-all.mjs --quick
 ```
 
 Integration tests use temporary workspaces and synthetic provider results. They
@@ -524,7 +578,7 @@ export and explicit task retries. The background website suite checks the usage
 screen in both themes. Opt-in actual CLI metering:
 
 ```bash
-node test-plainhand-usage-live.mjs --provider claude
+node tests/test-plainhand-usage-live.mjs --provider claude
 ```
 
 One minimal real check recorded 2,955 input tokens (including 649 cache reads and

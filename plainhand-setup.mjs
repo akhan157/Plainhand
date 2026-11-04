@@ -39,8 +39,8 @@ export async function runChecks({ root = ROOT, nodeVersion = process.versions.no
   results.push(has('pdftotext') ? { level: 'ok', label: 'PDF resume import (pdftotext)' }
     : { level: 'warn', label: 'PDF resume import unavailable; pasting resume text still works', fix: process.platform === 'darwin' ? 'brew install poppler' : process.platform === 'win32' ? 'Install Poppler for Windows and add it to PATH' : 'sudo apt install poppler-utils' });
   const agents = [['claude', 'Claude'], ['codex', 'ChatGPT (Codex)'], ['agy', 'Google Antigravity']].filter(([command]) => has(command)).map(([, name]) => name);
-  results.push(agents.length ? { level: 'ok', label: `AI account CLI found: ${agents.join(', ')}` }
-    : { level: 'warn', label: 'No AI account CLI found yet', fix: 'Install one: npm install -g @anthropic-ai/claude-code (Claude) or npm install -g @openai/codex (ChatGPT). Sign in from Plainhand → Connections.' });
+  results.push(agents.length ? { level: 'ok', label: `AI connector already available: ${agents.join(', ')}` }
+    : { level: 'ok', label: 'AI account: connect inside Plainhand', fix: 'Open Plainhand → Connections after starting it. Plainhand downloads the Claude or ChatGPT connector and opens the sign-in for you.' });
   if (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) results.push({ level: 'warn', label: 'No graphical desktop detected', fix: 'Evaluation, packets and PDFs work; form assistance needs a visible browser on a desktop session.' });
   return results;
 }

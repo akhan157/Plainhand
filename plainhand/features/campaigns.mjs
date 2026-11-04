@@ -8,7 +8,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { mergeScanHistory } from '../scan-runner.mjs';
-import { deliverNotifications } from '../../notification-delivery.mjs';
+import { deliverNotifications } from '../../lib/notification-delivery.mjs';
 import { createDesktopAdapter, notificationPayload } from '../notification-channels.mjs';
 import { CampaignInputError, MAX_CAMPAIGNS, SCAN_HISTORY_FILE, isDue, loadConfig, loadRuns, localDay, mutateCampaigns, nextRunAt, normalizeCampaign, scheduleLabel } from './campaigns/config.mjs';
 import { runCampaign, mergeLedger } from './campaigns/scan.mjs';

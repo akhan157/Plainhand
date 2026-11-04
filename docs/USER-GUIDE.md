@@ -18,9 +18,11 @@ shows the change and waits for you to confirm.
 
 ## 1. Connect your AI account
 
-**Connections** shows each AI account with three steps: install, sign in,
-check it works. You only need one. Finish its steps and press **Check and use**. Plainhand uses your plan through that tool; it shows
-calls and token use under **AI usage**.
+**Connections** shows each AI account with three steps: **set up**, **sign in**,
+**check it works**. You only need one. Plainhand downloads the connector and
+opens the provider’s browser sign-in for you; there is no terminal step. Finish
+its steps and press **Check and use**. Plainhand uses your plan through that
+connector; it shows calls and token use under **AI usage**.
 
 ## 2. Build your profile
 
@@ -130,6 +132,10 @@ there's enough data, and suggests changes for you to accept or reject.
 - **Workspace → What your agent sees:** turn off any source or profile field
   you'd rather not send to the AI provider.
 - **Workspace → Export workspace:** a backup you can import elsewhere.
+- **Workspace → Remote view (Vercel):** optionally publish a read-only copy of
+  your applications, reports and PDFs to your own Vercel account. It has its own
+  password, can update while Plainhand runs, and does not expose the app or let
+  anyone apply remotely. See [the browser app reference](PLAINHAND-BROWSER-APP.md#remote-view-optional-vercel).
 
 ## Talking to it by voice
 
@@ -148,3 +154,6 @@ push-to-talk: hold the key, speak, and the text lands in the message box.
 | Evaluation reports | `reports/` |
 
 None of these are part of the Plainhand code, and updates don't change them.
+If you enable the optional Vercel remote view, a read-only snapshot of the
+tracker, reports and `output/` files is also stored in your Vercel project; the
+saved URL and password are in `data/plainhand/remote.json`.

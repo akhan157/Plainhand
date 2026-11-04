@@ -5,7 +5,7 @@ import {
   ADAPTER_RESULT_STATUSES,
   SAFE_ACTIONS,
   createAdapterResult,
-} from '../apply-adapter-contract.mjs';
+} from '../lib/apply-adapter-contract.mjs';
 
 export const FINAL_CONTROL_RE = /\b(?:submit|apply|send|finish|complete|finali[sz]e)\b|\breview\s+(?:and|&)\s+submit\b/i;
 export const RESUME_FIELD_RE = /(?:resume|curriculum\s+vitae|\bcv\b)/i;

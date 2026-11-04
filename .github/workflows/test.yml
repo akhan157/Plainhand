@@ -27,4 +27,4 @@ jobs:
       # The browser tests drive a real Chromium; PDF import tests use pdftotext.
       - run: npx playwright install --with-deps chromium
       - run: sudo apt-get install -y --no-install-recommends poppler-utils xvfb
-      - run: xvfb-run -a node test-all.mjs --quick
+      - run: xvfb-run -a node tests/test-all.mjs --quick

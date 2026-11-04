@@ -9,8 +9,8 @@
 // data/plainhand/insights/; deciding one records the decision only. Changing
 // targets or thresholds stays a separate action the candidate takes in Profile
 // or discovery. Contract: docs/AGENT-CONTRACTS.md §6.
-import { analyzeOutcomes } from '../../outcome-intelligence.mjs';
-import { OutcomeRecommendationLedger } from '../../outcome-recommendation-state.mjs';
+import { analyzeOutcomes } from '../../lib/outcome-intelligence.mjs';
+import { OutcomeRecommendationLedger } from '../../lib/outcome-recommendation-state.mjs';
 import { buildRecords, summarize, patterns, derive, observedKeys, compactLegacy, SILENCE_DAYS } from './insights/analysis.mjs';
 
 export { SILENCE_DAYS };

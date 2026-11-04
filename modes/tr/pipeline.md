@@ -56,6 +56,6 @@
 
 Herhangi bir URL'yi işlemeden önce yapılandırma kontrolü çalıştır:
 ```bash
-node cv-sync-check.mjs
+node lib/cv-sync-check.mjs
 ```
 Uyarı varsa adayı bilgilendirmeden devam etme.

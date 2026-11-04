@@ -62,7 +62,7 @@ These files contain system logic, scripts, templates, and instructions that impr
 | `modes/ru/*` | Russian language modes |
 | `CLAUDE.md` | Agent instructions |
 | `AGENTS.md` | Codex instructions |
-| `*.mjs` | Utility scripts |
+| `lib/*.mjs`, `tests/*.mjs`, `benchmarks/*.mjs`, `dashboard/node/*` | Utility scripts, tests and benchmark tools |
 | `batch/batch-prompt.md` | Batch worker prompt |
 | `batch/batch-runner.sh` | Batch orchestrator |
 | `dashboard/*` | Go TUI dashboard |

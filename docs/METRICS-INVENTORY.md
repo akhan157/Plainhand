@@ -59,7 +59,7 @@ All earlier benchmarks predate the assistant; none measured the conversation.
 
 ## 5. Profile-building benchmark
 
-`node benchmark-profile.mjs --provider claude` (or `npm run benchmark:profile -- --provider claude`).
+`node benchmarks/benchmark-profile.mjs --provider claude` (or `npm run benchmark:profile -- --provider claude`).
 
 Three fictional personas (a mechanical engineering graduate, a teacher moving
 into data analysis, a junior software engineer), each with 4–6 hidden facts and
@@ -168,7 +168,34 @@ direct, adjacent-softened, out-of-scope terms) covers the same ground for
 keywords and is not yet used by the app's grading. The cases should grow with real flagged claims the candidate
 disagrees with.
 
-## 7. Not measured yet
+## 7. Local rerun, 3 November 2026
+
+This checkout had no local benchmark evidence in `output/`; the results below
+were produced from the current source on Node.js 26.11.1 with Playwright
+Chromium. `Go` was not installed, so `go test ./...` and the Go dashboard build
+were not run. Live provider benchmarks were not run (they spend the account's
+quota and are opt-in), so every run below is offline: deterministic agents,
+scripted fixtures or public read-only pages. `npm run benchmark:status` prints
+the same inventory and the latest directory for each benchmark.
+
+| Benchmark | Result | What it establishes |
+| --- | --- | --- |
+| `benchmark:simulation` | **49/49 passed**, 0 false-ready, 0 automated submissions; 9 challenge cases, 3 recovered; p50 3.1 s, p95 10.3 s | The production browser/policy path completes or stops correctly on fictional portals. It does not measure employer acceptance. |
+| `benchmark:architecture --profiles engineering --cases achievement,records` | **16/16 correct**, 0 false-ready, 0 submissions across eight designs (packet-first 8 calls, typed-actor 4) | A two-case smoke of the comparison harness, not the 42-case matrix in section 4. |
+| `benchmark:invariants` | **3/3 passed**; production browser route held an unrelated edit for 279 ms; detached actor allowed it in 8 ms; source change produced `needs-replan` | The scheduling/memory invariants still hold. |
+| `benchmark:calibration` | Rules only: exact **18/27**, right direction 0.67, missed inflation 8, false alarms 0, missed undersell 1 | This is the rule layer alone. It is not comparable to the combined 24/24 in section 6 (27 cases now, and no reviewer model was called). It confirms rules alone still miss inflation. |
+| `benchmark:profile` | Scripted fixture: capture 1, unsupported updates 0, one-question turns 1 | The harness and scoring run; it is not evidence about assistant quality. |
+| `benchmark-real-sites` | Greenhouse ready (18 fields, 5 filled without a model); Lever challenge (21 fields, 7 filled); Ashby ready (13 fields, 6 filled); Workday navigating (0 fields) | Public pages were read; nothing was filled, uploaded or submitted. Ashby first returned 0 fields and read 13 on a retest, exposing a readiness race. `open()` now watches late-rendering forms for the full 12 s window instead of stopping after ~4.5 s when an Apply control was present. |
+
+**What the gap is.** The controlled results say the orchestration and safety
+gates hold; they say nothing about whether a real model drafts a better packet,
+and the live runs stopped at a platform challenge (Lever). The largest unknown
+remains [M7](VISION-GAP.md): one real application per supported ATS,
+submitted by the candidate. Run live benchmarks with `--provider claude` or
+`--provider codex` when an account is available; those calls use the account's
+quota and must be opt-in.
+
+## 8. Not measured yet
 
 1. **Whether the profile makes applications better.** Coverage and depth vs
    interview rate; needs real outcomes (Insights can join them once both exist).

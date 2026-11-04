@@ -199,7 +199,7 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 
 0. **カバーレター：** フォームが添付または記入を許可する場合、必ず含める。履歴書と同じデザインの PDF。内容：JD の引用を proof point にマッピング、関連ケーススタディへのリンク。最大 1 ページ。
 1. 求人を評価する前に `cv.md`、`_profile.md`、`article-digest.md`（存在する場合）を読む
-1b. **各セッションの最初の評価で：** Bash で `node cv-sync-check.mjs` を実行。警告があれば続行前に候補者に知らせる
+1b. **各セッションの最初の評価で：** Bash で `node lib/cv-sync-check.mjs` を実行。警告があれば続行前に候補者に知らせる
 2. 求人のアーキタイプを検出し、`_profile.md` に従ってフレーミングを適応させる
 3. マッチング時、履歴書の正確な行を引用する
 4. 報酬と企業データのために WebSearch を使う
@@ -221,4 +221,4 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 | Read | cv.md、_profile.md、article-digest.md、cv-template.html |
 | Write | PDF 用の一時 HTML、applications.md、reports .md |
 | Edit | tracker の更新 |
-| Bash | `node generate-pdf.mjs` |
+| Bash | `node lib/generate-pdf.mjs` |

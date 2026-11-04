@@ -7,7 +7,7 @@ import {
   assertPortalAdapter,
   createAdapterResult,
   detectPortalFamily,
-} from '../apply-adapter-contract.mjs';
+} from '../lib/apply-adapter-contract.mjs';
 import {
   continuePortalStep,
   currentUrl,

@@ -8,7 +8,7 @@ import {
   ADAPTER_RESULT_STATUSES,
   SAFE_ACTIONS,
   createAdapterResult,
-} from '../apply-adapter-contract.mjs';
+} from '../lib/apply-adapter-contract.mjs';
 
 export const FINAL_CONTROL_RE = /\b(?:submit|apply|send|finish|complete|finali[sz]e|review\s*(?:and|&)\s*submit)\b/i;
 export const AUTH_RE = /\b(?:sign\s*in|log\s*in|login|password|authenticate|authentication|one[- ]time\s+(?:passcode|password|code)|otp|captcha|recaptcha|verify\s+(?:you(?:'re| are)\s+)?human)\b/i;

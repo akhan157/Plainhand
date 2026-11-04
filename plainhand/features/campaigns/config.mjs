@@ -4,7 +4,7 @@
 // are runtime data in data/plainhand/campaign-runs.json; deleting that file only
 // forgets history, never a campaign.
 import { randomUUID } from 'node:crypto';
-import { validateCampaignConfig } from '../../../campaign-state.mjs';
+import { validateCampaignConfig } from '../../../lib/campaign-state.mjs';
 
 export const CONFIG_FILE = 'data/plainhand/campaigns.json';
 export const RUNS_FILE = 'data/plainhand/campaign-runs.json';

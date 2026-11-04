@@ -1,14 +1,56 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { agentUsage } from './usage.mjs';
 
+const APP_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+
 export const PROVIDERS = [
-  { id: 'codex', name: 'ChatGPT', engine: 'Codex CLI', command: 'codex', login: 'codex login', install: 'npm install -g @openai/codex', docs: 'https://developers.openai.com/codex/auth/', description: 'Connect your ChatGPT account through Codex.' },
-  { id: 'claude', name: 'Claude', engine: 'Claude Code', command: 'claude', login: 'claude auth login', install: 'npm install -g @anthropic-ai/claude-code', docs: 'https://code.claude.com/docs/en/headless', description: 'Use your signed-in Claude Code account.' },
-  { id: 'antigravity', name: 'Antigravity', engine: 'Antigravity CLI', command: 'agy', login: 'agy', install: 'Install the official Antigravity CLI from the setup guide.', docs: 'https://www.antigravity.google/docs/install?tab=cli', description: 'Use your Google account through the agy agent.' },
+  { id: 'codex', name: 'ChatGPT', engine: 'Codex CLI', command: 'codex', bin: 'codex', package: '@openai/codex', login: 'codex login', install: 'npm install -g @openai/codex', docs: 'https://developers.openai.com/codex/auth/', description: 'Connect your ChatGPT account through Codex.' },
+  { id: 'claude', name: 'Claude', engine: 'Claude Code', command: 'claude', bin: 'claude', package: '@anthropic-ai/claude-code', login: 'claude auth login', install: 'npm install -g @anthropic-ai/claude-code', docs: 'https://code.claude.com/docs/en/headless', description: 'Use your signed-in Claude Code account.' },
+  { id: 'antigravity', name: 'Antigravity', engine: 'Antigravity CLI', command: 'agy', bin: null, package: null, login: 'agy', install: 'Install the official Antigravity CLI from the setup guide.', docs: 'https://www.antigravity.google/docs/install?tab=cli', description: 'Use your Google account through the agy agent.' },
 ];
+
+function localProviderCommand(provider) {
+  if (!provider.bin) return null;
+  const name = process.platform === 'win32' ? `${provider.bin}.cmd` : provider.bin;
+  const file = path.join(APP_ROOT, 'node_modules', '.bin', name);
+  return existsSync(file) ? file : null;
+}
+
+export function providerCommand(provider) {
+  const local = localProviderCommand(provider);
+  return local
+    ? { command: local, prefix: [], shell: process.platform === 'win32' }
+    : { command: provider.command, prefix: [], shell: process.platform === 'win32' };
+}
+
+export async function installProvider(provider, { onOutput } = {}) {
+  if (localProviderCommand(provider)) return providerCommand(provider);
+  if (!provider.package) throw new Error(`${provider.name} has to be installed from its official setup guide first.`);
+  // An existing global installation is enough; do not download a second copy.
+  try {
+    await runProcess(provider.command, ['--help'], { timeout: 8000, shell: process.platform === 'win32' });
+    return providerCommand(provider);
+  } catch {}
+
+  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  try {
+    await runProcess(npm, ['install', '--no-save', '--no-audit', '--no-fund', '--package-lock=false', provider.package], {
+      cwd: APP_ROOT,
+      timeout: 10 * 60 * 1000,
+      shell: process.platform === 'win32',
+      onOutput,
+    });
+  } catch {
+    throw new Error(`Could not download ${provider.name}. Check your internet connection and try again.`);
+  }
+  if (!localProviderCommand(provider)) throw new Error(`${provider.name} downloaded but its command was not found. Try again, or use the official setup guide.`);
+  return providerCommand(provider);
+}
 export function providerById(id) {
   const result = PROVIDERS.find(p => p.id === id);
   if (!result) throw new Error('Choose ChatGPT, Claude, or Antigravity.');
@@ -16,9 +58,9 @@ export function providerById(id) {
 }
 
 // No shell interpolation, prompts on stdin, bounded output, timeout, cancellation.
-export function runProcess(command, args, { input = '', cwd, signal, timeout = 180000, env = process.env, onOutput } = {}) {
+export function runProcess(command, args, { input = '', cwd, signal, timeout = 180000, env = process.env, onOutput, shell = false } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, env, shell: false, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32', windowsHide: true });
+    const child = spawn(command, args, { cwd, env, shell, stdio: ['pipe', 'pipe', 'pipe'], detached: process.platform !== 'win32', windowsHide: true });
     let stdout = '', stderr = '', finished = false;
     const kill = () => { try { process.platform === 'win32' ? child.kill() : process.kill(-child.pid, 'SIGTERM'); } catch {} };
     const timer = setTimeout(() => { kill(); finish(new Error('The agent timed out. Your work is saved; retry when it is available.')); }, timeout);
@@ -46,17 +88,20 @@ export function runProcess(command, args, { input = '', cwd, signal, timeout = 1
 
 export async function inspectProviders() {
   return Promise.all(PROVIDERS.map(async provider => {
+    const cmd = providerCommand(provider);
     try {
-      await runProcess(provider.command, ['--help'], { timeout: 10000 });
+      await runProcess(cmd.command, [...cmd.prefix, '--help'], { timeout: 10000, shell: cmd.shell });
       let auth = 'unverified';
       if (provider.id !== 'antigravity') {
         try {
-          await runProcess(provider.command, provider.id === 'codex' ? ['login', 'status'] : ['auth', 'status'], { timeout: 10000 });
+          await runProcess(cmd.command, [...cmd.prefix, ...(provider.id === 'codex' ? ['login', 'status'] : ['auth', 'status'])], { timeout: 10000, shell: cmd.shell });
           auth = 'signed-in';
         } catch { auth = 'sign-in-needed'; }
       }
-      return { ...provider, installed: true, auth };
-    } catch { return { ...provider, installed: false, auth: 'not-installed' }; }
+      return { ...provider, installed: true, installable: Boolean(provider.package), auth };
+    } catch {
+      return { ...provider, installed: false, installable: Boolean(provider.package), auth: 'not-installed' };
+    }
   }));
 }
 
@@ -133,7 +178,8 @@ export async function executeAgent(id, instruction, data, { signal, runner = run
     if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence'];
     if (id === 'antigravity') args = ['--input-format', 'stream-json', '--output-format', 'stream-json', '--mode', 'plan', '--sandbox', '--print-timeout', '3m'];
     const input = id === 'antigravity' ? JSON.stringify({ event: 'user', message: { content: prompt } }) + '\n' : prompt;
-    const result = await runner(p.command, args, { input, cwd, signal, env, ...(streaming ? { onOutput: claudeStream(onText) } : {}) });
+    const cmd = providerCommand(p);
+    const result = await runner(cmd.command, [...cmd.prefix, ...args], { input, cwd, signal, env, shell: cmd.shell, ...(streaming ? { onOutput: claudeStream(onText) } : {}) });
     telemetry = result.stdout;
     let output = id === 'codex' ? await readFile(path.join(cwd, 'result.json'), 'utf8').catch(() => result.stdout) : result.stdout;
     // A stream ends with the same result envelope the json format returns.

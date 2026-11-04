@@ -209,7 +209,7 @@ An opt-in real Claude CLI check mapped two fictional employers/titles to distinc
 form records with exact source evidence and filled all four fields in background
 Chromium, stopping before submission. Evidence:
 `output/records-live-2026-10-18T18-51-19-767Z/`.
-Reproduce with `node test-plainhand-records-live.mjs --provider claude` (uses quota).
+Reproduce with `node tests/test-plainhand-records-live.mjs --provider claude` (uses quota).
 
 
 ## Live read-only ATS observation and resulting fixes

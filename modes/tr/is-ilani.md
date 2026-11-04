@@ -163,7 +163,7 @@ Değerlendirmenin tamamını `reports/{###}-{sirket-slug}-{YYYY-MM-DD}.md` olara
 - `{pdf_emoji}` = `✅` veya `❌`
 - `{note}` = kısa not (isteğe bağlı, sütun atlanabilir)
 
-Ardından `node merge-tracker.mjs` çalıştır.
+Ardından `node lib/merge-tracker.mjs` çalıştır.
 
 **Mevcut** kayıt için `data/applications.md`'de ilgili satırı doğrudan güncelle (durum, PDF, rapor bağlantısı).
 

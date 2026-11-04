@@ -3,7 +3,7 @@
 import {
   PORTAL_FAMILIES,
   assertPortalAdapter,
-} from '../apply-adapter-contract.mjs';
+} from '../lib/apply-adapter-contract.mjs';
 import {
   continuePortalStep,
   fillPortalPage,

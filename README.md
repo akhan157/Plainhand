@@ -12,7 +12,7 @@ A job-application assistant that runs on your computer with your own AI account.
 ![Node 22+](https://img.shields.io/badge/node-22%2B-2f8a52)
 ![Runs locally](https://img.shields.io/badge/runs-locally-2f8a52)
 
-[Install](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
+[Quick start](#quick-start) · [Install](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
@@ -27,6 +27,21 @@ it about your experience; it builds a profile of you in your own words, writes
 a standard resume and cover letter you approve once, tailors them for each
 role, fills application forms on employer sites, and lists anything it
 couldn't answer. **You review and submit every application yourself.**
+
+## Quick start
+
+With [Node.js 22 or newer](https://nodejs.org), one command downloads,
+sets up and starts Plainhand, then opens it in your browser:
+
+```bash
+npx --yes github:akhan157/Plainhand
+```
+
+The first run installs Chromium. Your workspace is kept in `~/.plainhand`,
+separate from the downloaded code. Use `--port 3211` if 3210 is busy,
+`--data-root /path/to/workspace` for another folder, or `--check` to see what
+is installed without starting the app. Step-by-step help is in
+[docs/INSTALL.md](docs/INSTALL.md).
 
 - **A profile that sounds like you.** Built by conversation and from a few
   samples of your writing. Every claim it makes is traced to something you
@@ -47,8 +62,11 @@ couldn't answer. **You review and submit every application yourself.**
   employer sites it fills what it can from your approved packet and profile,
   uploads your resume and cover letter, and shows a pre-submit list of what's
   filled, what needs you and what to double-check.
-- **Your data stays with you.** Everything is stored in this folder. The AI
-  provider sees only what a task needs, and you can exclude any source.
+- **Your data stays with you.** Everything is stored in your workspace:
+  `~/.plainhand` with the one-command install, or the checkout folder in a
+  manual install. The AI provider sees only what a task needs, and you can
+  exclude any source. An optional Vercel remote view publishes a read-only
+  copy only if you enable it.
 
 ## A look around
 
@@ -63,12 +81,14 @@ Screenshots use the built-in sample workspace (**Take a look around** on Home). 
 - A Mac, Windows or Linux computer with a desktop (the application browser
   opens on screen).
 - [Node.js 22 or newer](https://nodejs.org).
-- An AI account with its command-line tool, signed in. One of:
-  Claude (`npm install -g @anthropic-ai/claude-code`, then `claude`),
-  ChatGPT (`npm install -g @openai/codex`, then `codex login`),
-  or Google Antigravity (`agy`). Your plan's usage limits apply.
+- An AI account: Claude, ChatGPT or Google Antigravity. You do not need to
+  install or configure an AI tool yourself; **Connections** in Plainhand sets
+  up the connector and opens the sign-in in your browser. Your plan's usage
+  limits apply.
 
-## Install and start
+## Manual install (development checkout)
+
+For working on Plainhand itself, or if you prefer a local clone:
 
 ```bash
 git clone https://github.com/akhan157/plainhand.git
@@ -77,8 +97,9 @@ npm run setup     # checks your computer and installs what's needed
 npm start
 ```
 
-Open **http://127.0.0.1:3210** (use that exact address). Step-by-step help for
-each operating system is in [docs/INSTALL.md](docs/INSTALL.md).
+Open **http://127.0.0.1:3210** (use that exact address). Your data stays in the
+checkout. Step-by-step help for each operating system is in
+[docs/INSTALL.md](docs/INSTALL.md).
 
 ## First hour
 
@@ -108,12 +129,14 @@ look first? **Take a look around** on the home screen opens a sample workspace.
   you.
 - Open LinkedIn, Indeed or other job boards in its browser (their terms
   prohibit automation). Save the posting and give it the employer's link.
-- Send your data anywhere except your chosen AI provider, for the task at hand.
+- Send your data anywhere by default. Only the AI provider sees a task's
+  context; the optional Vercel remote view uploads a password-protected
+  read-only snapshot, and only when you turn it on.
 
 ## Help and docs
 
 - [Install guide](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md)
-- [Browser app reference](docs/PLAINHAND-BROWSER-APP.md) (features, limits, data files)
+- [Browser app reference](docs/PLAINHAND-BROWSER-APP.md) (features, limits, data files, optional remote view)
 - [Use Plainhand from your own agent (MCP)](docs/MCP.md)
 - [What Plainhand measures](docs/METRICS-INVENTORY.md) · [Verification](docs/VERIFICATION-MATRIX.md)
 - [Changelog](CHANGELOG.md)

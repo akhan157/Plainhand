@@ -22,10 +22,11 @@ import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
-import { providerById, inspectProviders, runProcess, FORM_INSTRUCTION } from './plainhand/agents.mjs';
+import { providerById, inspectProviders, installProvider, providerCommand, runProcess, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { NAVIGATION_INSTRUCTION } from './plainhand/browser-driver.mjs';
 import { configuredBrowserLaunch } from './plainhand/browser-backends.mjs';
 import { ApplicationBrowser, applicationTarget, isBoardUrl } from './plainhand/jobs.mjs';
+import { remoteStatus, beginVercelLogin, cancelVercelLogin, publishDashboard, updateRemoteSettings, forgetRemote, rotateRemotePassword, startAutoPublish } from './plainhand/remote.mjs';
 
 const APP_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.join(APP_ROOT, 'plainhand/web');
@@ -156,7 +157,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
           standardStatus: standardStatus(state, context.hash),
           autonomy: autonomyOf(state),
           featureAttention: registry.digest(state).attention.filter(item => !CORE_ATTENTION.includes(item.kind)),
-          usage: await workflow.usage.summary(state), contextHash: context.hash, sourceManifest: context.sources.map(s => ({ id: s.id, characters: s.text.length })), tracker: await workspace.read('data/applications.md'), loginSessions: [...logins.values()], applicationSessions: [...appBrowserPlans.keys()], localCaptchaSolver: { installed: !!(browser.solver && await browser.solver.ready()), type: 'recaptcha-audio', feePerSolve: 0 } });
+          usage: await workflow.usage.summary(state), contextHash: context.hash, sourceManifest: context.sources.map(s => ({ id: s.id, characters: s.text.length })), tracker: await workspace.read('data/applications.md'), loginSessions: [...logins.values()], applicationSessions: [...appBrowserPlans.keys()], localCaptchaSolver: { installed: !!(browser.solver && await browser.solver.ready()), type: 'recaptcha-audio', feePerSolve: 0 }, remote: await remoteStatus(workspace) });
       }
       if (req.method === 'GET' && url.pathname === '/api/events') {
         // Live updates: `state` after every workspace change, `tick` as a heartbeat so the
@@ -172,6 +173,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         return;
       }
       if (req.method === 'GET' && url.pathname === '/api/agent/history') return json(res, 200, await agent.history({ limit: Number(url.searchParams.get('limit')) || 50 }));
+      if (req.method === 'GET' && url.pathname === '/api/remote/status') return json(res, 200, await remoteStatus(workspace, { refresh: true }));
       if (req.method === 'GET' && url.pathname === '/api/providers') {
         providerCache = await providers();
         const state = await workspace.load();
@@ -219,18 +221,25 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         await workspace.mutate(state => { state.provider = p.id; });
         return json(res, 200, { ok: true });
       }
+      if (url.pathname === '/api/provider/setup') {
+        const p = providerById(input.id);
+        await installProvider(p);
+        providerCache = null;
+        return json(res, 200, { ok: true });
+      }
       if (url.pathname === '/api/provider/login') {
         const p = providerById(input.id);
-        if (p.id === 'antigravity') return json(res, 200, { manual: true, command: p.login, message: 'Run agy once in your terminal to complete Google sign-in, then test the connection here.' });
+        if (p.id === 'antigravity') return json(res, 200, { manual: true, command: p.login, message: 'Antigravity needs its official app. Follow the setup guide, then test the connection here.' });
         if ([...logins.values()].some(l => l.provider === p.id && l.status === 'running')) throw new Error('Sign-in is already running. Complete it in your browser.');
-        const login = { id: randomUUID(), provider: p.id, status: 'running', url: null, message: 'Opening the provider sign-in. If no browser opens, use the terminal command below.' };
+        const login = { id: randomUUID(), provider: p.id, status: 'running', url: null, message: 'Opening the account sign-in. If no browser opens, use the link below.' };
         logins.set(login.id, login);
         const controller = new AbortController(); loginControllers.set(login.id, controller);
-        runProcess(p.command, p.id === 'codex' ? ['login'] : ['auth', 'login'], { timeout: 180000, signal: controller.signal, onOutput: chunk => {
+        const cmd = providerCommand(p);
+        runProcess(cmd.command, [...cmd.prefix, ...(p.id === 'codex' ? ['login'] : ['auth', 'login'])], { timeout: 180000, signal: controller.signal, shell: cmd.shell, onOutput: chunk => {
           for (const match of chunk.matchAll(/https:\/\/[^\s<>"'\x1b]+/g)) {
             try { const target = new URL(match[0]); if (['auth.openai.com', 'chatgpt.com', 'claude.ai', 'console.anthropic.com', 'platform.claude.com'].includes(target.hostname)) login.url = target.href; } catch {}
           }
-        } }).then(() => { login.status = 'complete'; login.message = 'Sign-in completed. Test the connection to confirm access.'; }).catch(() => { login.status = 'failed'; login.message = `Sign-in did not finish. Run ${p.login} in your terminal, then test the connection.`; }).finally(() => loginControllers.delete(login.id));
+        } }).then(() => { login.status = 'complete'; login.message = 'Sign-in completed. Test the connection to confirm access.'; }).catch(() => { login.status = 'failed'; login.message = 'Sign-in did not finish. Try again, or follow the official setup guide.'; }).finally(() => loginControllers.delete(login.id));
         return json(res, 202, login);
       }
       if (url.pathname === '/api/provider/test') {
@@ -353,6 +362,18 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/standard/approve') { await ui('standard.approve', {}); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/settings/autonomy') return json(res, 200, await ui('settings.autonomy', { enabled: input.enabled === true, ...(input.perDay != null ? { perDay: Number(input.perDay) } : {}), ...(input.minScore != null ? { minScore: Number(input.minScore) } : {}) }));
+
+      // Read-only remote view through the candidate's own Vercel account. The
+      // dashboard snapshot is the only thing that leaves this computer; the
+      // interactive app, provider calls and application browser stay local.
+      if (url.pathname === '/api/remote/connect') return json(res, 202, await beginVercelLogin(workspace, { emit: broadcast }));
+      if (url.pathname === '/api/remote/publish') return json(res, 200, await publishDashboard(workspace, { reason: 'requested from Workspace' }));
+      if (url.pathname === '/api/remote/settings') return json(res, 200, await updateRemoteSettings(workspace, input));
+      if (url.pathname === '/api/remote/forget') return json(res, 200, await forgetRemote(workspace));
+      if (url.pathname === '/api/remote/rotate') {
+        await rotateRemotePassword(workspace);
+        return json(res, 200, await publishDashboard(workspace, { reason: 'password rotation' }));
+      }
       if (url.pathname === '/api/samples/add') return json(res, 200, await ui('profile.addWritingSample', { title: input.title || '', text: input.text }));
       if (url.pathname === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/calibration/decide') { return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true }); }
@@ -464,6 +485,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
   const close = async () => {
     for (const controller of workflow.controllers.values()) controller.abort();
     agent.turn?.controller.abort();
+    cancelVercelLogin();
     for (const controller of loginControllers.values()) controller.abort();
     for (const stop of stops.splice(0)) await stop?.().catch?.(() => {});
     for (const stream of streams) stream.end();
@@ -472,7 +494,11 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
     await new Promise(resolve => server.close(resolve));
   };
   // Background feature work (e.g. scheduled scans) starts once the app is assembled.
-  if (startFeatures) for (const feature of features) { const stop = await feature.start?.({ workspace, workflow, registry, emit: broadcast }); if (stop) stops.push(stop); }
+  if (startFeatures) {
+    for (const feature of features) { const stop = await feature.start?.({ workspace, workflow, registry, emit: broadcast }); if (stop) stops.push(stop); }
+    const stopRemote = await startAutoPublish({ workspace, emit: broadcast });
+    if (stopRemote) stops.push(stopRemote);
+  }
   return { server, workspace, workflow, registry, agent, token, close };
 }
 

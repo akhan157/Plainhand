@@ -38,6 +38,15 @@ Plainhand runs on your own computer. Its design limits what can go wrong:
   every assistant and MCP action is logged.
 - **No credentials stored.** Plainhand never reads your AI account's login; the
   provider's own command-line tool signs in.
+- **Optional remote view is a separate, read-only deployment.** If you enable
+  Workspace → Remote view, Plainhand builds a static snapshot and deploys it to
+  a Vercel project in your account. It generates a password and a signing
+  secret, stores them readable by your user only, and verifies the deployed
+  password gate before reporting success. It does not upload the local server,
+  conversation history, browser sessions or workspace control token, and it
+  stores no Vercel token. The published snapshot does contain your
+  applications, reports and `output/` files; anyone with the password can read
+  it, and Vercel hosts it. Delete the Vercel project to take it offline.
 
 ## In scope
 

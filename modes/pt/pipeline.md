@@ -59,7 +59,7 @@ Processa URLs de vagas acumuladas em `data/pipeline.md`. O candidato adiciona UR
 Antes de processar qualquer URL, verificar sincronização:
 
 ```bash
-node cv-sync-check.mjs
+node lib/cv-sync-check.mjs
 ```
 
 Se houver dessincronização, avisar o candidato antes de continuar.

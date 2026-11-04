@@ -5,7 +5,7 @@ import {
   SAFE_ACTIONS,
   assertPortalAdapter,
   createAdapterResult,
-} from '../apply-adapter-contract.mjs';
+} from '../lib/apply-adapter-contract.mjs';
 import {
   CONTINUE_RE,
   SAVE_RE,

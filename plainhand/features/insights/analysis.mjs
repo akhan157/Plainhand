@@ -8,9 +8,9 @@
 //             in the application record, tracker statuses, explicit report outcomes
 //   assumed   silence (still Applied, no status change for SILENCE_DAYS), the row
 //             date of a legacy tracker row standing in for the application date
-import { DEFAULT_SCORE_BANDS } from '../../../outcome-intelligence.mjs';
-import { calibrate, DEFAULT_MINIMUM } from '../../../score-calibration.mjs';
-import { recommendationFingerprint } from '../../../outcome-recommendation-state.mjs';
+import { DEFAULT_SCORE_BANDS } from '../../../lib/outcome-intelligence.mjs';
+import { calibrate, DEFAULT_MINIMUM } from '../../../lib/score-calibration.mjs';
+import { recommendationFingerprint } from '../../../lib/outcome-recommendation-state.mjs';
 
 export const SILENCE_DAYS = 21;
 // Observed outcomes a band needs before it shows a rate (outcome-intelligence minimumObservedPerBand).

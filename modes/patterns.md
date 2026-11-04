@@ -26,7 +26,7 @@ Exit gracefully.
 Execute:
 
 ```bash
-node analyze-patterns.mjs
+node lib/analyze-patterns.mjs
 ```
 
 Parse the JSON output. It contains:

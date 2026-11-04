@@ -6,8 +6,8 @@ network write.
 
 ```bash
 npm run benchmark:simulation                  # durable-hybrid, all cases
-node benchmark-simulation.mjs --strategy contract-hybrid
-node benchmark-simulation.mjs --case native-radio
+node benchmarks/benchmark-simulation.mjs --strategy contract-hybrid
+node benchmarks/benchmark-simulation.mjs --case native-radio
 ```
 
 Each run writes `output/simulation-<timestamp>/report.json` and `SUMMARY.md`.

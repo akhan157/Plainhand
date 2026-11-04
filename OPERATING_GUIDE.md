@@ -26,7 +26,8 @@ Read `DATA_CONTRACT.md` for the full contract.
 
 **System layer — auto-updatable; do not put user data here:**
 - `modes/_shared.md`, `modes/oferta.md`, and all other modes
-- `AGENTS.md`, `CLAUDE.md`, `*.mjs`, `dashboard/*`, `templates/*`, `batch/*`
+- `AGENTS.md`, `CLAUDE.md`, `lib/*.mjs`, `tests/*`, `benchmarks/*`,
+  `dashboard/*`, `dashboard/node/*`, `templates/*`, `batch/*`
 
 When asked to customize archetypes, narrative, negotiation scripts, proof points,
 location policy, or compensation targets, write to `modes/_profile.md` or
@@ -37,8 +38,8 @@ location policy, or compensation targets, write to `modes/_profile.md` or
 On the first message of each session, run silently:
 
 ```bash
-node doctor.mjs --json
-node update-system.mjs check
+node lib/doctor.mjs --json
+node lib/update-system.mjs check
 ```
 
 The doctor output is `{"onboardingNeeded": <bool>, "missing": [...]}` and checks
@@ -55,12 +56,12 @@ post-evaluation feedback in those same files.
 
 Update JSON handling:
 - `update-available`: tell the user the local and remote versions and that CV,
-  profile, tracker, and reports will not be touched; ask before `node update-system.mjs apply`.
-- If declined, run `node update-system.mjs dismiss`.
+  profile, tracker, and reports will not be touched; ask before `node lib/update-system.mjs apply`.
+- If declined, run `node lib/update-system.mjs dismiss`.
 - `up-to-date`, `dismissed`, `offline`, `no-remote-version`, and `fork`: say nothing.
   `fork` means this checkout is Plainhand, which updates with `git pull` from its own
   repository; never apply upstream career-ops files to it.
-- User requests may force a check; rollback is `node update-system.mjs rollback`.
+- User requests may force a check; rollback is `node lib/update-system.mjs rollback`.
 
 ## Language and skill workflow
 
@@ -117,7 +118,7 @@ mode, where Playwright is unavailable, use WebFetch and mark the report
 - Stack: Node.js `.mjs`, Playwright, YAML, HTML/CSS, Markdown, optional Canva MCP.
   Outputs go to `output/`; reports to `reports/`; JDs to `jds/`; batch artifacts to
   `batch/`.
-- After each evaluation batch run `node merge-tracker.mjs`.
+- After each evaluation batch run `node lib/merge-tracker.mjs`.
 - Never add a duplicate company+role to `data/applications.md`; update existing entries.
 
 ### Tracker additions
@@ -139,9 +140,9 @@ PDF and `**Legitimacy:** {tier}`. Statuses come from `templates/states.yml`:
 
 Required checks/normalizers:
 ```bash
-node verify-pipeline.mjs
-node normalize-statuses.mjs
-node dedup-tracker.mjs
+node lib/verify-pipeline.mjs
+node lib/normalize-statuses.mjs
+node lib/dedup-tracker.mjs
 ```
 
 ### Headless workers

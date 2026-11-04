@@ -44,7 +44,7 @@ In this repo, resume generation uses this policy only:
 10. Generate full HTML from `templates/cv-template-watson.html` + personalized content
 11. Read `name` from `config/profile.yml` → normalize to kebab-case lowercase (e.g. "John Doe" → "john-doe") → `{candidate}`
 12. Write HTML to `/tmp/cv-{candidate}-{company-slug}-{role-slug}.html`
-13. Execute: `node generate-pdf.mjs /tmp/cv-{candidate}-{company-slug}-{role-slug}.html output/cv-{candidate}-{company-slug}-{role-slug}-{YYYY-MM-DD}.pdf --format={letter|a4}`
+13. Execute: `node lib/generate-pdf.mjs /tmp/cv-{candidate}-{company-slug}-{role-slug}.html output/cv-{candidate}-{company-slug}-{role-slug}-{YYYY-MM-DD}.pdf --format={letter|a4}`
 14. Emit companion metadata required by `docs/artifact-contract.md`
     Metadata is not complete unless required values are valid too:
     `artifact_date` must be a real `YYYY-MM-DD` date, `generated_at` must be a

@@ -103,7 +103,7 @@ Durante el scan del agente, mantener en memoria el conjunto **`local_parser_ok`*
 - Nivel 3: no desactivar queries transversales (`site:jobs.ashbyhq.com`, `site:boards.greenhouse.io`, etc.) — sirven para descubrir empresas **nuevas**. Solo filtrar resultados de empresas ya en `tracked_companies` con parser exitoso.
 - No crear queries `search_queries` dedicadas a una empresa con parser local activo (p. ej. `site:jobs.ashbyhq.com/cohere "AI Engineer"`); usar el parser o, si falla, Playwright/API.
 
-**Nivel 0 recomendado:** ejecutar `node scan.mjs` (o `npm run scan`) al inicio del workflow del agente. Eso cubre parsers locales + APIs en un solo paso zero-token y devuelve qué empresas usaron `local-parser` con éxito.
+**Nivel 0 recomendado:** ejecutar `node lib/scan.mjs` (o `npm run scan`) al inicio del workflow del agente. Eso cubre parsers locales + APIs en un solo paso zero-token y devuelve qué empresas usaron `local-parser` con éxito.
 
 ### Nivel 1 — Playwright directo (PRINCIPAL)
 
@@ -155,7 +155,7 @@ Los niveles son aditivos — se ejecutan en orden, los resultados se mezclan y d
 
 3.5. **Nivel 0 — Local parser** (`scan.mjs`, zero-token):
    Inicializar `local_parser_ok = []`.
-   Preferir ejecutar `node scan.mjs` una vez para cubrir todos los parsers + APIs zero-token; si se hace manualmente, repetir la lógica siguiente.
+   Preferir ejecutar `node lib/scan.mjs` una vez para cubrir todos los parsers + APIs zero-token; si se hace manualmente, repetir la lógica siguiente.
    Para cada empresa en `tracked_companies` con `enabled: true`, `parser.command` y script existente:
    a. Ejecutar `parser.command` con `parser.script` + `parser.args` usando ejecución local sin shell
    b. Expandir placeholders `{careers_url}` y `{company}` en argumentos

@@ -276,6 +276,9 @@ input[type=file]:focus-visible + textarea, #resume-file:focus-visible { outline:
 .disclosure-body { margin-top: var(--sp-3); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
 .disclosure-body .field input, .disclosure-body .field textarea, .disclosure-body .field select { background: var(--surface); }
 .disclosure-body .form-footer { border-top-color: var(--border-strong); }
+.remote-advanced { margin-top: var(--sp-4); }
+.remote-advanced > summary { cursor: pointer; color: var(--link); font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+.remote-advanced[open] > summary { margin-bottom: var(--sp-2); }
 
 /* ---------- Home ---------- */
 .summary-strip { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-5); }
@@ -827,10 +830,10 @@ label.button.disabled { opacity: 0.55; cursor: not-allowed; }
 .insight-bands th[scope="row"], .insight-pattern th[scope="row"] { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text); text-transform: none; letter-spacing: 0; white-space: nowrap; border-bottom: 1px solid var(--border); padding: 12px 8px; }
 .insight-pattern th[scope="row"].pattern-value { white-space: normal; overflow-wrap: anywhere; }
 tbody tr:last-child th[scope="row"] { border-bottom: 0; }
-.insight-bands th, .insight-bands td, .insight-pattern th, .insight-pattern td { padding-left: 6px; padding-right: 6px; }
+.insight-bands th, .insight-bands td, .insight-pattern th, .insight-pattern td { padding-left: 4px; padding-right: 4px; }
 .insight-bands thead th, .insight-pattern thead th { letter-spacing: 0.01em; }
 .insight-bands th[scope="row"] .sub, .insight-pattern th[scope="row"] .sub { display: block; font-weight: normal; color: var(--text-2); font-size: var(--fs-xs); margin-top: 2px; }
-.insight-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-2); min-width: 104px; }
+.insight-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--sp-2); min-width: 96px; }
 .insight-rate strong { font-variant-numeric: tabular-nums; }
 .insight-rate small { flex-basis: 100%; color: var(--text-3); font-size: var(--fs-xs); }
 .insight-bar { flex: 1 1 40px; max-width: 72px; height: 8px; border-radius: 4px; background: var(--surface-3); border: 1px solid var(--border); overflow: hidden; }

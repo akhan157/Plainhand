@@ -1,4 +1,4 @@
-import { PORTAL_FAMILIES, detectPortalFamily } from '../apply-adapter-contract.mjs';
+import { PORTAL_FAMILIES, detectPortalFamily } from '../lib/apply-adapter-contract.mjs';
 import greenhouseAdapter from '../adapters/greenhouse.mjs';
 import leverAdapter from '../adapters/lever.mjs';
 import ashbyAdapter from './ashby.mjs';

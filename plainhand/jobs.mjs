@@ -543,21 +543,19 @@ export class ApplicationBrowser {
       if (saved && observation.state === 'login') {
         observation = { ...observation, message: `Your saved session for ${new URL(job.url).hostname} has expired. Sign in again in the application browser; the refreshed session is saved for this portal.`, expiredSession: true };
       }
-      // Portals such as Workday and Workable mount the form or its Apply control
-      // after first paint, so a single snapshot at load time under-reports.
-      for (let attempt = 0; attempt < 16 && !fields.length && (observation.state === 'unsupported' || (observation.state === 'navigating' && attempt < 6)); attempt++) {
+      // Portals such as Workday, Workable and Ashby mount the form or its Apply
+      // control after first paint. Keep watching for the full window even when an
+      // Apply control is already visible: Ashby has produced its fields after the
+      // earlier six-attempt cutoff, which made a ready page look empty.
+      for (let attempt = 0; attempt < 16 && !fields.length && ['unsupported', 'navigating'].includes(observation.state); attempt++) {
         await new Promise(resolve => setTimeout(resolve, 750));
         fields = await fieldsOn(page);
         observation = await browserObservation(page, fields, root);
         if (fields.length) break;
-        // Wait a few seconds for a late-rendering form (Ashby takes up to ~4 s) before
-        // deciding the page needs navigation, which costs model calls.
-        if (attempt < 6) continue;
+      }
+      if (!fields.length && observation.state !== 'navigating') {
         const navigation = await navigationSnapshot(page, url => portalFrame(url, root));
-        if (navigation.controls.length) {
-          observation = { state: 'navigating', message: 'Application controls found. Autofill can navigate to the form.' };
-          break;
-        }
+        if (navigation.controls.length) observation = { state: 'navigating', message: 'Application controls found. Autofill can navigate to the form.' };
       }
       if (!fields.length && observation.state === 'unsupported') throw new Error(observation.message);
       if (!portalFrame(page.url(), root)) throw new Error('The application left the supported portal. Continue manually.');

@@ -1,7 +1,25 @@
 # Installing Plainhand
 
 Plainhand runs on your computer. You need Node.js, a copy of Plainhand, and one
-AI account's command-line tool. Plan on about 15 minutes.
+AI account. Plainhand sets up the AI connector from its own screen.
+
+## One command
+
+With [Node.js 22 or newer](https://nodejs.org), this downloads, sets up and
+starts Plainhand, then opens it:
+
+```bash
+npx --yes github:akhan157/Plainhand
+```
+
+The first run installs Chromium. Your workspace is kept in `~/.plainhand`; the
+downloaded code stays separate. Use `--port 3211` if 3210 is busy, or
+`--data-root /path/to/workspace` to choose another folder. `--check` reports
+what is installed without starting the app.
+
+The manual steps below are for a development checkout.
+
+Plan on about 15 minutes for the full first-time setup.
 
 ## 1. Install Node.js 22 or newer
 
@@ -40,19 +58,7 @@ uses for PDFs and form filling, and tells you about anything optional:
 
 `npm run setup -- --check` reports without installing anything.
 
-## 4. Connect an AI account
-
-Install and sign in to one (your plan's limits and billing apply):
-
-| Account | Install | Sign in |
-| --- | --- | --- |
-| Claude | `npm install -g @anthropic-ai/claude-code` | run `claude` and follow the sign-in |
-| ChatGPT | `npm install -g @openai/codex` | `codex login` |
-| Google Antigravity | see [Antigravity install](https://www.antigravity.google/docs/install?tab=cli) | run `agy` and sign in |
-
-Plainhand never reads your credentials; the tool signs in on its own.
-
-## 5. Start
+## 4. Start Plainhand
 
 ```bash
 npm start
@@ -62,7 +68,16 @@ Open **http://127.0.0.1:3210**. Use exactly that address; `localhost` is
 refused on purpose. Leave the terminal open while you use Plainhand. Stop it
 with Ctrl+C.
 
-On the **Connections** screen, choose your account and press **Check and use**.
+## 5. Connect an AI account
+
+On **Connections**, choose Claude or ChatGPT and follow the three steps:
+**Set up**, **Sign in**, **Check it works**. Plainhand downloads the connector
+into its own folder and opens the provider's browser sign-in, so you do not
+need a terminal command or a global install. Your plan's limits and billing
+apply. For Google Antigravity, open its official app from the link Plainhand
+shows, sign in there, then check the connection.
+
+Plainhand never reads your credentials; the provider signs in on its own.
 
 ## Updating
 
