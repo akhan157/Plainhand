@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// One command for a normal user: `npx --yes github:akhan157/Plainhand`.
+// One command for a normal user: the curl installer on the README.
 // It keeps the code separate from the workspace (the home folder unless this is
 // a git checkout), installs Chromium once when needed, starts the local server
 // and opens the browser. No clone, no npm setup, no terminal beyond this.
@@ -24,11 +24,14 @@ const dataRoot = path.resolve(explicitRoot || (checkout ? APP_ROOT : path.join(o
 if (help) {
   console.log(`Plainhand — your job applications, in your own words
 
+Install:
+  curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh
+
 Usage:
-  npx --yes github:akhan157/Plainhand
-  npx --yes github:akhan157/Plainhand --port 3211
-  npx --yes github:akhan157/Plainhand --data-root /path/to/workspace
-  npx --yes github:akhan157/Plainhand --check
+  plainhand
+  plainhand --port 3211
+  plainhand --data-root /path/to/workspace
+  plainhand --check
 
 Options:
   --port <number>     Port to use (default 3210)

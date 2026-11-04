@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- **One-command start.** `npx --yes github:akhan157/Plainhand` downloads the
-  app, installs Chromium on first run, starts the local server and opens the
-  browser. The workspace defaults to `~/.plainhand`; `--data-root`, `--port`
-  and `--check` are available.
+- **One-command install.** `curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh`
+  downloads the app, installs dependencies and Chromium, creates a `plainhand`
+  launcher in `~/.local/bin`, and starts it. The workspace defaults to
+  `~/.plainhand/workspace`; `--data-root`, `--port` and `--check` are available.
 
 - **Repository layout cleanup.** Core modules moved to `lib/`, tests to
   `tests/`, benchmarks to `benchmarks/`, dashboard Node tools to

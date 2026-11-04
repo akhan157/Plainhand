@@ -33,14 +33,16 @@ couldn't answer. **You review and submit every application yourself.**
 With [Node.js 22 or newer](https://nodejs.org), one command downloads,
 sets up and starts Plainhand, then opens it in your browser:
 
-```bash
-npx --yes github:akhan157/Plainhand
+```sh
+curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh
 ```
 
-The first run installs Chromium. Your workspace is kept in `~/.plainhand`,
-separate from the downloaded code. Use `--port 3211` if 3210 is busy,
-`--data-root /path/to/workspace` for another folder, or `--check` to see what
-is installed without starting the app. Step-by-step help is in
+The first run installs Chromium and opens Plainhand. Your workspace is kept in
+`~/.plainhand/workspace`, separate from the downloaded code, and the installer
+creates a `plainhand` command in `~/.local/bin`. Run `plainhand --port 3211` if
+3210 is busy, `plainhand --data-root /path/to/workspace` for another folder, or
+`plainhand --check` to see what is installed without starting. On Windows, use
+Git Bash for this command or the manual install below. Step-by-step help is in
 [docs/INSTALL.md](docs/INSTALL.md).
 
 - **A profile that sounds like you.** Built by conversation and from a few
