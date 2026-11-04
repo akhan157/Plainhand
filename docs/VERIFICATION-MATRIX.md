@@ -17,7 +17,7 @@ Node.js 26.11.1 with the installed Playwright Chromium.
 | Static dashboard link projection | PASS | `test-application-timeline`, `test-dashboard-data` |
 | Dependency audit | PASS | `npm audit --audit-level=high` |
 | Benchmarks | PASS, offline | 49/49 simulation, 3/3 invariants, 16/16 controlled subset, rules-only calibration 18/27; see [the local rerun](METRICS-INVENTORY.md#7-local-rerun-3-november-2026) |
-| Real Vercel deploy | PASS, 4 November 2026 | Production deployment `https://plainhand-dashboard.vercel.app` reached `READY`; the project has Vercel Authentication enabled, so Plainhand verified the dashboard password gate through `vercel curl` (302 to `/login/`, accepted password, HTTP 200 `dashboard-data.json`). The snapshot has 0 applications because this checkout has no tracker data. |
+| Real Vercel deploy | PASS, 4 November 2026 | Production deployment reached `READY`; the project has Vercel Authentication enabled, so Plainhand verified the dashboard password gate through `vercel curl` (302 to `/login/`, accepted password, HTTP 200 `dashboard-data.json`). The snapshot has 0 applications because this checkout has no tracker data. |
 | Live provider benchmarks | NOT RUN | No signed-in Claude/Codex/Antigravity account; live runs use account quota and remain opt-in. |
 
 The two Go failures are not code failures; CI installs Go 1.26 and runs the same
