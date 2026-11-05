@@ -1,4 +1,4 @@
-# Hosted Plainhand as a ChatGPT / Claude connector
+# Hosted Plainhand: Sign in with ChatGPT and the ChatGPT / Claude connector
 
 **Branch:** `hosted-connector` · **Status:** in progress
 
@@ -8,12 +8,41 @@ A candidate who has never opened a terminal can use Plainhand with the ChatGPT
 or Claude subscription they already pay for. They:
 
 1. Open the Plainhand website and sign in.
-2. In claude.ai or ChatGPT, add Plainhand as a connector (paste one URL, click
-   **Allow**).
-3. Talk to Plainhand from that chat.
-4. Optional: add the Plainhand browser extension to fill application forms.
+2. Connect their AI, either way:
+   - **Sign in with ChatGPT** on the website (one button; Plainhand then works
+     on the website itself, billed to their ChatGPT Go/Plus/Pro plan), or
+   - **Add Plainhand to ChatGPT or Claude** as a connector and talk to it there
+     (the only route for a Claude subscription).
+3. Optional: add the Plainhand browser extension to fill application forms.
 
-No terminal, no API key, no CLI.
+No terminal, no API key, no CLI. Both routes run the same workspace, checks and
+approvals; a candidate can use both.
+
+## Two AI routes, one foundation
+
+| | Sign in with ChatGPT | Connector (ChatGPT or Claude) |
+| --- | --- | --- |
+| Where the candidate works | The Plainhand website | Their ChatGPT / Claude chat, plus the website for approvals |
+| Who calls the model | Our server, with the candidate's ChatGPT plan token (Responses API) | The candidate's chat model, through tool calls |
+| Workflow agent | `chatgptAgent` (direct call) | Deferred agent (step protocol, §4) |
+| Independent review | Separate model call, as locally | Same conversation (§4) |
+| Built-in assistant, Save cards, autonomy | Yes | No (the chat app asks to allow each tool call) |
+| Availability | OpenAI approval required for hosted apps (interest form); limited trial | Now. One-click needs ChatGPT / Claude directory listing |
+| Subscriptions | ChatGPT Go, Plus, Pro | ChatGPT (Developer Mode or directory), Claude (any plan, Free = 1 custom connector) |
+
+Anthropic does not permit third-party apps to use a Claude subscription
+directly, so Claude users always use the connector.
+
+**Sign in with ChatGPT specifics** (preview limits): Responses API with
+`store: false`, `stream: true`, full context in `input` each call, no
+temperature or max-output-token fields, no hosted tools. Access tokens last
+one hour, refresh tokens a 30-day sliding window; refresh tokens are stored
+encrypted per candidate and revoked on disconnect or account deletion. The
+candidate can cap or turn off plan usage per app on OpenAI's side; when the
+cap is hit, Plainhand pauses tasks and says so rather than switching billing.
+
+Everything else (storage, sign-in, website, extension, factual checks,
+approvals) is shared.
 
 ## Why a connector, and not a hosted CLI
 
@@ -193,6 +222,9 @@ instruction and input digest match.
    web UI behind a cookie session.
 3. OAuth authorization server + `/mcp` (read/write tools) scoped per user.
 4. Deferred agent + `submit_step`; task tools runnable from chat.
+4b. Sign in with ChatGPT route (`chatgptAgent`, token storage, Connect button),
+   built against the documented API and switched on when OpenAI approves the
+   hosted app. Owner action: submit the interest form.
 5. Website changes: Connect page, cloud labels, hide local-only features.
 6. Browser extension: OAuth sign-in, page match, fill, upload, submit guard,
    "I submitted".
@@ -200,3 +232,9 @@ instruction and input digest match.
    removes every row.
 8. End-to-end test with claude.ai and ChatGPT custom connectors and the
    extension on Greenhouse, Lever and Ashby test forms.
+9. Directory submissions: ChatGPT app directory and Claude connector directory,
+   so adding Plainhand is one click.
+
+Separate, optional: the local app can offer Sign in with ChatGPT today through
+OpenAI's open-source self-serve path (loopback redirect), replacing the Codex
+connector download.
