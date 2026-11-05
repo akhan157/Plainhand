@@ -1,0 +1,49 @@
+name: Installer check
+# Runs the published one-line installers (which download main) on real
+# Windows and macOS machines, then starts the app and loads the page.
+on:
+  push:
+    branches: [main]
+    paths: ['install.sh', 'install.ps1', 'package.json', 'package-lock.json', 'bin/**', '.github/workflows/installer-check.yml']
+  release:
+    types: [published]
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run the published one-line installer
+        shell: pwsh
+        env: { PLAINHAND_NO_START: "1" }
+        run: irm https://raw.githubusercontent.com/akhan157/Plainhand/main/install.ps1 | iex
+      - name: Launcher self-check
+        shell: cmd
+        run: '"%USERPROFILE%\.plainhand\bin\plainhand.cmd" --check'
+      - name: Start the app and load the page
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "$env:USERPROFILE\.plainhand\bin\plainhand.cmd" -ArgumentList "--no-open" -PassThru -RedirectStandardOutput out.txt -RedirectStandardError err.txt
+          Start-Sleep -Seconds 15
+          Get-Content out.txt, err.txt
+          $url = (Select-String -Path out.txt -Pattern 'http://127\.0\.0\.1:\d+' | Select-Object -First 1).Matches.Value
+          if (-not $url) { $url = 'http://127.0.0.1:3210' }
+          $r = Invoke-WebRequest -Uri $url -UseBasicParsing
+          Write-Host "HTTP $($r.StatusCode) from $url"
+          if ($r.StatusCode -ne 200) { exit 1 }
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run the published one-line installer
+        run: curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh -s -- --no-start
+      - name: Launcher self-check
+        run: ~/.local/bin/plainhand --check
+      - name: Start the app and load the page
+        run: |
+          ~/.local/bin/plainhand --no-open > out.txt 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:3210 && break; sleep 1; done
+          cat out.txt
+          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3210

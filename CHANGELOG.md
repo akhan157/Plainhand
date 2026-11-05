@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.1 (2026-11-05)
+
+- **Lever forms no longer stall on a captcha that isn't there.** Lever loads
+  hidden hCaptcha frames on every application page. Plainhand counted them as
+  a verification, so autofill stopped on every Lever job. Only a captcha you
+  can actually see now counts.
+- **Cleaner field names on Lever.** The resume field's name no longer picks up
+  Lever's hidden "Analyzing resume..." and "Couldn't auto-read resume." text.
+- **Workday hands off at sign-in.** After clicking Apply, Plainhand now waits
+  for Workday's next page to load. It tells you to sign in or create an
+  account instead of stopping with "No supported navigation remains."
+- **Installers are checked on Windows and macOS.** A new workflow runs the
+  one-line installers on real Windows and macOS machines, then starts the app
+  and loads the page.
+
 ## 1.1.0 (2026-11-04)
 
 - **One-command install.** The shell installer (`curl ... install.sh | sh`) and
