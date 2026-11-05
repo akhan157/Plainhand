@@ -34,11 +34,26 @@ export async function extractForm(ctx              )                         {
     };
     // Pure label text: a wrapping <label>Gender<select>…</select></label> would
     // otherwise swallow all option text (Lever). Strip controls/options first.
+    // Hidden descendants are skipped too: Lever's resume label carries hidden
+    // "Analyzing resume... / Couldn't auto-read resume." status spans.
+    const SKIP = "input, select, textarea, option, button, [role=option], [class*='menu' i]";
     const pure = (node                )         => {
       if (!node) return "";
-      const c = node.cloneNode(true)           ;
-      c.querySelectorAll?.("input, select, textarea, option, button, [role=option], [class*='menu' i]").forEach((n) => n.remove());
-      return clean(c.textContent);
+      const parts           = [];
+      const walk = (n      ) => {
+        for (const ch of n.childNodes) {
+          if (ch.nodeType === 3) { parts.push(ch.textContent || ""); continue; }
+          if (ch.nodeType !== 1 || (ch           ).matches(SKIP)) continue;
+          const st = getComputedStyle(ch           );
+          if (st.display === "none" || st.visibility === "hidden" || (ch               ).hidden) continue;
+          const block = st.display !== "inline" && st.display !== "contents";
+          if (block) parts.push(" ");
+          walk(ch);
+          if (block) parts.push(" ");
+        }
+      };
+      walk(node);
+      return clean(parts.join(""));
     };
 
     // The field WRAPPER (Ashby `ashby-application-form-field-entry`, Greenhouse
