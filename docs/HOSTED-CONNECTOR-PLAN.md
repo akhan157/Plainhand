@@ -383,7 +383,16 @@ OpenAI's self-serve path for open-source apps that run on the user's computer
 is available today, with no approval. Packaging the local app as a normal
 installer (double-click, no terminal) with a **Sign in with ChatGPT** button
 would give ChatGPT Plus and Pro users the full experience now, including form
-filling in its own browser. Costs: code signing so Windows and macOS don't show
-scary warnings (Apple $99/year; a Windows certificate or Microsoft's signing
-service), and a separate build and update pipeline. Decide after the hosted
-version ships.
+filling in its own browser.
+
+Signing, so the installer opens without scary warnings:
+
+| Platform | Free route | Notes |
+| --- | --- | --- |
+| Windows | **SignPath Foundation** (free for open-source projects) | Plainhand qualifies on paper: MIT license, public GitHub repo. Builds must run in GitHub Actions, every maintainer uses two-factor sign-in, and the installer's publisher shows as "SignPath Foundation". Approval takes about 1–2 weeks. |
+| Linux | Flathub / AppImage | No signing needed. |
+| macOS | None | Apple requires the $99/year Developer Program for signing and notarization. Unsigned, a Mac user must go to System Settings → Privacy & Security → **Open Anyway**, which is not acceptable for this audience. |
+
+If built: Windows and Linux first (free); macOS when the $99/year is worth it.
+Mac users meanwhile use the website (Claude route, or ChatGPT when one-click
+arrives). Decide after the hosted version ships.
