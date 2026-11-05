@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
 
 const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const amount = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -31,9 +30,7 @@ export class UsageLedger {
   constructor(workspace) { this.workspace = workspace; }
   file(id) { return `data/plainhand/usage/${id}.json`; }
   async records() {
-    let names;
-    try { names = await readdir(await this.workspace.safe('data/plainhand/usage')); }
-    catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+    const names = await this.workspace.list('data/plainhand/usage');
     const records = [];
     for (const name of names.filter(n => /^[a-f0-9-]{36}\.json$/.test(n))) records.push(JSON.parse(await this.workspace.read('data/plainhand/usage/' + name)));
     return records.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
