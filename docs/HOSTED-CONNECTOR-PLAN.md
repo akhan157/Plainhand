@@ -11,8 +11,9 @@ or Claude subscription they already pay for. They:
 2. In claude.ai or ChatGPT, add Plainhand as a connector (paste one URL, click
    **Allow**).
 3. Talk to Plainhand from that chat.
+4. Optional: add the Plainhand browser extension to fill application forms.
 
-Nothing to install, no API key, no CLI.
+No terminal, no API key, no CLI.
 
 ## Why a connector, and not a hosted CLI
 
@@ -55,9 +56,10 @@ server) moves onto `workspace.readBinary/writeBinary/list`. Features that hand a
 root directory to `lib/` modules (Insights, Campaigns, remote view) stay
 local-only in v1.
 
-Concurrency: `Workspace.mutate` serializes in-process. v1 runs one instance;
-mutations also take a per-user Postgres advisory lock so a second instance
-cannot interleave writes.
+Concurrency: `Workspace.mutate` serializes in-process only. On serverless,
+concurrent requests run in separate instances, so each mutation runs in one
+Postgres transaction holding a per-user advisory lock
+(`pg_advisory_xact_lock`).
 
 ### 2. Sign-in
 
@@ -85,18 +87,18 @@ registry, scoped to the signed-in user, with the same tier rules:
 In the cloud it is a deferred agent:
 
 1. The chat model calls e.g. `plainhand_tasks_evaluate { jobId }`.
-2. The workflow runs until its first model call. The deferred agent parks that
-   call as a **step** `{ stepId, purpose, instruction, data }` and the tool
-   returns it to the chat model.
+2. The workflow runs until its first model call. The deferred agent records
+   that call as a **step** `{ stepId, purpose, instruction, data }` and the
+   tool returns it to the chat model (see Hosting for how the task is
+   replayed across stateless requests).
 3. The chat model does the work and calls `plainhand_submit_step { stepId, result }`.
 4. The workflow resumes with that result, running the same validation as
    today (exact source quotes, schema, evidence checks), until the next model
    call (returned as the next step) or completion (returned as the outcome).
 
 Invalid results are rejected with the specific error so the model can fix and
-resubmit, within the workflow's normal attempt limits. Steps expire after 15
-minutes. A server restart marks the task interrupted (existing behaviour), and
-it can be retried.
+resubmit, within the workflow's normal attempt limits. An unanswered step
+expires after 2 hours; the task is then marked interrupted and can be retried.
 
 **Independent review.** Locally the factual review is a separate model call
 with no memory of drafting. In a chat it runs in the same conversation. To
@@ -113,20 +115,76 @@ download, application record, **I submitted this**. The Assistant panel and
 Connections screen are replaced by a **Connect to ChatGPT / Claude** page with
 the connector URL and step-by-step instructions for each app.
 
-### 6. What the cloud version does not do (v1)
+### 6. Browser extension: form filling
 
-- **Form filling in a browser.** It needs the candidate's visible browser.
-  Cloud gives copy-ready answers and PDF downloads. A browser extension can
-  come later.
+Form filling moves into a browser extension (Chrome/Edge, Manifest V3; Firefox
+from the same code). The candidate is already on the employer's page in their
+own browser, so there is no takeover step: they watch it fill and submit
+themselves.
+
+**Sign-in.** The extension is a public OAuth client of the same authorization
+server as the connector (PKCE through `chrome.identity.launchWebAuthFlow`). It
+never sees a password or a provider credential, and the website lists it under
+connected apps with **Disconnect**.
+
+**Flow.**
+
+1. The candidate opens the employer's application page (Plainhand and the chat
+   link to it).
+2. The extension popup matches the page to the saved role by its application
+   URL and shows the packet status. Filling requires an approved, current
+   packet, the same gate as the local app.
+3. **Fill this page.** The content script reads the form with the existing
+   in-page extractor (`plainhand/adapters/upstream/extract.mjs`) and sends the
+   field list to `/api/extension/plan`. The server answers with the same
+   evidence-backed answers the local app uses (`suggestFormAnswers`, the
+   answer bank, the approved packet) plus the presubmit check.
+4. Fields with no supported answer are listed in the popup. The candidate
+   types them, or asks the chat ("finish the form I have open"), which picks up
+   a form step through the same step protocol (`FORM_INSTRUCTION`).
+5. The content script fills text, selects, radios, checkboxes and comboboxes
+   (existing `option-match`), and attaches the exact approved resume and
+   cover letter PDFs to upload fields (`resume-label`). Sensitive fields
+   (`field-policy`) are always left for the candidate.
+6. **It never submits.** It clicks nothing except combobox openers and options.
+   Every click target goes through the existing `submit-guard` classifier and
+   is refused if it is a submit control. Multi-page forms: the candidate clicks
+   **Next**, then **Fill this page** again.
+7. After submitting, the candidate clicks **I submitted this application** in
+   the popup, which records Applied. This is a candidate action from the
+   candidate's own signed-in extension, never from the chat.
+
+**Permissions.** `activeTab` + `scripting` (injected only when the candidate
+clicks), `storage`, `identity`. No `<all_urls>` host permission and no
+background page reading. Page text sent to the server is limited to field
+labels, options and the page URL.
+
+**Distribution.** Chrome Web Store (one-time $5 developer registration),
+Edge Add-ons and Firefox Add-ons (free).
+
+### 7. What the cloud version does not do (v1)
+
+- Automatic navigation through multi-page forms (the candidate clicks Next).
 - Insights, Campaigns, remote view, local CAPTCHA solver.
 - Posting liveness is checked server-side in headless Chromium. Login-walled
   postings ask the candidate to paste the description.
 
-### 7. Hosting
+### 8. Hosting (free tier)
 
-One container (Node 22 + Chromium + Poppler) on a host that runs long-lived
-processes (Fly.io or Render), with Supabase Postgres + Auth. Vercel is not a
-fit for the core server because of Chromium and the in-memory parked steps.
+- **Vercel Hobby**: website, `/mcp`, OAuth endpoints, extension API as
+  serverless functions. PDFs through serverless Chromium (to be proven in a
+  test deploy; fallback is Cloudflare Browser Rendering's free allowance).
+  Hobby is non-commercial; charging for Plainhand means Vercel Pro or the
+  same code on Google Cloud Run.
+- **Supabase free** (project `plainhand-cloud`, us-east-1): Postgres + Auth.
+  A daily Vercel cron keeps it from pausing after a week idle.
+
+Serverless means no memory between requests, so steps are **replayed**, not
+parked: every model step and its accepted result is stored. When a result
+arrives, the task re-runs from the start; the deferred agent answers
+already-recorded steps from storage and parks the first new one. Steps are
+keyed by task id and call order, and a recorded step is reused only when its
+instruction and input digest match.
 
 ## Steps
 
@@ -136,6 +194,9 @@ fit for the core server because of Chromium and the in-memory parked steps.
 3. OAuth authorization server + `/mcp` (read/write tools) scoped per user.
 4. Deferred agent + `submit_step`; task tools runnable from chat.
 5. Website changes: Connect page, cloud labels, hide local-only features.
-6. Container image, deployment, privacy and data-deletion page, account
-   deletion that removes every row.
-7. End-to-end test with claude.ai and ChatGPT custom connectors.
+6. Browser extension: OAuth sign-in, page match, fill, upload, submit guard,
+   "I submitted".
+7. Vercel deployment, privacy and data-deletion page, account deletion that
+   removes every row.
+8. End-to-end test with claude.ai and ChatGPT custom connectors and the
+   extension on Greenhouse, Lever and Ashby test forms.
