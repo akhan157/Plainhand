@@ -1,244 +1,297 @@
-# Hosted Plainhand: Sign in with ChatGPT and the ChatGPT / Claude connector
+# Hosted Plainhand: use your ChatGPT or Claude plan, no setup
 
-**Branch:** `hosted-connector` · **Status:** in progress
+**Branch:** `hosted-connector` · **Status:** in progress (see Steps)
 
 ## Goal
 
-A candidate who has never opened a terminal can use Plainhand with the ChatGPT
-or Claude subscription they already pay for. They:
+Someone who is not comfortable with AI tools, terminals or settings screens
+can use Plainhand with the ChatGPT or Claude subscription they already pay
+for. Success means they never install anything except, optionally, a browser
+extension from an app store, never see a command, an API key or a JSON file,
+and never have to understand what an "MCP connector" is.
 
-1. Open the Plainhand website and sign in.
-2. Connect their AI, either way:
-   - **Sign in with ChatGPT** on the website (one button; Plainhand then works
-     on the website itself, billed to their ChatGPT Go/Plus/Pro plan), or
-   - **Add Plainhand to ChatGPT or Claude** as a connector and talk to it there
-     (the only route for a Claude subscription).
-3. Optional: add the Plainhand browser extension to fill application forms.
+## What the candidate experiences
 
-No terminal, no API key, no CLI. Both routes run the same workspace, checks and
-approvals; a candidate can use both.
+1. **Go to the Plainhand website → Continue with Google (or email link).**
+2. **Get started** walks them through three things, one screen each: upload
+   a resume (PDF or paste), say what roles they want, connect their AI.
+3. **Connect your AI** shows two big buttons:
+   - **Use my ChatGPT plan**: one click, sign in to ChatGPT, done. From then
+     on everything happens on the Plainhand website: they press buttons
+     (Evaluate, Prepare application) and chat with Plainhand's assistant there.
+   - **Use Plainhand inside ChatGPT or Claude**: they add Plainhand to the
+     chat app they already use (one click once Plainhand is in each app's
+     directory) and then just talk: "Here's a job link, is it a fit?",
+     "Write my application for it."
+4. **Review and approve** on the website: read the resume, cover letter and
+   answers, fix anything, press **Approve**. Only the candidate can approve.
+5. **Apply**: open the employer's page, click the Plainhand extension,
+   **Fill this page**. They check it, upload anything left, and press Submit
+   themselves. Then **I submitted this** records it.
+6. **Follow up**: the website shows what's due; drafts are ready to send.
+
+## What works when (honest timeline)
+
+| Route | Works for | When it is truly one-click |
+| --- | --- | --- |
+| Use my ChatGPT plan (Sign in with ChatGPT) | ChatGPT Go, Plus, Pro | When OpenAI approves our hosted app (interest form; limited trial today). Built now, switched on at approval. |
+| Inside Claude | Every Claude plan (Free: 1 custom connector) | Today it is a short settings step (Customize → Connectors → Add → paste link), which the website walks through with pictures. One-click once listed in Claude's connector directory. |
+| Inside ChatGPT | Paid ChatGPT plans | Only after listing in ChatGPT's app directory. Before that it needs Developer Mode, which is not suitable for our audience, so the website does not offer it until we are listed. |
+
+So for a non-technical **ChatGPT** user, the no-setup experience depends on one
+of two approvals from OpenAI (Sign in with ChatGPT, or the app directory).
+**Both applications start in week one**, because review time is out of our
+hands. Claude users can start as soon as the site is live.
+
+Anthropic does not allow third-party apps to use a Claude subscription
+directly, so Claude users always use the connector route.
 
 ## Two AI routes, one foundation
 
-| | Sign in with ChatGPT | Connector (ChatGPT or Claude) |
+| | Use my ChatGPT plan | Inside ChatGPT / Claude (connector) |
 | --- | --- | --- |
-| Where the candidate works | The Plainhand website | Their ChatGPT / Claude chat, plus the website for approvals |
-| Who calls the model | Our server, with the candidate's ChatGPT plan token (Responses API) | The candidate's chat model, through tool calls |
-| Workflow agent | `chatgptAgent` (direct call) | Deferred agent (step protocol, §4) |
-| Independent review | Separate model call, as locally | Same conversation (§4) |
-| Built-in assistant, Save cards, autonomy | Yes | No (the chat app asks to allow each tool call) |
-| Availability | OpenAI approval required for hosted apps (interest form); limited trial | Now. One-click needs ChatGPT / Claude directory listing |
-| Subscriptions | ChatGPT Go, Plus, Pro | ChatGPT (Developer Mode or directory), Claude (any plan, Free = 1 custom connector) |
+| Where the candidate works | Plainhand website | Their chat app, plus the website to review and approve |
+| Who calls the model | Our server, with the candidate's ChatGPT plan token | The candidate's chat model, through Plainhand tools |
+| Workflow agent | `chatgptAgent` (direct Responses API call) | Deferred agent (step protocol, §4) |
+| Factual review | Separate model call, as in the local app | A separate step in the same chat (§4) |
+| Website assistant, task buttons | Yes | Buttons show "Ask your chat: …" with the exact words to copy |
+| Daily automatic checks for new jobs | Yes, including fit evaluation | New jobs are found; evaluation waits for the chat |
 
-Anthropic does not permit third-party apps to use a Claude subscription
-directly, so Claude users always use the connector.
+Everything else (account, storage, website, extension, factual checks,
+approvals, PDFs) is shared, and a candidate can use both routes.
 
-**Sign in with ChatGPT specifics** (preview limits): Responses API with
-`store: false`, `stream: true`, full context in `input` each call, no
-temperature or max-output-token fields, no hosted tools. Access tokens last
-one hour, refresh tokens a 30-day sliding window; refresh tokens are stored
-encrypted per candidate and revoked on disconnect or account deletion. The
-candidate can cap or turn off plan usage per app on OpenAI's side; when the
-cap is hit, Plainhand pauses tasks and says so rather than switching billing.
-
-Everything else (storage, sign-in, website, extension, factual checks,
-approvals) is shared.
-
-## Why a connector, and not a hosted CLI
-
-The local app runs `claude -p` / `codex exec` on the candidate's own computer
-under their own sign-in. A hosted server cannot do that on their behalf:
-holding someone's consumer-subscription login on our server and running
-requests with it is not permitted by the providers, and it would make us a
-credential store. A remote MCP connector is the supported way for a third-party
-service to work inside a subscription: the model runs in the provider's app,
-on the candidate's plan, and calls our tools.
-
-Consequence: **our server never calls a model.** Every model step is done by
-the candidate's chat model and handed back to us through a tool call.
+**Sign in with ChatGPT specifics** (OpenAI preview rules): Responses API with
+`store: false` and `stream: true`; the full context goes in `input` on every
+call; no temperature or max-output-token fields; no hosted tools. Access tokens
+last one hour; refresh tokens use a 30-day sliding window and are stored
+encrypted (AES-256-GCM, key in a server secret), never logged, and deleted on
+disconnect or account deletion. The candidate can cap or switch off plan usage
+for Plainhand on OpenAI's side; when a cap is hit, Plainhand pauses the task and
+says "Your ChatGPT plan limit for Plainhand is reached" instead of failing
+silently or billing anyone. When OpenAI's identity sign-in is available to us,
+**Continue with ChatGPT** also becomes an account sign-in option, so a ChatGPT
+user signs in and connects in a single step.
 
 ## Architecture
 
 ```
-claude.ai / ChatGPT ──(MCP over HTTPS, OAuth bearer)──▶ plainhand-cloud
-   (candidate's model)                                    │
-                                                          ├─ OAuth 2.1 authorization server (DCR + PKCE)
-browser ──(session cookie)──▶ plainhand-cloud web UI      ├─ action registry (plainhand/actions.mjs, unchanged)
-                                                          ├─ workflow (plainhand/workflow.mjs) with a
-                                                          │  "deferred agent" (see below)
-                                                          ├─ PDF rendering (headless Chromium)
-                                                          └─ Postgres: users, oauth, per-user workspace files
+ChatGPT / Claude chat ──MCP over HTTPS (OAuth)──┐
+Plainhand website ──────session cookie──────────┤
+Browser extension ──────OAuth (PKCE)────────────┼──▶ Plainhand cloud (Vercel functions, stateless)
+                                                │      ├─ action registry (plainhand/actions.mjs, shared with local)
+                                                │      ├─ workflow (plainhand/workflow.mjs) + chatgptAgent | deferred agent
+                                                │      ├─ OAuth 2.1 server (connector + extension clients)
+                                                │      └─ PDF rendering (serverless Chromium)
+OpenAI Responses API ◀── candidate's plan token ┘
+Supabase: Postgres (accounts, per-user workspace files, OAuth, sessions) + Auth (Google, email)
 ```
 
-### 1. Per-user storage (step 1, this branch first)
+### 1. Per-user storage ✅ done
 
-`Workspace` reads and writes workspace-relative paths (`data/plainhand/workspace.json`,
-`cv.md`, `config/profile.yml`, …). We make the byte store pluggable:
+`Workspace` reads and writes through a pluggable store: `FileStorage` (local
+app, unchanged), `MemoryStorage` (tests), `PostgresStorage`
+(`plainhand.workspace_files`, one row per file per candidate, 25 MB quota).
+Each mutation runs in one transaction holding a per-candidate advisory lock,
+so concurrent serverless instances never lose an update, and a failed
+mutation leaves nothing behind. The schema is in a private Postgres schema
+with row level security on and no API access.
 
-- `FileStorage`: today's behaviour, unchanged for the local app.
-- `MemoryStorage`: for tests.
-- `PostgresStorage`: table `workspace_files(user_id, path, content bytea, updated_at)`.
+### 2. Accounts and sign-in
 
-Every direct `fs` call against workspace paths in the core path (PDF write/read
-in `workflow.mjs`, usage receipts in `usage.mjs`, artifact download in the
-server) moves onto `workspace.readBinary/writeBinary/list`. Features that hand a
-root directory to `lib/` modules (Insights, Campaigns, remote view) stay
-local-only in v1.
-
-Concurrency: `Workspace.mutate` serializes in-process only. On serverless,
-concurrent requests run in separate instances, so each mutation runs in one
-Postgres transaction holding a per-user advisory lock
-(`pg_advisory_xact_lock`).
-
-### 2. Sign-in
-
-- Candidate identity: **Sign in with Google** plus an email magic link, via
-  Supabase Auth. No passwords stored by us.
-- Plainhand cloud is its own **OAuth 2.1 authorization server** for MCP
-  clients (MCP SDK `mcpAuthRouter`): dynamic client registration, PKCE,
-  short-lived access tokens, refresh tokens, revocation. The authorize page
-  requires a signed-in Plainhand session and shows an Allow screen.
-- Connected apps are listed on the website with a **Disconnect** button.
+- **Continue with Google** and **email sign-in link** through Supabase Auth.
+  No passwords.
+- Sign-in emails go through Resend (free: 3,000/month) because Supabase's
+  built-in sender allows only a few emails an hour.
+- The website session is an httpOnly, Secure, SameSite=Lax cookie; only its
+  hash is stored. 30-day sessions, ended on sign-out or account deletion.
+- **Connected apps** page lists every connected chat app, the extension and
+  Sign in with ChatGPT, each with **Disconnect**.
+- **Delete my account** removes the account, every workspace row, every
+  token and the Supabase Auth user, after one confirmation.
+- Sign-up and sign-in are rate limited per IP and per email.
 
 ### 3. The connector (MCP over Streamable HTTP)
 
-`/mcp` exposes the same tools as `plainhand-mcp.mjs` today, generated from the
-registry, scoped to the signed-in user, with the same tier rules:
+- `/mcp`, stateless (no in-memory MCP sessions), OAuth 2.1 with dynamic client
+  registration and PKCE; access tokens one hour, rotating refresh tokens.
+- The approval screen is plain language: "Let Claude use your Plainhand
+  workspace? It can read your roles and profile and save changes you ask for.
+  It can never approve applications or mark them submitted." **Allow / Cancel**.
+- Tools are generated from the same registry as the local MCP bridge, with
+  the same tier rules: read and write tools (audited, undoable for 10
+  minutes); candidate-only actions (approve, I submitted, widen what the AI
+  sees) are refused with a link to the right page; task tools run through the
+  step protocol.
+- Tool descriptions are written for the chat model so the candidate never has
+  to know tool names: they say "write my application" and the model finds it.
+- Posting text and anything derived from it is marked untrusted in tool
+  results, as today.
 
-- `read` / `write` tools as today (writes audited, undo tokens).
-- `candidate` tier still refused: approvals, "I submitted", widening context.
-  The tool returns a link to the right page of the Plainhand website.
-- `task` tier becomes **runnable** through the step protocol below.
+### 4. Model steps for the connector (deferred agent)
 
-### 4. Model steps: the deferred agent
+`Workflow` already takes an injectable `agent(provider, instruction, data)`.
+For the connector it is a deferred agent:
 
-`Workflow` takes an injectable `agent(provider, instruction, data, opts)`.
-In the cloud it is a deferred agent:
+1. The chat calls e.g. `evaluate_role { jobId }`.
+2. The workflow runs until its first model call. That call becomes a **step**
+   `{ stepId, purpose, instruction, data, resultSchema }` returned to the chat.
+3. The chat does the work and calls `submit_step { stepId, result }`.
+4. The server validates the result exactly as today (schema, exact source
+   quotes of 8+ characters, evidence checks). If it fails, the chat gets the
+   specific error and resubmits, within the workflow's normal attempt limits.
+5. The task continues to the next step, or finishes and returns a short
+   outcome plus a website link ("Your application is ready to review: …").
 
-1. The chat model calls e.g. `plainhand_tasks_evaluate { jobId }`.
-2. The workflow runs until its first model call. The deferred agent records
-   that call as a **step** `{ stepId, purpose, instruction, data }` and the
-   tool returns it to the chat model (see Hosting for how the task is
-   replayed across stateless requests).
-3. The chat model does the work and calls `plainhand_submit_step { stepId, result }`.
-4. The workflow resumes with that result, running the same validation as
-   today (exact source quotes, schema, evidence checks), until the next model
-   call (returned as the next step) or completion (returned as the outcome).
+**Stateless replay.** Every accepted step result is stored with the task. On
+each `submit_step` the task re-runs from the start: recorded steps are answered
+from storage (only when their instruction and input digest match), and the
+first new model call becomes the next step. Network results that do not depend
+on the model (posting verification, job board fetches) are cached with the task
+so a replay never refetches them. An unanswered step expires after 2 hours; the
+task is then marked interrupted and can be retried from saved work.
 
-Invalid results are rejected with the specific error so the model can fix and
-resubmit, within the workflow's normal attempt limits. An unanswered step
-expires after 2 hours; the task is then marked interrupted and can be retried.
+**Time limits.** Each `submit_step` must answer well inside the chat app's tool
+timeout and Vercel's limit, so a single request never does more than one
+validation plus, at the end, PDF rendering (measured in the test deploy).
 
-**Independent review.** Locally the factual review is a separate model call
-with no memory of drafting. In a chat it runs in the same conversation. To
-reduce bias, the review step's instruction says to judge only the packet
-against the quoted sources. The deterministic checks (every claim has an exact
-quote from the sources) still run on the server and cannot be talked past. The
-website labels cloud packets "reviewed in your chat".
+**Factual review.** It is a separate step whose instruction gives the packet
+and the sources only and asks for an independent check. The deterministic
+quote checks still run on the server and cannot be argued past. The website
+labels these packets "fact-checked in your chat".
 
 ### 5. Website
 
-The existing Preact UI, served with a session cookie instead of the local
-token: profile and resume upload, jobs, packet review and **Approve**, PDF
-download, application record, **I submitted this**. The Connections screen
-becomes **Connect your AI** with two choices: **Sign in with ChatGPT** (one
-button) and **Add to ChatGPT / Claude** (connector URL with step-by-step
-instructions per app). With Sign in with ChatGPT connected, the Assistant
-panel and task buttons work on the website as they do locally; with only a
-connector, task buttons say "Ask your chat to …" and the Assistant panel is
-replaced by those instructions.
+The existing Preact UI, served behind the session cookie, with:
 
-### 6. Browser extension: form filling
+- **Get started** guide (resume → target roles → connect AI) and a progress
+  checklist on Home until each step is done.
+- **Connect your AI** page with the two buttons, and for the connector route a
+  per-app walkthrough with screenshots plus a "Test connection" status that
+  turns green when the chat first calls Plainhand.
+- Resume PDF import with `pdfjs-dist` (no Poppler on serverless).
+- Task buttons run directly with Sign in with ChatGPT; with only a connector
+  they show the exact sentence to say in the chat, with a Copy button.
+- Assistant panel: available with Sign in with ChatGPT; otherwise replaced by
+  the connector instructions.
+- Live updates: the page re-reads the workspace every few seconds while
+  visible (serverless functions cannot hold the event stream open).
+- Hidden in the cloud: Insights, Campaigns, remote view, local CAPTCHA solver,
+  workspace import from a folder. Export stays.
 
-Form filling moves into a browser extension (Chrome/Edge, Manifest V3; Firefox
-from the same code). The candidate is already on the employer's page in their
-own browser, so there is no takeover step: they watch it fill and submit
-themselves.
+### 6. Browser extension: save jobs and fill forms
 
-**Sign-in.** The extension is a public OAuth client of the same authorization
-server as the connector (PKCE through `chrome.identity.launchWebAuthFlow`). It
-never sees a password or a provider credential, and the website lists it under
-connected apps with **Disconnect**.
+Chrome and Edge (Manifest V3); Firefox from the same code.
 
-**Flow.**
+- **Sign-in:** a public OAuth client of the same server (PKCE via the
+  browser's identity API). It never sees a password or an AI credential.
+- **Save this job:** on any posting, one click saves company, title, link and
+  description to Plainhand (no copy-paste).
+- **Fill this page:** requires an approved, current packet for the matched
+  role (same gate as the local app). The content script reads the form with
+  the existing in-page extractor (`plainhand/adapters/upstream/extract.mjs`),
+  the server returns evidence-backed answers (`suggestFormAnswers`, answer
+  bank, approved packet) and the presubmit check, and the content script fills
+  text, selects, radios, checkboxes and comboboxes (`option-match`) and
+  attaches the exact approved resume and cover letter PDFs (`resume-label`).
+  Sensitive fields (`field-policy`) are always left for the candidate.
+- **Missing answers:** listed in the popup to type, or drafted by the AI
+  (directly with Sign in with ChatGPT; "Ask your chat to finish my form"
+  with the connector, using `FORM_INSTRUCTION` through the step protocol).
+- **Never submits:** it clicks only combobox openers and options; every click
+  target passes the existing `submit-guard` classifier and is refused if it is
+  a submit control. Multi-page forms: the candidate clicks Next, then Fill
+  again.
+- **I submitted this** in the popup records Applied (a candidate action from
+  their own signed-in extension, never from the chat).
+- **Permissions:** `activeTab`, `scripting`, `storage`, `identity`, plus
+  *optional* host permissions for known application hosts (Greenhouse, Lever,
+  Ashby, Workday, SmartRecruiters, Workable, Recruitee), requested the first
+  time they are needed, because many employer sites embed the form in a
+  cross-origin frame that `activeTab` alone cannot reach. Nothing runs until
+  the candidate clicks. Only field labels, options and the page URL are sent.
+- **Distribution:** Chrome Web Store (one-time $5 registration), Edge and
+  Firefox add-on stores (free). Reviews take days, so submission starts as soon
+  as the extension works.
 
-1. The candidate opens the employer's application page (Plainhand and the chat
-   link to it).
-2. The extension popup matches the page to the saved role by its application
-   URL and shows the packet status. Filling requires an approved, current
-   packet, the same gate as the local app.
-3. **Fill this page.** The content script reads the form with the existing
-   in-page extractor (`plainhand/adapters/upstream/extract.mjs`) and sends the
-   field list to `/api/extension/plan`. The server answers with the same
-   evidence-backed answers the local app uses (`suggestFormAnswers`, the
-   answer bank, the approved packet) plus the presubmit check.
-4. Fields with no supported answer are listed in the popup. The candidate
-   types them, or asks the chat ("finish the form I have open"), which picks up
-   a form step through the same step protocol (`FORM_INSTRUCTION`).
-5. The content script fills text, selects, radios, checkboxes and comboboxes
-   (existing `option-match`), and attaches the exact approved resume and
-   cover letter PDFs to upload fields (`resume-label`). Sensitive fields
-   (`field-policy`) are always left for the candidate.
-6. **It never submits.** It clicks nothing except combobox openers and options.
-   Every click target goes through the existing `submit-guard` classifier and
-   is refused if it is a submit control. Multi-page forms: the candidate clicks
-   **Next**, then **Fill this page** again.
-7. After submitting, the candidate clicks **I submitted this application** in
-   the popup, which records Applied. This is a candidate action from the
-   candidate's own signed-in extension, never from the chat.
+### 7. Hosting (free tier)
 
-**Permissions.** `activeTab` + `scripting` (injected only when the candidate
-clicks), `storage`, `identity`. No `<all_urls>` host permission and no
-background page reading. Page text sent to the server is limited to field
-labels, options and the page URL.
+- **Vercel Hobby**: website, `/mcp`, OAuth, extension API, as stateless
+  functions. Hobby is for non-commercial use: if Plainhand ever charges, move
+  to Vercel Pro or run the same code on Google Cloud Run.
+- **PDFs**: serverless Chromium in a Vercel function (proven first, in the
+  test deploy); fallback is Cloudflare Browser Rendering's free 10 minutes a
+  day. Only the latest PDFs per role are kept, to stay inside storage limits.
+- **Posting checks**: public job-board APIs (Greenhouse, Lever, Ashby, …, the
+  existing `providers/`) and plain HTTPS fetches, not a browser. Pages that
+  block servers or need a login ask the candidate to paste the description
+  (or use **Save this job** in the extension, which reads the page they see).
+- **Supabase free** (project `plainhand-cloud`): Postgres (500 MB) and Auth
+  (50,000 monthly users). A daily Vercel cron keeps the project from pausing
+  after a week idle and runs daily job-board checks.
+- **Backups**: Supabase's free tier has none, so a free GitHub Actions job
+  takes a nightly encrypted dump to a private location, kept 14 days.
+- **Abuse limits**: per-account and per-IP rate limits on sign-in, tool calls
+  and PDF rendering, so one account cannot exhaust the free allowances.
 
-**Distribution.** Chrome Web Store (one-time $5 developer registration),
-Edge Add-ons and Firefox Add-ons (free).
+### 8. Privacy and safety
 
-### 7. What the cloud version does not do (v1)
+- Candidate data is stored in Supabase (encrypted at rest) instead of on the
+  candidate's computer; the website and privacy page say so plainly.
+- Tokens, codes and session ids are stored only as hashes; ChatGPT refresh
+  tokens are encrypted.
+- No credentials are ever stored for job sites; the extension fills forms in
+  the candidate's own logged-in browser.
+- Approvals, "I submitted" and widening what the AI sees stay candidate-only
+  on every route.
+- Privacy page, terms, and a contact for data requests before launch.
 
-- Automatic navigation through multi-page forms (the candidate clicks Next).
+### 9. Not in the cloud version (v1)
+
+- Automatic clicking through multi-page forms (the candidate clicks Next).
 - Insights, Campaigns, remote view, local CAPTCHA solver.
-- Posting liveness is checked server-side in headless Chromium. Login-walled
-  postings ask the candidate to paste the description.
+- The local app keeps all of these; nothing is removed from it.
 
-### 8. Hosting (free tier)
+## Owner actions (only you can do these)
 
-- **Vercel Hobby**: website, `/mcp`, OAuth endpoints, extension API as
-  serverless functions. PDFs through serverless Chromium (to be proven in a
-  test deploy; fallback is Cloudflare Browser Rendering's free allowance).
-  Hobby is non-commercial; charging for Plainhand means Vercel Pro or the
-  same code on Google Cloud Run.
-- **Supabase free** (project `plainhand-cloud`, us-east-1): Postgres + Auth.
-  A daily Vercel cron keeps it from pausing after a week idle.
+| When | Action |
+| --- | --- |
+| Now | Submit OpenAI's Sign in with ChatGPT interest form (hosted app). |
+| Before launch | Create the Google sign-in client in Google Cloud (free; I provide exact steps) and paste it into Supabase. |
+| Before launch | Create a Resend account (free) and a sending domain or address. |
+| Before launch | Chrome Web Store developer registration ($5 once); Edge and Firefox (free). |
+| After the test deploy | Submit Plainhand to the Claude connector directory and the ChatGPT app directory. |
 
-Serverless means no memory between requests, so steps are **replayed**, not
-parked: every model step and its accepted result is stored. When a result
-arrives, the task re-runs from the start; the deferred agent answers
-already-recorded steps from storage and parks the first new one. Steps are
-keyed by task id and call order, and a recorded step is reused only when its
-instruction and input digest match.
+## Risks
+
+- **OpenAI approval** for Sign in with ChatGPT and/or the ChatGPT directory is
+  not guaranteed or timed. Until one arrives, ChatGPT users without Developer
+  Mode cannot use Plainhand online; the local app's ChatGPT support is
+  unaffected.
+- **Directory reviews** (Claude, ChatGPT, extension stores) may ask for
+  changes. Tool descriptions and permissions are written to their published
+  guidelines from the start.
+- **Free-tier limits** (Supabase 500 MB, Vercel invocations) bound the number
+  of active users; storage quotas and PDF retention keep this in the hundreds
+  of users. Growth beyond that needs paid tiers.
+- **Serverless Chromium** may not fit Vercel's limits; the Cloudflare fallback
+  is planned.
+- **Chat model quality** varies by the model the candidate picks; the server
+  side checks keep facts honest regardless.
 
 ## Steps
 
-1. **Pluggable workspace storage** + tests (local behaviour unchanged).
-2. Cloud server skeleton: Supabase session sign-in, per-user `Workspace`,
-   web UI behind a cookie session.
-3. OAuth authorization server + `/mcp` (read/write tools) scoped per user.
-4. Deferred agent + `submit_step`; task tools runnable from chat.
-4b. Sign in with ChatGPT route (`chatgptAgent`, token storage, Connect button),
-   built against the documented API and switched on when OpenAI approves the
-   hosted app. Owner action: submit the interest form.
-5. Website changes: Connect page, cloud labels, hide local-only features.
-6. Browser extension: OAuth sign-in, page match, fill, upload, submit guard,
-   "I submitted".
-7. Vercel deployment, privacy and data-deletion page, account deletion that
-   removes every row.
-8. End-to-end test with claude.ai and ChatGPT custom connectors and the
-   extension on Greenhouse, Lever and Ashby test forms.
-9. Directory submissions: ChatGPT app directory and Claude connector directory,
-   so adding Plainhand is one click.
+| # | Step | Status |
+| --- | --- | --- |
+| 1 | Pluggable workspace storage; Postgres store with locking; schema in Supabase | ✅ done |
+| 2 | Cloud server: Supabase sign-in, sessions, per-user workspace, website behind the session | next |
+| 3 | OAuth 2.1 server + stateless `/mcp` with read/write tools | |
+| 4 | Deferred agent, step replay, task tools from chat | |
+| 5 | `chatgptAgent` + token storage + Connect button (off until approval) | |
+| 6 | Website: Get started, Connect your AI, cloud labels, PDF import, account deletion | |
+| 7 | Browser extension: sign-in, Save this job, Fill this page, submit guard, I submitted | |
+| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages | |
+| 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
+| 10 | Directory and store submissions | |
 
 Separate, optional: the local app can offer Sign in with ChatGPT today through
-OpenAI's open-source self-serve path (loopback redirect), replacing the Codex
-connector download.
+OpenAI's open-source self-serve path, replacing the Codex connector download.
