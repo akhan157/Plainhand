@@ -32,16 +32,22 @@ and never have to understand what an "MCP connector" is.
 
 ## What works when (honest timeline)
 
-| Route | Works for | When it is truly one-click |
+| Route | Works for | One-click |
 | --- | --- | --- |
-| Use my ChatGPT plan (Sign in with ChatGPT) | ChatGPT Go, Plus, Pro | When OpenAI approves our hosted app (interest form; limited trial today). Built now, switched on at approval. |
-| Inside Claude | Every Claude plan (Free: 1 custom connector) | Today it is a short settings step (Customize → Connectors → Add → paste link), which the website walks through with pictures. One-click once listed in Claude's connector directory. |
-| Inside ChatGPT | Paid ChatGPT plans | Only after listing in ChatGPT's app directory. Before that it needs Developer Mode, which is not suitable for our audience, so the website does not offer it until we are listed. |
+| Use my ChatGPT plan (Sign in with ChatGPT) | ChatGPT Go, Plus, Pro | When OpenAI approves our hosted app (interest form). Built now, switched on at approval. |
+| Inside Claude (custom connector) | Every Claude plan (Free: 1 custom connector) | Guided setup today; one-click once in Claude's connector directory. |
+| Inside ChatGPT (custom MCP server) | Full use: ChatGPT Business, Enterprise, Edu. Pro: read-only per OpenAI's help center, so Plainhand can look things up but not save or run tasks. Plus, Go, Free: not listed by OpenAI. | Guided setup today where the plan allows it; one-click for every plan once in ChatGPT's app directory. |
 
-So for a non-technical **ChatGPT** user, the no-setup experience depends on one
-of two approvals from OpenAI (Sign in with ChatGPT, or the app directory).
-**Both applications start in week one**, because review time is out of our
-hands. Claude users can start as soon as the site is live.
+Until a one-click route exists for ChatGPT, the **guided setup (§5a) does the
+work**: it finds out what the candidate's ChatGPT account allows and sends them
+down a path that will actually work, instead of letting them fail.
+
+**The one-click work continues in parallel**, starting in week one, because
+review times are out of our hands:
+
+1. Sign in with ChatGPT interest form (owner).
+2. ChatGPT app directory submission as soon as the deploy is stable (§10).
+3. Claude connector directory submission at the same time.
 
 Anthropic does not allow third-party apps to use a Claude subscription
 directly, so Claude users always use the connector route.
@@ -112,8 +118,20 @@ with row level security on and no API access.
 
 ### 3. The connector (MCP over Streamable HTTP)
 
-- `/mcp`, stateless (no in-memory MCP sessions), OAuth 2.1 with dynamic client
-  registration and PKCE; access tokens one hour, rotating refresh tokens.
+- `/mcp`, stateless (no in-memory MCP sessions), OAuth 2.1 with PKCE (S256);
+  access tokens one hour, rotating refresh tokens.
+- What ChatGPT and Claude require of the OAuth server, built in from the start:
+  protected resource metadata at `/.well-known/oauth-protected-resource` and a
+  `WWW-Authenticate` challenge on 401; authorization server metadata with
+  `code_challenge_methods_supported: ["S256"]`; **Client ID Metadata
+  Documents** (ChatGPT's preferred registration,
+  `client_id_metadata_document_supported: true`) plus dynamic client
+  registration (Claude); the `iss` parameter on every authorization response
+  (RFC 9207, which lets ChatGPT use its stable redirect URI
+  `https://chatgpt.com/connector_platform_oauth_redirect`); the `resource`
+  parameter copied into the token audience; per-tool `securitySchemes` and the
+  `mcp/www_authenticate` error metadata that makes ChatGPT show its sign-in
+  button; `readOnlyHint` on every read tool.
 - The approval screen is plain language: "Let Claude use your Plainhand
   workspace? It can read your roles and profile and save changes you ask for.
   It can never approve applications or mark them submitted." **Allow / Cancel**.
@@ -177,6 +195,69 @@ The existing Preact UI, served behind the session cookie, with:
   visible (serverless functions cannot hold the event stream open).
 - Hidden in the cloud: Insights, Campaigns, remote view, local CAPTCHA solver,
   workspace import from a folder. Export stays.
+
+### 5a. Guided AI setup (until one-click exists)
+
+The **Connect your AI** page is a wizard, not a help article. Every screen has
+one instruction, one screenshot of exactly what they will see, and one button.
+
+**Screen 1: Which AI do you use?** ChatGPT · Claude · Both · I'm not sure
+(the last explains how to tell, with a picture of each app's logo).
+
+**ChatGPT: which plan?** Free · Go · Plus · Pro · Work or school (Business,
+Enterprise, Edu) · I don't know (shows where to look: profile picture → plan
+name, with a screenshot).
+
+- **Work or school plan:** the custom MCP server walkthrough, one step per
+  screen: open chatgpt.com/plugins on a computer → **+** → **Add custom MCP
+  server** → name *Plainhand* → paste the Plainhand link (one **Copy** button; it is the
+  same link for everyone) → Authentication **OAuth** →
+  tick "I understand and want to continue" → **Create as a plugin** → **Install**
+  → sign in to Plainhand on the screen that opens → **Allow**. If the **+**
+  button or the option is missing, the screen explains that their workspace
+  admin controls it and gives a ready-to-send message asking the admin to allow
+  Plainhand.
+- **Pro:** the same walkthrough, followed by the live check below. If the
+  account turns out read-only, the wizard says so plainly and offers the
+  alternatives.
+- **Plus, Go, Free:** "ChatGPT doesn't let your plan add Plainhand yet. We're
+  working on a one-click version." Then the alternatives, in this order:
+  1. **Use Claude's free plan for Plainhand** (one custom connector is free;
+     walkthrough included). Their ChatGPT subscription is untouched.
+  2. **Get an email when one-click ChatGPT is ready** (one tick box).
+  3. If they use a computer they installed apps on before: the Plainhand
+     desktop app with Sign in with ChatGPT (see Optional).
+
+**Claude (any plan):** claude.ai → **Customize** → **Connectors** → **Add
+custom connector** → name *Plainhand*, paste the link → **Add** → **Connect** →
+sign in to Plainhand → **Allow**. On Team and Enterprise, an owner adds it once;
+the wizard detects "Add custom connector" is missing and gives the message for
+the owner. Free accounts that already use their one custom connector are told
+so before they start.
+
+**Live check (every route).** The last screen says "Now type this in your
+chat:" with a Copy button for a fixed sentence ("@Plainhand check my
+connection"). The page watches for that call and turns green within seconds:
+"Connected. Plainhand can read and save." If the chat can read but its save
+test is refused, it shows the read-only explanation and the alternatives. If
+nothing arrives in two minutes, it shows the three most likely causes with a
+picture for each (plugin not installed, Plainhand not picked with @, signed in
+to a different Plainhand account).
+
+**How they use it afterwards.** A short card on Home: "In ChatGPT, start your
+message with @Plainhand" or "In Claude, Plainhand is available in every chat",
+plus five example sentences with Copy buttons ("Is this job a good fit for me?
+<link>", "Write my application for …", "What's due this week?").
+
+**Tool approvals.** ChatGPT asks to approve each saving action. The wizard
+shows that prompt in a screenshot and says what it means: "Plainhand is asking
+to save something. You can approve it for the rest of this chat." Reading
+tools are marked read-only so ChatGPT does not ask for them.
+
+**Keeping it right.** The walkthrough screenshots and menu names live in one
+data file with the date each was checked; a monthly check against both apps
+and OpenAI's and Anthropic's help pages keeps them current, because these menus
+change.
 
 ### 6. Browser extension: save jobs and fill forms
 
@@ -259,14 +340,17 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | Before launch | Create the Google sign-in client in Google Cloud (free; I provide exact steps) and paste it into Supabase. |
 | Before launch | Create a Resend account (free) and a sending domain or address. |
 | Before launch | Chrome Web Store developer registration ($5 once); Edge and Firefox (free). |
-| After the test deploy | Submit Plainhand to the Claude connector directory and the ChatGPT app directory. |
+| Now | Complete OpenAI developer identity verification (individual or business) so Plainhand can be published under your name. |
+| After the test deploy | Submit to the Claude connector directory and the ChatGPT app directory. ChatGPT needs: website, support, privacy and terms URLs; a reviewer test account that signs in without email codes or links (a reviewer-only password login on sample data); a video walkthrough; 5 positive and 3 negative test cases; a square icon. I prepare all of these. |
 
 ## Risks
 
 - **OpenAI approval** for Sign in with ChatGPT and/or the ChatGPT directory is
-  not guaranteed or timed. Until one arrives, ChatGPT users without Developer
-  Mode cannot use Plainhand online; the local app's ChatGPT support is
-  unaffected.
+  not guaranteed or timed. Until one arrives, ChatGPT Plus, Go and Free users
+  (and Pro users, for anything beyond reading) cannot use Plainhand through
+  ChatGPT online; the wizard routes them to Claude's free plan, the email
+  list, or the desktop app. ChatGPT's per-plan rules change with rollouts,
+  which is why the wizard relies on the live check, not on a fixed table.
 - **Directory reviews** (Claude, ChatGPT, extension stores) may ask for
   changes. Tool descriptions and permissions are written to their published
   guidelines from the start.
@@ -287,11 +371,19 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | 3 | OAuth 2.1 server + stateless `/mcp` with read/write tools | |
 | 4 | Deferred agent, step replay, task tools from chat | |
 | 5 | `chatgptAgent` + token storage + Connect button (off until approval) | |
-| 6 | Website: Get started, Connect your AI, cloud labels, PDF import, account deletion | |
+| 6 | Website: Get started, guided Connect your AI wizard with live check, cloud labels, PDF import, account deletion | |
 | 7 | Browser extension: sign-in, Save this job, Fill this page, submit guard, I submitted | |
 | 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages | |
 | 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
-| 10 | Directory and store submissions | |
+| 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
 
-Separate, optional: the local app can offer Sign in with ChatGPT today through
-OpenAI's open-source self-serve path, replacing the Codex connector download.
+## Optional: desktop app with Sign in with ChatGPT
+
+OpenAI's self-serve path for open-source apps that run on the user's computer
+is available today, with no approval. Packaging the local app as a normal
+installer (double-click, no terminal) with a **Sign in with ChatGPT** button
+would give ChatGPT Plus and Pro users the full experience now, including form
+filling in its own browser. Costs: code signing so Windows and macOS don't show
+scary warnings (Apple $99/year; a Windows certificate or Microsoft's signing
+service), and a separate build and update pipeline. Decide after the hosted
+version ships.
