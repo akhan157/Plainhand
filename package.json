@@ -13,6 +13,7 @@
     "test:agent-ui": "node tests/test-plainhand-agent-ui.mjs",
     "test:full": "node tests/run-test-suite.mjs",
     "test:remote": "node --test tests/test-remote.mjs",
+    "test:cloud": "node --test tests/test-cloud-storage.mjs",
     "test:plainhand-live": "node tests/test-plainhand-live.mjs",
     "test:agent-live": "node tests/test-plainhand-agent-live.mjs",
     "doctor": "node lib/doctor.mjs",
@@ -104,7 +105,8 @@
     "@modelcontextprotocol/sdk": "1.32.1",
     "dotenv": "^17.0.0",
     "js-yaml": "^4.3.2",
-    "playwright": "^1.58.1"
+    "playwright": "^1.58.1",
+    "postgres": "3.4.9"
   },
   "bin": {
     "plainhand": "bin/plainhand.mjs"

@@ -83,12 +83,18 @@ export class Workspace {
     return state;
   }
   mutate(fn) {
-    const operation = this.chain.then(async () => {
+    const commit = async () => {
       const state = await this.load();
       const result = await fn(state);
       state.revision += 1;
       await this.write(this.file, JSON.stringify(state, null, 2) + '\n');
-      for (const listener of this.listeners) { try { listener(state.revision); } catch {} }
+      return { result, revision: state.revision };
+    };
+    // A shared store (hosted Postgres) locks the candidate's workspace for the whole
+    // read-modify-write, since other server instances may be mutating it too.
+    const operation = this.chain.then(async () => {
+      const { result, revision } = this.storage.exclusive ? await this.storage.exclusive(commit) : await commit();
+      for (const listener of this.listeners) { try { listener(revision); } catch {} }
       return result;
     });
     this.chain = operation.catch(() => {});
