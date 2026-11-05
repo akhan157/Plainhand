@@ -233,12 +233,21 @@ export async function browserObservation(page, fields = [], jobRoot = null) {
   let finalReview = false;
   // Every major verification vendor, not only Google and Cloudflare. A vendor
   // frame is a human-attention state even when its UI renders in a shadow root.
-  const vendorChallenge = page.frames().some(frame => {
-    try {
-      const host = new URL(frame.url()).hostname;
-      return /(^|\.)captcha-delivery\.com$|(^|\.)arkoselabs\.com$|(^|\.)funcaptcha\.com$|(^|\.)hcaptcha\.com$|(^|\.)challenges\.cloudflare\.com$|(^|\.)perimeterx\.net$|(^|\.)px-cdn\.net$/.test(host);
-    } catch { return false; }
-  });
+  // Only a vendor frame the candidate can actually see counts. Lever, for one,
+  // preloads several invisible hCaptcha frames (1x1 or parked at y=-9999) on
+  // every form; treating those as a challenge stalled autofill on a clean page.
+  let vendorChallenge = false;
+  for (const frame of page.frames()) {
+    let host = '';
+    try { host = new URL(frame.url()).hostname; } catch { continue; }
+    if (!/(^|\.)captcha-delivery\.com$|(^|\.)arkoselabs\.com$|(^|\.)funcaptcha\.com$|(^|\.)hcaptcha\.com$|(^|\.)challenges\.cloudflare\.com$|(^|\.)perimeterx\.net$|(^|\.)px-cdn\.net$/.test(host)) continue;
+    if (frame === page.mainFrame()) { vendorChallenge = true; break; }
+    const element = await frame.frameElement().catch(() => null);
+    if (!element) continue;
+    const visible = await element.isVisible().catch(() => false);
+    const box = visible ? await element.boundingBox().catch(() => null) : null;
+    if (box && box.width >= 20 && box.height >= 20 && box.y + box.height > 0 && box.x + box.width > 0) { vendorChallenge = true; break; }
+  }
   for (const frame of page.frames()) {
     if (recaptchaFrame(frame.url(), 'anchor') && await frame.locator('#recaptcha-anchor').getAttribute('aria-checked', { timeout: 1000 }).catch(() => 'true') !== 'true') return { state: 'challenge', message: 'reCAPTCHA verification is required.' };
     const challenge = await frame.locator('[data-plainhand-challenge], .h-captcha iframe, iframe[src*="bframe"], iframe[src*="challenges.cloudflare.com"]').filter({ visible: true }).count().catch(() => 0);
@@ -435,7 +444,17 @@ export class ApplicationBrowser {
       const observation = await browserObservation(session.page, fields);
       if (['login', 'challenge'].includes(observation.state)) return { ...observation, trace };
       if (!requireTransition && fields.length) return { state: 'ready', trace };
-      const snapshot = await navigationSnapshot(session.page, url => portalFrame(url, session.root));
+      let snapshot = await navigationSnapshot(session.page, url => portalFrame(url, session.root));
+      // Workday and other SPA portals render the next step (often a sign-in wall)
+      // a second or two after the click. Let the page settle before concluding.
+      for (let attempt = 0; attempt < 12 && !snapshot.controls.length; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const settledFields = await fieldsOn(session.page);
+        const settled = await browserObservation(session.page, settledFields);
+        if (['login', 'challenge'].includes(settled.state)) { await this.inspect(job); return { ...settled, trace }; }
+        if (!requireTransition && settledFields.length) { await this.inspect(job); return { state: 'ready', trace }; }
+        snapshot = await navigationSnapshot(session.page, url => portalFrame(url, session.root));
+      }
       if (!snapshot.controls.length) return { state: 'review', message: 'No supported navigation remains. Review the current application.', trace };
       const before = JSON.stringify(fields.map(f => [f.name, f.label, f.type]));
       const key = createHash('sha256').update(JSON.stringify([session.page.url(), snapshot.fingerprint, before])).digest('hex');
