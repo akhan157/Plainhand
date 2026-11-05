@@ -136,13 +136,17 @@ against the quoted sources. The deterministic checks (every claim has an exact
 quote from the sources) still run on the server and cannot be talked past. The
 website labels cloud packets "reviewed in your chat".
 
-### 5. Website (no AI on it)
+### 5. Website
 
 The existing Preact UI, served with a session cookie instead of the local
 token: profile and resume upload, jobs, packet review and **Approve**, PDF
-download, application record, **I submitted this**. The Assistant panel and
-Connections screen are replaced by a **Connect to ChatGPT / Claude** page with
-the connector URL and step-by-step instructions for each app.
+download, application record, **I submitted this**. The Connections screen
+becomes **Connect your AI** with two choices: **Sign in with ChatGPT** (one
+button) and **Add to ChatGPT / Claude** (connector URL with step-by-step
+instructions per app). With Sign in with ChatGPT connected, the Assistant
+panel and task buttons work on the website as they do locally; with only a
+connector, task buttons say "Ask your chat to …" and the Assistant panel is
+replaced by those instructions.
 
 ### 6. Browser extension: form filling
 
