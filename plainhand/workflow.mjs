@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import yaml from 'js-yaml';
 import { digest, hasEvidence, now, syncTracker, requireText } from './store.mjs';
@@ -61,9 +60,9 @@ export async function renderPacket(workspace, state, job, packet) {
     const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
     // Count page objects for metadata without introducing a PDF dependency.
     pageCount = Math.max(1, (pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length);
-    await writeFile(await workspace.safe(resumeBase + '.pdf'), pdf, { mode: 0o600 });
+    await workspace.write(resumeBase + '.pdf', pdf);
     await page.setContent(letter);
-    await writeFile(await workspace.safe(letterBase + '.pdf'), await page.pdf({ printBackground: true, preferCSSPageSize: true }), { mode: 0o600 });
+    await workspace.write(letterBase + '.pdf', await page.pdf({ printBackground: true, preferCSSPageSize: true }));
   } catch { throw new Error('PDF generation needs Chromium. Run npx playwright install chromium, then retry. Your profile and job are saved.'); }
   finally { await browser?.close(); }
   await workspace.write(answersBase + '.md', `# ${job.company} — ${job.title}\n\n${packet.answers.map(a => `## ${a.question}\n\n${a.answer}\n\nSources: ${a.evidence.map(e => e.sourceId).join(', ')}`).join('\n\n')}\n`);
@@ -71,7 +70,7 @@ export async function renderPacket(workspace, state, job, packet) {
   for (const [base, type, extra] of [[resumeBase, 'resume', { page_count: pageCount, template_id: format.source === 'default' ? 'plainhand-default' : 'candidate-format', format: format.page || 'letter' }], [letterBase, 'cover_letter', { variants: ['html', 'pdf'] }], [answersBase, 'answers', { answer_sources: ['cv.md', 'data/plainhand/workspace.json'] }]]) {
     await workspace.write(base + '.meta.md', `---\n${yaml.dump({ ...baseMetadata, artifact_type: type, content_fingerprint: digest(packet), ...extra })}---\n`);
   }
-  return { pdf: resumeBase + '.pdf', pdfHash: digest(await readFile(await workspace.safe(resumeBase + '.pdf'))), artifacts: [resumeBase + '.pdf', letterBase + '.pdf', answersBase + '.md'] };
+  return { pdf: resumeBase + '.pdf', pdfHash: digest(await workspace.readBinary(resumeBase + '.pdf')), artifacts: [resumeBase + '.pdf', letterBase + '.pdf', answersBase + '.md'] };
 }
 
 export class Workflow {

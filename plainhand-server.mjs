@@ -188,7 +188,8 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         const requested = url.searchParams.get('path');
         const state = await workspace.load();
         if (!state.jobs.some(j => j.artifacts?.includes(requested) || j.reportPath === requested)) return json(res, 404, { error: 'Artifact not found.' });
-        const data = await readFile(await workspace.safe(requested));
+        const data = await workspace.readBinary(requested);
+        if (!data) return json(res, 404, { error: 'Artifact not found.' });
         res.setHeader('Content-Disposition', `attachment; filename="${path.basename(requested)}"`);
         res.setHeader('Content-Type', requested.endsWith('.pdf') ? 'application/pdf' : 'text/markdown; charset=utf-8');
         return res.end(data);
@@ -391,7 +392,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
           if (job.verification?.state !== 'active') throw new Error('This posting is not verified active. Re-evaluate it or apply manually.');
           if (url.pathname === '/api/browser/attention') return browser.attention(job.id);
           if (url.pathname === '/api/browser/autofill') {
-            if (digest(await readFile(await workspace.safe(job.pdf))) !== job.pdfHash) throw new Error('The resume file changed. Regenerate and review the packet.');
+            if (digest(await workspace.readBinary(job.pdf)) !== job.pdfHash) throw new Error('The resume file changed. Regenerate and review the packet.');
             const steps = [], navigation = job.browserCheckpoint?.packetHash === job.approvedHash ? [...job.browserCheckpoint.navigation || []].slice(-30) : [];
             let navigationCalls = 0;
             const planner = data => ++navigationCalls <= 10 ? workflow.agent(state.provider, NAVIGATION_INSTRUCTION, data, { usageContext: { jobId: job.id, purpose: 'navigation' } }) : { action: 'stop', reason: 'Navigation model-call budget reached.' };
@@ -448,7 +449,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
           const plan = appBrowserPlans.get(job.id);
           if (!plan || plan.approval !== job.approvedHash) throw new Error('Inspect the form again. Your packet or browser session changed.');
           if (url.pathname === '/api/browser/fill') {
-            if (digest(await readFile(await workspace.safe(job.pdf))) !== job.pdfHash) throw new Error('The resume file changed. Regenerate and review the packet.');
+            if (digest(await workspace.readBinary(job.pdf)) !== job.pdfHash) throw new Error('The resume file changed. Regenerate and review the packet.');
             if (!input.answers || typeof input.answers !== 'object' || Array.isArray(input.answers)) throw new Error('Review the form answers first.');
             const result = await browser.fill(job, input.answers, await workspace.safe(job.pdf), await coverLetterPath(job));
             const plan = appBrowserPlans.get(job.id);

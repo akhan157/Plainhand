@@ -1,6 +1,5 @@
-import { mkdir, readFile, writeFile, rename, lstat } from 'node:fs/promises';
-import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
+import { FileStorage } from './storage.mjs';
 import yaml from 'js-yaml';
 import { trackerNote } from './application-record.mjs';
 
@@ -17,30 +16,27 @@ export function initialState() {
 }
 
 export class Workspace {
-  constructor(root) { this.root = path.resolve(root); this.file = 'data/plainhand/workspace.json'; this.chain = Promise.resolve(); this.listeners = new Set(); }
+  // new Workspace(root) is the local app (a folder). Hosted Plainhand passes its own
+  // { storage } (one Postgres-backed store per user); root is then only a label.
+  constructor(root, { storage } = {}) {
+    this.storage = storage || new FileStorage(root);
+    this.root = this.storage.root || String(root || '');
+    this.file = 'data/plainhand/workspace.json'; this.chain = Promise.resolve(); this.listeners = new Set();
+  }
+  // True when the workspace is a folder on this computer (browser form filling, lib/ tools).
+  get local() { return this.storage.local === true; }
   // Called with the new revision after every committed mutation (the live event stream uses this).
   onChange(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-  async safe(relative) {
-    const full = path.resolve(this.root, relative);
-    if (!full.startsWith(this.root + path.sep)) throw new Error('Path outside workspace.');
-    let current = this.root;
-    for (const part of path.relative(this.root, full).split(path.sep)) {
-      current = path.join(current, part);
-      try { if ((await lstat(current)).isSymbolicLink()) throw new Error('Workspace files cannot be symbolic links.'); }
-      catch (error) { if (error.code !== 'ENOENT') throw error; }
-    }
-    return full;
-  }
+  // Absolute path of a workspace file. Local workspaces only; hosted ones throw.
+  async safe(relative) { return this.storage.resolve(relative); }
   async read(relative, fallback = '') {
-    try { return await readFile(await this.safe(relative), 'utf8'); } catch (error) { if (error.code === 'ENOENT') return fallback; throw error; }
+    const data = await this.storage.read(relative);
+    return data === null ? fallback : data.toString('utf8');
   }
-  async write(relative, content) {
-    const file = await this.safe(relative);
-    await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
-    const temp = file + '.' + randomUUID() + '.tmp';
-    await writeFile(temp, content, { mode: 0o600 });
-    await rename(temp, file);
-  }
+  async readBinary(relative) { return this.storage.read(relative); }
+  async write(relative, content) { await this.storage.write(relative, typeof content === 'string' ? Buffer.from(content, 'utf8') : content); }
+  async list(directory) { return this.storage.list(directory); }
+  async remove(relative) { return this.storage.remove(relative); }
   browserCheckpointFile(id) {
     return `data/plainhand/checkpoints/${digest(String(id))}.json`;
   }
