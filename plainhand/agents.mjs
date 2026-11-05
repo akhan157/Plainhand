@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,8 +17,11 @@ export const PROVIDERS = [
 function localProviderCommand(provider) {
   if (!provider.bin) return null;
   const name = process.platform === 'win32' ? `${provider.bin}.cmd` : provider.bin;
-  const file = path.join(APP_ROOT, 'node_modules', '.bin', name);
-  return existsSync(file) ? file : null;
+  const candidates = [
+    path.join(APP_ROOT, 'data', 'plainhand', 'connectors', provider.id, 'node_modules', '.bin', name),
+    path.join(APP_ROOT, 'node_modules', '.bin', name),
+  ];
+  return candidates.find(file => existsSync(file)) || null;
 }
 
 export function providerCommand(provider) {
@@ -38,9 +41,15 @@ export async function installProvider(provider, { onOutput } = {}) {
   } catch {}
 
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  // Keep connectors out of the app's dependency tree so installing one cannot
+  // upgrade Playwright or any other pinned dependency underneath it.
+  const connectorDir = path.join(APP_ROOT, 'data', 'plainhand', 'connectors', provider.id);
+  const manifest = path.join(connectorDir, 'package.json');
+  await mkdir(connectorDir, { recursive: true });
+  if (!existsSync(manifest)) await writeFile(manifest, JSON.stringify({ private: true, dependencies: { [provider.package]: 'latest' } }, null, 2) + '\n');
   try {
-    await runProcess(npm, ['install', '--no-save', '--no-audit', '--no-fund', '--package-lock=false', provider.package], {
-      cwd: APP_ROOT,
+    await runProcess(npm, ['install', '--no-audit', '--no-fund', '--no-package-lock'], {
+      cwd: connectorDir,
       timeout: 10 * 60 * 1000,
       shell: process.platform === 'win32',
       onOutput,
@@ -48,7 +57,20 @@ export async function installProvider(provider, { onOutput } = {}) {
   } catch {
     throw new Error(`Could not download ${provider.name}. Check your internet connection and try again.`);
   }
-  if (!localProviderCommand(provider)) throw new Error(`${provider.name} downloaded but its command was not found. Try again, or use the official setup guide.`);
+  // Some npm configurations skip a package's postinstall; run the connector's
+  // own installer when it exists, then check that the command actually starts.
+  const packageDir = path.join(connectorDir, 'node_modules', ...provider.package.split('/'));
+  const installer = path.join(packageDir, 'install.cjs');
+  if (existsSync(installer)) {
+    await runProcess(process.execPath, [installer], { cwd: APP_ROOT, timeout: 5 * 60 * 1000 }).catch(() => {});
+  }
+  const command = localProviderCommand(provider);
+  if (!command) throw new Error(`${provider.name} downloaded but its command was not found. Try again, or use the official setup guide.`);
+  try {
+    await runProcess(command, ['--version'], { timeout: 30000, shell: process.platform === 'win32' });
+  } catch {
+    throw new Error(`${provider.name} installed but did not start. Try again, or use the official setup guide.`);
+  }
   return providerCommand(provider);
 }
 export function providerById(id) {

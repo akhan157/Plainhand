@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (2026-11-04)
 
-- **One-command install.** `curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh`
-  downloads the app, installs dependencies and Chromium, creates a `plainhand`
-  launcher in `~/.local/bin`, and starts it. The workspace defaults to
-  `~/.plainhand/workspace`; `--data-root`, `--port` and `--check` are available.
+- **One-command install.** The shell installer (`curl ... install.sh | sh`) and
+  the Windows PowerShell installer (`irm ... install.ps1 | iex`) download the
+  app, install dependencies and Chromium, create a `plainhand` launcher, and
+  start it. The workspace defaults to `~/.plainhand/workspace`;
+  `--data-root`, `--port` and `--check` are available.
 
 - **Repository layout cleanup.** Core modules moved to `lib/`, tests to
   `tests/`, benchmarks to `benchmarks/`, dashboard Node tools to

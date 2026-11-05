@@ -8,16 +8,24 @@ AI account. Plainhand sets up the AI connector from its own screen.
 With [Node.js 22 or newer](https://nodejs.org), this downloads, sets up and
 starts Plainhand, then opens it:
 
+macOS or Linux:
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh
 ```
 
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/akhan157/Plainhand/main/install.ps1 | iex
+```
+
 The first run installs dependencies and Chromium, creates a `plainhand`
-command in `~/.local/bin`, and starts Plainhand. Your workspace is kept in
-`~/.plainhand/workspace`; the downloaded code stays separate. Use
-`plainhand --port 3211` if 3210 is busy, `plainhand --data-root /path/to/workspace`
-for another folder, or `plainhand --check` to see what is installed without
-starting. On Windows, run this in Git Bash or use the manual steps below.
+command, and starts Plainhand. Your workspace is kept in
+`~/.plainhand/workspace` (`%USERPROFILE%\.plainhand\workspace` on Windows); the
+downloaded code stays separate. Use `plainhand --port 3211` if 3210 is busy,
+`plainhand --data-root /path/to/workspace` for another folder, or
+`plainhand --check` to see what is installed without starting.
 
 The manual steps below are for a development checkout. The same installer can
 be pointed elsewhere with `PLAINHAND_HOME=/path` and
