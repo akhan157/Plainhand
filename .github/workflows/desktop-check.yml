@@ -1,0 +1,47 @@
+name: Desktop checks
+on:
+  pull_request:
+    paths: ['desktop/**', 'plainhand/**', 'plainhand-server.mjs', 'lib/**', 'providers/**', 'dashboard-web/**', 'dashboard/node/**', '.github/workflows/desktop-*.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci --prefix desktop
+      - run: npm --prefix desktop run pack:linux
+      - run: npm --prefix desktop test
+      - name: Prepare Electron sandbox helper
+        run: |
+          sudo chown root:root desktop/dist/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 desktop/dist/linux-unpacked/chrome-sandbox
+      - name: Launch the packaged app, install Chromium, check readiness and shutdown
+        run: xvfb-run -a npm --prefix desktop run smoke
+        env:
+          PLAINHAND_SMOKE_BINARY: ${{ github.workspace }}/desktop/dist/linux-unpacked/plainhand
+      - run: cd desktop && npx electron-builder --linux AppImage --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-test
+          path: desktop/dist/*.AppImage
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: npm ci --prefix desktop
+      - run: npm --prefix desktop run build:win
+      - run: npm --prefix desktop test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-UNSIGNED-test-only
+          path: desktop/dist/*.exe

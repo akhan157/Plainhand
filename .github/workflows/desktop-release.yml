@@ -1,0 +1,157 @@
+name: Desktop release assets
+# Manual, to an EXISTING release. Does not create tags or releases. The existing
+# root release workflow stays authoritative; GITHUB_TOKEN-created release events
+# do not trigger other workflows, so use workflow_dispatch after it completes.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag and GitHub Release (e.g. v1.1.1)
+        required: true
+        type: string
+      publish:
+        description: Upload installers and updater metadata to the existing release
+        default: false
+        type: boolean
+permissions:
+  contents: read
+  actions: read
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Validate tag matches desktop version
+        run: node desktop/scripts/check-version.cjs
+        env:
+          DESKTOP_RELEASE_TAG: ${{ inputs.tag }}
+      - run: npm ci --prefix desktop
+      - run: npm --prefix desktop run build:linux
+      - run: npm --prefix desktop test
+      - name: Prepare sandbox helper
+        run: |
+          sudo chown root:root desktop/dist/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 desktop/dist/linux-unpacked/chrome-sandbox
+      - run: xvfb-run -a npm --prefix desktop run smoke
+        env:
+          PLAINHAND_SMOKE_BINARY: ${{ github.workspace }}/desktop/dist/linux-unpacked/plainhand
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-release
+          path: |
+            desktop/dist/*.AppImage
+            desktop/dist/latest-linux.yml
+          if-no-files-found: error
+  publish-linux:
+    if: inputs.publish
+    needs: linux
+    runs-on: ubuntu-latest
+    environment: desktop-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-linux-release
+          path: assets
+      - name: Upload Linux assets to the existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" assets/*
+  windows-signed:
+    # No unsigned Windows asset or metadata is ever sent to GitHub Releases.
+    # Owner must first get SignPath approval and configure the protected environment.
+    if: inputs.publish && vars.SIGNPATH_APPROVED == 'true'
+    runs-on: windows-latest
+    environment: desktop-windows-signing
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - run: node desktop/scripts/check-version.cjs
+        env:
+          DESKTOP_RELEASE_TAG: ${{ inputs.tag }}
+      - run: npm ci --prefix desktop
+      - run: npm --prefix desktop run stage
+      - name: Build application directory for SignPath
+        working-directory: desktop
+        run: npx electron-builder --win --dir --publish never
+      - uses: actions/upload-artifact@v4
+        id: unsigned-app
+        with:
+          name: windows-app-for-signpath
+          path: desktop/dist/win-unpacked/**
+          if-no-files-found: error
+      - uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_APP_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: desktop/signed-app
+      - name: Verify signed application
+        shell: pwsh
+        run: desktop/scripts/verify-signature.ps1 desktop/signed-app/Plainhand.exe
+      - name: Package the signed application
+        working-directory: desktop
+        run: npx electron-builder --win nsis --prepackaged signed-app --publish never
+      - uses: actions/upload-artifact@v4
+        id: unsigned-installer
+        with:
+          name: windows-installer-for-signpath
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+      - uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: desktop/signed-installer
+      - name: Verify signed installer and generate metadata from final signed bytes
+        shell: pwsh
+        run: |
+          Get-ChildItem desktop/signed-installer/*.exe | ForEach-Object { desktop/scripts/verify-signature.ps1 $_.FullName }
+          node desktop/scripts/signed-metadata.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-signed-release
+          path: desktop/signed-installer/*
+          if-no-files-found: error
+  publish-windows:
+    needs: windows-signed
+    runs-on: ubuntu-latest
+    environment: desktop-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-windows-signed-release
+          path: assets
+      - name: Upload signed Windows assets to the existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" assets/*

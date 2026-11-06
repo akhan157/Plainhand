@@ -1,0 +1,6 @@
+node_modules/
+build/
+dist/
+.smoke/
+signed-app/
+signed-installer/
