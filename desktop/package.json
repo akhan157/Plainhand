@@ -1,0 +1,99 @@
+{
+  "name": "plainhand-desktop",
+  "version": "1.1.1",
+  "private": true,
+  "description": "Plainhand desktop \u2014 review and prepare applications locally",
+  "author": "Plainhand contributors",
+  "license": "MIT",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "npm run stage && electron .",
+    "test": "node --test tests/*.test.cjs",
+    "stage": "node scripts/stage-runtime.mjs",
+    "pack:linux": "npm run stage && electron-builder --linux --dir --publish never",
+    "build:linux": "npm run stage && electron-builder --linux AppImage --publish never",
+    "build:win": "npm run stage && electron-builder --win nsis --publish never",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "org.plainhand.desktop",
+    "productName": "Plainhand",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/runtime",
+        "to": "runtime",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/runtime/node_modules",
+        "to": "runtime/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "akhan157",
+        "repo": "Plainhand"
+      }
+    ],
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office",
+      "executableName": "plainhand",
+      "syncDesktopName": true,
+      "icon": "assets/icon.png"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "verifyUpdateCodeSignature": true,
+      "signtoolOptions": {
+        "publisherName": "SignPath Foundation"
+      },
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "differentialPackage": false
+    },
+    "artifactName": "Plainhand-${version}-${os}-${arch}.${ext}",
+    "afterPack": "scripts/verify-package.cjs"
+  },
+  "desktopName": "org.plainhand.desktop"
+}
