@@ -66,3 +66,12 @@ test('navigation waits for a sign-in wall that renders after the click (Workday)
     assert.equal(result.state, 'login', result.message);
   } finally { await runtime.closeAll(); }
 });
+
+test('an embedded form whose Submit button paints before its fields is still read (careers.airbnb.com)', async () => {
+  const { runtime, job, fields } = await setup(`<!doctype html><h1>Engineer</h1><form id="f"><button type="submit">Submit application</button></form>
+    <script>setTimeout(() => { document.getElementById('f').insertAdjacentHTML('afterbegin', '<label>First Name<input name="first_name"></label><label>Email<input type="email" name="email"></label>'); }, 2000);</script>`);
+  try {
+    assert.ok(fields.length >= 2, `expected fields, got ${fields.length}`);
+    assert.equal((await runtime.status(job.id)).state, 'ready');
+  } finally { await runtime.closeAll(); }
+});
