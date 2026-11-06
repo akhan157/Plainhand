@@ -418,6 +418,28 @@ Rule: easy and core → now. Hard, or not core → later.
 - **Form filling on phones**: browsers on phones do not support extensions
   like this; not possible with the current approach.
 
+## Module contracts (for parallel build)
+
+All cloud code lives in `plainhand/cloud/`. Modules take their dependencies as
+arguments (no module reads `process.env` except `app.mjs`), so each is tested
+alone with `MemoryStorage` or the local Postgres from `tests/test-cloud-storage.mjs`.
+Every module ships with `tests/test-cloud-<name>.mjs` added to `test:cloud`.
+
+| Module | Exports | Owns |
+| --- | --- | --- |
+| `accounts.mjs` | `createAccounts({ sql, quotaBytes })` → `{ upsert({ userId, email }), get(userId), remove(userId), workspaceFor(userId) → Workspace }`; `createSessions({ sql })` → `{ create(userId) → cookieValue, resolve(cookieValue) → { userId } \| null, destroy(cookieValue), destroyAll(userId) }` | `plainhand.accounts`, `plainhand.sessions` |
+| `supabase-auth.mjs` | `createSupabaseAuth({ url, publishableKey, secretKey, fetchImpl })` → `{ googleUrl(redirectTo, codeVerifier), sendEmailLink(email, redirectTo), exchangeCode(code, codeVerifier) → { userId, email }, deleteUser(userId) }` | Supabase Auth REST only |
+| `oauth.mjs` | `createOAuthServer({ sql, issuer, resource, sessionUser(req) → userId \| null, now })` → `{ handle(req, res) → boolean (true if it served the request), verifyAccessToken(token) → { userId, grantId, clientId, scope } \| null, listGrants(userId), revokeGrant(userId, grantId) }`. Serves `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`, and accepts CIMD client ids | `plainhand.oauth_*` |
+| `steps.mjs` | `createStepRunner({ workspace, makeWorkflow(agent) → Workflow })` → `{ start(kind, input) → Outcome, submit(taskId, stepId, result) → Outcome, current(taskId) → Outcome }`; `Outcome = { status: 'step', taskId, step: { stepId, purpose, instruction, data, resultSchema } } \| { status: 'done', taskId, summary, link } \| { status: 'failed', taskId, error }`. Step records live in workspace files `data/plainhand/steps/<taskId>.json` | deferred agent, replay, step expiry |
+| `chatgpt-agent.mjs` | `createChatgptAgent({ tokens, fetchImpl, model })` → an `agent(provider, instruction, data, opts)` with the same contract as `executeAgent`; `createTokenStore({ workspace, key })` → `{ save({ accessToken, refreshToken, expiresAt }), get() → fresh access token (refreshing), clear() }` (AES-256-GCM) | Responses API calls, token refresh |
+| `mcp.mjs` | `handleMcp(req, res, { userId, workspace, registry, stepRunner, siteUrl })` stateless Streamable HTTP; tools = registry read/write tools (with `readOnlyHint` on reads, `securitySchemes`), candidate tools return a website link, plus `check_connection`, `start_task`, `submit_step`, `task_status` backed by `stepRunner` | MCP tool surface |
+| `extension-api.mjs` | `handleExtensionApi(req, res, { userId, workspace, registry, stepRunner })` for `POST /api/extension/match {url}`, `POST /api/extension/plan {jobId, fields}`, `GET /api/extension/file?jobId=&kind=resume\|cover`, `POST /api/extension/save-job {company,title,url,description}`, `POST /api/extension/submitted {jobId}` | extension server side |
+| `app.mjs` | `createCloudApp(deps)` → `(req, res)` handler wiring the above, the website behind the session cookie, rate limits, `/api/help`, `/api/cron/daily`; `api/index.mjs` exports it for Vercel | wiring, env, security headers |
+
+Shared rules for every module: no secrets in logs; every request scoped to
+one `userId`; candidate-tier actions never reachable from chat or tokens; all
+user-visible text plain and short.
+
 ## Owner actions (only you can do these)
 
 | When | Action |
@@ -462,10 +484,10 @@ Rule: easy and core → now. Hard, or not core → later.
 | 5 | `chatgptAgent` + token storage + Connect button (off until approval) | |
 | 6 | Website: Get started, guided Connect your AI wizard with live check, cloud labels, PDF import, account deletion | |
 | 7 | Browser extension: sign-in, Save this job, Fill this page, submit guard, I submitted | |
-| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages | |
+| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages, CI job running `test:cloud` against a Postgres service | |
 | 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
-| 11 | Desktop app: installer (Windows via SignPath, Linux), Sign in with ChatGPT (open-source path), import from Plainhand online | |
+| 11 | Desktop app: Electron installer (Windows via SignPath, Linux AppImage), auto-update from GitHub Releases, Sign in with ChatGPT (open-source path), import from / upload to Plainhand online | |
 | 12 | Plan coverage check with real accounts for every tier; wizard data file updated with results | |
 | 13 | Get help + error tracking, phone guidance, accessibility baseline, desktop import/upload | |
 
