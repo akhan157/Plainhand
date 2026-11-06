@@ -566,7 +566,9 @@ export class ApplicationBrowser {
       // control after first paint. Keep watching for the full window even when an
       // Apply control is already visible: Ashby has produced its fields after the
       // earlier six-attempt cutoff, which made a ready page look empty.
-      for (let attempt = 0; attempt < 16 && !fields.length && ['unsupported', 'navigating'].includes(observation.state); attempt++) {
+      // An embedded form (Greenhouse on careers.airbnb.com) can paint its Submit
+      // button before its fields, which briefly looks like a review step.
+      for (let attempt = 0; attempt < 16 && !fields.length && ['unsupported', 'navigating', 'review'].includes(observation.state); attempt++) {
         await new Promise(resolve => setTimeout(resolve, 750));
         fields = await fieldsOn(page);
         observation = await browserObservation(page, fields, root);
