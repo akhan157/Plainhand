@@ -13,7 +13,7 @@
     "test:agent-ui": "node tests/test-plainhand-agent-ui.mjs",
     "test:full": "node tests/run-test-suite.mjs",
     "test:remote": "node --test tests/test-remote.mjs",
-    "test:cloud": "node --test tests/test-cloud-storage.mjs tests/test-cloud-accounts.mjs tests/test-cloud-app.mjs tests/test-cloud-supabase-auth.mjs tests/test-cloud-oauth.mjs tests/test-cloud-steps.mjs tests/test-cloud-extension-api.mjs",
+    "test:cloud": "node --test tests/test-cloud-storage.mjs tests/test-cloud-accounts.mjs tests/test-cloud-app.mjs tests/test-cloud-supabase-auth.mjs tests/test-cloud-oauth.mjs tests/test-cloud-steps.mjs tests/test-cloud-extension-api.mjs tests/test-cloud-mcp.mjs tests/test-cloud-mcp-endpoint.mjs",
     "test:extension": "node --test tests/test-extension-fill.mjs",
     "test:plainhand-live": "node tests/test-plainhand-live.mjs",
     "test:agent-live": "node tests/test-plainhand-agent-live.mjs",
@@ -79,7 +79,8 @@
     "benchmark:review": "node benchmarks/benchmark-review-quality.mjs",
     "benchmark:profile": "node benchmarks/benchmark-profile.mjs",
     "benchmark:calibration": "node benchmarks/benchmark-calibration.mjs",
-    "benchmark:status": "node benchmarks/benchmark-status.mjs"
+    "benchmark:status": "node benchmarks/benchmark-status.mjs",
+    "test:cloud:mcp": "node --test tests/test-cloud-mcp.mjs tests/test-cloud-mcp-endpoint.mjs"
   },
   "keywords": [
     "ai",

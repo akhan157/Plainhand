@@ -1,15 +1,13 @@
 // Vercel entry for hosted Plainhand. The only place that reads process.env; every module
 // below takes its settings as arguments (docs/HOSTED-CONNECTOR-PLAN.md, Module contracts).
-// The connector, extension and step modules are optional until they are built.
 import { connect } from '../plainhand/cloud/postgres-storage.mjs';
 import { createAccounts, createSessions } from '../plainhand/cloud/accounts.mjs';
 import { createSupabaseAuth } from '../plainhand/cloud/supabase-auth.mjs';
 import { createCloudApp, sessionUserReader } from '../plainhand/cloud/app.mjs';
-
-async function optional(specifier) {
-  try { return await import(specifier); }
-  catch (error) { if (error.code === 'ERR_MODULE_NOT_FOUND' && String(error.message).includes(specifier.replace(/^\.\.\//, ''))) return {}; throw error; }
-}
+import { createOAuthServer } from '../plainhand/cloud/oauth.mjs';
+import { handleMcp } from '../plainhand/cloud/mcp.mjs';
+import { handleExtensionApi } from '../plainhand/cloud/extension-api.mjs';
+import { createStepRunner } from '../plainhand/cloud/steps.mjs';
 
 export async function buildHandler(env = process.env) {
   const site = String(env.SITE_URL || '').replace(/\/+$/, '');
@@ -18,16 +16,12 @@ export async function buildHandler(env = process.env) {
   const accounts = createAccounts({ sql });
   const sessions = createSessions({ sql, now });
   const auth = createSupabaseAuth({ url: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY, secretKey: env.SUPABASE_SECRET_KEY });
-  const [oauthModule, mcpModule, extensionModule, stepsModule] = await Promise.all([
-    optional('../plainhand/cloud/oauth.mjs'), optional('../plainhand/cloud/mcp.mjs'),
-    optional('../plainhand/cloud/extension-api.mjs'), optional('../plainhand/cloud/steps.mjs'),
-  ]);
-  const oauth = oauthModule.createOAuthServer?.({ sql, issuer: site, resource: site + '/mcp', sessionUser: sessionUserReader(sessions), now,
+  const oauth = createOAuthServer({ sql, issuer: site, resource: site + '/mcp', sessionUser: sessionUserReader(sessions), now,
     // Published extension ids (comma separated); empty accepts any browser-identity redirect.
-    extensionIds: (process.env.PLAINHAND_EXTENSION_IDS || '').split(',').map(s => s.trim()).filter(Boolean) });
+    extensionIds: (env.PLAINHAND_EXTENSION_IDS || '').split(',').map(s => s.trim()).filter(Boolean) });
   return createCloudApp({
     sql, env: { ...env, SITE_URL: site }, auth, accounts, sessions, now, oauth,
-    handleMcp: mcpModule.handleMcp, handleExtensionApi: extensionModule.handleExtensionApi, stepRunner: stepsModule.createStepRunner,
+    handleMcp, handleExtensionApi, stepRunner: createStepRunner,
   });
 }
 
