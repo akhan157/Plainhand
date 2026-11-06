@@ -26,6 +26,9 @@ import { standardStatus, autonomyOf } from '../standard.mjs';
 import { FEATURES } from '../features/index.mjs';
 import { StorageError } from '../storage.mjs';
 import { newCodeVerifier } from './supabase-auth.mjs';
+import { importResume } from './resume-import.mjs';
+import { readConnectionCheck } from './connection-check.mjs';
+import { setupCoverage } from '../web/ui/connect-data.mjs';
 
 const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web');
 const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png' };
@@ -242,6 +245,8 @@ export function createCloudApp(deps) {
     for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
     return { ...state,
       cloud: true,
+      connectionCheck: await readConnectionCheck(workspace),
+      onboarding: JSON.parse(await workspace.read('data/plainhand/onboarding.json') || 'null'),
       answerBank: await new AnswerBank(workspace).load(),
       corrections: await new Corrections(workspace).list(),
       audit: await new AuditLog(workspace).list({ limit: 20 }),
@@ -264,11 +269,12 @@ export function createCloudApp(deps) {
     const p = url.pathname;
     if (LOCAL_ONLY.has(p) || p.startsWith('/api/remote/') || p.startsWith('/api/browser/')) return json(res, 404, { error: 'This works only in the Plainhand desktop app.' });
     if (req.method === 'GET') {
+      if (p === '/api/connection-check') return json(res, 200, await readConnectionCheck(workspace));
       if (p === '/api/state') return json(res, 200, await stateFor(ctx));
       if (p === '/api/account') return json(res, 200, { email: account.email, createdAt: account.createdAt, usage: await workspace.storage.usage?.() });
       if (p === '/api/events') {
-        // Serverless functions cannot hold a stream open: send the revision and end; the
-        // browser's EventSource reconnects after `retry`, which makes it a 5-second poll.
+        // Compatibility for older clients. The hosted UI now polls /api/state while
+        // visible; the local app keeps its separate persistent event stream.
         const state = await workspace.load();
         return send(res, 200, `retry: 5000\nevent: state\ndata: ${JSON.stringify({ revision: state.revision })}\n\n`, { 'Content-Type': 'text/event-stream; charset=utf-8' });
       }
@@ -302,21 +308,20 @@ export function createCloudApp(deps) {
       await workspace.write(`data/plainhand/help/${id}.json`, JSON.stringify(request, null, 2) + '\n');
       return json(res, 200, { ok: true, id });
     }
+    if (p === '/api/onboarding') {
+      if (!['chatgpt', 'claude'].includes(input.provider) || !setupCoverage[input.provider].plans.includes(input.plan)) throw new HttpError(400, 'Choose an AI and a valid plan.');
+      await workspace.write('data/plainhand/onboarding.json', JSON.stringify({ provider: input.provider, plan: input.plan }));
+      return json(res, 200, { ok: true });
+    }
     if (p === '/api/profile') { await workspace.saveProfile(input.profile || {}, input.revision); return json(res, 200, { ok: true }); }
     if (p === '/api/resume/import') {
-      const name = requireText(input.name, 'filename', 200);
-      if (!/\.(txt|md)$/i.test(name)) throw new Error(/\.pdf$/i.test(name) ? 'PDF import is coming soon. Paste your resume text for now.' : 'Import a Markdown or plain text resume.');
-      const buffer = Buffer.from(requireText(input.content, 'file data', 7000000), 'base64');
-      if (buffer.length > 2 * 1024 * 1024) throw new Error('Resume files must be under 2 MB.');
-      return json(res, 200, { text: buffer.toString('utf8').slice(0, 100000) });
+      return json(res, 200, await importResume(input));
     }
     if (p === '/api/conversation') {
-      const text = requireText(input.text, 'message', 15000);
-      await workspace.mutate(state => { state.conversation.push({ role: 'user', text, at: isoNow() }); state.understanding = null; for (const j of state.jobs) j.approvedHash = null; });
-      const { taskId } = await ui('tasks.interview', {});
-      return json(res, 202, { taskId });
+      return json(res, 409, { error: 'Use your connected chat to build your story.', code: 'CHAT_REQUIRED' });
     }
     if (p === '/api/action') {
+      if (String(input.name).startsWith('tasks.') && input.name !== 'tasks.cancel') return json(res, 409, { error: 'Ask your connected chat to run this task.', code: 'CHAT_REQUIRED' });
       const { result, undoToken } = await registry.run(cleanText(input.name, 100), input.input ?? {}, { actor: 'ui' });
       return json(res, 200, { ok: true, result, undoToken });
     }
@@ -361,17 +366,7 @@ export function createCloudApp(deps) {
     if (p === '/api/corrections/propose') return json(res, 201, { correction: await ui('corrections.propose', { jobId: input.jobId, question: input.question, previous: input.previous, answer: input.answer, evidence: input.evidence, scope: input.scope === 'global' ? 'global' : undefined }) });
     if (p === '/api/corrections/approve' || p === '/api/corrections/reject') return json(res, 200, { correction: await ui(p.endsWith('/approve') ? 'corrections.approve' : 'corrections.reject', { id: input.id }) });
     if (p === '/api/tasks') {
-      const inputs = { interview: ['retryOf'], discover: ['filter', 'location', 'retryOf'], evaluate: ['jobId', 'retryOf'], prepare: ['jobId', 'retryOf'], standard: ['retryOf'], revise: ['jobId', 'request', 'retryOf'] };
-      if (!Object.hasOwn(inputs, input.kind) && workflow.handlers.has(input.kind) && input.retryOf) {
-        const failed = (await workspace.load()).tasks.find(t => t.id === input.retryOf);
-        if (!failed) throw new Error('Only a failed task can be retried.');
-        return json(res, 202, { taskId: await workflow.enqueue(input.kind, failed.jobId || null, { ...(failed.input || {}), retryOf: failed.id }) });
-      }
-      if (!Object.hasOwn(inputs, input.kind)) throw new Error('Unknown task type.');
-      if (['revise', 'standard'].includes(input.kind) && input.retryOf && !input.request) { const failed = (await workspace.load()).tasks.find(t => t.id === input.retryOf); if (failed?.input?.request) input.request = failed.input.request; }
-      if (input.kind === 'standard' && input.request) input.kind = 'revise';
-      const { taskId } = await ui('tasks.' + input.kind, Object.fromEntries(inputs[input.kind].filter(key => input[key] != null && input[key] !== '').map(key => [key, String(input[key])])));
-      return json(res, 202, { taskId });
+      return json(res, 409, { error: 'Ask your connected chat to run this task.', code: 'CHAT_REQUIRED' });
     }
     if (p === '/api/tasks/cancel') { await ui('tasks.cancel', { taskId: input.id }); return json(res, 200, { ok: true }); }
     if (p === '/api/jobs/apply-link') return json(res, 200, await ui('jobs.setApplyLink', { jobId: input.id, applyUrl: input.applyUrl }));

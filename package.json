@@ -13,7 +13,7 @@
     "test:agent-ui": "node tests/test-plainhand-agent-ui.mjs",
     "test:full": "node tests/run-test-suite.mjs",
     "test:remote": "node --test tests/test-remote.mjs",
-    "test:cloud": "node --test tests/test-cloud-storage.mjs tests/test-cloud-accounts.mjs tests/test-cloud-app.mjs tests/test-cloud-supabase-auth.mjs tests/test-cloud-oauth.mjs tests/test-cloud-steps.mjs tests/test-cloud-extension-api.mjs",
+    "test:cloud": "node --test tests/test-cloud-storage.mjs tests/test-cloud-accounts.mjs tests/test-cloud-app.mjs tests/test-cloud-supabase-auth.mjs tests/test-cloud-oauth.mjs tests/test-cloud-steps.mjs tests/test-cloud-extension-api.mjs tests/test-cloud-onboarding.mjs",
     "test:extension": "node --test tests/test-extension-fill.mjs",
     "test:plainhand-live": "node tests/test-plainhand-live.mjs",
     "test:agent-live": "node tests/test-plainhand-agent-live.mjs",
@@ -79,7 +79,8 @@
     "benchmark:review": "node benchmarks/benchmark-review-quality.mjs",
     "benchmark:profile": "node benchmarks/benchmark-profile.mjs",
     "benchmark:calibration": "node benchmarks/benchmark-calibration.mjs",
-    "benchmark:status": "node benchmarks/benchmark-status.mjs"
+    "benchmark:status": "node benchmarks/benchmark-status.mjs",
+    "test:cloud-ui": "playwright test -c tests/playwright-onboarding.config.mjs"
   },
   "keywords": [
     "ai",
@@ -106,10 +107,15 @@
     "@modelcontextprotocol/sdk": "1.32.1",
     "dotenv": "^17.0.0",
     "js-yaml": "^4.3.2",
+    "pdfjs-dist": "6.5.438",
     "playwright": "^1.58.1",
     "postgres": "3.4.9"
   },
   "bin": {
     "plainhand": "bin/plainhand.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.1",
+    "@playwright/test": "1.62.1"
   }
 }

@@ -1,3 +1,4 @@
+import { CloudProgress, CloudChatCard } from './onboarding.mjs';
 // Home: a briefing computed from the workspace (no model call), the assistant
 // thread when the agent engine is available, and a compact list of roles.
 import { html, useState, store, api, refresh, toast, openJob, openDialog, navigate, queueTask, update, Icon, ago, Day, relativeDay, daysUntil, todayISO, plural, ACTIVE, SUBMITTED, TASK_TITLES } from './core.mjs';
@@ -151,7 +152,7 @@ export function HomePage() {
       actions=${html`<${Button} class="primary" icon="plus" onClick=${() => openDialog({ type: 'add-job' })}>Add a job</${Button}>`} />
     ${state.jobs.length ? html`<ul class="summary-strip" aria-label="Workspace summary">
       <li><strong>${counts.roles}</strong> ${counts.roles === 1 ? 'role' : 'roles'}</li><li><strong>${counts.selected}</strong> selected</li><li><strong>${counts.review}</strong> to review</li><li><strong>${counts.applied}</strong> submitted, confirmed by you</li></ul>` : null}
-    ${setupNeeded ? html`<${SetupSteps} state=${state} />` : null}
+    ${state.cloud ? html`<${CloudProgress} />` : setupNeeded ? html`<${SetupSteps} state=${state} />` : null}
     ${setupNeeded && !items.length && !running.length && !agentAvailable() ? null : html`<section class="card briefing" aria-labelledby="briefing-title">
       <header class="card-head"><div class="card-title"><span class="card-icon"><span class="brand-mark small" aria-hidden="true">p</span></span><div><h2 id="briefing-title">Today’s briefing</h2><p>Computed from your workspace: follow-ups, tasks, reviews and interviews.</p></div></div></header>
       ${running.map(task => html`<${TaskCard} key=${task.id} task=${task} onCancel=${async () => { await api('tasks/cancel', { id: task.id }); toast('Cancellation requested. Saved work is preserved.'); refresh(); }} />`)}
@@ -159,7 +160,7 @@ export function HomePage() {
         ${items.length > BRIEF_LIMIT ? html`<div class="list-more"><${Button} class="ghost small" icon=${allItems ? 'chevronDown' : 'plus'} aria-expanded=${allItems ? 'true' : 'false'} onClick=${() => setAllItems(!allItems)}>${allItems ? 'Show fewer' : `Show ${items.length - BRIEF_LIMIT} more`}</${Button}></div>` : null}`
         : !running.length ? html`<div class="brief-empty"><${Icon} name="checkCircle" /><div><strong>Nothing needs you right now.</strong><p>${state.jobs.length ? 'New follow-ups, reviews and interviews will show up here.' : 'Add a role to get started. Overdue follow-ups, finished tasks and packets to review will show up here.'}</p></div></div>` : null}
     </section>`}
-    ${store.demo ? null : agentAvailable() ? html`<${AssistantThread} />` : html`<${AssistantLocked} />`}
+    ${state.cloud ? html`<${CloudChatCard} />` : store.demo ? null : agentAvailable() ? html`<${AssistantThread} />` : html`<${AssistantLocked} />`}
     ${state.jobs.length ? html`<${Card} title="Your roles" icon="briefcase" id="home-roles-title" actions=${html`<a class="button ghost small" href="#jobs">All jobs<${Icon} name="arrow" /></a>`}>
       <${JobList} jobs=${state.jobs} filter=${filter} setFilter=${setFilter} query="" limit=${6} />
     </${Card}>` : null}`;

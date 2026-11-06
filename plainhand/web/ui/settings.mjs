@@ -326,6 +326,7 @@ function AutonomyCard() {
 export function WorkspacePage() {
   const state = store.state;
   const theme = useTheme();
+  if (state.cloud) return html`<${PageHeading} title="Online workspace" subtitle="Your candidate data is stored in Supabase on the server, rather than on this computer. Your connected AI receives context for the tasks you request." /><${Card} title="Your account and data"><p>Export your saved workspace before switching to the desktop app. A desktop installer has not been released yet.</p><div class="action-row"><${ActionButton} onClick=${exportWorkspace}>Export workspace</${ActionButton}><a class="button" href="/account/delete">Delete my account</a><a class="button" href="#help">Get help</a></div></${Card}><${DataPanel} />`;
   return html`
     <${PageHeading} title="Workspace" subtitle="Your data is inspectable, portable and kept separate from the application code." />
     <${Card} title="Appearance" icon=${theme.resolved === 'dark' ? 'moon' : 'sun'} id="appearance-title" subtitle="Your choice is saved in this browser and shared between its tabs.">

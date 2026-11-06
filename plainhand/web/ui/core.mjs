@@ -1,5 +1,6 @@
 // Core runtime for the Plainhand front end: one shared store, the API client,
 // the live event stream, small formatting helpers and the icon set.
+import { chatRequest } from './connect-data.mjs';
 import { html, useEffect, useReducer, useRef, useState } from '../vendor/preact-htm.mjs';
 
 export { html, useEffect, useRef, useState, useReducer };
@@ -69,6 +70,10 @@ export function toast(text, error = false) {
 export const DEMO_WRITE = 'This is a sample workspace. Leave the demo to connect your agent and use your own profile.';
 export async function api(path, data) {
   if (store.demo && data !== undefined) throw new Error(DEMO_WRITE);
+  if (store.state?.cloud && data !== undefined && (path === 'tasks' || path === 'conversation')) {
+    openDialog({ type: 'chat-request', text: chatRequest(data.kind || 'interview', store.state.jobs.find(j => j.id === data.jobId), data, store.state.onboarding?.provider || 'chatgpt') });
+    return { chatRequired: true };
+  }
   const response = await fetch('/api/' + path, {
     method: data === undefined ? 'GET' : 'POST',
     headers: { 'X-Plainhand-Token': token, ...(data === undefined ? {} : { 'Content-Type': 'application/json' }) },
@@ -121,6 +126,14 @@ let source = null, retryDelay = 1000, retryTimer = null;
 export function connectEvents() {
   clearTimeout(retryTimer);
   source?.close();
+  if (store.state?.cloud) {
+    const poll = async () => {
+      if (document.visibilityState === 'visible') await refresh();
+      retryTimer = setTimeout(poll, 5000);
+    };
+    retryTimer = setTimeout(poll, 5000);
+    return;
+  }
   if (typeof EventSource === 'undefined') return;
   source = new EventSource('/api/events?token=' + encodeURIComponent(token));
   source.addEventListener('open', () => { retryDelay = 1000; });
@@ -151,7 +164,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 export const VIEWS = {
   home: 'Home', jobs: 'Jobs', campaigns: 'Campaigns', applications: 'Applications', profile: 'Profile & brain',
   activity: 'Activity', usage: 'AI usage', connections: 'Connections', workspace: 'Workspace',
-  insights: 'Insights',
+  insights: 'Insights', 'get-started': 'Get started', help: 'Get help',
 };
 const ALIASES = { overview: 'home', discover: 'jobs', settings: 'workspace' };
 export function viewFromHash(hash = location.hash) {
@@ -198,7 +211,8 @@ export function runningTask(kind, jobId = null) {
   return store.state?.tasks.find(t => ACTIVE.includes(t.status) && (!kind || t.kind === kind) && (jobId === null || t.jobId === jobId)) || null;
 }
 export async function queueTask(kind, jobId = null, input = {}) {
-  await api('tasks', { kind, jobId, ...input });
+  const result = await api('tasks', { kind, jobId, ...input });
+  if (result?.chatRequired) return;
   toast('Queued. Your agent’s progress appears here and in Activity.');
   await refresh();
 }
