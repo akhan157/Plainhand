@@ -15,20 +15,24 @@ and never have to understand what an "MCP connector" is.
 1. **Go to the Plainhand website → Continue with Google (or email link).**
 2. **Get started** walks them through three things, one screen each: upload
    a resume (PDF or paste), say what roles they want, connect their AI.
-3. **Connect your AI** shows two big buttons:
-   - **Use my ChatGPT plan**: one click, sign in to ChatGPT, done. From then
-     on everything happens on the Plainhand website: they press buttons
-     (Evaluate, Prepare application) and chat with Plainhand's assistant there.
-   - **Use Plainhand inside ChatGPT or Claude**: they add Plainhand to the
-     chat app they already use (one click once Plainhand is in each app's
-     directory) and then just talk: "Here's a job link, is it a fit?",
+3. **Connect your AI** asks which AI and plan they have, then takes them down
+   the route that gives full Plainhand for that plan, with the fewest steps:
+   - **Inside Claude or ChatGPT** (Claude, any plan; ChatGPT work and school
+     plans): they add Plainhand to the chat app they already use, guided one
+     screen at a time, then just talk: "Here's a job link, is it a fit?",
      "Write my application for it."
+   - **The Plainhand desktop app** (ChatGPT Free, Go, Plus, Pro): one Download
+     button, open it, **Sign in with ChatGPT**. Everything happens in the app.
+   - **Use my ChatGPT plan on the website** (one button): offered as soon as
+     OpenAI approves it, for every ChatGPT plan it covers.
 4. **Review and approve** on the website: read the resume, cover letter and
    answers, fix anything, press **Approve**. Only the candidate can approve.
 5. **Apply**: open the employer's page, click the Plainhand extension,
    **Fill this page**. They check it, upload anything left, and press Submit
    themselves. Then **I submitted this** records it.
 6. **Follow up**: the website shows what's due; drafts are ready to send.
+
+Desktop app users do steps 4 to 6 in the app, which also fills forms itself.
 
 ## Every subscriber gets full Plainhand today
 
@@ -212,7 +216,7 @@ The existing Preact UI, served behind the session cookie, with:
 - Hidden in the cloud: Insights, Campaigns, remote view, local CAPTCHA solver,
   workspace import from a folder. Export stays.
 
-### 5a. Guided AI setup (until one-click exists)
+### 5a. Guided AI setup
 
 The **Connect your AI** page is a wizard, not a help article. Every screen has
 one instruction, one screenshot of exactly what they will see, and one button.
@@ -234,8 +238,8 @@ name, with a screenshot).
   admin controls it and gives a ready-to-send message asking the admin to allow
   Plainhand.
 - **Pro:** the same walkthrough, followed by the live check below. If the
-  account turns out read-only, the wizard says so plainly and offers the
-  alternatives.
+  account turns out read-only, the wizard says so plainly and moves them to
+  the desktop app route below.
 - **Free, Go, Plus (and Pro, if the live check finds it read-only):** "For
   your plan, Plainhand runs as a small app on your computer and uses your
   ChatGPT plan from there." One **Download for Windows / Linux / Mac** button
@@ -256,7 +260,7 @@ so before they start.
 chat:" with a Copy button for a fixed sentence ("@Plainhand check my
 connection"). The page watches for that call and turns green within seconds:
 "Connected. Plainhand can read and save." If the chat can read but its save
-test is refused, it shows the read-only explanation and the alternatives. If
+test is refused, it explains that and offers the desktop app route. If
 nothing arrives in two minutes, it shows the three most likely causes with a
 picture for each (plugin not installed, Plainhand not picked with @, signed in
 to a different Plainhand account).
@@ -398,7 +402,7 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
 | 11 | Desktop app: installer (Windows via SignPath, Linux), Sign in with ChatGPT (open-source path), import from Plainhand online | |
 
-## 10. Desktop app (required: full route for ChatGPT personal plans)
+## Desktop app (required: the full route for ChatGPT personal plans)
 
 OpenAI's self-serve path for open-source apps that run on the user's computer
 is available today, with no approval. Packaging the local app as a normal
