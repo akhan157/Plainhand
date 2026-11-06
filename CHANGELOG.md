@@ -1,5 +1,31 @@
 # Changelog
 
+
+## Unreleased: hosted Plainhand (cloud server, connector, extension)
+
+- **The hosted cloud server.** One stateless Node handler for Vercel
+  (`plainhand/cloud/app.mjs`): Supabase sign-in (Google and email links),
+  30-day httpOnly session cookies, per-candidate Postgres workspaces behind the
+  session, per-user/IP/sign-in rate limits, a Get-help endpoint, the daily
+  cron, and full account deletion.
+- **The OAuth 2.1 server for connectors and the extension** with S256 PKCE,
+  one-hour access tokens, rotating refresh tokens with reuse detection, client
+  id metadata documents plus dynamic registration, and RFC 9207 `iss`.
+- **The deferred-agent step protocol.** ChatGPT or Claude does the model work
+  through the connector: each model call becomes a validated step, replayed
+  statelessly with digest matching, cached posting checks, three tries for a
+  rejected answer, and a two-hour expiry.
+- **Sign in with ChatGPT as a built-in local provider** — OpenAI's open-source
+  token path, nothing to install: local OAuth callback listener, ID-token
+  verification against OpenAI's JWKS, encrypted tokens, revoke on sign-out,
+  and the Responses API agent behind it.
+- **The browser extension (Manifest V3).** Save this job, Fill this page
+  (approved packet only, sensitive fields always yours, every click screened by
+  the shared submit guard, never submits), and I submitted this. Optional host
+  permissions requested on first use for the known application hosts.
+- **CI** gains a `cloud` job running the Postgres-backed suites
+  (`test:cloud`) and the real-Chromium extension suite (`test:extension`).
+
 ## 1.1.1 (2026-11-05)
 
 - **Lever forms no longer stall on a captcha that isn't there.** Lever loads
