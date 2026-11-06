@@ -82,6 +82,15 @@ create table if not exists plainhand.rate_limits (
   primary key (key, window_start)
 );
 
+-- Added for plainhand/cloud/oauth.mjs.
+-- Registration rate limit: a hash of the registering IP, never the IP itself.
+alter table plainhand.oauth_clients add column if not exists registered_ip_hash text;
+create index if not exists oauth_clients_created_idx on plainhand.oauth_clients (created_at);
+-- One grant per (candidate, client); re-authorizing reuses it.
+create unique index if not exists oauth_grants_user_client_idx on plainhand.oauth_grants (user_id, client_id);
+-- A rotated refresh token is kept (marked used) until it expires so reuse can be detected.
+alter table plainhand.oauth_tokens add column if not exists used_at timestamptz;
+
 alter table plainhand.accounts enable row level security;
 alter table plainhand.workspace_files enable row level security;
 alter table plainhand.sessions enable row level security;
