@@ -2,6 +2,7 @@
 // conversation and the reviewed understanding.
 import { html, useState, store, api, refresh, toast, navigate, queueTask, runningTask, Icon, useDraft } from './core.mjs';
 import { ActionButton, Button, Card, PageHeading, Field, Notice, Pill, Meter } from './components.mjs';
+import { CopyRequest } from './onboarding.mjs';
 import { MessageList, Composer } from './conversation.mjs';
 import { agentAvailable, agentClient } from './agent.mjs';
 
@@ -56,7 +57,7 @@ function Foundation() {
     event.currentTarget.value = '';
     if (!file) return;
     try {
-      if (file.size > 5 * 1024 * 1024) throw new Error('Choose a file under 5 MB.');
+      if (file.size > (state.cloud ? 2 : 5) * 1024 * 1024) throw new Error(`Choose a file under ${state.cloud ? 2 : 5} MB.`);
       const content = await readFile(file);
       toast('Reading your resume…');
       const result = await api('resume/import', { name: file.name, content });
@@ -64,18 +65,18 @@ function Foundation() {
       toast('Resume imported. Check the text, then save your profile.');
     } catch (error) { toast(error.message, true); }
   }
-  return html`<${Card} title="Your foundation" icon="file" id="foundation-title" subtitle="A starting point. Your agent asks about the rest." actions=${state.profile.resume ? html`<${Pill} tone="success" icon="lock">Saved on this computer</${Pill}>` : null}>
+  return html`<${Card} title="Your foundation" icon="file" id="foundation-title" subtitle="A starting point. Your agent asks about the rest." actions=${state.profile.resume ? html`<${Pill} tone="success" icon="lock">${state.cloud ? 'Saved online' : 'Saved on this computer'}</${Pill}>` : null}>
     <form id="profile-form" class="form-grid" onSubmit=${save}>
       ${FIELDS.map(([name, label, placeholder, opts]) => html`<${Field} key=${name} form="profile" name=${name} label=${label} placeholder=${placeholder} value=${values[name] || ''} onInput=${set(name)} ...${opts} />`)}
       <div class="field full">
         <label for="profile-resume">Your resume</label>
-        <label class="upload-box" for="resume-file"><${Icon} name="upload" /><span>Import a PDF, Markdown or text file</span><small>up to 5 MB</small></label>
+        <label class="upload-box" for="resume-file"><${Icon} name="upload" /><span>Import a PDF, Markdown or text file</span><small>up to ${state.cloud ? 2 : 5} MB</small></label>
         <input type="file" class="visually-hidden" id="resume-file" accept=".pdf,.md,.txt" onChange=${importResume} />
         <textarea id="profile-resume" name="resume" class="large" required placeholder="Or paste your resume here. Keep real dates, project details and achievements." value=${values.resume || ''} onInput=${e => set('resume')(e.currentTarget.value)} aria-describedby="profile-resume-hint"></textarea>
-        <small id="profile-resume-hint">PDF import needs Poppler. Imported text appears here for your review before saving.</small>
+        <small id="profile-resume-hint">${state.cloud ? 'PDFs up to 20 pages with selectable text are supported. Paste text for scanned or encrypted PDFs.' : 'PDF import needs Poppler.'} Imported text appears here for your review before saving.</small>
       </div>
       ${STORY.map(([name, label, placeholder, hint]) => html`<${Field} key=${name} form="profile" name=${name} label=${label} placeholder=${placeholder} hint=${hint} area full value=${values[name] || ''} onInput=${set(name)} />`)}
-      <div class="form-footer full"><small>${dirty ? html`<strong>Unsaved changes</strong> · ` : 'Saved locally when you choose Save · '}You control the facts.</small><button type="submit" class="button primary"><${Icon} name="check" />Save my profile</button></div>
+      <div class="form-footer full"><small>${dirty ? html`<strong>Unsaved changes</strong> · ` : state.cloud ? 'Saved online when you choose Save · ' : 'Saved locally when you choose Save · '}You control the facts.</small><button type="submit" class="button primary"><${Icon} name="check" />Save my profile</button></div>
     </form>
   </${Card}>`;
 }
@@ -83,7 +84,8 @@ function Foundation() {
 function Interview() {
   const state = store.state;
   const interviewing = runningTask('interview');
-  const blocked = !state.provider || !state.profile.resume;
+  if (state.cloud) return html`<${Card} title="Tell your story in your chat"><${CopyRequest} text="@Plainhand help build my candidate understanding. Ask about my actual contributions and missing evidence." /></${Card}>`;
+  const blocked = (!state.provider && !state.cloud) || !state.profile.resume;
   const first = state.profile.name?.split(' ')[0] || 'You';
   const opening = { id: 'opening', role: 'assistant', text: 'What’s a project or experience you’re proud of, and what did you personally contribute? I’ll use your resume as a starting point, then we’ll build a fuller picture together.' };
   return html`<${Card} title="Let’s connect the dots." icon="brain" id="interview-title" subtitle="A conversation, not another questionnaire. Only what you write becomes evidence." class="interview">
@@ -100,7 +102,7 @@ function Understanding() {
   const state = store.state;
   const u = state.understanding;
   const interviewing = runningTask('interview');
-  const blocked = !state.provider || !state.profile.resume;
+  const blocked = (!state.provider && !state.cloud) || !state.profile.resume;
   return html`<${Card} title="How your agent sees you" icon="spark" id="understanding-title" subtitle="You review this before it becomes trusted guidance." actions=${u?.approved ? html`<${Pill} tone="success" icon="check">Reviewed</${Pill}>` : u ? html`<${Pill} tone="warn">Awaiting your review</${Pill}>` : null}>
     ${u ? html`<div class="understanding">
         <p class="understanding-summary">${u.result.summary}</p>
@@ -153,7 +155,7 @@ const STANDARD_PILL = { approved: ['success', 'Your standard'], draft: ['warn', 
 function Standard() {
   const state = store.state;
   const s = state.standard, status = state.standardStatus || 'none';
-  const writing = runningTask('standard'), blocked = !state.provider || !state.profile.resume || !!writing;
+  const writing = runningTask('standard'), blocked = (!state.provider && !state.cloud) || !state.profile.resume || !!writing;
   const pill = STANDARD_PILL[status];
   return html`<${Card} title="Your standard application" icon="file" id="standard-title" subtitle="One resume and cover letter you approve once. Every application starts from it and changes only what the role calls for." actions=${pill ? html`<${Pill} tone=${pill[0]}>${pill[1]}</${Pill}>` : null}>
     ${!s ? html`<p class="muted-text">After your profile has a few stories, write your standard. You review it like any application; nothing is used until you approve it.</p>
@@ -292,6 +294,7 @@ function Steps() {
 
 export function ProfilePage() {
   const state = store.state;
+  if (state.cloud) return html`<${PageHeading} title="Profile & brain" subtitle="Save only your real facts. Use your connected chat to build drafts; review them here." /><${Foundation} /><${Interview} /><${Samples} /><${Understanding} /><${Standard} />`;
   const steps = profileSteps(state), done = steps.filter(s => s.done).length;
   const started = (state.conversation || []).some(m => m.role === 'user');
   return html`

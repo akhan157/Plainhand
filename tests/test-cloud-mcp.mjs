@@ -4,6 +4,8 @@ import http from 'node:http';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { handleMcp, CONNECTION_CHECK_FILE } from '../plainhand/cloud/mcp.mjs';
+import { connectionResult } from '../plainhand/web/ui/connect-data.mjs';
+import { readConnectionCheck } from '../plainhand/cloud/connection-check.mjs';
 import { Workspace } from '../plainhand/store.mjs';
 import { MemoryStorage } from '../plainhand/storage.mjs';
 import { Workflow } from '../plainhand/workflow.mjs';
@@ -77,6 +79,9 @@ test('connection check proves a save, persists trusted identity, and refuses fab
   assert.equal(checked.ok, true); assert.equal(checked.read, true); assert.equal(checked.write, true);
   assert.equal(checked.provider, 'connector'); assert.equal(checked.clientId, 'trusted-client');
   assert.ok(Number.isFinite(Date.parse(checked.checkedAt)));
+  const marker = await readConnectionCheck(ws);
+  assert.equal(connectionResult(marker, Date.parse(checked.checkedAt) - 1, 'claude'), 'connected');
+  assert.equal(connectionResult(marker, Date.parse(checked.checkedAt), 'claude'), 'waiting');
   assert.ok((await ws.load()).revision > before);
   const write = ws.write.bind(ws);
   ws.write = async () => { throw new Error('Fixture storage unavailable'); };

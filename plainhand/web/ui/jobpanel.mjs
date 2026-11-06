@@ -1,3 +1,4 @@
+import { CopyRequest } from './onboarding.mjs';
 // The job context panel: fit and evaluation, the packet document, form
 // assistance and the application record. Safety rules kept exactly:
 // approval UI only for a fresh packet with no open questions; Applied only
@@ -222,6 +223,7 @@ function ApplyTab({ job }) {
   // One browser action at a time: the others wait until it finishes.
   const [running, setRunning] = useState(null);
   if (!job.approvedHash || job.stale) return html`<${Empty} icon="lock" title="A quick review before the next step.">Review and approve the exact application packet before opening form assistance.</${Empty}><div class="center-row"><${Button} class="primary" iconEnd="arrow" onClick=${() => setJobTab('packet')}>Review application packet</${Button}></div>`;
+  if (store.state.cloud) return html`<${Notice}>Review your approved documents, then fill the employer’s form yourself or use the Plainhand extension on a computer. The website cannot open a local application browser. You make the final submit click.</${Notice}><${CopyRequest} text=${'@Plainhand help me prepare to fill the application for ' + job.company + ' — ' + job.title + '. Job ID: ' + job.id} />${job.url ? html`<${LinkButton} href=${safeLink(job.applyUrl || job.url)} external>Open application</${LinkButton}>` : null}<${Button} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>I submitted this application</${Button}>`;
   const checkpoint = job.browserCheckpoint;
   const observation = plan?.observation;
   const submitted = job.status === 'Applied' || !!job.submittedAt;
