@@ -72,6 +72,26 @@ connector; Claude Code (desktop route) needs a paid Claude plan; Codex and
 Sign in with ChatGPT plan usage depend on the ChatGPT plan's current
 entitlements.
 
+### Plan coverage check (must pass before launch)
+
+Each row is tested with a real account of that tier, end to end (connect,
+evaluate a role, prepare and fact-check a packet, fill a test form), and the
+result is recorded with the date in the wizard's data file. Rows that fail
+are shown honestly in the wizard with the best working alternative.
+
+| Tier | Route to test | Known risk (secondhand sources, Nov 2026) |
+| --- | --- | --- |
+| ChatGPT Free | Desktop: Sign in with ChatGPT; Codex | OpenAI lists plan sharing for Go, Plus, Pro only. Codex on Free is reported as desktop-app only, without the CLI the local app uses, and with unpublished limits. **Likely no full route today**; if confirmed, the wizard recommends Claude Free on the website. |
+| ChatGPT Go | Desktop: Sign in with ChatGPT; Codex | OpenAI's help article includes Go in plan sharing; a developer summary says Plus and Pro only. Codex CLI reportedly excluded on Go. |
+| ChatGPT Plus, Pro | Desktop: Sign in with ChatGPT; Codex CLI | Expected to work. Pro: also test the website connector (read-only reported). |
+| ChatGPT Business, Enterprise, Edu | Website connector; desktop | Workspace admin may need to allow custom servers. |
+| Claude Free | Website connector | One custom connector allowed; Claude Code (desktop route) needs a paid plan. |
+| Claude Pro, Max, Team, Enterprise | Website connector; desktop (Claude Code) | Team/Enterprise: an owner adds the connector. |
+
+Owner action: provide or create one test account per ChatGPT tier
+(Free, Go, Plus) and Claude (Free, Pro) for the check; paid tiers can be
+tested for one month each.
+
 ## Two AI routes, one foundation
 
 | | Use my ChatGPT plan | Inside ChatGPT / Claude (connector) |
@@ -401,6 +421,7 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
 | 11 | Desktop app: installer (Windows via SignPath, Linux), Sign in with ChatGPT (open-source path), import from Plainhand online | |
+| 12 | Plan coverage check with real accounts for every tier; wizard data file updated with results | |
 
 ## Desktop app (required: the full route for ChatGPT personal plans)
 
