@@ -453,7 +453,7 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       return { result: { taskId: await workflow.enqueue(kind, input.jobId || null, { request, retryOf: cleanText(input.retryOf, 100) || null }) } };
     } });
   define({ name: 'tasks.cancel', tier: 'task', title: 'Cancel a task', description: 'Cancel a queued or running task. Saved work is kept.', input: { taskId: 'string' }, summarize: () => 'Cancel a running task',
-    run: async (ctx, input) => { await workflow.cancel(input.taskId); return { result: { ok: true } }; } });
+    run: async (ctx, input) => { const known = (await workspace.load()).tasks.some(t => t.id === input.taskId); if (!known) throw new Error('No task with that id is running or queued.'); await workflow.cancel(input.taskId); return { result: { ok: true } }; } });
 
   // ── candidate only ──────────────────────────────────────────────────────
   define({ name: 'understanding.approve', tier: 'candidate', title: 'Approve your understanding', description: 'The candidate confirms the profile summary reflects them.', input: {}, panel: () => ({ type: 'profile' }),
