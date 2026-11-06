@@ -379,6 +379,45 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 - Insights, Campaigns, remote view, local CAPTCHA solver.
 - The local app keeps all of these; nothing is removed from it.
 
+## Coverage gaps: now vs later
+
+Rule: easy and core → now. Hard, or not core → later.
+
+**Now (in this plan):**
+
+- **Get help.** A **Get help** button on every page and in the extension and
+  desktop app: a short form (what were you trying to do?) that attaches the
+  current screen name and recent error ids, never workspace content without
+  the candidate ticking a box. Plus free error tracking (Sentry free tier) on
+  the website, server, extension and desktop app, with personal data
+  scrubbed, so we see where people get stuck. Easy; essential for
+  non-technical users who will not send logs.
+- **Phone users.** The website already has phone layouts. The wizard detects a
+  phone and says plainly which parts need a computer once (adding the ChatGPT
+  server; the extension) and which work on the phone afterwards (Claude's and
+  ChatGPT's mobile apps use a connector once it is added; review, approve and
+  track on the website). Easy.
+- **Accessibility baseline.** Keyboard use, labels for screen readers, focus
+  order, contrast and text resizing checked on the wizard, packet review,
+  approve and extension popup, with an automated check (axe) in the browser
+  tests. Moderate, but core: the audience includes people who rely on these.
+- **Moving between website and desktop.** **Import from Plainhand online**
+  in the desktop app and **Upload to Plainhand online** from it, using the
+  existing workspace export format. Easy, because export and import already
+  exist.
+
+**Later:**
+
+- **Live sync between website and desktop** (one account, both always up to
+  date): the desktop app would store its workspace in the online account,
+  which needs offline handling and conflict resolution. Hard; most people use
+  one route, and the import/upload above covers switching.
+- **Other languages** (interface, wizard screenshots, and drafting in the
+  candidate's language): moderate effort and ongoing upkeep; not core for the
+  first audience. Spanish first when it comes.
+- **Form filling on phones**: browsers on phones do not support extensions
+  like this; not possible with the current approach.
+
 ## Owner actions (only you can do these)
 
 | When | Action |
@@ -428,6 +467,7 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
 | 11 | Desktop app: installer (Windows via SignPath, Linux), Sign in with ChatGPT (open-source path), import from Plainhand online | |
 | 12 | Plan coverage check with real accounts for every tier; wizard data file updated with results | |
+| 13 | Get help + error tracking, phone guidance, accessibility baseline, desktop import/upload | |
 
 ## Desktop app (required: the full route for ChatGPT personal plans)
 
