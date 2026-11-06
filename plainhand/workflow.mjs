@@ -22,8 +22,8 @@ const list = (value, label, limit = 40) => {
   return value;
 };
 const strings = (value, label) => list(value, label).map(v => requireText(v, label, 15000));
-function ready(state) {
-  if (!state.provider) throw new Error('Connect and select an agent first.');
+function ready(state, fallbackProvider = null) {
+  if (!state.provider && !fallbackProvider) throw new Error('Connect and select an agent first.');
   if (!state.profile.name || !state.profile.resume || !state.profile.roles || !state.profile.location) throw new Error('Save your name, resume, target roles, and location in My profile first.');
 }
 // The fields a task actually changed on its copy of a job. Committing only these keeps
@@ -73,13 +73,19 @@ export async function renderPacket(workspace, state, job, packet) {
   return { pdf: resumeBase + '.pdf', pdfHash: digest(await workspace.readBinary(resumeBase + '.pdf')), artifacts: [resumeBase + '.pdf', letterBase + '.pdf', answersBase + '.md'] };
 }
 
+// Thrown by a deferred agent (plainhand/cloud/steps.mjs) to stop a run at a model call
+// that a chat app has not answered yet. The run then records nothing: no failure, no commit.
+export class TaskPaused extends Error {}
+
 export class Workflow {
+  // defaultProvider: the provider id used when the candidate has not selected one (the
+  // hosted connector, where the chat app itself does the model work). null locally.
   constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket } = {}) {
     this.workspace = workspace; this.usage = new UsageLedger(workspace);
     this.agent = (...args) => this.usage.track(agent, ...args);
     this.verifier = verifier; this.scanner = scanner; this.renderer = renderer;
     this.controllers = new Map(); this.queue = Promise.resolve();
-    this.handlers = new Map();
+    this.handlers = new Map(); this.defaultProvider = null;
   }
   // Feature task kinds (plainhand/features). The handler gets the same tools the built-in
   // tasks use: provider calls through run(), cancellation through check(), progress updates.
@@ -97,7 +103,7 @@ export class Workflow {
       if (state.tasks.some(t => ['running', 'queued'].includes(t.status) && t.kind === kind && t.jobId === jobId)) throw new Error('This task is already queued or running.');
       if (state.tasks.filter(t => ['running', 'queued'].includes(t.status)).length >= 20) throw new Error('Let the current queue finish before adding more tasks.');
       if (!['interview', 'evaluate', 'prepare', 'discover', 'standard', 'revise'].includes(kind) && !this.handlers.has(kind)) throw new Error('Unknown task type.');
-      if (kind !== 'discover' && this.handlers.get(kind)?.needsProfile !== false) ready(state);
+      if (kind !== 'discover' && this.handlers.get(kind)?.needsProfile !== false) ready(state, this.defaultProvider);
       if (jobId && !state.jobs.some(j => j.id === jobId)) throw new Error('Job not found.');
       if (input.retryOf) {
         const old = state.tasks.find(t => t.id === input.retryOf);
@@ -131,7 +137,7 @@ export class Workflow {
       check();
       const purpose = instruction === REVIEW_INSTRUCTION ? 'review' : instruction === HUMANIZE_INSTRUCTION ? 'humanize' : task.kind;
       const attempt = (attempts.get(purpose) || 0) + 1; attempts.set(purpose, attempt);
-      const result = await this.agent(state.provider, instruction, { context, ...extra }, { signal: controller.signal, usageContext: { taskId: id, jobId: task.jobId, retryOf: task.retryOf, purpose, attempt } });
+      const result = await this.agent(state.provider || this.defaultProvider, instruction, { context, ...extra }, { signal: controller.signal, usageContext: { taskId: id, jobId: task.jobId, retryOf: task.retryOf, purpose, attempt } });
       check(); return result;
     };
     try {
@@ -294,6 +300,7 @@ export class Workflow {
       check();
       await this.workspace.mutate(latest => { const t = latest.tasks.find(t => t.id === id); if (t.status !== 'canceled') Object.assign(t, { status: 'complete', message: 'Finished', finishedAt: now() }); });
     } catch (error) {
+      if (error instanceof TaskPaused) return;
       await this.workspace.mutate(latest => {
         const t = latest.tasks.find(t => t.id === id);
         if (t.status !== 'canceled') Object.assign(t, { status: 'failed', message: error.message, finishedAt: now() });
