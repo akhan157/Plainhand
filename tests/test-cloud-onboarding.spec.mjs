@@ -139,3 +139,11 @@ test('local app keeps EventSource, local navigation and CLI connections', async 
     expect(events).toBeGreaterThan(0); await expect(page.getByText('Local workspace', { exact: true })).toBeVisible();
   } finally { await page.close(); await local.close(); await rm(root, { recursive: true, force: true }); }
 });
+test('public privacy, terms, support and sign-in links work without a session and pass axe', async ({page,context}) => {
+  await context.setExtraHTTPHeaders({});
+  for (const [route,title] of [['/privacy','Privacy'],['/terms','Terms'],['/support','Support'],['/signin','Sign in to Plainhand']]) {
+    const response=await page.goto(app.base+route);expect(response.status()).toBe(200);
+    await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();await cleanAxe(page);
+    for(const name of ['Privacy','Terms','Support'])await expect(page.getByRole('link',{name,exact:true})).toBeVisible();
+  }
+});

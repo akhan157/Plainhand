@@ -28,6 +28,9 @@ import { StorageError } from '../storage.mjs';
 import { newCodeVerifier } from './supabase-auth.mjs';
 import { importResume } from './resume-import.mjs';
 import { readConnectionCheck } from './connection-check.mjs';
+import { renderCloudPacket, verifyCloudJob } from './runtime.mjs';
+import { publicPage } from './public-pages.mjs';
+import { reportServerError } from './diagnostics.mjs';
 import { setupCoverage } from '../web/ui/connect-data.mjs';
 
 const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web');
@@ -133,7 +136,7 @@ ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ''}${messag
 <input id="email" name="email" type="email" autocomplete="email" required maxlength="320">
 <button type="submit">Email me a sign-in link</button>
 </form>
-<p class="note">No password needed. Your data is stored securely online so you can use it from any device.</p>`);
+<p class="note">No password needed. Your workspace is stored online.</p><nav aria-label="Information"><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a></nav>`);
 }
 function deletePage(csrf) {
   return page('Delete account', `<h1>Delete your account?</h1>
@@ -166,7 +169,7 @@ export function createCloudApp(deps) {
     const workspace = accounts.workspaceFor(userId);
     const agent = makeAgent ? makeAgent({ userId, workspace }) : async () => { throw new Error('Connect your AI first. Open Connect your AI to set it up.'); };
     const makeWorkflow = agentImpl => {
-      const workflow = new Workflow(workspace, { agent: agentImpl });
+      const workflow = new Workflow(workspace, { agent: agentImpl, renderer: deps.renderer || renderCloudPacket, verifier: deps.verifier || verifyCloudJob });
       for (const feature of features) for (const [kind, task] of Object.entries(feature.tasks || {})) workflow.registerTask(kind, task);
       return workflow;
     };
@@ -303,7 +306,7 @@ export function createCloudApp(deps) {
     if (p === '/api/help') {
       await limiter.hit('help:' + ctx.userId, limits.help);
       const id = randomUUID();
-      const errorIds = Array.isArray(input.errorIds) ? input.errorIds.filter(e => typeof e === 'string').slice(0, 10).map(e => e.slice(0, 100)) : [];
+      const errorIds = Array.isArray(input.errorIds) ? input.errorIds.filter(e => typeof e === 'string' && /^[0-9a-f-]{36}$/.test(e)).slice(0, 10) : [];
       const request = { id, at: isoNow(), message: requireText(input.message, 'Your message', 4000), screen: cleanText(input.screen, 100), errorIds, email: account.email, status: 'new' };
       await workspace.write(`data/plainhand/help/${id}.json`, JSON.stringify(request, null, 2) + '\n');
       return json(res, 200, { ok: true, id });
@@ -390,12 +393,15 @@ export function createCloudApp(deps) {
     if (method === 'GET' && p === '/auth.css') return send(res, 200, AUTH_CSS, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=300' });
     if (method === 'GET' && p !== '/' && !p.startsWith('/api/') && !p.startsWith('/auth/') && !p.startsWith('/oauth/') && !p.startsWith('/.well-known/') && await serveAsset(res, p)) return;
 
+    if (method === 'GET' && ['/privacy', '/terms', '/support'].includes(p)) return html(res, 200, publicPage(p, env.SUPPORT_URL));
+
     if (p === '/api/cron/daily') {
+      if (method !== 'GET') return json(res, 405, { error: 'Not allowed.' });
       if (!env.CRON_SECRET || !safeEqual(bearer(req) || '', env.CRON_SECRET)) return json(res, 401, { error: 'Not allowed.' });
       await sql`select 1`; // also keeps the Supabase project awake
       await sessions.purgeExpired?.();
       await limiter.purge();
-      return json(res, 200, { ok: true });
+      return json(res, 200, { ok: true, job: 'maintenance', dailyJobChecks: 'pending' });
     }
 
     const ip = clientIp(req);
@@ -495,6 +501,8 @@ export function createCloudApp(deps) {
   }
 
   return async function handler(req, res) {
+    const errorId = randomUUID();
+    res.setHeader('X-Request-ID', errorId);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -505,16 +513,15 @@ export function createCloudApp(deps) {
     try { await route(req, res); }
     catch (error) {
       if (res.headersSent) { res.end(); return; }
-      if (error instanceof HttpError) return json(res, error.status, { error: error.message }, error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {});
-      // Postgres, network and programming errors are not shown to the candidate. Only the
-      // error's type is logged: messages can contain workspace data.
+      if (error instanceof HttpError) return json(res, error.status, { error: error.message, errorId }, error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {});
+      // Postgres, network and programming errors are not shown to the candidate.
+      // Log only scrubbed request metadata; messages can contain workspace data.
       const internal = error?.name === 'PostgresError' || /^E[A-Z_]+$/.test(String(error?.code || '')) || error instanceof TypeError || error instanceof ReferenceError || error instanceof RangeError;
       if (internal && !(error instanceof StorageError)) {
-        console.error('plainhand-cloud error', error?.name, error?.code || '');
-        if (process.env.PLAINHAND_DEBUG_ERRORS) console.error(error);
-        return json(res, 500, { error: 'Something went wrong. Try again in a minute.' });
+        reportServerError({ errorId, status: 500, method: req.method });
+        return json(res, 500, { error: 'Something went wrong. Try again in a minute.', errorId });
       }
-      return json(res, 400, { error: error.message, ...(error.code && !/^E[A-Z_]+$/.test(error.code) ? { code: error.code } : {}), ...(error.panel ? { panel: error.panel } : {}) });
+      return json(res, 400, { error: error.message, errorId, ...(error.code && !/^E[A-Z_]+$/.test(error.code) ? { code: error.code } : {}), ...(error.panel ? { panel: error.panel } : {}) });
     }
   };
 }

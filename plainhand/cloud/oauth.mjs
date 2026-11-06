@@ -239,7 +239,7 @@ function page(res, status, title, bodyHtml, headers = {}) {
   return true;
 }
 
-export function createOAuthServer({ sql, issuer, resource, sessionUser, now = () => new Date(), fetchImpl = globalThis.fetch, lookupImpl = dnsLookup, extensionIds = [], limits = {} }) {
+export function createOAuthServer({ sql, issuer, resource, sessionUser, now = () => new Date(), fetchImpl = globalThis.fetch, lookupImpl = dnsLookup, extensionIds = [], requireExtensionAllowlist = false, limits = {} }) {
   if (!sql || !issuer || !resource || typeof sessionUser !== 'function') throw new Error('createOAuthServer needs sql, issuer, resource and sessionUser.');
   const base = issuer.replace(/\/+$/, '');
   const issuerUrl = new URL(issuer);
@@ -249,14 +249,15 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
   // the browser extension gets tokens for the extension API, which can record "I submitted".
   // A client is the extension only when every redirect is a browser-identity address
   // (Chrome/Edge: <id>.chromiumapp.org, Firefox: <id>.extensions.allizom.org), which only
-  // that installed extension can receive; when extensionIds is set, only those ids count.
+  // that installed extension can receive. Production also requires a published ID in
+  // extensionIds; an empty list disables the extension audience, including old tokens.
   const extensionResource = issuer.replace(/\/+$/, '') + '/api/extension';
   const extensionCanonical = canonicalResource(extensionResource);
   const allowedExtensionIds = new Set((extensionIds || []).map(id => String(id).toLowerCase()));
   const isExtensionClient = client => Array.isArray(client?.redirectUris) && client.redirectUris.length > 0 && client.redirectUris.every(uri => {
     let url; try { url = new URL(uri); } catch { return false; }
     const match = /^([a-z0-9-]+)\.(chromiumapp\.org|extensions\.allizom\.org)$/.exec(url.hostname);
-    return url.protocol === 'https:' && Boolean(match) && (!allowedExtensionIds.size || allowedExtensionIds.has(match[1]));
+    return url.protocol === 'https:' && Boolean(match) && ((!requireExtensionAllowlist && !allowedExtensionIds.size) || allowedExtensionIds.has(match[1]));
   });
   const resourceFor = client => (isExtensionClient(client) ? extensionResource : resource);
   const secureCookie = issuerUrl.protocol === 'https:';
@@ -421,6 +422,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
         await revokeGrantRow(tx, row.id);
         return { error: new OAuthError('invalid_grant', 'The authorization code was already used.') };
       }
+      if (requireExtensionAllowlist && canonicalResource(row.resource || resource) !== canonicalResource(resourceFor(client))) return { error: new OAuthError('invalid_grant', 'This app is no longer allowed for that resource.') };
       if (row.expires_at <= at || row.revoked_at) return { error: new OAuthError('invalid_grant', 'The authorization code has expired.') };
       if (row.redirect_uri !== redirectUri) return { error: new OAuthError('invalid_grant', 'redirect_uri does not match the authorization request.') };
       if (!VERIFIER.test(verifier) || !sameSecret(createHash('sha256').update(verifier).digest('base64url'), row.code_challenge)) {
@@ -449,6 +451,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
         return invalid();
       }
       if (row.expires_at <= at) return invalid();
+      if (requireExtensionAllowlist && canonicalResource(row.resource || resource) !== canonicalResource(resourceFor(client))) return invalid();
       try { checkResourceParam(str(params, 'resource'), row.resource || resource); } catch (error) { return { error }; }
       await tx`update plainhand.oauth_tokens set used_at = ${at} where token_hash = ${row.token_hash}`;
       return { tokens: await issueTokens(tx, row, row.resource || resource) };
@@ -669,6 +672,10 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     const tokenAudience = row ? canonicalResource(row.resource || resource) : null;
     const audience = tokenAudience === canonical ? 'mcp' : tokenAudience === extensionCanonical ? 'extension' : null;
     if (!row || !audience) return null;
+    if (audience === 'extension' && requireExtensionAllowlist) {
+      const client = await storedClient(row.client_id);
+      if (!isExtensionClient(client)) return null;
+    }
     const minuteAgo = new Date(at.getTime() - 60_000);
     await sql`update plainhand.oauth_grants set last_used_at = ${at} where id = ${row.id} and (last_used_at is null or last_used_at < ${minuteAgo})`;
     return { userId: row.user_id, grantId: row.id, clientId: row.client_id, scope: row.scope, audience };

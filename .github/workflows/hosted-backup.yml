@@ -1,0 +1,33 @@
+name: Hosted encrypted backup (owner gated)
+on:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    if: vars.PLAINHAND_BACKUPS_ENABLED == 'true' && vars.PLAINHAND_BACKUP_DESTINATION_APPROVED == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: postgres:17-bookworm
+    environment: hosted-backups
+    # Configure this protected environment and its least-privilege AWS identity first.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PLAINHAND_BACKUP_AWS_ROLE }}
+          aws-region: ${{ vars.PLAINHAND_BACKUP_AWS_REGION }}
+      - run: |
+          apt-get update
+          apt-get install -y --no-install-recommends age awscli
+      - run: bash scripts/cloud/backup.sh
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.PLAINHAND_BACKUP_DATABASE_URL }}
+          BACKUP_AGE_RECIPIENT: ${{ vars.PLAINHAND_BACKUP_AGE_RECIPIENT }}
+          BACKUP_S3_URI: ${{ vars.PLAINHAND_BACKUP_S3_URI }}
+          BACKUP_DESTINATION_APPROVED: ${{ vars.PLAINHAND_BACKUP_DESTINATION_APPROVED }}

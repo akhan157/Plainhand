@@ -7,6 +7,7 @@ import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createAccounts, createSessions } from '../plainhand/cloud/accounts.mjs';
 import { createCloudApp, SESSION_COOKIE, PKCE_COOKIE } from '../plainhand/cloud/app.mjs';
+import { renderCloudPacket, verifyCloudJob } from '../plainhand/cloud/runtime.mjs';
 import { AuthError } from '../plainhand/cloud/supabase-auth.mjs';
 import { freshDatabase, skip } from './cloud-test-db.mjs';
 
@@ -189,13 +190,13 @@ test('website routes work behind the session: profile, help, local-only features
   assert.equal(state.cloud, true);
   assert.equal((await c.api('profile', { profile: { name: 'Ana Example', resume: 'Built things.' }, revision: state.revision })).status, 200);
   assert.equal((await (await c.api('state')).json()).profile.name, 'Ana Example');
-  const help = await c.api('help', { message: 'I could not find the approve button.', screen: 'jobs', errorIds: ['e1'] });
+  const help = await c.api('help', { message: 'I could not find the approve button.', screen: 'jobs', errorIds: ['00000000-0000-4000-8000-000000000001', 'secret-not-an-id'] });
   assert.equal(help.status, 200);
   const { id } = await help.json();
   const stored = JSON.parse(await app.accounts.workspaceFor(c.userId).read(`data/plainhand/help/${id}.json`));
   assert.equal(stored.message, 'I could not find the approve button.');
   assert.equal(stored.screen, 'jobs');
-  assert.deepEqual(stored.errorIds, ['e1']);
+  assert.deepEqual(stored.errorIds, ['00000000-0000-4000-8000-000000000001']);
   assert.equal((await c.api('help', { message: '' })).status, 400);
   for (const path of ['browser/autofill', 'remote/publish', 'provider/setup', 'import']) assert.equal((await c.api(path, {})).status, 404, path);
   const events = await c.api('events');
@@ -251,11 +252,11 @@ test('the daily cron needs its secret', { skip }, async () => {
   assert.equal((await c.request('/api/cron/daily', { headers: { authorization: 'Bearer wrong' } })).status, 401);
   const ok = await c.request('/api/cron/daily', { headers: { authorization: 'Bearer cron-secret-value' } });
   assert.equal(ok.status, 200);
-  assert.deepEqual(await ok.json(), { ok: true });
+  assert.deepEqual(await ok.json(), { ok: true, job: 'maintenance', dailyJobChecks: 'pending' });
 });
 
 test('rate limits stop floods per user, per IP and per sign-in email', { skip }, async () => {
-  const limited = await start({ limits: { user: { limit: 3, seconds: 60 }, ip: { limit: 25, seconds: 60 }, signinEmail: { limit: 2, seconds: 3600 } } });
+  const limited = await start({ now: () => new Date('2026-11-06T12:00:30Z'), limits: { user: { limit: 3, seconds: 60 }, ip: { limit: 25, seconds: 60 }, signinEmail: { limit: 2, seconds: 3600 } } });
   try {
     const c = await limited.client().signIn();
     const statuses = [];
@@ -316,4 +317,26 @@ test('optional connector and extension routes require a valid bearer token', { s
     const web = await app.client().signIn();
     assert.equal((await web.request('/mcp', { method: 'POST', json: {} })).status, 404);
   } finally { await mounted.close(); }
+});
+
+test('public policy and support pages retain security headers without authentication', {skip}, async () => {
+  const c=app.client();
+  for (const path of ['/privacy','/terms','/support']) {
+    const r=await c.request(path); assert.equal(r.status,200);assert.equal(r.headers.get('x-frame-options'),'DENY');assert.match(r.headers.get('content-security-policy'),/form-action 'self'/);assert.match(await r.text(),/<h1>/);
+  }
+  const text=await (await c.request('/signin')).text();for(const path of ['/privacy','/terms','/support'])assert.ok(text.includes(`href="${path}"`));
+});
+test('internal failures expose only a request ID and scrubbed server metadata', {skip}, async () => {
+  const broken=await start({sessions:{resolve:async()=>{throw new TypeError('candidate private token');}}});
+  try {const r=await fetch(broken.base+'/api/state',{headers:{cookie:`${SESSION_COOKIE}=fixture`}});assert.equal(r.status,500);const body=await r.json();assert.equal(body.errorId,r.headers.get('x-request-id'));assert.ok(!JSON.stringify(body).includes('private token'));}finally{await broken.close();}
+});
+
+
+test('cloud context and connector replay share the cloud renderer and honest verifier', {skip}, async () => {
+  let replay;
+  const server=await start({stepRunner:({makeWorkflow})=>{replay=makeWorkflow(async()=>{});return {};}});
+  try {
+    const c=await server.client().signIn();await c.api('state');
+    assert.equal(replay.renderer,renderCloudPacket);assert.equal(replay.verifier,verifyCloudJob);
+  }finally{await server.close();}
 });

@@ -601,3 +601,25 @@ test('with extensionIds set, only the published extension counts as the extensio
   const ok = await call({ target: pinned, url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: published.json().client_id, redirectUri: 'https://publishedidpublishedidpublishedi.chromiumapp.org/', challenge, resource: EXTENSION })), headers: { 'x-test-user': user } });
   assert.equal(ok.status, 200, ok.body);
 });
+
+test('production extension support fails closed with no published IDs', {skip}, async () => {
+  const target=makeServer({requireExtensionAllowlist:true,extensionIds:[]});
+  const redirect='https://fixtureid.chromiumapp.org/';
+  const reg=await call({target,method:'POST',url:'/oauth/register',json:{client_name:'fixture',redirect_uris:[redirect],token_endpoint_auth_method:'none'}});
+  const {challenge}=verifierPair();
+  const res=await call({target,url:'/oauth/authorize?'+new URLSearchParams(authorizeQuery({clientId:reg.json().client_id,redirectUri:redirect,challenge,resource:ISSUER+'/api/extension'})),headers:{'x-test-user':await account()}});
+  assert.equal(new URL(res.headers.location).searchParams.get('error'),'invalid_target');
+});
+
+test('production allowlist disables old extension access and refresh tokens', {skip}, async () => {
+  const redirect='https://retiredfixture.chromiumapp.org/';
+  const client=await registerPublic(redirect);
+  const code=await authorize({user:await account(),clientId:client.client_id,redirectUri:redirect,resource:ISSUER+'/api/extension'});
+  const tokens=await exchange({clientId:client.client_id,...code,redirectUri:redirect,extra:{resource:ISSUER+'/api/extension'}});assert.equal(tokens.status,200);
+  const disabled=makeServer({requireExtensionAllowlist:true,extensionIds:[]});
+  assert.equal(await disabled.verifyAccessToken(tokens.json().access_token),null);
+  const published=makeServer({requireExtensionAllowlist:true,extensionIds:['retiredfixture']});
+  assert.equal((await published.verifyAccessToken(tokens.json().access_token)).audience,'extension');
+  const refreshed=await call({target:disabled,method:'POST',url:'/oauth/token',form:{grant_type:'refresh_token',refresh_token:tokens.json().refresh_token,client_id:client.client_id}});
+  assert.equal(refreshed.json().error,'invalid_grant');
+});

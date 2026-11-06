@@ -40,7 +40,7 @@ export function assertPacketFresh(job, context) {
 }
 export function packetIdentity(job) { return digest({ contextHash: job.contextHash, packet: job.packet, pdfHash: job.pdfHash, job: [job.url, job.company, job.title, job.description] }); }
 
-export async function renderPacket(workspace, state, job, packet) {
+export async function renderPacket(workspace, state, job, packet, { renderDocuments } = {}) {
   const identity = `${slug(state.profile.name)}-${slug(job.company)}-${slug(job.title)}-${now().slice(0, 10)}`;
   const resumeBase = `output/cv-${identity}`;
   const letterBase = `output/cover-letter-${identity}`;
@@ -54,16 +54,23 @@ export async function renderPacket(workspace, state, job, packet) {
   let browser;
   let pageCount = 1;
   try {
-    browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.setContent(html);
-    const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
-    // Count page objects for metadata without introducing a PDF dependency.
-    pageCount = Math.max(1, (pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length);
-    await workspace.write(resumeBase + '.pdf', pdf);
-    await page.setContent(letter);
-    await workspace.write(letterBase + '.pdf', await page.pdf({ printBackground: true, preferCSSPageSize: true }));
-  } catch { throw new Error('PDF generation needs Chromium. Run npx playwright install chromium, then retry. Your profile and job are saved.'); }
+    if (renderDocuments) {
+      const [pdf, cover] = await renderDocuments([html, letter]);
+      pageCount = Math.max(1, (pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length);
+      await workspace.write(resumeBase + '.pdf', pdf);
+      await workspace.write(letterBase + '.pdf', cover);
+    } else {
+      browser = await chromium.launch({ headless: true });
+      const page = await browser.newPage();
+      await page.setContent(html);
+      const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true });
+      // Count page objects for metadata without introducing a PDF dependency.
+      pageCount = Math.max(1, (pdf.toString('latin1').match(/\/Type\s*\/Page\b/g) || []).length);
+      await workspace.write(resumeBase + '.pdf', pdf);
+      await page.setContent(letter);
+      await workspace.write(letterBase + '.pdf', await page.pdf({ printBackground: true, preferCSSPageSize: true }));
+    }
+  } catch (error) { if (renderDocuments) throw error; throw new Error('PDF generation needs Chromium. Run npx playwright install chromium, then retry. Your profile and job are saved.'); }
   finally { await browser?.close(); }
   await workspace.write(answersBase + '.md', `# ${job.company} — ${job.title}\n\n${packet.answers.map(a => `## ${a.question}\n\n${a.answer}\n\nSources: ${a.evidence.map(e => e.sourceId).join(', ')}`).join('\n\n')}\n`);
   const baseMetadata = { candidate: slug(state.profile.name), company: job.company, company_slug: slug(job.company), role: job.title, role_slug: slug(job.title), artifact_date: now().slice(0, 10), generated_at: now(), source_baseline: await workspace.read('data/resume-source.yml') ? 'data/resume-source.yml' : 'cv.md', job_source: job.url, job_source_type: 'url', report_path: job.reportPath, report_id: path.basename(job.reportPath, '.md'), jd_fingerprint: digest(job.description), generator: 'plainhand/workflow.mjs', generator_version: '1', status: 'ready' };
