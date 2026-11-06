@@ -74,6 +74,14 @@ create table if not exists plainhand.oauth_tokens (
 );
 create index if not exists oauth_tokens_grant_idx on plainhand.oauth_tokens (grant_id);
 
+-- Rate limit counters: one row per key per fixed window. Keys are hashed (no raw IPs or emails).
+create table if not exists plainhand.rate_limits (
+  key text not null,
+  window_start timestamptz not null,
+  count integer not null default 0,
+  primary key (key, window_start)
+);
+
 alter table plainhand.accounts enable row level security;
 alter table plainhand.workspace_files enable row level security;
 alter table plainhand.sessions enable row level security;
@@ -81,4 +89,5 @@ alter table plainhand.oauth_clients enable row level security;
 alter table plainhand.oauth_grants enable row level security;
 alter table plainhand.oauth_codes enable row level security;
 alter table plainhand.oauth_tokens enable row level security;
+alter table plainhand.rate_limits enable row level security;
 revoke all on schema plainhand from public;
