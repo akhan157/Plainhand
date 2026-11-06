@@ -1,5 +1,23 @@
 # Plainhand verification matrix
 
+## Plainhand 1.1.1 and 1.1.2, 5–6 November 2026
+
+Run on Linux with Node.js 26.11.1, Playwright Chromium, Go 1.27.3 and Postgres 17
+in Docker. The live AI runs used a fictional candidate and a local test employer.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Full repository suite | PASS, all checks | `npm run test:full`, including the Go dashboard build and `go test ./...` (Go was missing in the 3 November rerun) |
+| Hosted Postgres workspace store | PASS | `test:cloud` against Postgres 17: **6/6** (skipped in earlier runs for lack of a database) |
+| Live workflow, Claude | PASS | `test-plainhand-live.mjs --provider claude`: 10/10 stages, from provider connection to evaluation, packet with independent factual review, real PDF, approval, browser fields filled with the PDF uploaded, handoff before submission, tracker left unsubmitted |
+| Live workflow, ChatGPT (Codex) | PASS | Same test with `--provider codex`: 10/10 stages |
+| Windows installer | PASS | `installer-check.yml` on GitHub's Windows runner: `irm … install.ps1 \| iex`, `plainhand --check`, app served HTTP 200 |
+| macOS installer | PASS | Same workflow on GitHub's macOS runner: `curl … install.sh \| sh`, `--check`, HTTP 200 |
+| Real employer sites, read only | PASS after fixes | The app's own `ApplicationBrowser` opened live postings without typing or submitting. Greenhouse (Figma: 19 fields), Lever (Spotify: 11, Palantir: 21), Ashby (Ramp: 13, Linear: 13) and Airbnb's careers site with an embedded Greenhouse form (19) were read as ready. Workday (NVIDIA, Salesforce) reached its sign-in step and handed off. |
+| Bugs found on live sites | FIXED | Lever's invisible preloaded hCaptcha frames counted as a challenge, so every Lever form stalled; hidden status text polluted Lever's resume label; Workday's sign-in wall rendered after the check and was reported as "review"; an embedded form whose Submit button painted first opened with 0 fields. Each has a test in `tests/test-plainhand-real-portal-regressions.mjs` that fails on the old code. |
+| Workday after sign-in | NOT VERIFIED LIVE | Needs a real Workday account; the multi-step Workday adapter is covered by fixture tests only |
+| Real submission by a user | NOT VERIFIED | By design only a person submits |
+
 ## Local rerun, 3 November 2026
 
 This checkout had no user workspace (`node lib/doctor.mjs` reports the four expected
