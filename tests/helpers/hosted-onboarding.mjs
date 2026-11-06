@@ -1,10 +1,11 @@
 import http from 'node:http';
 import { createHmac } from 'node:crypto';
 import { createCloudApp, SESSION_COOKIE } from '../../plainhand/cloud/app.mjs';
+import { TransferMemory } from './transfer-memory.mjs';
 import { MemoryStorage } from '../../plainhand/storage.mjs';
 import { Workspace } from '../../plainhand/store.mjs';
-export async function startHostedFixture() {
-  const workspaces = new Map(['alice', 'bob'].map(id => [id, new Workspace(id, { storage: new MemoryStorage() })]));
+export async function startHostedFixture({ transfer = false } = {}) {
+  const workspaces = new Map(['alice', 'bob'].map(id => [id, new Workspace(id, { storage: transfer ? new TransferMemory() : new MemoryStorage() })]));
   const env = { SITE_URL: 'http://localhost', SESSION_SECRET: 'test-secret-for-onboarding-at-least-32-characters' };
   let handler;
   const server = http.createServer((req, res) => handler(req, res));

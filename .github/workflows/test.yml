@@ -68,4 +68,5 @@ jobs:
           docker cp scripts/cloud ${{ job.services.postgres.id }}:/app/scripts/
           docker exec -u postgres ${{ job.services.postgres.id }} bash /app/scripts/cloud/backup-smoke.sh
       - run: npm run test:cloud-ui
+      - run: npm run test:workspace-transfer-ui
       - run: npm run test:extension

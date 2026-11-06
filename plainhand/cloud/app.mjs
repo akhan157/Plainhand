@@ -28,6 +28,7 @@ import { StorageError } from '../storage.mjs';
 import { newCodeVerifier } from './supabase-auth.mjs';
 import { importResume } from './resume-import.mjs';
 import { readConnectionCheck } from './connection-check.mjs';
+import { handleWorkspaceTransfer } from './workspace-transfer.mjs';
 import { renderCloudPacket, verifyCloudJob } from './runtime.mjs';
 import { publicPage } from './public-pages.mjs';
 import { reportServerError } from './diagnostics.mjs';
@@ -303,6 +304,8 @@ export function createCloudApp(deps) {
     }
     if (req.method !== 'POST') return json(res, 405, { error: 'Not allowed.' });
     const input = await jsonBody(req);
+    const transfer = await handleWorkspaceTransfer(req, { workspace, userId: ctx.userId, actor: 'ui', body: input });
+    if (transfer) return json(res, transfer.status, transfer.body);
     if (p === '/api/help') {
       await limiter.hit('help:' + ctx.userId, limits.help);
       const id = randomUUID();

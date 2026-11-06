@@ -38,6 +38,7 @@ test('sendEmailLink posts to /otp with the redirect and challenge', async () => 
   assert.equal(url.searchParams.get('redirect_to'), 'https://app.example/auth/callback');
   assert.equal(call.method, 'POST');
   assert.equal(call.headers.apikey, 'sb_publishable_x');
+  assert.equal(call.headers.Authorization, undefined);
   assert.deepEqual(call.body, { email: 'a@example.com', create_user: true, code_challenge: codeChallenge('v'.repeat(43)), code_challenge_method: 's256' });
   const limited = createSupabaseAuth(options(fakeFetch(() => [429, { msg: 'rate' }]).fetchImpl));
   await assert.rejects(limited.sendEmailLink('a@example.com', 'https://x'), /Too many/);
@@ -72,10 +73,19 @@ test('deleteUser uses the secret key, and an already deleted user is fine', asyn
   assert.equal(calls[0].url, 'https://proj.supabase.co/auth/v1/admin/users/0b1f7f52-3a0c-4e57-9a43-1d8b6c1f2e11');
   assert.equal(calls[0].method, 'DELETE');
   assert.equal(calls[0].headers.apikey, 'sb_secret_y');
-  assert.equal(calls[0].headers.Authorization, 'Bearer sb_secret_y');
+  assert.equal(calls[0].headers.Authorization, undefined);
   const failing = createSupabaseAuth(options(fakeFetch(() => [500, {}]).fetchImpl));
   await assert.rejects(failing.deleteUser('x'), /could not delete/);
   const offline = createSupabaseAuth(options(async () => { throw new TypeError('fetch failed'); }));
   await assert.rejects(offline.deleteUser('x'), /unavailable/);
   assert.throws(() => createSupabaseAuth({ url: '', publishableKey: '' }), /not configured/);
+});
+
+test('legacy JWT API keys retain Bearer authorization while opaque keys do not', async () => {
+  const { calls, fetchImpl } = fakeFetch(() => [404, {}]);
+  const legacy = 'eyJlegacy.payload.signature';
+  const auth = createSupabaseAuth({ ...options(fetchImpl), secretKey: legacy });
+  await auth.deleteUser('fixture');
+  assert.equal(calls[0].headers.apikey, legacy);
+  assert.equal(calls[0].headers.Authorization, 'Bearer ' + legacy);
 });

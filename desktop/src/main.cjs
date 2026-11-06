@@ -64,25 +64,32 @@ async function saveExport() {
   if (!result.canceled && result.filePath) { await exportFile(connection, result.filePath); return result.filePath; }
 }
 function menuAction(fn) { return () => Promise.resolve().then(fn).catch(error => dialog.showMessageBox(main || status, { type: 'error', message: 'Plainhand could not complete that action.', detail: error.message, buttons: ['OK'] })); }
+async function selectWorkspaceImport(fromOnline = false) {
+  if (!connection) return;
+  if (fromOnline) await dialog.showMessageBox(main, { message: 'Download your online workspace export first.', detail: 'Sign in to Plainhand online, open Workspace and choose Export workspace. Then select that JSON file here. This replaces the local workspace after a separate confirmation. No sign-in tokens are shared.', buttons: ['Choose exported file'] });
+  const selection = await dialog.showOpenDialog(main, { title: 'Import Plainhand workspace', properties: ['openFile'], filters: [{ name: 'Plainhand workspace', extensions: ['json'] }] });
+  if (selection.canceled) return;
+  const imported = await importFile(connection, selection.filePaths[0], async summary => {
+    const answer = await dialog.showMessageBox(main, { type: 'warning', message: 'Replace this workspace with the selected export?', detail: `${summary.jobs} jobs and ${summary.sources} sources. Existing workspace files are backed up. Packet approvals will reset. Sign in to AI providers separately on this computer.`, buttons: ['Cancel', 'Import and replace'], defaultId: 0, cancelId: 0 });
+    return answer.response === 1;
+  });
+  if (imported) { main.reload(); await dialog.showMessageBox(main, { message: 'Workspace imported. Review packets again before using them.', detail: `Backup: ${imported.backup}` }); }
+
+}
 function setMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Workspace', submenu: [
       { label: 'Export workspace…', click: menuAction(saveExport) },
-      { label: 'Import workspace…', click: menuAction(async () => {
-        if (!connection) return;
-        const selection = await dialog.showOpenDialog(main, { title: 'Import Plainhand workspace', properties: ['openFile'], filters: [{ name: 'Plainhand workspace', extensions: ['json'] }] });
-        if (selection.canceled) return;
-        const imported = await importFile(connection, selection.filePaths[0], async summary => {
-          const answer = await dialog.showMessageBox(main, { type: 'warning', message: 'Replace this workspace with the selected export?', detail: `${summary.jobs} jobs and ${summary.sources} sources. Existing workspace files are backed up. Packet approvals will reset. Sign in to AI providers separately on this computer.`, buttons: ['Cancel', 'Import and replace'], defaultId: 0, cancelId: 0 });
-          return answer.response === 1;
-        });
-        if (imported) { main.reload(); await dialog.showMessageBox(main, { message: 'Workspace imported. Review packets again before using them.', detail: `Backup: ${imported.backup}` }); }
-      }) },
+      { label: 'Import workspace…', click: menuAction(() => selectWorkspaceImport()) },
+      { label: 'Import from Plainhand online…', click: menuAction(() => selectWorkspaceImport(true)) },
       { type: 'separator' },
       { label: 'Open Plainhand online', click: menuAction(() => ONLINE ? external(ONLINE) : dialog.showMessageBox(main || status, { message: 'Plainhand online is not configured in this build yet.', detail: 'Use Workspace → Export workspace to save a file for a future manual upload.' })) },
-      { label: 'Move to Plainhand online…', click: menuAction(async () => {
-        const answer = await dialog.showMessageBox(main, { message: 'Export a file for Plainhand online?', detail: 'The online upload route is not available yet. You can save a workspace export for a future manual upload. It contains personal information; keep it private. Provider credentials and browser sessions do not travel.', buttons: ['Cancel', 'Export file'], cancelId: 0, defaultId: 0 });
-        if (answer.response === 1) await saveExport();
+      { label: 'Upload to Plainhand online…', click: menuAction(async () => {
+        const answer = await dialog.showMessageBox(main, { message: 'Export a file for Plainhand online?', detail: 'Save an export, then sign in to Plainhand online and open Workspace. Select the file there, review the preview and confirm replacement. The desktop app does not upload it automatically. Exports contain personal information; keep them private. Provider credentials and browser sessions do not travel.', buttons: ['Cancel', 'Export file'], cancelId: 0, defaultId: 0 });
+        if (answer.response === 1 && await saveExport()) {
+          if (ONLINE) await external(new URL('/#workspace', ONLINE).href);
+          else await dialog.showMessageBox(main, { message: 'Export saved. Plainhand online is not configured in this build yet.', detail: 'When the confirmed website is available, sign in and upload this file in Workspace, then review and confirm replacement.' });
+        }
       }) },
       { type: 'separator' }, { role: 'quit' },
     ] },

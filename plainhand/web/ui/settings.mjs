@@ -141,8 +141,8 @@ export function ImportDialog({ data, preview }) {
       <li><${Icon} name="layers" />${preview.conversation} conversation message${preview.conversation === 1 ? '' : 's'}</li>
       <li><${Icon} name="search" />${preview.sources} job source${preview.sources === 1 ? '' : 's'}</li></ul>
     ${preview.approvalsReset ? html`<${Notice} tone="warn">${preview.approvalsReset} packet approval${preview.approvalsReset === 1 ? ' is' : 's are'} reset: the PDFs are not part of an export, so review and regenerate packets before using them.</${Notice}>` : null}
-    <p class="muted-text">Browser sign-ins and saved portal sessions do not move between computers.</p>
-    <div class="dialog-actions"><${Button} class="ghost" data-autofocus onClick=${closeDialog}>Cancel</${Button}><${ActionButton} class="primary" icon="upload" onClick=${async () => { const r = await api('import', { data, confirm: true }); closeDialog(); toast(`Workspace imported: ${r.jobs} role${r.jobs === 1 ? '' : 's'}. A backup of the previous workspace is in data/plainhand/backups.`); refresh(); }}>Replace and import</${ActionButton}></div>
+    <p class="muted-text">Browser sign-ins and saved portal sessions do not move between computers.</p>${store.state.cloud ? html`<${Notice} tone="warn">Packet approvals, pending proposals, browser checkpoints and AI connection checks reset. Sign in to AI separately. Nothing is executed or submitted.</${Notice}>` : null}
+    <div class="dialog-actions"><${Button} class="ghost" data-autofocus onClick=${closeDialog}>Cancel</${Button}><${ActionButton} class="primary" icon="upload" onClick=${async () => { const r = await api(store.state.cloud ? 'workspace/import' : 'import', { data, confirm: true, ...(store.state.cloud ? { previewId: preview.previewId, digest: preview.digest, revision: preview.revision } : {}) }); closeDialog(); toast(`Workspace imported: ${r.jobs} role${r.jobs === 1 ? '' : 's'}. A backup of the previous workspace is in data/plainhand/backups.`); refresh(); }}>Replace and import</${ActionButton}></div>
   </${Dialog}>`;
 }
 
@@ -151,10 +151,11 @@ async function chooseImport(event) {
   event.currentTarget.value = '';
   if (!file) return;
   try {
+    if (store.state.cloud && file.size > 3 * 1024 * 1024) throw new Error('Choose an export smaller than 3 MiB.');
     if (file.size > 8 * 1024 * 1024) throw new Error('That file is larger than an export can be (8 MB).');
     let data;
     try { data = JSON.parse(await file.text()); } catch { throw new Error('That file is not a Plainhand export (it is not valid JSON).'); }
-    const preview = await api('import/preview', { data });
+    const preview = await api(store.state.cloud ? 'workspace/import/preview' : 'import/preview', { data });
     openDialog({ type: 'import', data, preview });
   } catch (error) { toast(error.message, true); }
 }
@@ -326,7 +327,7 @@ function AutonomyCard() {
 export function WorkspacePage() {
   const state = store.state;
   const theme = useTheme();
-  if (state.cloud) return html`<${PageHeading} title="Online workspace" subtitle="Your candidate data is stored in Supabase on the server, rather than on this computer. Your connected AI receives context for the tasks you request." /><${Card} title="Your account and data"><p>Export your saved workspace before switching to the desktop app. A desktop installer has not been released yet.</p><div class="action-row"><${ActionButton} onClick=${exportWorkspace}>Export workspace</${ActionButton}><a class="button" href="/account/delete">Delete my account</a><a class="button" href="#help">Get help</a></div></${Card}><${DataPanel} />`;
+  if (state.cloud) return html`<${PageHeading} title="Online workspace" subtitle="Your candidate data is stored in Supabase on the server, rather than on this computer. Your connected AI receives context for the tasks you request." /><${Card} title="Your account and data"><p>Export your saved workspace before switching to the desktop app. A desktop installer has not been released yet.</p><div class="action-row"><${ActionButton} onClick=${exportWorkspace}>Export workspace</${ActionButton}><label class="button"><span>Upload a workspace export</span><input type="file" accept="application/json,.json" aria-label="Upload a workspace export" onChange=${chooseImport} /></label><a class="button" href="/account/delete">Delete my account</a><a class="button" href="#help">Get help</a></div></${Card}><${DataPanel} />`;
   return html`
     <${PageHeading} title="Workspace" subtitle="Your data is inspectable, portable and kept separate from the application code." />
     <${Card} title="Appearance" icon=${theme.resolved === 'dark' ? 'moon' : 'sun'} id="appearance-title" subtitle="Your choice is saved in this browser and shared between its tabs.">

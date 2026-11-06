@@ -12,7 +12,10 @@ export const codeChallenge = verifier => createHash('sha256').update(verifier).d
 export function createSupabaseAuth({ url, publishableKey, secretKey, fetchImpl = globalThis.fetch }) {
   if (!url || !publishableKey) throw new Error('Supabase Auth is not configured.');
   const base = String(url).replace(/\/+$/, '') + '/auth/v1';
-  const headers = key => ({ apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' });
+  // Opaque sb_* keys are API keys, not JWTs. Sending them as Bearer can fail
+  // gateway JWT validation. Legacy JWT keys retain their authorization header.
+  // https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
+  const headers = key => ({ apikey: key, ...(/^sb_(publishable|secret)_/.test(key) ? {} : { Authorization: `Bearer ${key}` }), 'Content-Type': 'application/json', Accept: 'application/json' });
   async function call(path, { method = 'POST', body, key = publishableKey } = {}) {
     let response;
     try { response = await fetchImpl(base + path, { method, headers: headers(key), ...(body ? { body: JSON.stringify(body) } : {}) }); }

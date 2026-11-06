@@ -78,12 +78,16 @@ are not transferred. Exports contain personal information; keep them private.
 The online destination is deliberately unset in `desktop/src/release-config.json`:
 the owner must supply the confirmed HTTPS base URL before distribution. Open
 Plainhand online then opens that destination in the system browser. Until set, the
-menu explains that it is not configured. Move to Plainhand online offers an export
-file and explicitly states that online upload is unavailable. **Cloud handoff
-requirement:** the cloud owner must implement authenticated, per-user upload with
-preview, explicit replacement confirmation and the existing import/reset contract,
-then update this guidance. There is no automatic upload, unauthenticated transfer,
-or credential copying. Get help opens the repository's support form; nothing is
+menu explains that it is not configured. **Import from Plainhand online** guides
+the candidate to download an export from their signed-in website account and
+select that file locally. **Upload to Plainhand online** saves an export and
+opens the configured website's Workspace page. The candidate selects the file
+there, reviews a preview and confirms replacement. There is no automatic upload
+or credential sharing. Website preview receipts are bound to that account, the
+exact file and current workspace revision; stale or busy workspaces are refused.
+Packet approvals, proposals, checkpoints and machine-specific AI connection
+checks reset. The confirmed online URL and released installers remain pending.
+Get help opens the repository's support form; nothing is
 auto-attached or sent.
 
 ## Releases, updates and signing gates
@@ -155,7 +159,7 @@ Verified locally on 2026-11-06, Linux x64:
 
 Windows build/install/signing was skipped (Linux host, no Wine/Windows runner).
 The Windows CI configuration is **not** a verified working installer. macOS builds,
-real provider-account sign-in, two-release auto-update, online import and SignPath
+real provider-account sign-in, two-release auto-update, live website/desktop transfer and SignPath
 approval/configuration remain unverified requirements. No tags, pushes, PRs,
 releases or deployments were made.
 

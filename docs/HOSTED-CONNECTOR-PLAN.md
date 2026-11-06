@@ -491,12 +491,12 @@ user-visible text plain and short.
 | 5 | `chatgptAgent` + token storage + Connect button (off until approval) | ✅ agent + encrypted token store done (`plainhand/cloud/chatgpt-agent.mjs`); local Sign in with ChatGPT provider shipped (`plainhand/chatgpt-local.mjs`); hosted Connect button waits for approval |
 | 6 | Website: Get started, guided Connect your AI wizard with live check, cloud labels, PDF import, account deletion | ✅ guided setup, PDF/text preview import, fresh connection check, cloud labels, help and account deletion done; authentic provider screenshots and account coverage remain |
 | 7 | Browser extension: sign-in, Save this job, Fill this page, submit guard, I submitted | ✅ done (MV3 extension in `extension/`, server routes in `plainhand/cloud/extension-api.mjs`, tests incl. real-Chromium fill suite) |
-| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages, CI job running `test:cloud` against a Postgres service | CI job + rate limits + cron done (`test:cloud` job in `.github/workflows/test.yml`, `createRateLimiter` in `app.mjs`); the deploy, backups and pages remain |
-| 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
-| 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
-| 11 | Desktop app: Electron installer (Windows via SignPath, Linux AppImage), auto-update from GitHub Releases, Sign in with ChatGPT (open-source path), import from / upload to Plainhand online | Linux shell/AppImage built and smoke-tested; update/signing CI prepared. Windows signing, two-release update validation and online transfer remain (see `docs/DESKTOP.md`) |
-| 12 | Plan coverage check with real accounts for every tier; wizard data file updated with results | |
-| 13 | Get help + error tracking, phone guidance, accessibility baseline, desktop import/upload | |
+| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages, CI job running `test:cloud` against a Postgres service | Serverless PDFs, public pages, rate limits, safe diagnostics, runtime tracing and encrypted backup/restore tooling tested; live deploy and private backup destination/configuration remain. Cron performs maintenance only; daily discovery remains pending |
+| 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | SDK/OAuth, synthetic workflow and extension form checks pass; live ChatGPT/Claude and separate named-ATS acceptance remain |
+| 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | Reviewer test matrix, recording script, icon and checklist prepared in `docs/HOSTED-REVIEWER-PACK.md`; live reviewer sign-in, recording and actual submissions remain |
+| 11 | Desktop app: Electron installer (Windows via SignPath, Linux AppImage), auto-update from GitHub Releases, Sign in with ChatGPT (open-source path), import from / upload to Plainhand online | Linux shell/AppImage built and smoke-tested; update/signing CI and manual website/desktop export/import implemented. Windows signing, two-release updates, configured online URL and live transfer validation remain (see `docs/DESKTOP.md`) |
+| 12 | Plan coverage check with real accounts for every tier; wizard data file updated with results | All rows explicitly unverified; account access required, Free/Go unconfirmed |
+| 13 | Get help + error tracking, phone guidance, accessibility baseline, desktop import/upload | Help, phone guidance, wizard/public-page/transfer axe checks, manual transfer and scrubbed server request IDs implemented; external error tracking and extension/packet axe audit remain |
 
 ## Desktop app (required: the full route for ChatGPT personal plans)
 
@@ -518,3 +518,29 @@ Order: Windows and Linux first (free); macOS when the $99/year is paid. The
 app is the existing local Plainhand with a desktop shell, first-run setup done
 for the user (browser download, workspace folder), and **Sign in with ChatGPT**
 added beside the existing Codex and Claude connections.
+
+## Integrated verification and launch status — 2026-11-06
+
+The code includes the MCP endpoint, guided setup, PDF extraction, serverless PDF
+rendering, desktop shell, website import with revision-bound preview receipts,
+public information pages and gated encrypted backup tools. Website imports require
+a session, CSRF validation and explicit replacement; connector/extension bearer
+tokens cannot invoke that route. Imports back up replaced state and reset
+approvals, proposals, checkpoints and AI connection checks.
+
+Final local integration: 110 cloud tests with real disposable Postgres and no
+skips; 314 local tests; six onboarding/public-page browser/axe tests; two transfer
+browser/axe tests; four extension tests. Desktop restaging and checks pass 10
+checks with one package-only check skipped in the main checkout (the desktop
+builder separately built/smoke-tested its Linux AppImage). The traced Node 22
+Linux bundle is about 91 MB and generated real PDFs. See the deployment validation
+and reviewer documents for exact scope. These are not live provider/deploy tests.
+
+Vercel cached authentication was verified through CLI 65.12.1 under the existing
+account. The hosted application has not been created/deployed. The existing
+`plainhand-dashboard` is a separate read-only dashboard and remains untouched.
+Live deployment needs this project's database connection and server Auth key,
+plus callback/email configuration. Private backups, store/signing approval, real
+plan coverage and screenshots/recording still need their stated external inputs.
+Daily discovery and external error tracking are still implementation gaps; the
+maintenance cron and request-ID logging must not be advertised as those features.
