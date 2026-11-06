@@ -95,3 +95,4 @@ data/portal-notes/
 data/candidate-context.yml
 scratch_*.mjs
 scratch_jd.txt
+.vercel/

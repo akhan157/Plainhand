@@ -1,0 +1,10 @@
+{
+  "Rules": [{
+    "ID": "Plainhand encrypted backups expire after 14 days",
+    "Status": "Enabled",
+    "Filter": { "Prefix": "plainhand/" },
+    "Expiration": { "Days": 14 },
+    "NoncurrentVersionExpiration": { "NoncurrentDays": 14 },
+    "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+  }]
+}

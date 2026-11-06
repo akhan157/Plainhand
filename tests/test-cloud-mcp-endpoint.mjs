@@ -16,7 +16,7 @@ const db = freshDatabase(), SITE = 'https://plainhand.test';
 async function start(t) {
   const [{ name }] = await db.sql`select current_database() as name`;
   const url = new URL(URL_BASE); url.pathname = '/' + name;
-  const env = { DATABASE_URL: url.href, SITE_URL: SITE, SESSION_SECRET: 'fixture-session-secret-'.repeat(3), SUPABASE_URL: 'https://unused.example.invalid', SUPABASE_PUBLISHABLE_KEY: 'fixture', PLAINHAND_EXTENSION_IDS: 'a'.repeat(32) };
+  const env = { DATABASE_URL: url.href, SITE_URL: SITE, SESSION_SECRET: 'fixture-session-secret-'.repeat(3), SUPABASE_URL: 'https://unused.example.invalid', SUPABASE_PUBLISHABLE_KEY: 'fixture', SUPABASE_SECRET_KEY: 'fixture', CRON_SECRET: 'c'.repeat(32), PLAINHAND_EXTENSION_IDS: 'a'.repeat(32) };
   // A child scopes the production pool lifecycle to this test. Its process env is
   // intentionally different from buildHandler's explicit settings.
   const script = `import http from 'node:http';
