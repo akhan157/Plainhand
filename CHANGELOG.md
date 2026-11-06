@@ -1,18 +1,5 @@
 # Changelog
 
-## 1.1.2 (2026-11-06)
-
-- **Embedded application forms open reliably.** On careers.airbnb.com the
-  Greenhouse form shows its Submit button before its fields. Plainhand took
-  that for a review step and opened the application with no fields. It now
-  waits for the form to load.
-- **README.** Status badges for tests and the Windows/macOS installers, and a
-  Job sites section that says what Plainhand does on each kind of site.
-- **Verification.** The matrix records the 1.1.1 and 1.1.2 checks: live Claude
-  and ChatGPT runs, Windows and macOS installers, Postgres storage and
-  read-only checks on live employer postings.
-
-
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
 - **The hosted cloud server.** One stateless Node handler for Vercel
@@ -37,6 +24,18 @@
   permissions requested on first use for the known application hosts.
 - **CI** gains a `cloud` job running the Postgres-backed suites
   (`test:cloud`) and the real-Chromium extension suite (`test:extension`).
+
+## 1.1.2 (2026-11-06)
+
+- **Embedded application forms open reliably.** On careers.airbnb.com the
+  Greenhouse form shows its Submit button before its fields. Plainhand took
+  that for a review step and opened the application with no fields. It now
+  waits for the form to load.
+- **README.** Status badges for tests and the Windows/macOS installers, and a
+  Job sites section that says what Plainhand does on each kind of site.
+- **Verification.** The matrix records the 1.1.1 and 1.1.2 checks: live Claude
+  and ChatGPT runs, Windows and macOS installers, Postgres storage and
+  read-only checks on live employer postings.
 
 ## 1.1.1 (2026-11-05)
 
