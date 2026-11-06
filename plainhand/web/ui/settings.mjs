@@ -9,8 +9,61 @@ function copy(text) {
   return navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard.'), () => toast('Copy failed. Select the command and copy it yourself.', true));
 }
 
-const ACCOUNT = { codex: 'your ChatGPT account (Plus, Pro or Team)', claude: 'your Claude account (Pro or Max)', antigravity: 'your Google account' };
+const ACCOUNT = { chatgpt: 'your ChatGPT plan (Plus or Pro)', codex: 'your ChatGPT account through the Codex app', claude: 'your Claude account (Pro or Max)', antigravity: 'your Google account' };
+// Sign in with ChatGPT: nothing to install. Sign in, then check it works.
+const MANAGE_USAGE = 'https://chatgpt.com/settings/usage';
+function ChatgptCard({ p }) {
+  const state = store.state;
+  const selected = state.provider === p.id;
+  const [signIn, setSignIn] = useState(p.signIn || { status: p.auth === 'signed-in' ? 'signed-in' : 'signed-out' });
+  const [link, setLink] = useState(null);
+  const waiting = signIn.status === 'waiting', signedIn = signIn.status === 'signed-in';
+  useEffect(() => { if (p.signIn) setSignIn(p.signIn); }, [p.signIn?.status, p.signIn?.message]);
+  // While the browser sign-in is open, check every two seconds whether it finished.
+  useEffect(() => {
+    if (!waiting) return undefined;
+    const timer = setInterval(async () => {
+      try {
+        const next = await api('providers/chatgpt/status');
+        if (next.status === 'waiting') return;
+        setSignIn(next); setLink(null);
+        if (next.status === 'signed-in') { toast('Signed in with ChatGPT. Now check that it works.'); await loadProviders(); }
+        else if (next.status === 'failed') toast(next.message, true);
+      } catch {}
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [waiting]);
+  const start = async () => {
+    // Open the tab during the click so the browser does not block it, then point it at OpenAI.
+    const tab = window.open('', '_blank');
+    try {
+      const result = await api('providers/chatgpt/signin', {});
+      setSignIn({ status: 'waiting', message: result.message }); setLink(result.url);
+      if (tab) { tab.opener = null; tab.location.href = safeLink(result.url); }
+    } catch (error) { tab?.close(); throw error; }
+  };
+  const signOut = async () => { const result = await api('providers/chatgpt/signout', {}); setSignIn(result); toast(result.message); await loadProviders(); refresh(); };
+  const test = async () => { toast('Checking ChatGPT… this takes a few seconds.'); await api('provider/test', { id: p.id }); await loadProviders(); toast('ChatGPT works. Plainhand will use your ChatGPT plan.'); refresh(); };
+  const step = (n, done, title, body) => html`<li class=${'conn-step' + (done ? ' done' : '')}><span class="step-number">${done ? html`<${Icon} name="check" />` : n}</span><div><strong>${title}</strong>${body}</div></li>`;
+  return html`<section class=${'provider' + (selected ? ' selected' : '')} aria-labelledby=${'provider-' + p.id}>
+    <header><span class="provider-logo" aria-hidden="true">${providerSymbol(p.id)}</span><div><h2 id=${'provider-' + p.id}>Sign in with ChatGPT</h2><small>Uses ${ACCOUNT[p.id]}</small></div>${selected ? html`<${Pill} tone="success" icon="check">Using ChatGPT plan</${Pill}>` : null}</header>
+    <ol class="conn-steps">
+      ${step(1, signedIn, 'Sign in', signedIn
+        ? html`<p class="muted-text">Signed in${signIn.email ? ` as ${signIn.email}` : ''}. <a href=${MANAGE_USAGE} target="_blank" rel="noreferrer">Manage usage</a></p><${ActionButton} class="small ghost" onClick=${signOut}>Sign out</${ActionButton}>`
+        : html`
+        <p class="muted-text">Opens ChatGPT in your browser. Plainhand’s AI work then counts against your ChatGPT plan, not a separate bill. Plainhand never sees your password. Nothing to install.</p>
+        ${waiting ? html`<${Notice} tone="info">${signIn.message || 'Finish signing in with ChatGPT in your browser.'}${link ? html` <a href=${safeLink(link)} target="_blank" rel="noreferrer">Open the sign-in page</a>` : null}</${Notice}>` : null}
+        ${signIn.status === 'failed' ? html`<${Notice} tone="warn">${signIn.message}</${Notice}>` : null}
+        <${ActionButton} class="small" icon=${waiting ? undefined : 'external'} onClick=${start}>${waiting ? 'Start again' : 'Continue with ChatGPT'}</${ActionButton}>`)}
+      ${step(2, selected && !!p.lastVerifiedAt, 'Check it works', !signedIn ? html`<p class="muted-text">After you sign in.</p>` : html`
+        <p class="muted-text">Sends one tiny test request (none of your data) and sets ChatGPT as the AI Plainhand uses.</p>
+        <${ActionButton} class=${selected ? 'small' : 'small primary'} icon="plug" onClick=${test}>${selected && p.lastVerifiedAt ? 'Check again' : 'Check and use'}</${ActionButton}>`)}
+    </ol>
+  </section>`;
+}
+
 function ProviderCard({ p }) {
+  if (p.id === 'chatgpt') return html`<${ChatgptCard} p=${p} />`;
   const state = store.state;
   const selected = state.provider === p.id;
   const login = state.loginSessions?.find(l => l.provider === p.id && l.status === 'running');

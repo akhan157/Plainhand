@@ -68,7 +68,7 @@ function DefaultContext() {
       <ul class="check-list compact">${checks.map(([ok, text]) => html`<li class=${ok ? 'done' : ''}><${Icon} name=${ok ? 'checkCircle' : 'circle'} />${text}</li>`)}</ul>
       <${Button} class="small wide" iconEnd="arrow" onClick=${() => navigate('profile')}>${done ? 'Keep building your profile' : 'Start with your story'}</${Button}></section>`}
     <section class="ctx-card"><div class="ctx-head"><h2>Your agent</h2></div>
-      <div class="agent-mini"><span class="provider-logo small" aria-hidden="true">${providerSymbol(state.provider)}</span><div><strong>${state.provider ? providerNames[state.provider] : 'Bring your own agent'}</strong><small>${state.provider ? 'Selected · uses your CLI account' : 'ChatGPT, Claude or Antigravity'}</small></div></div>
+      <div class="agent-mini"><span class="provider-logo small" aria-hidden="true">${providerSymbol(state.provider)}</span><div><strong>${state.provider ? providerNames[state.provider] : 'Bring your own agent'}</strong><small>${state.provider === 'chatgpt' ? 'Selected · uses your ChatGPT plan' : state.provider ? 'Selected · uses your CLI account' : 'ChatGPT, Claude or Antigravity'}</small></div></div>
       <${Button} class="small wide ghost" iconEnd="arrow" onClick=${() => navigate('connections')}>${state.provider ? 'Manage connection' : 'Connect an agent'}</${Button}></section>
     <p class="ctx-tip"><${Icon} name="shield" /><span>Your story stays yours. Personal files live on this computer; your selected agent receives context only when you run a task. Open a role to see its evaluation, packet and record here.</span></p>
   </div>`;
