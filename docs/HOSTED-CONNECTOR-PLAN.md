@@ -478,13 +478,13 @@ user-visible text plain and short.
 | # | Step | Status |
 | --- | --- | --- |
 | 1 | Pluggable workspace storage; Postgres store with locking; schema in Supabase | ✅ done |
-| 2 | Cloud server: Supabase sign-in, sessions, per-user workspace, website behind the session | next |
-| 3 | OAuth 2.1 server + stateless `/mcp` with read/write tools | |
-| 4 | Deferred agent, step replay, task tools from chat | |
-| 5 | `chatgptAgent` + token storage + Connect button (off until approval) | |
-| 6 | Website: Get started, guided Connect your AI wizard with live check, cloud labels, PDF import, account deletion | |
-| 7 | Browser extension: sign-in, Save this job, Fill this page, submit guard, I submitted | |
-| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages, CI job running `test:cloud` against a Postgres service | |
+| 2 | Cloud server: Supabase sign-in, sessions, per-user workspace, website behind the session | ✅ done |
+| 3 | OAuth 2.1 server + stateless `/mcp` with read/write tools | ✅ server + tool surface done (see `plainhand/cloud/oauth.mjs`, `plainhand/mcp-tools.mjs`); `/mcp` endpoint wiring remains for the deploy step |
+| 4 | Deferred agent, step replay, task tools from chat | ✅ done (`plainhand/cloud/steps.mjs`, `tests/test-cloud-steps.mjs`); MCP task tools over the step protocol remain with the `/mcp` wiring |
+| 5 | `chatgptAgent` + token storage + Connect button (off until approval) | ✅ agent + encrypted token store done (`plainhand/cloud/chatgpt-agent.mjs`); local Sign in with ChatGPT provider shipped (`plainhand/chatgpt-local.mjs`); hosted Connect button waits for approval |
+| 6 | Website: Get started, guided Connect your AI wizard with live check, cloud labels, PDF import, account deletion | ✅ account deletion, help, cloud labels, text resume import done in `plainhand/cloud/app.mjs`; wizard UI and PDF import remain |
+| 7 | Browser extension: sign-in, Save this job, Fill this page, submit guard, I submitted | ✅ done (MV3 extension in `extension/`, server routes in `plainhand/cloud/extension-api.mjs`, tests incl. real-Chromium fill suite) |
+| 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages, CI job running `test:cloud` against a Postgres service | CI job + rate limits + cron done (`test:cloud` job in `.github/workflows/test.yml`, `createRateLimiter` in `app.mjs`); the deploy, backups and pages remain |
 | 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
 | 11 | Desktop app: Electron installer (Windows via SignPath, Linux AppImage), auto-update from GitHub Releases, Sign in with ChatGPT (open-source path), import from / upload to Plainhand online | |

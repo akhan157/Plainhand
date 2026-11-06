@@ -28,3 +28,35 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: sudo apt-get install -y --no-install-recommends poppler-utils xvfb
       - run: xvfb-run -a node tests/test-all.mjs --quick
+
+  cloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # Postgres-backed suites (storage, accounts, app, OAuth); the remaining cloud
+      # suites run against MemoryStorage workspaces. The extension suite needs Chromium.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:cloud
+        env:
+          PLAINHAND_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      - run: npm run test:extension

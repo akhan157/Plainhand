@@ -222,8 +222,8 @@ export function taskProgress(task) {
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
-export const providerNames = { codex: 'ChatGPT', claude: 'Claude', antigravity: 'Antigravity' };
-export const providerSymbol = id => id === 'codex' ? '◎' : id === 'claude' ? '✳' : '△';
+export const providerNames = { chatgpt: 'ChatGPT', codex: 'ChatGPT (Codex)', claude: 'Claude', antigravity: 'Antigravity' };
+export const providerSymbol = id => id === 'codex' || id === 'chatgpt' ? '◎' : id === 'claude' ? '✳' : '△';
 export const initials = value => (value || 'You').split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase();
 export function safeLink(value) {
   try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) ? url.href : '#'; } catch { return '#'; }

@@ -22,7 +22,8 @@ import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
-import { providerById, inspectProviders, installProvider, providerCommand, runProcess, FORM_INSTRUCTION } from './plainhand/agents.mjs';
+import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
+import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
 import { NAVIGATION_INSTRUCTION } from './plainhand/browser-driver.mjs';
 import { configuredBrowserLaunch } from './plainhand/browser-backends.mjs';
 import { ApplicationBrowser, applicationTarget, isBoardUrl } from './plainhand/jobs.mjs';
@@ -54,10 +55,13 @@ const FORMAT_SAMPLE = {
   ],
 };
 
-export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, browser, providers = inspectProviders, features = FEATURES, startFeatures = true } = {}) {
+export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, browser, providers = inspectProviders, features = FEATURES, startFeatures = true, chatgptOptions = {} } = {}) {
   const workspace = new Workspace(root);
   browser ||= new ApplicationBrowser({ storage: workspace, launch: configuredBrowserLaunch() });
-  const workflow = new Workflow(workspace, workflowOptions);
+  // Sign in with ChatGPT: tokens live encrypted in this workspace; executeAgent runs the
+  // 'chatgpt' provider through this agent.
+  const chatgpt = createLocalChatgpt({ workspace, ...chatgptOptions });
+  const workflow = new Workflow(workspace, { agent: (id, instruction, data, options = {}) => executeAgent(id, instruction, data, { ...options, chatgpt: chatgpt.agent }), ...workflowOptions });
   await workflow.recover();
   const token = randomBytes(32).toString('hex');
   // A separate secret for the local MCP bridge, handed over through an owner-only file.
@@ -177,8 +181,10 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       if (req.method === 'GET' && url.pathname === '/api/providers') {
         providerCache = await providers();
         const state = await workspace.load();
-        return json(res, 200, providerCache.map(p => ({ ...p, lastVerifiedAt: state.connectionChecks?.[p.id]?.verifiedAt || null })));
+        const signIn = providerCache.some(p => p.id === 'chatgpt') ? await chatgpt.status() : null;
+        return json(res, 200, providerCache.map(p => ({ ...p, ...(p.id === 'chatgpt' ? { auth: signIn.status === 'signed-in' ? 'signed-in' : 'sign-in-needed', signIn } : {}), lastVerifiedAt: state.connectionChecks?.[p.id]?.verifiedAt || null })));
       }
+      if (req.method === 'GET' && url.pathname === '/api/providers/chatgpt/status') return json(res, 200, await chatgpt.status());
       if (req.method === 'GET' && url.pathname === '/api/export') {
         res.setHeader('Content-Disposition', 'attachment; filename="plainhand-workspace.json"');
         const conversation = await agent.history({ limit: 500 });
@@ -222,14 +228,23 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         await workspace.mutate(state => { state.provider = p.id; });
         return json(res, 200, { ok: true });
       }
+      // Sign in with ChatGPT: the browser opens the returned URL; OpenAI redirects back
+      // to a one-shot listener on 127.0.0.1 that this process runs.
+      if (url.pathname === '/api/providers/chatgpt/signin') return json(res, 202, await chatgpt.start());
+      if (url.pathname === '/api/providers/chatgpt/signout') {
+        const result = await chatgpt.signOut();
+        await workspace.mutate(state => { if (state.connectionChecks?.chatgpt) delete state.connectionChecks.chatgpt; if (state.provider === 'chatgpt') state.provider = null; state.events.unshift({ at: now(), text: 'Signed out of ChatGPT.' }); });
+        return json(res, 200, result);
+      }
       if (url.pathname === '/api/provider/setup') {
         const p = providerById(input.id);
-        await installProvider(p);
+        if (!p.builtIn) await installProvider(p);
         providerCache = null;
         return json(res, 200, { ok: true });
       }
       if (url.pathname === '/api/provider/login') {
         const p = providerById(input.id);
+        if (p.id === 'chatgpt') return json(res, 202, await chatgpt.start());
         if (p.id === 'antigravity') return json(res, 200, { manual: true, command: p.login, message: 'Antigravity needs its official app. Follow the setup guide, then test the connection here.' });
         if ([...logins.values()].some(l => l.provider === p.id && l.status === 'running')) throw new Error('Sign-in is already running. Complete it in your browser.');
         const login = { id: randomUUID(), provider: p.id, status: 'running', url: null, message: 'Opening the account sign-in. If no browser opens, use the link below.' };
@@ -488,6 +503,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
     agent.turn?.controller.abort();
     cancelVercelLogin();
     for (const controller of loginControllers.values()) controller.abort();
+    chatgpt.close();
     for (const stop of stops.splice(0)) await stop?.().catch?.(() => {});
     for (const stream of streams) stream.end();
     await rm(path.join(workspace.root, LOCAL_API_FILE), { force: true }).catch(() => {});
@@ -500,7 +516,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
     const stopRemote = await startAutoPublish({ workspace, emit: broadcast });
     if (stopRemote) stops.push(stopRemote);
   }
-  return { server, workspace, workflow, registry, agent, token, close };
+  return { server, workspace, workflow, registry, agent, token, close, chatgpt };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
