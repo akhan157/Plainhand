@@ -494,7 +494,7 @@ user-visible text plain and short.
 | 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages, CI job running `test:cloud` against a Postgres service | CI job + rate limits + cron done (`test:cloud` job in `.github/workflows/test.yml`, `createRateLimiter` in `app.mjs`); the deploy, backups and pages remain |
 | 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
-| 11 | Desktop app: Electron installer (Windows via SignPath, Linux AppImage), auto-update from GitHub Releases, Sign in with ChatGPT (open-source path), import from / upload to Plainhand online | |
+| 11 | Desktop app: Electron installer (Windows via SignPath, Linux AppImage), auto-update from GitHub Releases, Sign in with ChatGPT (open-source path), import from / upload to Plainhand online | Linux shell/AppImage built and smoke-tested; update/signing CI prepared. Windows signing, two-release update validation and online transfer remain (see `docs/DESKTOP.md`) |
 | 12 | Plan coverage check with real accounts for every tier; wizard data file updated with results | |
 | 13 | Get help + error tracking, phone guidance, accessibility baseline, desktop import/upload | |
 
