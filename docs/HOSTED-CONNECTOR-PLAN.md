@@ -21,7 +21,7 @@ and never have to understand what an "MCP connector" is.
      plans): they add Plainhand to the chat app they already use, guided one
      screen at a time, then just talk: "Here's a job link, is it a fit?",
      "Write my application for it."
-   - **The Plainhand desktop app** (ChatGPT Free, Go, Plus, Pro): one Download
+   - **The Plainhand desktop app** (ChatGPT Plus and Pro; Free and Go if confirmed): one Download
      button, open it, **Sign in with ChatGPT**. Everything happens in the app.
    - **Use my ChatGPT plan on the website** (one button): offered as soon as
      OpenAI approves it, for every ChatGPT plan it covers.
@@ -52,7 +52,8 @@ website and the desktop app together cover everyone:
 | Claude Free | Website, inside Claude (custom connector; Free allows one) | Sign up → wizard → add connector in Claude (about 6 steps) |
 | Claude Pro, Max, Team, Enterprise | Website, inside Claude; or the desktop app | Website: same as above. Desktop: install → **Connect Claude** → Claude sign-in |
 | ChatGPT Business, Enterprise, Edu | Website, inside ChatGPT (custom MCP server); or the desktop app | Website: wizard → add server in ChatGPT (about 8 steps; admin may need to allow it) |
-| ChatGPT Free, Go, Plus, Pro | **The desktop app**, with **Sign in with ChatGPT** (OpenAI's open-source path, no approval needed) or the Codex sign-in | Install (double-click) → **Sign in with ChatGPT**. The website wizard sends these users here with one Download button. |
+| ChatGPT Plus, Pro | **The desktop app**, with **Sign in with ChatGPT** (OpenAI's open-source path, no approval needed) or the Codex sign-in | Install (double-click) → **Sign in with ChatGPT**. The website wizard sends these users here with one Download button. |
+| ChatGPT Free, Go | **Unconfirmed.** Desktop app through the Codex sign-in, if OpenAI allows `codex exec` on these plans (coverage check below). Otherwise Claude Free on the website is the free way to try Plainhand. | Same install as Plus; the wizard states the result of the coverage check. |
 
 When OpenAI approves the hosted Sign in with ChatGPT or lists Plainhand in its
 app directory, ChatGPT personal plans also get the website route, and the
@@ -79,10 +80,10 @@ evaluate a role, prepare and fact-check a packet, fill a test form), and the
 result is recorded with the date in the wizard's data file. Rows that fail
 are shown honestly in the wizard with the best working alternative.
 
-| Tier | Route to test | Known risk (secondhand sources, Nov 2026) |
+| Tier | Route to test | What OpenAI and Anthropic document (checked 2026-11-05) |
 | --- | --- | --- |
-| ChatGPT Free | Desktop: Sign in with ChatGPT; Codex | OpenAI lists plan sharing for Go, Plus, Pro only. Codex on Free is reported as desktop-app only, without the CLI the local app uses, and with unpublished limits. **Likely no full route today**; if confirmed, the wizard recommends Claude Free on the website. |
-| ChatGPT Go | Desktop: Sign in with ChatGPT; Codex | OpenAI's help article includes Go in plan sharing; a developer summary says Plus and Pro only. Codex CLI reportedly excluded on Go. |
+| ChatGPT Free | Desktop: Codex sign-in | OpenAI's Sign in with ChatGPT page (learn.chatgpt.com) limits plan usage in other apps to **Plus and Pro**. Codex is included in Free, but OpenAI's pricing page documents it only "in the desktop app", lists no CLI access and publishes no limits. **Test whether `codex exec` works on a Free account**; if not, Free has no ChatGPT route, and the wizard's free option is Claude Free on the website. |
+| ChatGPT Go | Desktop: Codex sign-in | Same as Free: plan usage in other apps is Plus and Pro only (an older help article also listed Go); Codex documented only in the desktop app. Test `codex exec`. |
 | ChatGPT Plus, Pro | Desktop: Sign in with ChatGPT; Codex CLI | Expected to work. Pro: also test the website connector (read-only reported). |
 | ChatGPT Business, Enterprise, Edu | Website connector; desktop | Workspace admin may need to allow custom servers. |
 | Claude Free | Website connector | One custom connector allowed; Claude Code (desktop route) needs a paid plan. |
@@ -91,6 +92,11 @@ are shown honestly in the wizard with the best working alternative.
 Owner action: provide or create one test account per ChatGPT tier
 (Free, Go, Plus) and Claude (Free, Pro) for the check; paid tiers can be
 tested for one month each.
+
+**Trying Plainhand without a paid plan.** Two free ways, both full Plainhand:
+Claude's free plan on the website (one custom connector), and the sample
+workspace (no AI account; shows every screen with example data). ChatGPT Free
+joins them if the coverage check passes.
 
 ## Two AI routes, one foundation
 
@@ -260,7 +266,7 @@ name, with a screenshot).
 - **Pro:** the same walkthrough, followed by the live check below. If the
   account turns out read-only, the wizard says so plainly and moves them to
   the desktop app route below.
-- **Free, Go, Plus (and Pro, if the live check finds it read-only):** "For
+- **Plus (and Pro, if the live check finds it read-only), and Free and Go if the coverage check passes:** "For
   your plan, Plainhand runs as a small app on your computer and uses your
   ChatGPT plan from there." One **Download for Windows / Linux / Mac** button
   (detected automatically), then: open the download → **Sign in with
