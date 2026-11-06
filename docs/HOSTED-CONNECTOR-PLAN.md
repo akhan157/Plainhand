@@ -30,27 +30,43 @@ and never have to understand what an "MCP connector" is.
    themselves. Then **I submitted this** records it.
 6. **Follow up**: the website shows what's due; drafts are ready to send.
 
-## What works when (honest timeline)
+## Every subscriber gets full Plainhand today
 
-| Route | Works for | One-click |
+The rule: **every ChatGPT and Claude subscriber gets the full Plainhand
+(evaluate, write, fact-check, fill forms, track) through at least one route
+today, with the fewest setup steps their plan allows.** A missing one-click
+option changes how many steps someone takes, never whether they can use
+Plainhand. The setup wizard (§5a) picks the route for them.
+
+Providers decide where a subscription may be used: on the web, through
+approved integrations; on the user's own computer, through the provider's own
+apps (Codex, Claude Code) or OpenAI's open-source Sign in with ChatGPT. So the
+website and the desktop app together cover everyone:
+
+| Subscription | Full Plainhand today | Setup |
 | --- | --- | --- |
-| Use my ChatGPT plan (Sign in with ChatGPT) | ChatGPT Go, Plus, Pro | When OpenAI approves our hosted app (interest form). Built now, switched on at approval. |
-| Inside Claude (custom connector) | Every Claude plan (Free: 1 custom connector) | Guided setup today; one-click once in Claude's connector directory. |
-| Inside ChatGPT (custom MCP server) | Full use: ChatGPT Business, Enterprise, Edu. Pro: read-only per OpenAI's help center, so Plainhand can look things up but not save or run tasks. Plus, Go, Free: not listed by OpenAI. | Guided setup today where the plan allows it; one-click for every plan once in ChatGPT's app directory. |
+| Claude Free | Website, inside Claude (custom connector; Free allows one) | Sign up → wizard → add connector in Claude (about 6 steps) |
+| Claude Pro, Max, Team, Enterprise | Website, inside Claude; or the desktop app | Website: same as above. Desktop: install → **Connect Claude** → Claude sign-in |
+| ChatGPT Business, Enterprise, Edu | Website, inside ChatGPT (custom MCP server); or the desktop app | Website: wizard → add server in ChatGPT (about 8 steps; admin may need to allow it) |
+| ChatGPT Free, Go, Plus, Pro | **The desktop app**, with **Sign in with ChatGPT** (OpenAI's open-source path, no approval needed) or the Codex sign-in | Install (double-click) → **Sign in with ChatGPT**. The website wizard sends these users here with one Download button. |
 
-Until a one-click route exists for ChatGPT, the **guided setup (§5a) does the
-work**: it finds out what the candidate's ChatGPT account allows and sends them
-down a path that will actually work, instead of letting them fail.
+When OpenAI approves the hosted Sign in with ChatGPT or lists Plainhand in its
+app directory, ChatGPT personal plans also get the website route, and the
+wizard simply offers it. Nothing else changes.
 
-**The one-click work continues in parallel**, starting in week one, because
-review times are out of our hands:
+The desktop app is therefore **required, not optional**: it is the full route
+for ChatGPT personal plans today. To keep it console-free it ships as a normal
+installer (§10): Windows signed for free through SignPath Foundation, Linux
+through Flathub/AppImage, macOS once the Apple Developer Program ($99/year) is
+paid. Until then Mac users with a ChatGPT personal plan get the current
+one-command installer with a step-by-step guide, or the website once OpenAI
+approves.
 
-1. Sign in with ChatGPT interest form (owner).
-2. ChatGPT app directory submission as soon as the deploy is stable (§10).
-3. Claude connector directory submission at the same time.
-
-Anthropic does not allow third-party apps to use a Claude subscription
-directly, so Claude users always use the connector route.
+Plan details the wizard checks and states plainly (they change, so they are
+kept in one data file with the date checked): Claude Free allows one custom
+connector; Claude Code (desktop route) needs a paid Claude plan; Codex and
+Sign in with ChatGPT plan usage depend on the ChatGPT plan's current
+entitlements.
 
 ## Two AI routes, one foundation
 
@@ -220,13 +236,14 @@ name, with a screenshot).
 - **Pro:** the same walkthrough, followed by the live check below. If the
   account turns out read-only, the wizard says so plainly and offers the
   alternatives.
-- **Plus, Go, Free:** "ChatGPT doesn't let your plan add Plainhand yet. We're
-  working on a one-click version." Then the alternatives, in this order:
-  1. **Use Claude's free plan for Plainhand** (one custom connector is free;
-     walkthrough included). Their ChatGPT subscription is untouched.
-  2. **Get an email when one-click ChatGPT is ready** (one tick box).
-  3. If they use a computer they installed apps on before: the Plainhand
-     desktop app with Sign in with ChatGPT (see Optional).
+- **Free, Go, Plus (and Pro, if the live check finds it read-only):** "For
+  your plan, Plainhand runs as a small app on your computer and uses your
+  ChatGPT plan from there." One **Download for Windows / Linux / Mac** button
+  (detected automatically), then: open the download → **Sign in with
+  ChatGPT** → done. Their account and anything already saved on the website
+  can be brought into the app with **Import from Plainhand online**. When
+  OpenAI enables the website route for their plan, the wizard offers it and
+  they can switch back.
 
 **Claude (any plan):** claude.ai → **Customize** → **Connectors** → **Add
 custom connector** → name *Plainhand*, paste the link → **Add** → **Connect** →
@@ -340,17 +357,20 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | Before launch | Create the Google sign-in client in Google Cloud (free; I provide exact steps) and paste it into Supabase. |
 | Before launch | Create a Resend account (free) and a sending domain or address. |
 | Before launch | Chrome Web Store developer registration ($5 once); Edge and Firefox (free). |
+| Before desktop release | Apply to SignPath Foundation for free Windows signing; turn on two-factor sign-in for everyone with access to the GitHub repo. |
 | Now | Complete OpenAI developer identity verification (individual or business) so Plainhand can be published under your name. |
 | After the test deploy | Submit to the Claude connector directory and the ChatGPT app directory. ChatGPT needs: website, support, privacy and terms URLs; a reviewer test account that signs in without email codes or links (a reviewer-only password login on sample data); a video walkthrough; 5 positive and 3 negative test cases; a square icon. I prepare all of these. |
 
 ## Risks
 
 - **OpenAI approval** for Sign in with ChatGPT and/or the ChatGPT directory is
-  not guaranteed or timed. Until one arrives, ChatGPT Plus, Go and Free users
-  (and Pro users, for anything beyond reading) cannot use Plainhand through
-  ChatGPT online; the wizard routes them to Claude's free plan, the email
-  list, or the desktop app. ChatGPT's per-plan rules change with rollouts,
-  which is why the wizard relies on the live check, not on a fixed table.
+  not guaranteed or timed. Until one arrives, ChatGPT personal plans use the
+  desktop app, which has full capability. ChatGPT's per-plan rules change with
+  rollouts, which is why the wizard relies on the live check, not on a fixed
+  table.
+- **Mac users on ChatGPT personal plans** get a console-free installer only
+  once the Apple Developer Program is paid; until then a guided one-command
+  install.
 - **Directory reviews** (Claude, ChatGPT, extension stores) may ask for
   changes. Tool descriptions and permissions are written to their published
   guidelines from the start.
@@ -376,13 +396,14 @@ Chrome and Edge (Manifest V3); Firefox from the same code.
 | 8 | Vercel deploy (prove PDFs), cron, backups, rate limits, privacy and terms pages | |
 | 9 | End-to-end tests: Claude connector, ChatGPT (Developer Mode for testing only), extension on Greenhouse, Lever and Ashby test forms | |
 | 10 | Directory and store submissions (ChatGPT, Claude, Chrome, Edge, Firefox) with reviewer account, video and test cases | |
+| 11 | Desktop app: installer (Windows via SignPath, Linux), Sign in with ChatGPT (open-source path), import from Plainhand online | |
 
-## Optional: desktop app with Sign in with ChatGPT
+## 10. Desktop app (required: full route for ChatGPT personal plans)
 
 OpenAI's self-serve path for open-source apps that run on the user's computer
 is available today, with no approval. Packaging the local app as a normal
 installer (double-click, no terminal) with a **Sign in with ChatGPT** button
-would give ChatGPT Plus and Pro users the full experience now, including form
+gives ChatGPT personal-plan users the full experience now, including form
 filling in its own browser.
 
 Signing, so the installer opens without scary warnings:
@@ -393,6 +414,7 @@ Signing, so the installer opens without scary warnings:
 | Linux | Flathub / AppImage | No signing needed. |
 | macOS | None | Apple requires the $99/year Developer Program for signing and notarization. Unsigned, a Mac user must go to System Settings → Privacy & Security → **Open Anyway**, which is not acceptable for this audience. |
 
-If built: Windows and Linux first (free); macOS when the $99/year is worth it.
-Mac users meanwhile use the website (Claude route, or ChatGPT when one-click
-arrives). Decide after the hosted version ships.
+Order: Windows and Linux first (free); macOS when the $99/year is paid. The
+app is the existing local Plainhand with a desktop shell, first-run setup done
+for the user (browser download, workspace folder), and **Sign in with ChatGPT**
+added beside the existing Codex and Claude connections.
