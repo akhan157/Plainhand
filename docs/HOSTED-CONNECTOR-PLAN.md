@@ -429,12 +429,19 @@ Every module ships with `tests/test-cloud-<name>.mjs` added to `test:cloud`.
 | --- | --- | --- |
 | `accounts.mjs` | `createAccounts({ sql, quotaBytes })` → `{ upsert({ userId, email }), get(userId), remove(userId), workspaceFor(userId) → Workspace }`; `createSessions({ sql })` → `{ create(userId) → cookieValue, resolve(cookieValue) → { userId } \| null, destroy(cookieValue), destroyAll(userId) }` | `plainhand.accounts`, `plainhand.sessions` |
 | `supabase-auth.mjs` | `createSupabaseAuth({ url, publishableKey, secretKey, fetchImpl })` → `{ googleUrl(redirectTo, codeVerifier), sendEmailLink(email, redirectTo), exchangeCode(code, codeVerifier) → { userId, email }, deleteUser(userId) }` | Supabase Auth REST only |
-| `oauth.mjs` | `createOAuthServer({ sql, issuer, resource, sessionUser(req) → userId \| null, now })` → `{ handle(req, res) → boolean (true if it served the request), verifyAccessToken(token) → { userId, grantId, clientId, scope } \| null, listGrants(userId), revokeGrant(userId, grantId) }`. Serves `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`, and accepts CIMD client ids | `plainhand.oauth_*` |
+| `oauth.mjs` | `createOAuthServer({ sql, issuer, resource, sessionUser(req) → userId \| null, now })` → `{ handle(req, res) → boolean (true if it served the request), verifyAccessToken(token) → { userId, grantId, clientId, scope, audience: 'mcp' \| 'extension' } \| null, listGrants(userId), revokeGrant(userId, grantId) }`. Serves `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/oauth/register`, `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`, and accepts CIMD client ids | `plainhand.oauth_*` |
 | `steps.mjs` | `createStepRunner({ workspace, makeWorkflow(agent) → Workflow })` → `{ start(kind, input) → Outcome, submit(taskId, stepId, result) → Outcome, current(taskId) → Outcome }`; `Outcome = { status: 'step', taskId, step: { stepId, purpose, instruction, data, resultSchema } } \| { status: 'done', taskId, summary, link } \| { status: 'failed', taskId, error }`. Step records live in workspace files `data/plainhand/steps/<taskId>.json` | deferred agent, replay, step expiry |
 | `chatgpt-agent.mjs` | `createChatgptAgent({ tokens, fetchImpl, model })` → an `agent(provider, instruction, data, opts)` with the same contract as `executeAgent`; `createTokenStore({ workspace, key })` → `{ save({ accessToken, refreshToken, expiresAt }), get() → fresh access token (refreshing), clear() }` (AES-256-GCM) | Responses API calls, token refresh |
 | `mcp.mjs` | `handleMcp(req, res, { userId, workspace, registry, stepRunner, siteUrl })` stateless Streamable HTTP; tools = registry read/write tools (with `readOnlyHint` on reads, `securitySchemes`), candidate tools return a website link, plus `check_connection`, `start_task`, `submit_step`, `task_status` backed by `stepRunner` | MCP tool surface |
 | `extension-api.mjs` | `handleExtensionApi(req, res, { userId, workspace, registry, stepRunner })` for `POST /api/extension/match {url}`, `POST /api/extension/plan {jobId, fields}`, `GET /api/extension/file?jobId=&kind=resume\|cover`, `POST /api/extension/save-job {company,title,url,description}`, `POST /api/extension/submitted {jobId}` | extension server side |
 | `app.mjs` | `createCloudApp(deps)` → `(req, res)` handler wiring the above, the website behind the session cookie, rate limits, `/api/help`, `/api/cron/daily`; `api/index.mjs` exports it for Vercel | wiring, env, security headers |
+
+Token audiences: chat connectors (ChatGPT, Claude) only ever get tokens for
+`/mcp`; the browser extension only for `/api/extension` (which can record "I
+submitted"). A client counts as the extension only when every redirect is a
+browser-identity address (`<id>.chromiumapp.org`, `<id>.extensions.allizom.org`)
+and, in production, its id is in `PLAINHAND_EXTENSION_IDS`. The extension
+registers itself on first sign-in.
 
 Shared rules for every module: no secrets in logs; every request scoped to
 one `userId`; candidate-tier actions never reachable from chat or tokens; all

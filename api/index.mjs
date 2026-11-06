@@ -22,7 +22,9 @@ export async function buildHandler(env = process.env) {
     optional('../plainhand/cloud/oauth.mjs'), optional('../plainhand/cloud/mcp.mjs'),
     optional('../plainhand/cloud/extension-api.mjs'), optional('../plainhand/cloud/steps.mjs'),
   ]);
-  const oauth = oauthModule.createOAuthServer?.({ sql, issuer: site, resource: site + '/mcp', sessionUser: sessionUserReader(sessions), now });
+  const oauth = oauthModule.createOAuthServer?.({ sql, issuer: site, resource: site + '/mcp', sessionUser: sessionUserReader(sessions), now,
+    // Published extension ids (comma separated); empty accepts any browser-identity redirect.
+    extensionIds: (process.env.PLAINHAND_EXTENSION_IDS || '').split(',').map(s => s.trim()).filter(Boolean) });
   return createCloudApp({
     sql, env: { ...env, SITE_URL: site }, auth, accounts, sessions, now, oauth,
     handleMcp: mcpModule.handleMcp, handleExtensionApi: extensionModule.handleExtensionApi, stepRunner: stepsModule.createStepRunner,

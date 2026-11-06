@@ -35,7 +35,10 @@ async function fakeFetch(url, options) {
   if (typeof doc === 'string') return new Response(doc, { status: 200 });
   return new Response(JSON.stringify(doc), { status: 200, headers: { 'content-type': 'application/json' } });
 }
-const makeServer = (extra = {}) => createOAuthServer({ sql, issuer: ISSUER, resource: RESOURCE, sessionUser, now: () => new Date(clock), fetchImpl: fakeFetch, ...extra });
+// Fake DNS: every CIMD host is public unless listed here (no real lookups in tests).
+const dnsAnswers = new Map();
+const fakeLookup = async host => dnsAnswers.get(host) || [{ address: '93.184.216.34', family: 4 }];
+const makeServer = (extra = {}) => createOAuthServer({ sql, issuer: ISSUER, resource: RESOURCE, sessionUser, now: () => new Date(clock), fetchImpl: fakeFetch, lookupImpl: fakeLookup, ...extra });
 let server;
 
 test.before(async () => {
@@ -523,4 +526,78 @@ test('the CIMD cache expires and the document is fetched again', { skip }, async
   await call({ target: local, url: '/oauth/authorize?' + new URLSearchParams(q), headers: { 'x-test-user': user } });
   await call({ target: local, url: '/oauth/authorize?' + new URLSearchParams(q), headers: { 'x-test-user': user } });
   assert.equal(served, 2, 'max-age=0 is not cached');
+});
+
+
+test('a CIMD host that resolves to a private address is never fetched', { skip }, async () => {
+  const url = 'https://rebind.example/oauth/client.json';
+  documents.set(url, { client_id: url, client_name: 'Rebind', redirect_uris: ['https://rebind.example/cb'] });
+  for (const answer of [[{ address: '10.0.0.5', family: 4 }], [{ address: '93.184.216.34', family: 4 }, { address: '169.254.169.254', family: 4 }], [{ address: '::ffff:192.168.1.2', family: 6 }], [{ address: 'fd12::1', family: 6 }]]) {
+    dnsAnswers.set('rebind.example', answer);
+    const before = fetchCalls.length;
+    const { challenge } = verifierPair();
+    const res = await call({ url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: url, redirectUri: 'https://rebind.example/cb', challenge })), headers: { 'x-test-user': await account() } });
+    assert.equal(res.status, 400);
+    assert.match(res.body, /not one Plainhand can use/);
+    assert.equal(fetchCalls.length, before, 'no request may be sent to a private address');
+  }
+  dnsAnswers.set('rebind.example', null);
+  dnsAnswers.delete('rebind.example');
+  const failing = makeServer({ lookupImpl: async () => { throw new Error('ENOTFOUND'); } });
+  const { challenge } = verifierPair();
+  const res = await call({ target: failing, url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: url, redirectUri: 'https://rebind.example/cb', challenge })), headers: { 'x-test-user': await account() } });
+  assert.equal(res.status, 400);
+});
+
+test('the extension gets tokens only for the extension API, connectors only for /mcp', { skip }, async () => {
+  const EXTENSION = ISSUER + '/api/extension';
+  const user = await account();
+  const extRedirect = 'https://abcdefghijklmnopabcdefghijklmnop.chromiumapp.org/';
+  const ext = await registerPublic(extRedirect, 'Plainhand extension');
+  // The consent page says what the extension can do.
+  const pair = verifierPair();
+  const page = await call({ url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: ext.client_id, redirectUri: extRedirect, challenge: pair.challenge, resource: EXTENSION })), headers: { 'x-test-user': user } });
+  assert.match(page.body, /fill application forms you open/);
+  // Asking for the connector's audience is refused for the extension client...
+  const wrong = await call({ url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: ext.client_id, redirectUri: extRedirect, challenge: pair.challenge, resource: RESOURCE })), headers: { 'x-test-user': user } });
+  assert.equal(new URL(wrong.headers.location).searchParams.get('error'), 'invalid_target');
+  // ...and its own audience works end to end.
+  const { code, verifier } = await authorize({ user, clientId: ext.client_id, redirectUri: extRedirect, resource: EXTENSION });
+  const tokens = await exchange({ clientId: ext.client_id, code, verifier, redirectUri: extRedirect, extra: { resource: EXTENSION } });
+  assert.equal(tokens.status, 200, tokens.body);
+  const extGrant = await server.verifyAccessToken(tokens.json().access_token);
+  assert.equal(extGrant.audience, 'extension');
+  assert.equal(extGrant.userId, user);
+  const refreshed = await call({ method: 'POST', url: '/oauth/token', form: { grant_type: 'refresh_token', refresh_token: tokens.json().refresh_token, client_id: ext.client_id, resource: RESOURCE } });
+  assert.equal(refreshed.status, 400, 'refresh cannot switch audience');
+  assert.equal(refreshed.json().error, 'invalid_target');
+
+  // A connector (ChatGPT/Claude) cannot obtain an extension token.
+  const claude = await registerPublic('https://claude.example/api/mcp/auth_callback', 'Claude');
+  const p2 = verifierPair();
+  const denied = await call({ url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: claude.client_id, redirectUri: claude.redirect_uris[0], challenge: p2.challenge, resource: EXTENSION })), headers: { 'x-test-user': user } });
+  assert.equal(new URL(denied.headers.location).searchParams.get('error'), 'invalid_target');
+  const connector = await connected(user, claude);
+  assert.equal((await server.verifyAccessToken(connector.access_token)).audience, 'mcp');
+  // A client mixing an extension redirect with a normal one is a connector, not the extension.
+  const mixed = await call({ method: 'POST', url: '/oauth/register', json: { client_name: 'Plainhand extension', redirect_uris: [extRedirect, 'https://evil.example/cb'], token_endpoint_auth_method: 'none' } });
+  const p3 = verifierPair();
+  const mixedRes = await call({ url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: mixed.json().client_id, redirectUri: extRedirect, challenge: p3.challenge, resource: EXTENSION })), headers: { 'x-test-user': user } });
+  assert.equal(new URL(mixedRes.headers.location).searchParams.get('error'), 'invalid_target');
+  // The extension audience has its own resource metadata.
+  const meta = await call({ url: '/.well-known/oauth-protected-resource/api/extension' });
+  assert.equal(meta.json().resource, EXTENSION);
+});
+
+test('with extensionIds set, only the published extension counts as the extension', { skip }, async () => {
+  const EXTENSION = ISSUER + '/api/extension';
+  const pinned = makeServer({ extensionIds: ['publishedidpublishedidpublishedi'], limits: { registrationsPerIpPerHour: 1000 } });
+  const user = await account();
+  const other = await call({ target: pinned, method: 'POST', url: '/oauth/register', json: { client_name: 'Plainhand extension', redirect_uris: ['https://someotherextensionidsomeother.chromiumapp.org/'], token_endpoint_auth_method: 'none' } });
+  const { challenge } = verifierPair();
+  const res = await call({ target: pinned, url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: other.json().client_id, redirectUri: 'https://someotherextensionidsomeother.chromiumapp.org/', challenge, resource: EXTENSION })), headers: { 'x-test-user': user } });
+  assert.equal(new URL(res.headers.location).searchParams.get('error'), 'invalid_target');
+  const published = await call({ target: pinned, method: 'POST', url: '/oauth/register', json: { client_name: 'Plainhand extension', redirect_uris: ['https://publishedidpublishedidpublishedi.chromiumapp.org/'], token_endpoint_auth_method: 'none' } });
+  const ok = await call({ target: pinned, url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: published.json().client_id, redirectUri: 'https://publishedidpublishedidpublishedi.chromiumapp.org/', challenge, resource: EXTENSION })), headers: { 'x-test-user': user } });
+  assert.equal(ok.status, 200, ok.body);
 });

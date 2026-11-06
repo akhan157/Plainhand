@@ -190,10 +190,14 @@ export function createCloudApp(deps) {
     return req.headers['sec-fetch-site'] === 'same-origin';
   }
   const bearer = req => /^Bearer\s+(\S+)$/i.exec(req.headers.authorization || '')?.[1] || null;
-  async function bearerUser(req, res) {
+  // audience: 'mcp' for chat connectors, 'extension' for the browser extension. A token
+  // for one never works on the other, so a chat app can never use the extension's
+  // candidate actions (such as recording a submission).
+  async function bearerUser(req, res, audience) {
     const token = bearer(req), grant = token && oauth ? await oauth.verifyAccessToken(token) : null;
-    if (grant?.userId) return grant;
-    json(res, 401, { error: 'Sign in to Plainhand again.' }, { 'WWW-Authenticate': `Bearer resource_metadata="${siteOrigin}/.well-known/oauth-protected-resource"` });
+    if (grant?.userId && (grant.audience || 'mcp') === audience) return grant;
+    const metadataPath = audience === 'extension' ? '/.well-known/oauth-protected-resource/api/extension' : '/.well-known/oauth-protected-resource';
+    json(res, 401, { error: 'Sign in to Plainhand again.' }, { 'WWW-Authenticate': `Bearer resource_metadata="${siteOrigin}${metadataPath}"` });
     return null;
   }
 
@@ -405,14 +409,14 @@ export function createCloudApp(deps) {
     if (oauth && await oauth.handle(req, res)) return;
     if (p === '/mcp') {
       if (!handleMcp) return json(res, 404, { error: 'Not found.' });
-      const grant = await bearerUser(req, res);
+      const grant = await bearerUser(req, res, 'mcp');
       if (!grant) return;
       const ctx = contextFor(grant.userId);
       return handleMcp(req, res, { userId: grant.userId, grant, workspace: ctx.workspace, registry: ctx.registry, stepRunner: ctx.steps, siteUrl });
     }
     if (p.startsWith('/api/extension/')) {
       if (!handleExtensionApi) return json(res, 404, { error: 'Not found.' });
-      const grant = await bearerUser(req, res);
+      const grant = await bearerUser(req, res, 'extension');
       if (!grant) return;
       await limiter.hit('user:' + grant.userId, limits.user);
       const ctx = contextFor(grant.userId);

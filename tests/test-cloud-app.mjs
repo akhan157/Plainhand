@@ -286,7 +286,11 @@ test('optional connector and extension routes require a valid bearer token', { s
   const calls = [];
   const oauth = {
     async handle(req, res) { if (req.url.startsWith('/.well-known/oauth-protected-resource')) { res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"resource":"x"}'); return true; } return false; },
-    async verifyAccessToken(token) { return token === 'good' ? { userId, grantId: 'g', clientId: 'c', scope: '' } : null; },
+    async verifyAccessToken(token) {
+      if (token === 'good') return { userId, grantId: 'g', clientId: 'c', scope: '', audience: 'mcp' };
+      if (token === 'ext') return { userId, grantId: 'e', clientId: 'x', scope: '', audience: 'extension' };
+      return null;
+    },
   };
   const echo = name => async (req, res, ctx) => { calls.push({ name, userId: ctx.userId, hasWorkspace: !!ctx.workspace && !!ctx.registry }); res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ userId: ctx.userId })); };
   const mounted = await start({ oauth, handleMcp: echo('mcp'), handleExtensionApi: echo('extension') });
@@ -300,7 +304,13 @@ test('optional connector and extension routes require a valid bearer token', { s
     assert.equal((await c.request('/mcp', { method: 'POST', json: {}, headers: { authorization: 'Bearer bad' } })).status, 401);
     assert.deepEqual(await (await c.request('/mcp', { method: 'POST', json: {}, headers: { authorization: 'Bearer good' } })).json(), { userId });
     assert.equal((await c.request('/api/extension/match', { method: 'POST', json: {} })).status, 401);
-    assert.deepEqual(await (await c.request('/api/extension/match', { method: 'POST', json: {}, headers: { authorization: 'Bearer good' } })).json(), { userId });
+    // A chat connector's token never reaches the extension API (which can record a submission),
+    // and the extension's token never reaches the connector.
+    const crossed = await c.request('/api/extension/submitted', { method: 'POST', json: {}, headers: { authorization: 'Bearer good' } });
+    assert.equal(crossed.status, 401);
+    assert.match(crossed.headers.get('www-authenticate'), /oauth-protected-resource\/api\/extension/);
+    assert.equal((await c.request('/mcp', { method: 'POST', json: {}, headers: { authorization: 'Bearer ext' } })).status, 401);
+    assert.deepEqual(await (await c.request('/api/extension/match', { method: 'POST', json: {}, headers: { authorization: 'Bearer ext' } })).json(), { userId });
     assert.deepEqual(calls.map(x => [x.name, x.hasWorkspace]), [['mcp', true], ['extension', true]]);
     // A session cookie is not a bearer token, and without the modules these routes do not exist.
     const web = await app.client().signIn();

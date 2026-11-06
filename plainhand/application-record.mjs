@@ -11,7 +11,9 @@ export const INTERVIEW_STATUSES = ['scheduled', 'completed', 'canceled'];
 export const ACTIVE_STATUSES = ['Applied', 'Responded', 'Interview', 'Offer'];
 const LIMIT = 30;
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The candidate's calendar day, not UTC: in the evening (US time) the UTC date is already
+// tomorrow, which made follow-ups due today show as overdue.
+const today = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 function text(value, label, max, { required = false, multiline = false } = {}) {
   const raw = String(value ?? '');
   const result = (multiline ? raw.replace(/\r\n?/g, '\n').replace(/[^\S\n]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n') : raw.replace(/\s+/g, ' ')).trim();

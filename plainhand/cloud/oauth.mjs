@@ -7,6 +7,7 @@
 // in plainhand.oauth_* (plainhand/cloud/schema.sql).
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
+import { lookup as dnsLookup } from 'node:dns/promises';
 
 export const SCOPE = 'plainhand';
 export const ACCESS_TOKEN_SECONDS = 60 * 60;
@@ -92,6 +93,33 @@ function checkCimdUrl(value) {
   const host = url.hostname.replace(/^\[|\]$/g, '');
   if (isIP(host) || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.')) return false;
   return true;
+}
+
+// A public-looking name can still resolve inside the server's network (directly, or
+// through DNS rebinding on a second lookup). Resolve before fetching and refuse every
+// address that is not global unicast; a lookup that fails is treated as refused.
+const privateV4 = value => {
+  const [a, b] = value.split('.').map(Number);
+  return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
+    || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19)) || a >= 224;
+};
+export function privateAddress(address) {
+  const value = String(address || '').toLowerCase();
+  if (isIP(value) === 4) return privateV4(value);
+  if (isIP(value) !== 6) return true;
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(value); // IPv4-mapped (::ffff:10.0.0.1)
+  if (mapped) return privateV4(mapped[1]);
+  if (value === '::' || value === '::1') return true;
+  const first = parseInt(value.split(':')[0] || '0', 16);
+  // fc00::/7 unique local, fe80::/10 link local, ff00::/8 multicast, 64:ff9b::/96 NAT64 (may reach IPv4 inside).
+  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00 || value.startsWith('64:ff9b:');
+}
+export async function resolvesPublicly(host, lookupImpl = dnsLookup) {
+  try {
+    const results = await lookupImpl(host, { all: true, verbatim: true });
+    if (!results?.length || results.some(r => privateAddress(r.address))) return false;
+    return true;
+  } catch { return false; }
 }
 
 async function readCapped(response, cap) {
@@ -211,12 +239,26 @@ function page(res, status, title, bodyHtml, headers = {}) {
   return true;
 }
 
-export function createOAuthServer({ sql, issuer, resource, sessionUser, now = () => new Date(), fetchImpl = globalThis.fetch, limits = {} }) {
+export function createOAuthServer({ sql, issuer, resource, sessionUser, now = () => new Date(), fetchImpl = globalThis.fetch, lookupImpl = dnsLookup, extensionIds = [], limits = {} }) {
   if (!sql || !issuer || !resource || typeof sessionUser !== 'function') throw new Error('createOAuthServer needs sql, issuer, resource and sessionUser.');
   const base = issuer.replace(/\/+$/, '');
   const issuerUrl = new URL(issuer);
   const resourceUrl = new URL(resource);
   const canonical = canonicalResource(resource);
+  // Two audiences. Chat connectors (ChatGPT, Claude) get tokens for `resource` (/mcp);
+  // the browser extension gets tokens for the extension API, which can record "I submitted".
+  // A client is the extension only when every redirect is a browser-identity address
+  // (Chrome/Edge: <id>.chromiumapp.org, Firefox: <id>.extensions.allizom.org), which only
+  // that installed extension can receive; when extensionIds is set, only those ids count.
+  const extensionResource = issuer.replace(/\/+$/, '') + '/api/extension';
+  const extensionCanonical = canonicalResource(extensionResource);
+  const allowedExtensionIds = new Set((extensionIds || []).map(id => String(id).toLowerCase()));
+  const isExtensionClient = client => Array.isArray(client?.redirectUris) && client.redirectUris.length > 0 && client.redirectUris.every(uri => {
+    let url; try { url = new URL(uri); } catch { return false; }
+    const match = /^([a-z0-9-]+)\.(chromiumapp\.org|extensions\.allizom\.org)$/.exec(url.hostname);
+    return url.protocol === 'https:' && Boolean(match) && (!allowedExtensionIds.size || allowedExtensionIds.has(match[1]));
+  });
+  const resourceFor = client => (isExtensionClient(client) ? extensionResource : resource);
   const secureCookie = issuerUrl.protocol === 'https:';
   const csrfCookie = secureCookie ? '__Host-plainhand_oauth' : 'plainhand_oauth';
   const registrationPerIp = limits.registrationsPerIpPerHour ?? 20;
@@ -228,6 +270,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
   const resourcePath = resourceUrl.pathname.replace(/\/+$/, '');
   const issuerPath = issuerUrl.pathname.replace(/\/+$/, '');
   const resourceMetadataPaths = new Set(['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource' + resourcePath]);
+  const extensionMetadataPath = '/.well-known/oauth-protected-resource/api/extension';
   const serverMetadataPaths = new Set(['/.well-known/oauth-authorization-server', '/.well-known/oauth-authorization-server' + issuerPath, '/.well-known/openid-configuration']);
   const resourceMetadataUrl = `${resourceUrl.origin}/.well-known/oauth-protected-resource${resourcePath}`;
   const endpoint = path => base + path;
@@ -266,6 +309,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     const cached = cimdCache.get(url);
     if (cached && cached.expires > Date.now()) return cached.client;
     if (!checkCimdUrl(url)) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
+    if (!await resolvesPublicly(new URL(url).hostname, lookupImpl)) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
     let response, text;
     try {
       response = await fetchImpl(url, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(CIMD_TIMEOUT_MS) });
@@ -354,9 +398,9 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     return { access_token: access, token_type: 'Bearer', expires_in: ACCESS_TOKEN_SECONDS, refresh_token: refresh, scope: grant.scope || SCOPE };
   }
 
-  function checkResourceParam(value) {
+  function checkResourceParam(value, expected) {
     if (value === undefined) return;
-    if (canonicalResource(value) !== canonical) throw new OAuthError('invalid_target', 'This server only issues tokens for ' + resource + '.');
+    if (canonicalResource(value) !== canonicalResource(expected)) throw new OAuthError('invalid_target', 'This app can only get tokens for ' + expected + '.');
   }
 
   async function exchangeCode(req, params) {
@@ -365,7 +409,6 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     if (!code) throw new OAuthError('invalid_request', 'code is required.');
     if (!redirectUri) throw new OAuthError('invalid_request', 'redirect_uri is required.');
     if (!verifier) throw new OAuthError('invalid_request', 'code_verifier is required.');
-    checkResourceParam(str(params, 'resource'));
     const at = clock();
     return sql.begin(async tx => {
       const [row] = await tx`select c.code_hash, c.redirect_uri, c.code_challenge, c.resource, c.expires_at, c.used_at,
@@ -383,6 +426,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
       if (!VERIFIER.test(verifier) || !sameSecret(createHash('sha256').update(verifier).digest('base64url'), row.code_challenge)) {
         return { error: new OAuthError('invalid_grant', 'The code verifier does not match.') };
       }
+      try { checkResourceParam(str(params, 'resource'), row.resource || resource); } catch (error) { return { error }; }
       await tx`update plainhand.oauth_codes set used_at = ${at} where code_hash = ${row.code_hash}`;
       return { tokens: await issueTokens(tx, row, row.resource || resource) };
     });
@@ -392,7 +436,6 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     const client = await authenticateClient(req, params);
     const refresh = str(params, 'refresh_token');
     if (!refresh) throw new OAuthError('invalid_request', 'refresh_token is required.');
-    checkResourceParam(str(params, 'resource'));
     const at = clock();
     return sql.begin(async tx => {
       const [row] = await tx`select t.token_hash, t.resource, t.expires_at, t.used_at, g.id, g.client_id, g.scope, g.revoked_at
@@ -406,6 +449,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
         return invalid();
       }
       if (row.expires_at <= at) return invalid();
+      try { checkResourceParam(str(params, 'resource'), row.resource || resource); } catch (error) { return { error }; }
       await tx`update plainhand.oauth_tokens set used_at = ${at} where token_hash = ${row.token_hash}`;
       return { tokens: await issueTokens(tx, row, row.resource || resource) };
     });
@@ -436,10 +480,10 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     if (!challenge) return back('invalid_request', 'PKCE is required: send code_challenge with code_challenge_method=S256.');
     if (str(params, 'code_challenge_method') !== 'S256') return back('invalid_request', 'Only code_challenge_method=S256 is supported.');
     if (!CHALLENGE.test(challenge)) return back('invalid_request', 'code_challenge is not a valid S256 challenge.');
-    const requestedResource = str(params, 'resource');
-    if (requestedResource !== undefined && canonicalResource(requestedResource) !== canonical) return back('invalid_target', 'This server only issues tokens for ' + resource + '.');
+    const requestedResource = str(params, 'resource'), audience = resourceFor(client);
+    if (requestedResource !== undefined && canonicalResource(requestedResource) !== canonicalResource(audience)) return back('invalid_target', 'This app can only get tokens for ' + audience + '.');
     // Plainhand has one scope; unknown requested scopes are ignored (RFC 6749 §3.3).
-    return { request: { client, redirectUri, state, challenge, resource: requestedResource ? resource : null, scope: SCOPE } };
+    return { request: { client, redirectUri, state, challenge, resource: audience, scope: SCOPE } };
   }
 
   async function signinRedirect(res, params) {
@@ -466,7 +510,9 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     const name = escapeHtml(client.name || new URL(redirectUri).hostname);
     const cookie = `${csrfCookie}=${csrf}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${secureCookie ? '; Secure' : ''}`;
     return page(res, 200, `Connect ${client.name || 'app'} to Plainhand`, `<h1>Let ${name} use your Plainhand workspace?</h1>
-<p>It can read your roles and profile and save changes you ask for. It can never approve applications or mark them submitted.</p>
+<p>${isExtensionClient(client)
+    ? 'It can save jobs you find, fill application forms you open, and record when you tell it you submitted. It never submits an application or approves one for you.'
+    : 'It can read your roles and profile and save changes you ask for. It can never approve applications or mark them submitted.'}</p>
 <p class="small">You will go back to ${escapeHtml(new URL(redirectUri).host)}. You can disconnect it any time from Connected apps.</p>
 <form method="post" action="/oauth/authorize">${hidden}<input type="hidden" name="csrf" value="${csrf}">
 <div class="row"><button class="allow" type="submit" name="decision" value="allow">Allow</button><button type="submit" name="decision" value="cancel">Cancel</button></div></form>`, { 'Set-Cookie': cookie });
@@ -584,12 +630,13 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     let path;
     try { path = new URL(req.url, base).pathname; } catch { return false; }
     const method = String(req.method || 'GET').toUpperCase();
-    const known = resourceMetadataPaths.has(path) || serverMetadataPaths.has(path) || ['/oauth/register', '/oauth/authorize', '/oauth/token', '/oauth/revoke'].includes(path);
+    const known = resourceMetadataPaths.has(path) || path === extensionMetadataPath || serverMetadataPaths.has(path) || ['/oauth/register', '/oauth/authorize', '/oauth/token', '/oauth/revoke'].includes(path);
     if (!known) return false;
     const notAllowed = allow => { res.writeHead(405, { Allow: allow, 'Content-Type': 'application/json', ...CORS }); res.end(JSON.stringify({ error: 'invalid_request', error_description: 'Method not allowed.' })); return true; };
     if (method === 'OPTIONS' && path !== '/oauth/authorize') { res.writeHead(204, CORS_PREFLIGHT); res.end(); return true; }
     try {
       if (resourceMetadataPaths.has(path)) return method === 'GET' || method === 'HEAD' ? sendJson(res, 200, protectedResourceMetadata(), { ...CORS, 'Cache-Control': 'public, max-age=300' }) : notAllowed('GET');
+      if (path === extensionMetadataPath) return method === 'GET' || method === 'HEAD' ? sendJson(res, 200, { ...protectedResourceMetadata(), resource: extensionResource, resource_name: 'Plainhand extension' }, { ...CORS, 'Cache-Control': 'public, max-age=300' }) : notAllowed('GET');
       if (serverMetadataPaths.has(path)) return method === 'GET' || method === 'HEAD' ? sendJson(res, 200, serverMetadata(), { ...CORS, 'Cache-Control': 'public, max-age=300' }) : notAllowed('GET');
       if (path === '/oauth/authorize') {
         if (method === 'GET') {
@@ -619,10 +666,12 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     const at = clock();
     const [row] = await sql`select g.id, g.user_id, g.client_id, g.scope, t.resource from plainhand.oauth_tokens t join plainhand.oauth_grants g on g.id = t.grant_id
       where t.token_hash = ${sha256(value)} and t.kind = 'access' and t.expires_at > ${at} and g.revoked_at is null`;
-    if (!row || canonicalResource(row.resource || resource) !== canonical) return null;
+    const tokenAudience = row ? canonicalResource(row.resource || resource) : null;
+    const audience = tokenAudience === canonical ? 'mcp' : tokenAudience === extensionCanonical ? 'extension' : null;
+    if (!row || !audience) return null;
     const minuteAgo = new Date(at.getTime() - 60_000);
     await sql`update plainhand.oauth_grants set last_used_at = ${at} where id = ${row.id} and (last_used_at is null or last_used_at < ${minuteAgo})`;
-    return { userId: row.user_id, grantId: row.id, clientId: row.client_id, scope: row.scope };
+    return { userId: row.user_id, grantId: row.id, clientId: row.client_id, scope: row.scope, audience };
   }
 
   async function listGrants(userId) {
@@ -646,5 +695,5 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     });
   }
 
-  return { handle, verifyAccessToken, listGrants, revokeGrant, resourceMetadataUrl, metadata: { server: serverMetadata, resource: protectedResourceMetadata } };
+  return { handle, verifyAccessToken, listGrants, revokeGrant, resourceMetadataUrl, extensionResource, metadata: { server: serverMetadata, resource: protectedResourceMetadata } };
 }
