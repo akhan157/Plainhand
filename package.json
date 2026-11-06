@@ -13,7 +13,7 @@
     "test:agent-ui": "node tests/test-plainhand-agent-ui.mjs",
     "test:full": "node tests/run-test-suite.mjs",
     "test:remote": "node --test tests/test-remote.mjs",
-    "test:cloud": "node --test tests/test-cloud-storage.mjs",
+    "test:cloud": "node --test tests/test-cloud-storage.mjs tests/test-cloud-oauth.mjs",
     "test:plainhand-live": "node tests/test-plainhand-live.mjs",
     "test:agent-live": "node tests/test-plainhand-agent-live.mjs",
     "doctor": "node lib/doctor.mjs",
