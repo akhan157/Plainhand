@@ -32,8 +32,9 @@ couldn't answer. **You review and submit every application yourself.**
 
 ## Quick start
 
-With [Node.js 22 or newer](https://nodejs.org), one command downloads,
-sets up and starts Plainhand, then opens it in your browser:
+With [Node.js 22 or newer](https://nodejs.org), one command downloads the
+latest release, sets it up and starts Plainhand, then opens it in your browser.
+Run it again later to upgrade; your workspace is kept.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh

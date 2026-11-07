@@ -10,6 +10,8 @@ REPO="akhan157/Plainhand"
 HOME_DIR="${PLAINHAND_HOME:-$HOME/.plainhand}"
 BIN_DIR="${PLAINHAND_BIN_DIR:-$HOME/.local/bin}"
 APP="$HOME_DIR/app"
+# latest (default) = newest GitHub release; main = development version; or a tag such as v1.1.2.
+VERSION="${PLAINHAND_VERSION:-latest}"
 WORKSPACE="$HOME_DIR/workspace"
 START=1
 
@@ -18,7 +20,7 @@ for arg in "$@"; do
     --no-start) START=0 ;;
     --help|-h)
       echo "Usage: curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh"
-      echo "       PLAINHAND_HOME=/path PLAINHAND_BIN_DIR=/path sh install.sh [--no-start]"
+      echo "       PLAINHAND_HOME=/path PLAINHAND_BIN_DIR=/path PLAINHAND_VERSION=latest|main|vX.Y.Z sh install.sh [--no-start]"
       echo "Workspace defaults to ~/.plainhand/workspace; launcher to ~/.local/bin/plainhand."
       exit 0
       ;;
@@ -41,8 +43,17 @@ TMP=$(mktemp -d)
 cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 
-echo "Downloading Plainhand…"
-curl -fsSL "https://codeload.github.com/$REPO/tar.gz/refs/heads/main" -o "$TMP/plainhand.tar.gz"
+case "$VERSION" in
+  main) REF="refs/heads/main"; LABEL="development version (main)" ;;
+  latest)
+    TAG=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" | sed -n 's#.*/releases/tag/##p')
+    case "$TAG" in v[0-9]*) ;; *) echo "Could not find the latest Plainhand release. Check your connection, or set PLAINHAND_VERSION=main." >&2; exit 1 ;; esac
+    REF="refs/tags/$TAG"; LABEL="$TAG" ;;
+  v[0-9]*) REF="refs/tags/$VERSION"; LABEL="$VERSION" ;;
+  *) echo "PLAINHAND_VERSION must be latest, main or a release tag such as v1.1.2." >&2; exit 2 ;;
+esac
+echo "Downloading Plainhand $LABEL…"
+curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" -o "$TMP/plainhand.tar.gz"
 tar -xzf "$TMP/plainhand.tar.gz" -C "$TMP"
 SRC=""
 for candidate in "$TMP"/Plainhand-*; do

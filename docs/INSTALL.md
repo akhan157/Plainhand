@@ -27,6 +27,19 @@ downloaded code stays separate. Use `plainhand --port 3211` if 3210 is busy,
 `plainhand --data-root /path/to/workspace` for another folder, or
 `plainhand --check` to see what is installed without starting.
 
+The installer gets the latest release. Run it again to upgrade; your workspace
+is kept. To install the development version instead, set
+`PLAINHAND_VERSION=main`, or set a release tag such as `PLAINHAND_VERSION=v1.1.2`
+to install that version:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | PLAINHAND_VERSION=main sh
+```
+
+```powershell
+$env:PLAINHAND_VERSION = "main"; irm https://raw.githubusercontent.com/akhan157/Plainhand/main/install.ps1 | iex
+```
+
 The manual steps below are for a development checkout. The same installer can
 be pointed elsewhere with `PLAINHAND_HOME=/path` and
 `PLAINHAND_BIN_DIR=/path/bin`.

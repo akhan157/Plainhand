@@ -8,6 +8,8 @@ $HomeDir = if ($env:PLAINHAND_HOME) { $env:PLAINHAND_HOME } else { Join-Path $HO
 $BinDir = if ($env:PLAINHAND_BIN_DIR) { $env:PLAINHAND_BIN_DIR } else { Join-Path $HomeDir "bin" }
 $App = Join-Path $HomeDir "app"
 $Workspace = Join-Path $HomeDir "workspace"
+# latest (default) = newest GitHub release; main = development version; or a tag such as v1.1.2.
+$Version = if ($env:PLAINHAND_VERSION) { $env:PLAINHAND_VERSION } else { "latest" }
 $NoStart = ($env:PLAINHAND_NO_START -eq "1") -or ($args -contains "--no-start")
 
 function Fail($message) {
@@ -26,9 +28,22 @@ if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue) -and -not (Get-Comm
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("plainhand-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $temp -Force | Out-Null
 try {
-  Write-Host "Downloading Plainhand..."
+  if ($Version -eq "main") {
+    $Ref = "refs/heads/main"; $Label = "development version (main)"
+  } elseif ($Version -eq "latest") {
+    try {
+      $Tag = (Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers @{ "User-Agent" = "plainhand-installer" }).tag_name
+    } catch { $Tag = $null }
+    if ($Tag -notmatch '^v[0-9]') { throw "Could not find the latest Plainhand release. Check your connection, or set PLAINHAND_VERSION=main." }
+    $Ref = "refs/tags/$Tag"; $Label = $Tag
+  } elseif ($Version -match '^v[0-9]') {
+    $Ref = "refs/tags/$Version"; $Label = $Version
+  } else {
+    throw "PLAINHAND_VERSION must be latest, main or a release tag such as v1.1.2."
+  }
+  Write-Host "Downloading Plainhand $Label..."
   $zip = Join-Path $temp "plainhand.zip"
-  Invoke-WebRequest -Uri "https://codeload.github.com/$Repo/zip/refs/heads/main" -OutFile $zip -UseBasicParsing
+  Invoke-WebRequest -Uri "https://codeload.github.com/$Repo/zip/$Ref" -OutFile $zip -UseBasicParsing
   Expand-Archive -Path $zip -DestinationPath $temp -Force
   $src = Get-ChildItem -Path $temp -Directory | Where-Object { $_.Name -like "Plainhand-*" } | Select-Object -First 1
   if (-not $src) { throw "The download did not contain Plainhand." }
