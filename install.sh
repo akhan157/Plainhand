@@ -52,7 +52,7 @@ case "$VERSION" in
   v[0-9]*) REF="refs/tags/$VERSION"; LABEL="$VERSION" ;;
   *) echo "PLAINHAND_VERSION must be latest, main or a release tag such as v1.1.2." >&2; exit 2 ;;
 esac
-echo "Downloading Plainhand $LABEL…"
+echo "Downloading Plainhand ${LABEL}…"
 curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" -o "$TMP/plainhand.tar.gz"
 tar -xzf "$TMP/plainhand.tar.gz" -C "$TMP"
 SRC=""
