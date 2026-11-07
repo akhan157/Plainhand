@@ -1,4 +1,4 @@
--- Hosted Plainhand schema (docs/HOSTED-CONNECTOR-PLAN.md).
+-- Hosted Plainhand schema (docs/internal/HOSTED-CONNECTOR-PLAN.md).
 -- Lives in its own schema, which Supabase's REST API does not expose; only the
 -- Plainhand server (direct Postgres connection) reads or writes it. Row level security
 -- is enabled with no policies as a second barrier against any API role.

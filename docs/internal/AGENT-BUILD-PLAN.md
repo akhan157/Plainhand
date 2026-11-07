@@ -110,7 +110,7 @@ structure and the code are not right for a conversation-first product.
 
 ## Milestones
 
-Delivered on 2026-10-25: M0, M1, M2, M2b (streaming; session reuse deferred), M3, M4, M5, M6. M7: hardening, data contract, exports and the opt-in live check are done; the live run itself is pending (see the [verification matrix](VERIFICATION-MATRIX.md)).
+Delivered on 2026-10-25: M0, M1, M2, M2b (streaming; session reuse deferred), M3, M4, M5, M6. M7: hardening, data contract, exports and the opt-in live check are done; the live run itself is pending (see the [verification matrix](../VERIFICATION-MATRIX.md)).
 
 Each milestone ends with: full suite green, screenshots where UI changed, docs
 updated, commit and push, and a short report.

@@ -118,7 +118,7 @@ coverage includes packet approval and synthetic browser form filling.
 - `tests/playwright-onboarding.config.mjs`
 - `package.json`
 - `package-lock.json`
-- `docs/HOSTED-ONBOARDING-IMPLEMENTATION.md`
+- `docs/internal/HOSTED-ONBOARDING-IMPLEMENTATION.md`
 
 The MCP endpoint and `api/index.mjs` are untouched. No deployment, provider login,
 push, merge, PR, database schema or authentication changes are part of this commit.

@@ -1,4 +1,4 @@
-// OAuth 2.1 authorization server for hosted Plainhand (docs/HOSTED-CONNECTOR-PLAN.md §3, §6).
+// OAuth 2.1 authorization server for hosted Plainhand (docs/internal/HOSTED-CONNECTOR-PLAN.md §3, §6).
 // Clients: ChatGPT and Claude (MCP connectors) and the Plainhand browser extension (public
 // client). Implements RFC 8414 / 9728 metadata, RFC 7591 dynamic registration, Client ID
 // Metadata Documents, authorization code + PKCE (S256 only), RFC 8707 resource indicators,

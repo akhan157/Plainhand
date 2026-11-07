@@ -316,7 +316,7 @@ career-ops/
 3. **你需要遵守第三方服务条款。** 你必须按照所使用招聘平台（Greenhouse、Lever、Workday、LinkedIn 等）的服务条款来使用本工具。不要用它向雇主发送垃圾申请，也不要对 ATS 系统造成过载。
 4. **不提供任何保证。** 评估结果只是建议，不是真相。AI 模型可能会幻觉出并不存在的技能或经历。作者不对任何求职结果、申请被拒、账号受限或其他后果承担责任。
 
-完整内容见 [LEGAL_DISCLAIMER.md](LEGAL_DISCLAIMER.md)。本软件依据 [MIT License](LICENSE) 以“按现状”方式提供，不附带任何形式的担保。
+完整内容见 [LEGAL_DISCLAIMER.md](../../LEGAL_DISCLAIMER.md)。本软件依据 [MIT License](../../LICENSE) 以“按现状”方式提供，不附带任何形式的担保。
 
 ## 贡献者
 
@@ -328,7 +328,7 @@ career-ops/
 
 ## 许可证与商标
 
-代码以 [MIT](LICENSE) 许可证授权。"career-ops" 名称及品牌受 [商标政策](TRADEMARK.md) 约束 —— 允许社区使用，商业产品命名和背书需保留权利。
+代码以 [MIT](../../LICENSE) 许可证授权。"career-ops" 名称及品牌受 [商标政策](../../TRADEMARK.md) 约束 —— 允许社区使用，商业产品命名和背书需保留权利。
 
 ## 联系我们
 

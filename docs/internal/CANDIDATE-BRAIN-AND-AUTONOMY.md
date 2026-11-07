@@ -3,7 +3,7 @@
 **Status:** Proposed product direction; not an implementation claim
 **Updated:** 2026-10-17
 **Related:** [Product strategy](PRODUCT-STRATEGY-AND-ROADMAP.md),
-[buildout goal](PRODUCT-BUILDOUT-GOAL.md), [operating guide](../OPERATING_GUIDE.md),
+[buildout goal](PRODUCT-BUILDOUT-GOAL.md), [operating guide](../../OPERATING_GUIDE.md),
 [conversational agent layer](AGENT-LAYER-DIRECTION.md)
 
 ## Product promise

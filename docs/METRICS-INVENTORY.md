@@ -1,7 +1,7 @@
 # What Plainhand measures
 
 **Status:** inventory as of 26 October 2026
-**Related:** [Verification matrix](VERIFICATION-MATRIX.md) · [Agent layer direction](AGENT-LAYER-DIRECTION.md#how-to-tell-its-working)
+**Related:** [Verification matrix](VERIFICATION-MATRIX.md) · [Agent layer direction](internal/AGENT-LAYER-DIRECTION.md#how-to-tell-its-working)
 
 Most of what Plainhand has today are **checks** (a gate that passes or fails one
 item) rather than **metrics** (a number tracked over time). Checks keep a single
@@ -48,7 +48,7 @@ These are stored already; a number is one function away.
 
 | Benchmark | Measures | Last run |
 | --- | --- | --- |
-| `benchmark:architecture` | Correct outcomes and false-ready rate across 42 application cases, six designs | 18 Oct ([results](IMPLEMENTATION-BENCHMARK-RESULTS.md)) |
+| `benchmark:architecture` | Correct outcomes and false-ready rate across 42 application cases, six designs | 18 Oct ([results](internal/IMPLEMENTATION-BENCHMARK-RESULTS.md)) |
 | `benchmark:review` | Whether the factual reviewer catches 3 planted false claims and passes 1 true one | Opt-in probe; 4 cases |
 | `benchmark:simulation` | Completion, interruptions and recovery on fictional portals | Browser path |
 | `benchmark:invariants` | Workflow invariants hold under repeated runs | Deterministic |
@@ -190,7 +190,7 @@ the same inventory and the latest directory for each benchmark.
 **What the gap is.** The controlled results say the orchestration and safety
 gates hold; they say nothing about whether a real model drafts a better packet,
 and the live runs stopped at a platform challenge (Lever). The largest unknown
-remains [M7](VISION-GAP.md): one real application per supported ATS,
+remains [M7](internal/VISION-GAP.md): one real application per supported ATS,
 submitted by the candidate. Run live benchmarks with `--provider claude` or
 `--provider codex` when an account is available; those calls use the account's
 quota and must be opt-in.

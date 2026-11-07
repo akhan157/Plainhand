@@ -5,7 +5,7 @@ This is the README of the open-source project Plainhand is built on, kept for re
 > Plainhand builds on [`santifer/career-ops`](https://github.com/santifer/career-ops)
 > by Santiago Fernández de Valderrama. The code is MIT-licensed; the original
 > career-ops name and brand belong to the upstream maintainer (see
-> [`TRADEMARK.md`](TRADEMARK.md)). The inherited documentation below describes
+> [`TRADEMARK.md`](../../TRADEMARK.md)). The inherited documentation below describes
 > that foundation. Plainhand adds its own browser interface and candidate workflow.
 
 [English](README.md) | [Español](README.es.md) | [Português (Brasil)](README.pt-BR.md) | [한국어](README.ko-KR.md) | [日本語](README.ja.md) | [简体中文](README.cn.md) | [繁體中文](README.zh-TW.md) | [Українська](README.ua.md) | [Русский](README.ru.md)
@@ -556,11 +556,11 @@ career-ops/
 
 ## Competitive landscape
 
-See [docs/COMPETITIVE-LANDSCAPE.md](../COMPETITIVE-LANDSCAPE.md) for the current comparison with related open-source projects and hosted job-search products, plus the recommendation for Career-Ops' build direction.
+See [docs/COMPETITIVE-LANDSCAPE.md](../internal/COMPETITIVE-LANDSCAPE.md) for the current comparison with related open-source projects and hosted job-search products, plus the recommendation for Career-Ops' build direction.
 
-See [docs/PRODUCT-STRATEGY-AND-ROADMAP.md](../PRODUCT-STRATEGY-AND-ROADMAP.md) for the product definition, target users, principles, feature breakdown, phased roadmap, success metrics, and safety boundaries.
+See [docs/PRODUCT-STRATEGY-AND-ROADMAP.md](../internal/PRODUCT-STRATEGY-AND-ROADMAP.md) for the product definition, target users, principles, feature breakdown, phased roadmap, success metrics, and safety boundaries.
 
-See [docs/PRODUCT-BUILDOUT-GOAL.md](../PRODUCT-BUILDOUT-GOAL.md) for the single execution goal, phase dependencies, cross-cutting workstreams, capability map, and definition of done.
+See [docs/PRODUCT-BUILDOUT-GOAL.md](../internal/PRODUCT-BUILDOUT-GOAL.md) for the single execution goal, phase dependencies, cross-cutting workstreams, capability map, and definition of done.
 
 ## Roadmap implementation primitives
 
@@ -652,7 +652,7 @@ My portfolio and other open source projects → [santifer.io](https://santifer.i
 3. **You comply with third-party ToS.** You must use this tool in accordance with the Terms of Service of the career portals you interact with (Greenhouse, Lever, Workday, LinkedIn, etc.). Do not use this tool to spam employers or overwhelm ATS systems.
 4. **No guarantees.** Evaluations are recommendations, not truth. AI models may hallucinate skills or experience. The authors are not liable for employment outcomes, rejected applications, account restrictions, or any other consequences.
 
-See [LEGAL_DISCLAIMER.md](LEGAL_DISCLAIMER.md) for full details. This software is provided under the [MIT License](LICENSE) "as is", without warranty of any kind.
+See [LEGAL_DISCLAIMER.md](../../LEGAL_DISCLAIMER.md) for full details. This software is provided under the [MIT License](../../LICENSE) "as is", without warranty of any kind.
 
 ## Contributors
 
@@ -664,8 +664,8 @@ Got hired using career-ops? [Share your story!](https://github.com/santifer/care
 
 ## License & Trademark
 
-The code is licensed under [MIT](LICENSE). The "career-ops" name and
-brand are governed by the [Trademark Policy](TRADEMARK.md), permissive
+The code is licensed under [MIT](../../LICENSE). The "career-ops" name and
+brand are governed by the [Trademark Policy](../../TRADEMARK.md), permissive
 for community use, reserved for commercial product naming and
 endorsement.
 

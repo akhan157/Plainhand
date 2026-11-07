@@ -1,7 +1,7 @@
 # Resume market norms: what works, what's accepted, and what it means for Plainhand
 
 **Status:** research, 26 October 2026 · proposals not yet built
-**Related:** [Claim calibration](METRICS-INVENTORY.md#6-claim-calibration-benchmark) · [Competitive landscape](COMPETITIVE-LANDSCAPE.md) · resume builder policy in `modes/pdf.md` and `resume-tailoring-lib.mjs`
+**Related:** [Claim calibration](../METRICS-INVENTORY.md#6-claim-calibration-benchmark) · [Competitive landscape](COMPETITIVE-LANDSCAPE.md) · resume builder policy in `modes/pdf.md` and `resume-tailoring-lib.mjs`
 
 The question: should Plainhand write to the market's standard, including the
 "appropriate embellishing" that is normal on resumes, and would that help the

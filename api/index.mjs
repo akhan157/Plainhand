@@ -1,5 +1,5 @@
 // Vercel entry for hosted Plainhand. The only place that reads process.env; every module
-// below takes its settings as arguments (docs/HOSTED-CONNECTOR-PLAN.md, Module contracts).
+// below takes its settings as arguments (docs/internal/HOSTED-CONNECTOR-PLAN.md, Module contracts).
 import { validateCloudEnv } from '../plainhand/cloud/config.mjs';
 import { reportServerError } from '../plainhand/cloud/diagnostics.mjs';
 import { randomUUID } from 'node:crypto';

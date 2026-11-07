@@ -72,7 +72,7 @@ behaviours they name are listing skills not held and inflating titles.
 Verification vendors argue that only checking each claim against the
 underlying facts separates reframing from inventing. No published rubric
 exists. Plainhand now grades every claim against its own evidence as undersold,
-balanced, stretched or unsupported ([claim calibration](METRICS-INVENTORY.md#6-claim-calibration-benchmark)),
+balanced, stretched or unsupported ([claim calibration](../METRICS-INVENTORY.md#6-claim-calibration-benchmark)),
 which also catches the opposite failure: applications that undersell real
 results.
 

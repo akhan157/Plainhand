@@ -1,7 +1,7 @@
 # Plainhand agent contracts
 
 **Status:** Contract for parallel work (M1–M5). Changes only through the orchestrator.
-**Plan:** [Agent build plan](AGENT-BUILD-PLAN.md) · **Direction:** [Agent layer](AGENT-LAYER-DIRECTION.md)
+**Plan:** [Agent build plan](internal/AGENT-BUILD-PLAN.md) · **Direction:** [Agent layer](internal/AGENT-LAYER-DIRECTION.md)
 
 Workers build against these shapes. Anything marked *(M1)* or *(M2)* is
 implemented by the orchestrator in that milestone; until then, front-end work

@@ -1,4 +1,4 @@
-// The browser extension's side of hosted Plainhand (docs/HOSTED-CONNECTOR-PLAN.md §6).
+// The browser extension's side of hosted Plainhand (docs/internal/HOSTED-CONNECTOR-PLAN.md §6).
 //
 //   POST /api/extension/match      { url }                        → the saved role for this page
 //   POST /api/extension/plan       { jobId, fields }              → answers for the page's form

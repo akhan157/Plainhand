@@ -4,7 +4,7 @@
 // wording only: an unsupported claim is never within anyone's line.
 
 export const KINDS = ['ownership', 'level', 'numbers', 'rounding', 'scope', 'motivation', 'results', 'verifiable', 'other'];
-// The starting line before any choices: the market norm (docs/RESUME-MARKET-NORMS.md).
+// The starting line before any choices: the market norm (docs/internal/RESUME-MARKET-NORMS.md).
 // Rounding stated as rounding ("about 20%") is normal; a candidate who chooses the
 // exact figure twice moves off it. Verifiable facts can never be stretched.
 export const MARKET_NORM = ['rounding'];

@@ -47,6 +47,8 @@ These are what Plainhand is. Pull requests that weaken them won't be merged:
 | Drafting, review, calibration | `plainhand/workflow.mjs`, `plainhand/humanize.mjs` |
 | Application browser | `plainhand/jobs.mjs` and `plainhand/browser-*.mjs` |
 | Front end | `plainhand/web/` |
+| Hosted Plainhand (unreleased) | `plainhand/cloud/`, `api/`, `extension/`, `desktop/` |
+| Plans, research and past test results | [`docs/internal/`](docs/internal/README.md) |
 
 The career-ops command-line tools that Plainhand builds on are still in the
 repository; their guide is [docs/career-ops](docs/career-ops/README.md).

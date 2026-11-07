@@ -1,5 +1,5 @@
 // Browser test of the in-app assistant: working-state items 1–4 of
-// docs/AGENT-BUILD-PLAN.md, driven through the real server, the real agent
+// docs/internal/AGENT-BUILD-PLAN.md, driven through the real server, the real agent
 // engine and a scripted fixture agent. No live model and no real employer.
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';

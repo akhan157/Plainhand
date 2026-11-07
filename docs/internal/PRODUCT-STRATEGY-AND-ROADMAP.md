@@ -14,7 +14,7 @@ provider-portable application work. It specifies the profile-first build sequenc
 and records candidate-selected automatic submission as a future proposal;
 current manual-submission rules remain in force.
 
-The [Plainhand browser application](PLAINHAND-BROWSER-APP.md) now implements a
+The [Plainhand browser application](../PLAINHAND-BROWSER-APP.md) now implements a
 local candidate interview, CLI provider connections, on-demand ATS discovery,
 evidence-linked evaluation, reviewed PDF packets, standard-field browser
 assistance, and tracker integration. Its automated acceptance tests use explicit

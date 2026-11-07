@@ -1,4 +1,4 @@
-// Model steps for the hosted connector (docs/HOSTED-CONNECTOR-PLAN.md §4).
+// Model steps for the hosted connector (docs/internal/HOSTED-CONNECTOR-PLAN.md §4).
 //
 // The chat app (ChatGPT, Claude) does the model work. A task runs through the normal
 // Workflow with a deferred agent: each model call the workflow makes becomes a step

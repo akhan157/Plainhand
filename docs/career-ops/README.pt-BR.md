@@ -270,7 +270,7 @@ Meu portfólio e outros projetos open source → [santifer.io](https://santifer.
 3. **Você cumpre os ToS de terceiros.** Você deve usar esta ferramenta em conformidade com os Termos de Serviço dos portais de carreira com os quais interage (Greenhouse, Lever, Workday, LinkedIn etc.). Não use esta ferramenta para spam de empregadores nem para sobrecarregar sistemas ATS.
 4. **Sem garantias.** As avaliações são recomendações, não verdades absolutas. Modelos de IA podem alucinar habilidades ou experiências. Os autores não se responsabilizam por resultados profissionais, candidaturas rejeitadas, restrições de conta ou qualquer outra consequência.
 
-Veja [LEGAL_DISCLAIMER.md](LEGAL_DISCLAIMER.md) para o aviso completo. Este software é fornecido sob a [Licença MIT](LICENSE) "como está", sem garantia de qualquer tipo.
+Veja [LEGAL_DISCLAIMER.md](../../LEGAL_DISCLAIMER.md) para o aviso completo. Este software é fornecido sob a [Licença MIT](../../LICENSE) "como está", sem garantia de qualquer tipo.
 
 ## Licença
 

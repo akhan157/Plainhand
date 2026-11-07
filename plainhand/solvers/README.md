@@ -10,4 +10,4 @@ no-submission boundaries rather than the reference's standalone-browser/token AP
 No paid fallback is selected automatically. Other local/third-party solvers can
 implement the same `ready()` and `solve(page)` interface, returning an observed
 outcome. Each needs type-specific browser checks and live validation; model output
-alone is not proof of verification. See docs/FREE-CAPTCHA-SOLVERS.md.
+alone is not proof of verification. See docs/internal/FREE-CAPTCHA-SOLVERS.md.

@@ -19,7 +19,7 @@ const BENCHMARKS = [
     prefixes: ['architecture-controlled-', 'architecture-live-'],
     live: 'add --live --provider claude|codex',
     what: 'Correct outcomes, false-ready results and model calls across six to eight designs on 17 controlled cases. Controlled runs use a deterministic agent.',
-    docs: 'docs/IMPLEMENTATION-BENCHMARK-RESULTS.md',
+    docs: 'docs/internal/IMPLEMENTATION-BENCHMARK-RESULTS.md',
   },
   {
     id: 'simulation',

@@ -6,7 +6,7 @@
 [Candidate brain and autonomy](CANDIDATE-BRAIN-AND-AUTONOMY.md),
 [buildout goal](PRODUCT-BUILDOUT-GOAL.md),
 [competitive landscape](COMPETITIVE-LANDSCAPE.md),
-[browser app](PLAINHAND-BROWSER-APP.md), [operating guide](../OPERATING_GUIDE.md)
+[browser app](../PLAINHAND-BROWSER-APP.md), [operating guide](../../OPERATING_GUIDE.md)
 
 ## One line
 
@@ -200,7 +200,7 @@ Profile edits from conversation go through the existing correction flow
   invented, one question at a time (`benchmark:profile`).
 
 Which of these are measured today, and how, is in the
-[metrics inventory](METRICS-INVENTORY.md).
+[metrics inventory](../METRICS-INVENTORY.md).
 
 ## Voice
 

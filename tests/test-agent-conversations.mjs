@@ -1,5 +1,5 @@
 // Scripted multi-turn conversations with the fixture agent (docs/AGENT-CONTRACTS.md §4–§5,
-// docs/AGENT-BUILD-PLAN.md working-state items 2–4). Tests only; no production code here.
+// docs/internal/AGENT-BUILD-PLAN.md working-state items 2–4). Tests only; no production code here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';

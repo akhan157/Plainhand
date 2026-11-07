@@ -89,7 +89,7 @@ asserts the connector replay uses the same cloud renderer/verifier.
 - Tests: `tests/test-cloud-runtime.mjs`, `tests/test-cloud-app.mjs`,
   `tests/test-cloud-oauth.mjs`, `tests/test-cloud-mcp-endpoint.mjs`,
   `tests/test-cloud-onboarding.spec.mjs` (public-page axe test only).
-- Documentation: this report and `docs/HOSTED-DEPLOYMENT.md`. The global hosted
+- Documentation: this report and `docs/internal/HOSTED-DEPLOYMENT.md`. The global hosted
   connector plan and onboarding implementation document were not edited.
 
 ## Remaining owner blockers and next commands

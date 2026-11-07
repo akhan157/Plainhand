@@ -430,7 +430,7 @@ they are not exercised by the offline suite.
   and broader custom widget support remain future work. Form edits are not silently
   promoted into permanent profile facts; add reusable corrections in role context.
 - Career-ops components remain installed during extraction. Plainhand currently
-  reuses ATS discovery adapters and the tracker/artifact contracts. See [the upstream reuse review](CAREER-OPS-REUSE-REVIEW.md) for the pinned
+  reuses ATS discovery adapters and the tracker/artifact contracts. See [the upstream reuse review](internal/CAREER-OPS-REUSE-REVIEW.md) for the pinned
   1.37.0 comparison. The TUI is retained as an optional pipeline/report interface
   (`npm run tui`), with Plainhand branding. Redundant modes remain during extraction.
 
@@ -491,7 +491,7 @@ including after connection failures. Shut down Plainhand cleanly. A process cras
 can leave a remote browser running: check/stop it in the service console. Local browsers use no managed-browser service. The optional free local audio
 solver is installed with `npm run setup:captcha`; it handles the implemented
 English reCAPTCHA audio path, with remaining challenges handed back to the user.
-See [free solver research and validation](FREE-CAPTCHA-SOLVERS.md).
+See [free solver research and validation](internal/FREE-CAPTCHA-SOLVERS.md).
 
 References: [browser API](https://browser-use.com/playwright),
 [CAPTCHA behavior](https://docs.browser-use.com/cloud/browser/captcha-handling).
@@ -537,7 +537,7 @@ submit-control classifier, including next-looking handlers that call
 `requestSubmit()`. Explicit human takeover releases those guards. This does not
 make a remote or hostile browser environment an OS-level security sandbox.
 
-See [the automation source review](BROWSER-AUTOMATION-OPTIONS.md) for 13 projects,
+See [the automation source review](internal/BROWSER-AUTOMATION-OPTIONS.md) for 13 projects,
 source pins, what was actually integrated, and the next comparison candidates.
 Stagehand and agent-browser are shortlisted for richer browser observation and
 transport; their complete runtimes are not claimed as integrated or benchmarked.

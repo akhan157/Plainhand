@@ -1,4 +1,4 @@
-// Accounts and website sessions for hosted Plainhand (docs/HOSTED-CONNECTOR-PLAN.md §2).
+// Accounts and website sessions for hosted Plainhand (docs/internal/HOSTED-CONNECTOR-PLAN.md §2).
 // An account row is the candidate (user_id = Supabase Auth user id). Deleting it cascades to
 // every workspace file, session and OAuth grant. A session cookie is 32 random bytes; only
 // its sha256 hash is stored, so a database leak never yields a usable cookie.

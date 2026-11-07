@@ -20,7 +20,7 @@ HTTPS backend. Production code remains unchanged.**
   retained separately: 30 real test calls across these two authorization phases,
   not a claim about total account usage or subscription quota.
 
-**Later follow-up:** [broader verification](VERIFICATION-MATRIX.md) used the final
+**Later follow-up:** [broader verification](../VERIFICATION-MATRIX.md) used the final
 four authorized calls for fictional voice checks. Current phase is now **12/12**,
 34 tracked calls including prior phase. Original owned-run results below remain
 historical; no additional inference is authorized by unused figures in this report.

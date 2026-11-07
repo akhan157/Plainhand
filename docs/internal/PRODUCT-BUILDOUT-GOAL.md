@@ -57,7 +57,7 @@ code-enforced tiers behind the screens, an in-app agent that proposes changes
 for the candidate to confirm, a local MCP server for the candidate's own
 agent, and a conversation-first front end. It is verified with scripted and
 fixture agents only; live provider behaviour is recorded as unverified in the
-[verification matrix](VERIFICATION-MATRIX.md).
+[verification matrix](../VERIFICATION-MATRIX.md).
 
 The lifecycle build (2026-10-26, [next build plan](NEXT-BUILD-PLAN.md)) adds
 discovery campaigns with scheduled scans (Phases 3 and 4), grounded follow-up

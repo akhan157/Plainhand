@@ -1,8 +1,8 @@
 # Plainhand next build plan: finishing the lifecycle
 
-**Status:** N1–N6 delivered 2026-10-26; real-world validation pending (see the [verification matrix](VERIFICATION-MATRIX.md))
+**Status:** N1–N6 delivered 2026-10-26; real-world validation pending (see the [verification matrix](../VERIFICATION-MATRIX.md))
 **Within:** [Product buildout goal](PRODUCT-BUILDOUT-GOAL.md) · follows the [agent build plan](AGENT-BUILD-PLAN.md)
-**Contracts:** [Agent contracts](AGENT-CONTRACTS.md), especially §6 feature modules
+**Contracts:** [Agent contracts](../AGENT-CONTRACTS.md), especially §6 feature modules
 
 ## Goal
 

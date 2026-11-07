@@ -1,4 +1,4 @@
-// Adversarial suite for the conversational agent (docs/AGENT-LAYER-DIRECTION.md "Safety",
+// Adversarial suite for the conversational agent (docs/internal/AGENT-LAYER-DIRECTION.md "Safety",
 // docs/AGENT-CONTRACTS.md §2 tiers and §4 turn rules, working-state item 6).
 // The attacker is text in a posting, an imported document, a contact note or model output
 // derived from the posting, and also a fully compromised model that returns exactly what the

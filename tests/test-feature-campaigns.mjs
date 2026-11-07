@@ -1,4 +1,4 @@
-// Discovery campaigns (milestone N1, docs/NEXT-BUILD-PLAN.md). Synthetic job
+// Discovery campaigns (milestone N1, docs/internal/NEXT-BUILD-PLAN.md). Synthetic job
 // boards, an injected liveness check and a fake clock; no network and no browser.
 import test from 'node:test';
 import assert from 'node:assert/strict';

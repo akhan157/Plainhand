@@ -1,5 +1,5 @@
 // Hosted Plainhand: one Node (req, res) handler for the website, sign-in, and the
-// optional connector, extension and step modules (docs/HOSTED-CONNECTOR-PLAN.md).
+// optional connector, extension and step modules (docs/internal/HOSTED-CONNECTOR-PLAN.md).
 // Stateless between requests: every request resolves its user from the session cookie
 // (or a bearer token) and works only on that user's Postgres-backed workspace.
 //

@@ -1,6 +1,6 @@
 # Plainhand 1.0 goal
 
-**Set:** 26 October 2026 · **Status:** V1–V8 delivered 27 October; see the [verification matrix](VERIFICATION-MATRIX.md#plainhand-10-27-october-2026) · **Gap analysis:** [VISION-GAP.md](VISION-GAP.md)
+**Set:** 26 October 2026 · **Status:** V1–V8 delivered 27 October; see the [verification matrix](../VERIFICATION-MATRIX.md#plainhand-10-27-october-2026) · **Gap analysis:** [VISION-GAP.md](VISION-GAP.md)
 
 1.0 is a version the owner can send to a friend who installs it and starts
 using it the same day: a mini version of themselves built by conversation,

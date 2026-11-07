@@ -61,7 +61,7 @@ local suite.
 
 ## Finishing the lifecycle, 26 October 2026
 
-Automated evidence for [NEXT-BUILD-PLAN](NEXT-BUILD-PLAN.md) (N1–N6), with the
+Automated evidence for [NEXT-BUILD-PLAN](internal/NEXT-BUILD-PLAN.md) (N1–N6), with the
 scripted or fixture agent and synthetic job boards. **No real provider, job
 board or employer site was used.**
 
@@ -98,7 +98,7 @@ edges.
 ## Agent layer, 25 October 2026
 
 Automated evidence for the conversational agent layer
-([plan](AGENT-BUILD-PLAN.md), [contracts](AGENT-CONTRACTS.md)). All runs use
+([plan](internal/AGENT-BUILD-PLAN.md), [contracts](AGENT-CONTRACTS.md)). All runs use
 the fixture or scripted agent; **no real provider was called**.
 
 | Claim | Status | What the evidence establishes |
