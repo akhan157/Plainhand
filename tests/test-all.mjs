@@ -11,7 +11,7 @@
  *   node tests/test-all.mjs --quick   # Skip dashboard build (faster)
  */
 
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { readFileSync, existsSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { tmpdir } from 'os';
@@ -30,12 +30,12 @@ function pass(msg) { console.log(`  ✅ ${msg}`); passed++; }
 function fail(msg) { console.log(`  ❌ ${msg}`); failed++; }
 function warn(msg) { console.log(`  ⚠️  ${msg}`); warnings++; }
 
+// Commands always run as an executable plus an argument array: no shell is involved,
+// so values such as process.execPath or a scan extension can never be parsed as shell
+// syntax. A failing command (including "git grep" finding nothing) returns null.
 function run(cmd, args = [], opts = {}) {
   try {
-    if (Array.isArray(args) && args.length > 0) {
-      return execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf-8', timeout: 30000, ...opts }).trim();
-    }
-    return execSync(cmd, { cwd: ROOT, encoding: 'utf-8', timeout: 30000, ...opts }).trim();
+    return execFileSync(cmd, args.map(String), { cwd: ROOT, encoding: 'utf-8', timeout: 30000, ...opts }).trim();
   } catch (e) {
     return null;
   }
@@ -115,7 +115,14 @@ for (const { name, allowFail } of scripts) {
 console.log('\n3. Liveness classification');
 
 try {
-  const { classifyLiveness } = await import(pathToFileURL(join(ROOT, 'lib/liveness-core.mjs')).href);
+  const { classifyLiveness, stripHtmlToText } = await import(pathToFileURL(join(ROOT, 'lib/liveness-core.mjs')).href);
+
+  const stripped = stripHtmlToText('<script>window.challenge = true;</script ><style>.x{color:red}</style ><p>Apply for this role</p>');
+  if (!/window\.challenge|color:red/.test(stripped) && /Apply for this role/.test(stripped)) {
+    pass('Closing script and style tags with whitespace are stripped from page text');
+  } else {
+    fail(`Script/style text leaked into liveness text: ${stripped}`);
+  }
 
   const expiredChromeApply = classifyLiveness({
     finalUrl: 'https://example.com/jobs/closed-role',
@@ -291,7 +298,7 @@ try {
 
 if (!QUICK) {
   console.log('\n4. Dashboard build');
-  const goBuild = run('cd dashboard && go build -o /tmp/career-dashboard-test . 2>&1');
+  const goBuild = run('go', ['build', '-o', '/tmp/career-dashboard-test', '.'], { cwd: join(ROOT, 'dashboard') });
   if (goBuild !== null) {
     pass('Dashboard compiles');
   } else {
@@ -378,13 +385,11 @@ const allowedFiles = [
 // untracked files (debate artifacts, AI tool scratch, local plans/) and
 // gitignored files can't trigger false positives because they were never
 // going to reach a commit anyway.
-const grepPathspec = scanExtensions.map(e => `'*.${e}'`).join(' ');
+const grepPathspec = scanExtensions.map(e => `*.${e}`);
 
 let leakFound = false;
 for (const pattern of leakPatterns) {
-  const result = run(
-    `git grep -n "${pattern}" -- ${grepPathspec} 2>/dev/null`
-  );
+  const result = run('git', ['grep', '-n', pattern, '--', ...grepPathspec]);
   if (result) {
     for (const line of result.split('\n')) {
       const file = line.split(':')[0];
@@ -405,13 +410,13 @@ console.log('\n7. Absolute path check');
 
 // Same git grep approach: only scans tracked files. Untracked AI tool
 // outputs, local debate artifacts, etc. can't false-positive here.
-const absPathResult = run(
-  `git grep -n "/Users/" -- '*.mjs' '*.sh' '*.md' '*.go' '*.yml' 2>/dev/null | grep -v README.md | grep -v LICENSE | grep -v CLAUDE.md | grep -v test-all.mjs`
-);
-if (!absPathResult) {
+const absPathResult = run('git', ['grep', '-n', '/Users/', '--', '*.mjs', '*.sh', '*.md', '*.go', '*.yml']);
+const absolutePaths = (absPathResult || '').split('\n')
+  .filter(line => line && !/README\.md|LICENSE|CLAUDE\.md|test-all\.mjs/.test(line));
+if (!absolutePaths.length) {
   pass('No absolute paths in code files');
 } else {
-  for (const line of absPathResult.split('\n').filter(Boolean)) {
+  for (const line of absolutePaths) {
     fail(`Absolute path: ${line.slice(0, 100)}`);
   }
 }
