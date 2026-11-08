@@ -95,6 +95,42 @@ function checkCimdUrl(value) {
   return true;
 }
 
+// CIMD makes the authorization server fetch a URL chosen by an unknown client, so the
+// deployment decides which client-metadata domains it trusts. An entry also covers its
+// subdomains ("chatgpt.com" allows "www.chatgpt.com" but not "chatgpt.com.evil.example").
+export function isAllowedCimdHost(hostname, hosts = []) {
+  const host = String(hostname).toLowerCase();
+  return hosts.some(value => {
+    const allowed = String(value).toLowerCase().replace(/^\./, '');
+    return Boolean(allowed) && (host === allowed || host.endsWith('.' + allowed));
+  });
+}
+
+// The characters the URL parser leaves unescaped in a path segment. encodeURIComponent
+// escapes them too, so they are restored after encoding to keep a canonical URL byte for
+// byte identical; none of them can start a new host or authority.
+const URL_PATH_SAFE = /%(?:24|26|2B|2C|3B|3D|3A|40)/gi;
+
+// Rebuild the URL from its parsed parts so the fetch layer receives exactly the URL that
+// passed the checks: every variable part is encoded first, which also makes the request
+// target an ordinary encoded string instead of raw request input.
+function canonicalCimdUrl(url) {
+  const host = encodeURIComponent(url.hostname);
+  const port = url.port ? ':' + encodeURIComponent(url.port) : '';
+  const segments = url.pathname.split('/').map(part => {
+    let decoded;
+    try { decoded = decodeURIComponent(part); } catch { return null; }
+    return encodeURIComponent(decoded).replace(URL_PATH_SAFE, match => String.fromCharCode(parseInt(match.slice(1), 16)));
+  });
+  if (segments.some(segment => segment === null)) return null;
+  const params = [...url.searchParams];
+  if (url.search && params.length === 0) return null;
+  const query = params.length
+    ? '?' + params.map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`).join('&')
+    : '';
+  return `https://${host}${port}${segments.join('/')}${query}`;
+}
+
 // A public-looking name can still resolve inside the server's network (directly, or
 // through DNS rebinding on a second lookup). Resolve before fetching and refuse every
 // address that is not global unicast; a lookup that fails is treated as refused.
@@ -239,7 +275,7 @@ function page(res, status, title, bodyHtml, headers = {}) {
   return true;
 }
 
-export function createOAuthServer({ sql, issuer, resource, sessionUser, now = () => new Date(), fetchImpl = globalThis.fetch, lookupImpl = dnsLookup, extensionIds = [], requireExtensionAllowlist = false, limits = {} }) {
+export function createOAuthServer({ sql, issuer, resource, sessionUser, now = () => new Date(), fetchImpl = globalThis.fetch, lookupImpl = dnsLookup, clientIdHosts = [], extensionIds = [], requireExtensionAllowlist = false, limits = {} }) {
   if (!sql || !issuer || !resource || typeof sessionUser !== 'function') throw new Error('createOAuthServer needs sql, issuer, resource and sessionUser.');
   const base = issuer.replace(/\/+$/, '');
   const issuerUrl = new URL(issuer);
@@ -293,7 +329,7 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     revocation_endpoint_auth_methods_supported: AUTH_METHODS,
     scopes_supported: [SCOPE],
     authorization_response_iss_parameter_supported: true,
-    client_id_metadata_document_supported: true,
+    client_id_metadata_document_supported: clientIdHosts.length > 0,
   });
 
   // ---------- clients ----------
@@ -310,10 +346,14 @@ export function createOAuthServer({ sql, issuer, resource, sessionUser, now = ()
     const cached = cimdCache.get(url);
     if (cached && cached.expires > Date.now()) return cached.client;
     if (!checkCimdUrl(url)) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
-    if (!await resolvesPublicly(new URL(url).hostname, lookupImpl)) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
+    const parsed = new URL(url);
+    if (!isAllowedCimdHost(parsed.hostname, clientIdHosts)) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
+    if (!await resolvesPublicly(parsed.hostname, lookupImpl)) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
+    const target = canonicalCimdUrl(parsed);
+    if (target !== url) throw new OAuthError('invalid_client', 'This app\'s address is not one Plainhand can use.');
     let response, text;
     try {
-      response = await fetchImpl(url, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(CIMD_TIMEOUT_MS) });
+      response = await fetchImpl(target, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(CIMD_TIMEOUT_MS) });
       if (response.status !== 200) throw new Error('status ' + response.status);
       text = await readCapped(response, CIMD_MAX_BYTES);
     } catch {

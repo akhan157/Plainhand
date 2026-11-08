@@ -38,7 +38,7 @@ async function fakeFetch(url, options) {
 // Fake DNS: every CIMD host is public unless listed here (no real lookups in tests).
 const dnsAnswers = new Map();
 const fakeLookup = async host => dnsAnswers.get(host) || [{ address: '93.184.216.34', family: 4 }];
-const makeServer = (extra = {}) => createOAuthServer({ sql, issuer: ISSUER, resource: RESOURCE, sessionUser, now: () => new Date(clock), fetchImpl: fakeFetch, lookupImpl: fakeLookup, ...extra });
+const makeServer = (extra = {}) => createOAuthServer({ sql, issuer: ISSUER, resource: RESOURCE, sessionUser, now: () => new Date(clock), fetchImpl: fakeFetch, lookupImpl: fakeLookup, clientIdHosts: ['example'], ...extra });
 let server;
 
 test.before(async () => {
@@ -547,6 +547,17 @@ test('a CIMD host that resolves to a private address is never fetched', { skip }
   const { challenge } = verifierPair();
   const res = await call({ target: failing, url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: url, redirectUri: 'https://rebind.example/cb', challenge })), headers: { 'x-test-user': await account() } });
   assert.equal(res.status, 400);
+});
+
+test('a CIMD client id outside the trusted hosts is never fetched', { skip }, async () => {
+  const url = 'https://unknown.invalid/oauth/client.json';
+  documents.set(url, { client_id: url, client_name: 'Unknown', redirect_uris: ['https://unknown.invalid/cb'] });
+  const { challenge } = verifierPair();
+  const before = fetchCalls.length;
+  const res = await call({ url: '/oauth/authorize?' + new URLSearchParams(authorizeQuery({ clientId: url, redirectUri: 'https://unknown.invalid/cb', challenge })), headers: { 'x-test-user': await account() } });
+  assert.equal(res.status, 400);
+  assert.match(res.body, /not one Plainhand can use/);
+  assert.equal(fetchCalls.length, before, 'a host outside the allowlist is never contacted');
 });
 
 test('the extension gets tokens only for the extension API, connectors only for /mcp', { skip }, async () => {
