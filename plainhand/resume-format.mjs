@@ -25,7 +25,10 @@ const DATE = /\b((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?
 const round = (n, step = 0.5) => +(Math.round(n / step) * step).toFixed(2);
 const median = values => { const s = [...values].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
 const mode = values => { const counts = new Map(); for (const v of values) counts.set(v, (counts.get(v) || 0) + 1); return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0]; };
-const decode = s => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+const HTML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+// Decode in one pass: replacing "&amp;" first and then scanning the result again would
+// turn an original "&amp;lt;" into "<" even though the PDF only contained "&lt;".
+const decode = s => String(s).replace(/&(amp|lt|gt|quot|#39);/g, (entity, name) => HTML_ENTITIES[name] ?? entity);
 
 // pdftotext -bbox-layout lines: text, position and height (≈ the font's line box).
 export function parseBboxLayout(xhtml) {
