@@ -187,7 +187,12 @@ export function createCloudApp(deps) {
     res.writeHead(status, headers);
     res.end(body);
   }
-  const json = (res, status, data, headers = {}) => send(res, status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8', ...headers });
+  // JSON responses carry raw error text (clients render it with textContent). The literal
+  // content type plus nosniff keeps a browser from ever treating the body as HTML.
+  function json(res, status, data, headers = {}) {
+    res.writeHead(status, { ...headers, 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' });
+    res.end(JSON.stringify(data));
+  }
   const html = (res, status, body, headers = {}) => send(res, status, body, { 'Content-Type': 'text/html; charset=utf-8', ...headers });
   const redirect = (res, location, cookies = [], status = 303) => send(res, status, '', { Location: location, ...(cookies.length ? { 'Set-Cookie': cookies } : {}) });
 
@@ -516,7 +521,7 @@ export function createCloudApp(deps) {
     try { await route(req, res); }
     catch (error) {
       if (res.headersSent) { res.end(); return; }
-      if (error instanceof HttpError) return json(res, error.status, { error: escapeHtml(error.message), errorId }, error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {});
+      if (error instanceof HttpError) return json(res, error.status, { error: error.message, errorId }, error.retryAfter ? { 'Retry-After': String(error.retryAfter) } : {});
       // Postgres, network and programming errors are not shown to the candidate.
       // Log only scrubbed request metadata; messages can contain workspace data.
       const internal = error?.name === 'PostgresError' || /^E[A-Z_]+$/.test(String(error?.code || '')) || error instanceof TypeError || error instanceof ReferenceError || error instanceof RangeError;
@@ -524,10 +529,7 @@ export function createCloudApp(deps) {
         reportServerError({ errorId, status: 500, method: req.method });
         return json(res, 500, { error: 'Something went wrong. Try again in a minute.', errorId });
       }
-      // Error text can quote request input (an unknown action name, a header echoed by a
-      // driver). Escape it before it leaves the server so a client that renders the
-      // message as HTML cannot execute it.
-      return json(res, 400, { error: escapeHtml(error.message), errorId, ...(error.code && !/^E[A-Z_]+$/.test(error.code) ? { code: error.code } : {}), ...(error.panel ? { panel: error.panel } : {}) });
+      return json(res, 400, { error: error.message, errorId, ...(error.code && !/^E[A-Z_]+$/.test(error.code) ? { code: error.code } : {}), ...(error.panel ? { panel: error.panel } : {}) });
     }
   };
 }
