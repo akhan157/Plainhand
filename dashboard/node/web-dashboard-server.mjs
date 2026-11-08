@@ -89,9 +89,12 @@ const server = http.createServer(async (req, res) => {
 
     sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
+    // The stack and the internal message stay in the server log. Sending them to the
+    // browser exposes file paths and workspace details to anyone who can reach the port.
+    console.error('Dashboard request failed:', error);
     sendJson(res, 500, {
       error: 'Server error',
-      message: error instanceof Error ? error.message : String(error),
+      message: 'The dashboard could not load that. Try again.',
     });
   }
 });

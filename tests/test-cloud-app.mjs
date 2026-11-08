@@ -74,6 +74,16 @@ let app;
 test.before(async () => { await db.ready; if (!skip) app = await start(); });
 test.after(async () => { await app?.close(); });
 
+test('request-controlled error text is HTML-escaped in the response', { skip }, async () => {
+  const c = await app.client().signIn();
+  const res = await c.api('action', { name: '<img src=x onerror=alert(1)>' });
+  assert.equal(res.status, 400);
+  const { error } = await res.json();
+  assert.match(error, /Unknown action/);
+  assert.doesNotMatch(error, /<img/, 'the request value must not be reflected as markup');
+  assert.match(error, /&lt;img src=x onerror=alert\(1\)&gt;/, 'the value is escaped for HTML');
+});
+
 test('signed-out visitors are sent to sign in; the API answers 401', { skip }, async () => {
   const c = app.client();
   const home = await c.request('/');
