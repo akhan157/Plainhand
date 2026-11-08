@@ -100,14 +100,19 @@ export function resolveVercelCli() {
   return cliCache;
 }
 
-// cmd.exe does not preserve arguments with spaces unless they are quoted. Inside a
-// quoted argument a backslash also has to be escaped, otherwise a value ending in one
-// escapes the closing quote and changes how the surrounding arguments are parsed.
-function shellArgs(args, shell) {
+// cmd.exe does not preserve arguments with spaces unless they are quoted. Backslashes
+// need doubling only where the Windows argument parser treats them specially: before a
+// quote or at the end of a quoted argument. Doubling every backslash would change an
+// ordinary path such as "C:\Program Files\Vercel".
+export function shellArgs(args, shell) {
   if (!shell) return args.map(String);
   return args.map(arg => {
     const text = String(arg);
-    return /[\s"]/.test(text) ? `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : text;
+    if (!/[\s"]/.test(text)) return text;
+    const escaped = text.includes('"') || /\\$/.test(text)
+      ? text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+      : text;
+    return `"${escaped}"`;
   });
 }
 

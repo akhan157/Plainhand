@@ -146,6 +146,15 @@ test('publishes, applies the password environment and verifies signed-in data', 
   assert.equal((await data.json()).counts.all, 1);
 });
 
+test('quoted Windows arguments escape quotes without rewriting ordinary paths', () => {
+  const { shellArgs } = remote;
+  assert.deepEqual(shellArgs(['--prod', 'plain'], true), ['--prod', 'plain'], 'simple arguments are unchanged');
+  assert.deepEqual(shellArgs(['C:\\Program Files\\Vercel'], true), ['"C:\\Program Files\\Vercel"'], 'a quoted path keeps its backslashes');
+  assert.deepEqual(shellArgs(['a"b'], true), ['"a\\"b"'], 'a quote is escaped');
+  assert.deepEqual(shellArgs(['dir with space\\'], true), ['"dir with space\\\\"'], 'a trailing backslash cannot escape the closing quote');
+  assert.deepEqual(shellArgs(['a b'], false), ['a b'], 'the non-shell path is untouched');
+});
+
 test('generated dashboard passwords use the unbiased alphabet', () => {
   const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const passwords = new Set();
