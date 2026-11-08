@@ -6,6 +6,15 @@ import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
 import { ApplicationBrowser } from '../plainhand/jobs.mjs';
 
+// S3 uploads go to the bucket host (and its subdomains). Parse the URL so a request
+// to https://s3.amazonaws.com.attacker.example/ is not mistaken for an S3 upload.
+const isS3Url = value => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && (url.hostname === 's3.amazonaws.com' || url.hostname.endsWith('.s3.amazonaws.com'));
+  } catch { return false; }
+};
+
 async function fixture({ mode = 'success', delay = 0 } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-transfer-'));
   const pdf = path.join(root, 'approved.pdf');
@@ -65,14 +74,14 @@ for (const mode of ['success', 'local', 'wrong-name', 'wrong-bytes', 'rejected',
       } else if (mode === 'success') {
         assert.equal(result.uploads[0].state, 'server-accepted', JSON.stringify({result,observed:h.observed,error:await h.page.evaluate(()=>window.error)}));
         assert.deepEqual(result.failed, []);
-        assert.equal(h.observed.find(r => r.url.includes('s3.amazonaws.com')).containsApprovedBytes, true, 'Outbound multipart contains the approved file, including reconstructed disk bytes.');
-        assert.equal(h.observed.filter(r => r.url.includes('s3.amazonaws.com') && r.method === 'POST').length, 1);
+        assert.equal(h.observed.find(r => isS3Url(r.url)).containsApprovedBytes, true, 'Outbound multipart contains the approved file, including reconstructed disk bytes.');
+        assert.equal(h.observed.filter(r => isS3Url(r.url) && r.method === 'POST').length, 1);
       } else {
         assert.equal(result.uploads[0].state, 'failed');
         assert.deepEqual(result.failed, ['Resume']);
         assert.deepEqual(result.filled, []);
         if (mode === 'wrong-name') assert.equal(h.observed.filter(r => r.method === 'POST').length, 0);
-        if (mode === 'wrong-bytes') assert.equal(h.observed.some(r => r.url.includes('s3.amazonaws.com')), false);
+        if (mode === 'wrong-bytes') assert.equal(h.observed.some(r => isS3Url(r.url)), false);
       }
       const unrelated = await h.page.evaluate(async () => { try { await fetch('https://api.ashbyhq.com/file.createFileUploadHandle',{method:'POST',body:'{}'});return true; } catch { return false; } });
       assert.equal(unrelated, false, 'Upload permission expires when fill returns.');
@@ -102,7 +111,7 @@ test('a same-page retry reuses the accepted upload instead of sending the PDF tw
     const first = await h.browser.fill(h.job, { [fields[0].key]: '__resume__' }, h.pdf);
     await h.page.waitForFunction(() => window.finished);
     assert.equal(first.uploads[0].state, 'server-accepted');
-    const posts = () => h.observed.filter(r => r.url.includes('s3.amazonaws.com') && r.method === 'POST').length;
+    const posts = () => h.observed.filter(r => isS3Url(r.url) && r.method === 'POST').length;
     assert.equal(posts(), 1);
 
     const second = await h.browser.fill(h.job, { [fields[0].key]: '__resume__' }, h.pdf);
