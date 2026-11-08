@@ -5,7 +5,7 @@
 // middleware gates the data. It does not proxy the local server, run tasks or
 // submit applications, so it cannot replace the interactive app.
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -100,12 +100,14 @@ export function resolveVercelCli() {
   return cliCache;
 }
 
-// cmd.exe does not preserve arguments with spaces unless they are quoted.
+// cmd.exe does not preserve arguments with spaces unless they are quoted. Inside a
+// quoted argument a backslash also has to be escaped, otherwise a value ending in one
+// escapes the closing quote and changes how the surrounding arguments are parsed.
 function shellArgs(args, shell) {
   if (!shell) return args.map(String);
   return args.map(arg => {
     const text = String(arg);
-    return /[\s"]/.test(text) ? `"${text.replace(/"/g, '\\"')}"` : text;
+    return /[\s"]/.test(text) ? `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : text;
   });
 }
 
@@ -123,8 +125,8 @@ function vercel(args, options = {}) {
 
 export function generatePassword() {
   const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = randomBytes(20);
-  return [...bytes].map(byte => alphabet[byte % alphabet.length]).join('');
+  // randomInt rejects modulo bias instead of folding 256 values onto a 57-letter alphabet.
+  return Array.from({ length: 20 }, () => alphabet[randomInt(alphabet.length)]).join('');
 }
 
 export function generateSecret() {

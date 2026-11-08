@@ -146,6 +146,18 @@ test('publishes, applies the password environment and verifies signed-in data', 
   assert.equal((await data.json()).counts.all, 1);
 });
 
+test('generated dashboard passwords use the unbiased alphabet', () => {
+  const alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const passwords = new Set();
+  for (let i = 0; i < 50; i++) {
+    const password = remote.generatePassword();
+    assert.equal(password.length, 20);
+    assert.match(password, new RegExp(`^[${alphabet}]+$`));
+    passwords.add(password);
+  }
+  assert.equal(passwords.size, 50, 'passwords are not repeated');
+});
+
 test('project settings validate and password rotation changes the saved secret', async () => {
   await assert.rejects(() => remote.updateRemoteSettings(workspace, { project: 'Bad Name' }), /lowercase letters/);
   const before = await remote.loadRemote(workspace);
