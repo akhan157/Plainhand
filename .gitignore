@@ -96,3 +96,5 @@ data/candidate-context.yml
 scratch_*.mjs
 scratch_jd.txt
 .vercel/
+.env.local
+.env*.local
