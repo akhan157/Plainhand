@@ -14,7 +14,7 @@ const get = async keys => (await chrome.storage.local.get(keys)) || {};
 const set = entries => chrome.storage.local.set(entries);
 
 async function api(path, options = {}) {
-  const { site = 'https://plainhand.test' } = await get(['site']);
+  const { site = 'https://plainhand-cloud.vercel.app' } = await get(['site']);
   const token = await freshToken();
   if (!token) throw new Error('Connect Plainhand first: open the popup and sign in.');
   const response = await fetch(site + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) } });

@@ -5,7 +5,7 @@
 // registers itself (RFC 7591) with its real identity redirect
 // (https://<extension-id>.chromiumapp.org/), which only this installed
 // extension can receive; the server issues it tokens for the extension API only.
-const DEFAULT_SITE = 'https://plainhand.test';
+const DEFAULT_SITE = 'https://plainhand-cloud.vercel.app';
 const SCOPES = 'plainhand';
 const audience = site => `${site.replace(/\/+$/, '')}/api/extension`;
 

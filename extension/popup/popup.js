@@ -7,7 +7,7 @@ const send = message => new Promise((resolve, reject) =>
 const escape = value => String(value ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 async function api(path, options = {}) {
-  const { site = 'https://plainhand.test', token } = await chrome.storage.local.get(['site', 'token']);
+  const { site = 'https://plainhand-cloud.vercel.app', token } = await chrome.storage.local.get(['site', 'token']);
   if (!token) throw new Error('Connect Plainhand first.');
   const response = await fetch(site + path, { ...options, headers: { Authorization: `Bearer ${token}`, ...(options.body ? { 'Content-Type': 'application/json' } : {}) } });
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `Plainhand said ${response.status}.`);
@@ -77,7 +77,7 @@ function showResult(action, result) {
 }
 
 async function renderAccount() {
-  const { site = 'https://plainhand.test' } = await chrome.storage.local.get(['site']);
+  const { site = 'https://plainhand-cloud.vercel.app' } = await chrome.storage.local.get(['site']);
   app.innerHTML = `
     <h1>Plainhand account</h1>
     <p class="muted">Signed in to ${escape(site)}</p>

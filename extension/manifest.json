@@ -4,7 +4,7 @@
   "short_name": "Plainhand",
   "version": "1.0.0",
   "description": "Save jobs to Plainhand, fill application pages with your approved answers, and record what you submitted. It never submits for you.",
-  "homepage_url": "https://plainhand.test",
+  "homepage_url": "https://plainhand-cloud.vercel.app",
   "minimum_chrome_version": "120",
   "icons": { "48": "icon.svg", "128": "icon.svg" },
   "options_ui": { "page": "popup/popup.html#account", "open_in_tab": false },
