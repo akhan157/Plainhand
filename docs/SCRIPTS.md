@@ -40,6 +40,8 @@ Scripts live in `lib/` (engine and CLI), `tests/`, `benchmarks/` and
 | `npm run dashboard:publish` | `dashboard/node/dashboard-auto-publish.mjs` | Build and deploy the read-only dashboard with the connected Vercel account |
 | `npm run dashboard:watch` | `dashboard/node/dashboard-publish-watcher.mjs` | Publish only when tracked inputs change; `--force` and `--dry-run` |
 | `npm run benchmark:status` | `benchmarks/benchmark-status.mjs` | List benchmarks, latest local evidence and whether each needs a live provider |
+| `npm run benchmark:eval` | `benchmarks/benchmark-eval.mjs` | Controlled end-to-end evaluation: profile, resume, form fill and candidate-confirmed submission to an owned sandbox |
+| `npm run benchmark:eval:live` | `benchmarks/benchmark-eval.mjs --provider claude` | Same evaluation with a real provider; opt-in, uses account quota |
 | `npm run test:remote` | `tests/test-remote.mjs` | Remote-view publish flow against a local stand-in Vercel CLI |
 
 ---

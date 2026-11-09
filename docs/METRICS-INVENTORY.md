@@ -54,8 +54,12 @@ These are stored already; a number is one function away.
 | `benchmark:invariants` | Workflow invariants hold under repeated runs | Deterministic |
 | `test:agent-live` | Three assistant turns on a real CLI: briefing, logging, injected posting | Not yet run on the candidate's machine |
 | `benchmark:profile` (new) | Profile building by conversation, below | 26 Oct, Claude CLI |
+| `benchmark:eval` (new) | End to end: profile, resume, portal fill, candidate-confirmed sandbox submission, scored against ground truth | 9 Nov, controlled: 19/19 |
 
 All earlier benchmarks predate the assistant; none measured the conversation.
+`benchmark:eval` is the first one that scores profile, resume and application in one
+run; see [the harness](internal/EVALUATION-HARNESS.md). Its controlled mode proves
+the harness; live mode measures a provider.
 
 ## 5. Profile-building benchmark
 

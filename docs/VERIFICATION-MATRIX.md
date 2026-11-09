@@ -1,5 +1,17 @@
 # Plainhand verification matrix
 
+## Evaluation harness, 9 November 2026
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Controlled end-to-end evaluation | PASS, 19/19 | `npm run benchmark:eval -- --concurrency 2`: 3 profile, 6 resume, 8 application and 2 submission scenarios on fictional candidates and an owned loopback sandbox; 0 false-ready, 0 sensitive auto-fills, 7/7 candidate-confirmed submissions accepted, tracker confirmed `Applied`; real Chromium PDFs |
+| Harness regression test | PASS | `node --test tests/test-bench-eval.mjs`: sandbox validation, fabricated-claim detection, sensitive-field and false-ready detection, and a controlled resume + submission run |
+| Repository quick suite | PASS | `node tests/test-all.mjs --quick`: 261 passed, 0 failed, 5 known warnings |
+
+The controlled run proves the harness and workflow, not model quality. Live
+provider runs are opt-in with `--provider` and use account quota; none was run in
+this checkout. Real employer acceptance remains unmeasured.
+
 ## Plainhand 1.1.1 and 1.1.2, 5–6 November 2026
 
 Run on Linux with Node.js 26.11.1, Playwright Chromium, Go 1.27.3 and Postgres 17

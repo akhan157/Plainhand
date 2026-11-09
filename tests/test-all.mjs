@@ -53,6 +53,7 @@ console.log('1. Syntax checks');
 const mjsFiles = readdirSync(ROOT).filter(f => f.endsWith('.mjs'));
 for (const f of readdirSync(join(ROOT, 'lib'))) if (f.endsWith('.mjs')) mjsFiles.push(`lib/${f}`);
 for (const f of readdirSync(join(ROOT, 'bin'))) if (f.endsWith('.mjs')) mjsFiles.push(`bin/${f}`);
+for (const f of readdirSync(join(ROOT, 'plainhand/evaluation'))) if (f.endsWith('.mjs')) mjsFiles.push(`plainhand/evaluation/${f}`);
 for (const f of mjsFiles) {
   const result = run(NODE, ['--check', f]);
   if (result !== null) {
@@ -75,6 +76,7 @@ const scripts = [
   { name: 'lib/analyze-patterns.mjs --self-test', expectExit: 0 },
   { name: 'lib/update-system.mjs check', expectExit: 0 },
   { name: 'tests/test-apply-browser.mjs', expectExit: 0 },
+  { name: 'tests/test-bench-eval.mjs', expectExit: 0 },
   { name: 'tests/test-onboarding.mjs', expectExit: 0 },
   { name: 'tests/test-onboarding-plan.mjs', expectExit: 0 },
   { name: 'tests/test-application-timeline.mjs', expectExit: 0 },

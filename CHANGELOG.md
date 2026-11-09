@@ -2,6 +2,13 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **End-to-end evaluation harness.** `npm run benchmark:eval` runs fictional
+  candidates through profile building, resume preparation, portal filling and a
+  candidate-confirmed submission to an owned loopback sandbox, then scores fact
+  coverage, fabricated claims, field accuracy, sensitive-field leaks, correct
+  stops and submission acceptance against ground truth. `--provider` opts into a
+  real CLI; the controlled run is 19/19 on 9 November 2026. See
+  [the harness](docs/internal/EVALUATION-HARNESS.md).
 - **The hosted cloud server.** One stateless Node handler for Vercel
   (`plainhand/cloud/app.mjs`): Supabase sign-in (Google and email links),
   30-day httpOnly session cookies, per-candidate Postgres workspaces behind the
