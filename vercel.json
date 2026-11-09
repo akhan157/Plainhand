@@ -4,7 +4,8 @@
   "functions": {
     "api/index.mjs": {
       "includeFiles": "{plainhand/web/**,node_modules/@sparticuz/chromium/bin/**,node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs}",
-      "maxDuration": 60
+      "maxDuration": 60,
+      "excludeFiles": "{data/**,output/**,tmp/**,reports/**,jds/**,interview-prep/**,cv.md,config/profile.yml,modes/_profile.md,portals.yml,article-digest.md}"
     }
   },
   "rewrites": [

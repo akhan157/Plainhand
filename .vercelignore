@@ -1,0 +1,14 @@
+# Local-only files never belong in the hosted deployment. The hosted app keeps every
+# candidate's files in Postgres; these folders hold local runs, proofs and personal data.
+data/
+output/
+tmp/
+reports/
+jds/
+interview-prep/
+cv.md
+config/profile.yml
+modes/_profile.md
+portals.yml
+article-digest.md
+.env*

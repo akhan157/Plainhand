@@ -13,10 +13,19 @@ async function files(dir) {
   }
   return out;
 }
+// Files the build leaves untouched may be listed in filePathMap (served from the
+// source path) instead of being copied into the bundle directory.
+const config = JSON.parse(await readFile(path.join(bundle, '.vc-config.json'), 'utf8'));
+const mapped = config.filePathMap || {};
 const problems = [];
+for (const leaked of ['data', 'output', 'tmp', 'reports']) {
+  let found = []; try { found = await files(path.join(bundle, leaked)); } catch {}
+  if (found.length) problems.push(`local-only files in the bundle: ${leaked}/ (${found.length})`);
+}
 for (const source of await files(path.join(root, 'plainhand/web'))) {
   const relative = path.relative(root, source);
   let built;
+  if (mapped[relative] === relative) continue; // shipped verbatim from the source path
   try { built = await readFile(path.join(bundle, relative)); } catch { problems.push(`missing: ${relative}`); continue; }
   if (!built.equals(await readFile(source))) problems.push(`changed by the build: ${relative}`);
 }
