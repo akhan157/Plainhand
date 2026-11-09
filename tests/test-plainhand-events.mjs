@@ -20,7 +20,7 @@ test('static files are served from plainhand/web only, with the session token in
     const page = await fetch(h.base + '/');
     assert.equal(page.status, 200);
     assert.ok((await page.text()).includes(h.app.token));
-    const script = await fetch(h.base + '/app.js');
+    const script = await fetch(h.base + '/app.mjs');
     assert.equal(script.status, 200);
     assert.match(script.headers.get('content-type'), /text\/javascript/);
     assert.equal((await fetch(h.base + '/missing.js')).status, 404);

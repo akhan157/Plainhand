@@ -99,7 +99,7 @@ test('signed-out visitors are sent to sign in; the API answers 401', { skip }, a
   assert.match(text, /Continue with Google/);
   assert.match(text, /Email me a sign-in link/);
   // Static files are public and safe; the app page is not.
-  assert.equal((await c.request('/app.js')).status, 200);
+  assert.equal((await c.request('/app.mjs')).status, 200);
   assert.equal((await c.request('/index.html')).status, 302);
   assert.equal((await c.request('/../package.json')).status, 302);
   // Encoded traversal as an attacker sends it (fetch keeps %2e%2e%2f raw; a literal
