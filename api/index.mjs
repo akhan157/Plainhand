@@ -20,6 +20,8 @@ export async function buildHandler(env = process.env) {
   const sessions = createSessions({ sql, now });
   const auth = createSupabaseAuth({ url: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY, secretKey: env.SUPABASE_SECRET_KEY });
   const oauth = createOAuthServer({ sql, issuer: site, resource: site + '/mcp', sessionUser: sessionUserReader(sessions), now,
+    // Only these client-metadata hosts are fetched; CIMD is disabled when the list is empty.
+    clientIdHosts: (env.PLAINHAND_CIMD_HOSTS ?? 'chatgpt.com').split(',').map(s => s.trim()).filter(Boolean),
     // Production is fail-closed until published IDs have been configured.
     requireExtensionAllowlist: true,
     extensionIds: (env.PLAINHAND_EXTENSION_IDS || '').split(',').map(s => s.trim()).filter(Boolean) });

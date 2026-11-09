@@ -278,13 +278,18 @@ export function vendorVerification(page) {
   }
   return null;
 }
+// Cloudflare serves Turnstile from this host (and its subdomains). A string search
+// would also match https://challenges.cloudflare.com.attacker.example/, so parse and
+// compare the hostname, not the whole URL.
+export function isTurnstileFrameUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && (url.hostname === 'challenges.cloudflare.com' || url.hostname.endsWith('.challenges.cloudflare.com'));
+  } catch { return false; }
+}
+
 export async function solveTurnstile(page) {
-  const frame = page.frames().find(f => {
-    try {
-      const url = new URL(f.url());
-      return url.protocol === 'https:' && (url.hostname === 'challenges.cloudflare.com' || url.hostname.endsWith('.challenges.cloudflare.com'));
-    } catch { return false; }
-  });
+  const frame = page.frames().find(f => isTurnstileFrameUrl(f.url()));
   if (!frame) return { state: 'unsupported', message: 'No Cloudflare Turnstile challenge found.' };
 
   const existingToken = await page.locator('[name="cf-turnstile-response"]').inputValue().catch(() => '');
@@ -389,7 +394,7 @@ export class ApplicationBrowser {
     if (!session || session.handedOff) throw new Error('Inspect the application before resolving verification.');
     const current = await this.status(job.id);
     if (current.state !== 'challenge') return current;
-    const hasTurnstile = session.page.frames().some(f => f.url().includes('challenges.cloudflare.com'));
+    const hasTurnstile = session.page.frames().some(f => isTurnstileFrameUrl(f.url()));
     if (hasTurnstile) {
       const turnstileOutcome = await solveTurnstile(session.page);
       await this.saveSession(session);

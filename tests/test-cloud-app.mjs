@@ -74,6 +74,18 @@ let app;
 test.before(async () => { await db.ready; if (!skip) app = await start(); });
 test.after(async () => { await app?.close(); });
 
+test('request-controlled error text is served as JSON, never as HTML', { skip }, async () => {
+  const c = await app.client().signIn();
+  const res = await c.api('action', { name: '<img src=x onerror=alert(1)>' });
+  assert.equal(res.status, 400);
+  assert.match(res.headers.get('content-type'), /^application\/json/);
+  assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+  const { error } = await res.json();
+  assert.match(error, /Unknown action/);
+  // Clients render this with textContent, so the text stays readable (no &#39; or &lt;).
+  assert.doesNotMatch(error, /&lt;|&#39;|&amp;/);
+});
+
 test('signed-out visitors are sent to sign in; the API answers 401', { skip }, async () => {
   const c = app.client();
   const home = await c.request('/');

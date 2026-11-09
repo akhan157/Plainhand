@@ -187,7 +187,12 @@ export function createCloudApp(deps) {
     res.writeHead(status, headers);
     res.end(body);
   }
-  const json = (res, status, data, headers = {}) => send(res, status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8', ...headers });
+  // JSON responses carry raw error text (clients render it with textContent). The literal
+  // content type plus nosniff keeps a browser from ever treating the body as HTML.
+  function json(res, status, data, headers = {}) {
+    res.writeHead(status, { ...headers, 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' });
+    res.end(JSON.stringify(data));
+  }
   const html = (res, status, body, headers = {}) => send(res, status, body, { 'Content-Type': 'text/html; charset=utf-8', ...headers });
   const redirect = (res, location, cookies = [], status = 303) => send(res, status, '', { Location: location, ...(cookies.length ? { 'Set-Cookie': cookies } : {}) });
 

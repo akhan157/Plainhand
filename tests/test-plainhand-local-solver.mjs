@@ -4,13 +4,16 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { LocalAudioSolver, recaptchaFrame, recaptchaAudioUrl } from '../plainhand/solvers/local-audio.mjs';
-import { ApplicationBrowser, solveTurnstile } from '../plainhand/jobs.mjs';
+import { ApplicationBrowser, isTurnstileFrameUrl, solveTurnstile } from '../plainhand/jobs.mjs';
 
 const anchorUrl = 'https://www.google.com/recaptcha/api2/anchor?k=synthetic';
 const challengeUrl = 'https://www.google.com/recaptcha/api2/bframe?k=synthetic';
 const audioUrl = 'https://www.google.com/recaptcha/api2/payload?p=synthetic';
 async function fixture({ accepted = true, malicious = false, solver, audio, expected = 'hello world' } = {}) {
   let page, submitted = 0, downloads = 0;
+  // Values the page script needs are carried as data attributes, never spliced into
+  // the script source, so a transcription value can never become executable code.
+  const attribute = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const job = { id: 'local-solver-test', url: 'https://jobs.lever.co/synthetic/123' };
   const runtime = new ApplicationBrowser({ solver, launch: async options => {
     const browser = await chromium.launch(options);
@@ -24,7 +27,7 @@ async function fixture({ accepted = true, malicious = false, solver, audio, expe
         await page.route('https://www.google.com/recaptcha/**', route => {
           const url = new URL(route.request().url());
           if (url.pathname.endsWith('/payload')) { downloads++; return route.fulfill({ contentType: 'audio/mpeg', body: audio || Buffer.from('SYNTHETIC AUDIO; transcription stub is explicitly injected') }); }
-          const body = url.pathname.endsWith('/anchor') ? `<div id="recaptcha-anchor" role="checkbox" aria-checked="false" tabindex="0">Verify</div><script>document.querySelector('#recaptcha-anchor').onclick=()=>parent.postMessage('show','*');window.addEventListener('message',e=>{if(e.data==='solved')document.querySelector('#recaptcha-anchor').setAttribute('aria-checked','true')});</script>` : `<button id="recaptcha-audio-button" type="button">Audio</button><div id="audio" hidden><a class="rc-audiochallenge-tdownload-link" href="${malicious ? 'http://127.0.0.1/private-audio' : audioUrl}">Audio file</a><input id="audio-response"><button id="recaptcha-verify-button" type="button">Verify</button></div><script>document.querySelector('#recaptcha-audio-button').onclick=()=>document.querySelector('#audio').hidden=false;document.querySelector('#recaptcha-verify-button').onclick=()=>{if(${accepted} && document.querySelector('#audio-response').value===${JSON.stringify(expected)})parent.postMessage('solved','*')};</script>`;
+          const body = url.pathname.endsWith('/anchor') ? `<div id="recaptcha-anchor" role="checkbox" aria-checked="false" tabindex="0">Verify</div><script>document.querySelector('#recaptcha-anchor').onclick=()=>parent.postMessage('show','*');window.addEventListener('message',e=>{if(e.data==='solved')document.querySelector('#recaptcha-anchor').setAttribute('aria-checked','true')});</script>` : `<button id="recaptcha-audio-button" type="button">Audio</button><div id="audio" hidden><a class="rc-audiochallenge-tdownload-link" href="${malicious ? 'http://127.0.0.1/private-audio' : audioUrl}">Audio file</a><input id="audio-response"><button id="recaptcha-verify-button" type="button">Verify</button></div><div id="recaptcha-fixture" data-accepted="${accepted ? '1' : '0'}" data-expected="${attribute(expected)}" hidden></div><script>document.querySelector('#recaptcha-audio-button').onclick=()=>document.querySelector('#audio').hidden=false;document.querySelector('#recaptcha-verify-button').onclick=()=>{const fixture=document.querySelector('#recaptcha-fixture');if(fixture.dataset.accepted==='1' && document.querySelector('#audio-response').value===fixture.dataset.expected)parent.postMessage('solved','*')};</script>`;
           return route.fulfill({ contentType: 'text/html', body });
         });
         return page;
@@ -43,6 +46,14 @@ test('solver accepts only verified reCAPTCHA frame/audio origins and paths', () 
   assert.equal(recaptchaFrame('https://www.google.com.attacker.invalid/recaptcha/api2/anchor', 'anchor'), false);
   assert.equal(recaptchaAudioUrl(audioUrl), true);
   for (const url of ['http://127.0.0.1/private', 'https://www.google.com/private', 'https://user:secret@www.google.com/recaptcha/api2/payload', 'https://www.google.com:444/recaptcha/api2/payload']) assert.equal(recaptchaAudioUrl(url), false);
+});
+
+test('Turnstile frames are recognized by exact host, not by a URL substring', () => {
+  assert.equal(isTurnstileFrameUrl('https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/test'), true);
+  assert.equal(isTurnstileFrameUrl('https://sub.challenges.cloudflare.com/turnstile'), true);
+  for (const url of ['https://challenges.cloudflare.com.attacker.invalid/turnstile', 'https://attacker.invalid/?next=challenges.cloudflare.com', 'http://challenges.cloudflare.com/turnstile', 'not a url']) {
+    assert.equal(isTurnstileFrameUrl(url), false, url);
+  }
 });
 
 test('same-page local solver resolves an explicit fixture challenge and resumes filling without employer submission', async () => {

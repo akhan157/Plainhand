@@ -10,7 +10,7 @@ import {
   newLivenessPage,
   sleep,
 } from '../../lib/liveness-browser.mjs';
-import { classifyLiveness } from '../../lib/liveness-core.mjs';
+import { classifyLiveness, stripHtmlToText } from '../../lib/liveness-core.mjs';
 
 const ACTIONABLE_STATUSES = new Set(['apply', 'applied', 'interview', 'responded']);
 
@@ -91,13 +91,7 @@ async function httpCheckUrlLiveness(url) {
       signal: AbortSignal.timeout(15_000),
     });
     const html = await res.text();
-    const bodyText = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const bodyText = stripHtmlToText(html);
     const applyControls = [];
     const controlRe = /<(?:a|button)\b[^>]*>([\s\S]*?)<\/(?:a|button)>|<input\b[^>]*type=["'](?:submit|button)["'][^>]*>/gi;
     let match;

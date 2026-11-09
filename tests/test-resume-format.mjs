@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
-import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, DEFAULT_FORMAT } from '../plainhand/resume-format.mjs';
+import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, DEFAULT_FORMAT } from '../plainhand/resume-format.mjs';
 import { renderPacket } from '../plainhand/workflow.mjs';
 import { createPlainhand } from '../plainhand-server.mjs';
 
@@ -43,6 +43,12 @@ test('a scanned or empty PDF is refused clearly', async () => {
   const browser = await chromium.launch();
   let pdf; try { const page = await browser.newPage(); await page.setContent('<p>hi</p>'); pdf = await page.pdf(); } finally { await browser.close(); }
   await assert.rejects(deriveFormat(pdf), /too little text/);
+});
+
+test('PDF text entities are decoded once, so an escaped entity stays escaped', () => {
+  const word = '&amp;lt;tag&amp;gt; &amp;amp;';
+  const xhtml = `<page width="612" height="792"><line xMin="0" yMin="0" xMax="10" yMax="10"><word xMin="0" yMin="0" xMax="10" yMax="10">${word}</word></line></page>`;
+  assert.equal(parseBboxLayout(xhtml).lines[0].text, '&lt;tag&gt; &amp;');
 });
 
 test('headings are verified against the sources; unverifiable parts are left out', () => {
