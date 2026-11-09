@@ -127,13 +127,13 @@ function page(title, inner) {
 <title>${escapeHtml(title)} · Plainhand</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/auth.css"></head>
 <body><main>${inner}</main></body></html>`;
 }
-function signInPage({ message = '', error = '' } = {}) {
+function signInPage({ message = '', error = '', google = true } = {}) {
   return page('Sign in', `<h1>Sign in to Plainhand</h1>
 <p>Your job search workspace, online.</p>
 ${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ''}${message ? `<p class="ok" role="status">${escapeHtml(message)}</p>` : ''}
-<a class="button primary" href="/auth/google">Continue with Google</a>
+${google ? '<a class="button primary" href="/auth/google">Continue with Google</a>' : ''}
 <form method="post" action="/auth/email">
-<label for="email">Or get a sign-in link by email</label>
+<label for="email">${google ? 'Or get a sign-in link by email' : 'Get a sign-in link by email'}</label>
 <input id="email" name="email" type="email" autocomplete="email" required maxlength="320">
 <button type="submit">Email me a sign-in link</button>
 </form>
@@ -148,6 +148,12 @@ function deletePage(csrf) {
 }
 
 export function createCloudApp(deps) {
+  // Offer Google only when it is switched on in Supabase (auth.providers); older fakes and
+  // configurations without the check keep the button.
+  const googleEnabled = async () => {
+    if (typeof deps.auth?.providers !== 'function') return true;
+    try { return (await deps.auth.providers()).google === true; } catch { return false; }
+  };
   const { sql, env = {}, auth, accounts, sessions, oauth, handleMcp, handleExtensionApi, stepRunner, makeAgent, features = CLOUD_FEATURES } = deps;
   const now = deps.now || (() => new Date());
   const limits = { ...DEFAULT_LIMITS, ...(deps.limits || {}) };
@@ -442,9 +448,10 @@ export function createCloudApp(deps) {
       if (session) return redirect(res, '/', [], 302);
       const message = url.searchParams.get('sent') ? 'Check your email for a sign-in link. It works once, for one hour.' : '';
       const error = url.searchParams.get('error') ? 'Sign-in did not finish. Try again.' : '';
-      return html(res, 200, signInPage({ message, error }));
+      return html(res, 200, signInPage({ message, error, google: await googleEnabled() }));
     }
     if (p === '/auth/google' && method === 'GET') {
+      if (!await googleEnabled()) return redirect(res, '/signin', [], 302);
       await limiter.hit('signin-ip:' + ip, limits.signinIp);
       const verifier = newCodeVerifier();
       return redirect(res, auth.googleUrl(callbackUrl, verifier), [cookie(PKCE_COOKIE, verifier, 600)], 302);
@@ -452,7 +459,7 @@ export function createCloudApp(deps) {
     if (p === '/auth/email' && method === 'POST') {
       const form = new URLSearchParams(await readBody(req, 4096));
       const email = String(form.get('email') || '').trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) return html(res, 400, signInPage({ error: 'Enter a valid email address.' }));
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) return html(res, 400, signInPage({ error: 'Enter a valid email address.', google: await googleEnabled() }));
       await limiter.hit('signin-ip:' + ip, limits.signinIp);
       await limiter.hit('signin-email:' + email, limits.signinEmail);
       const verifier = newCodeVerifier();
@@ -465,11 +472,11 @@ export function createCloudApp(deps) {
       if (url.searchParams.get('error') || (!code && !tokenHash)) return redirect(res, '/signin?error=1', [cookie(PKCE_COOKIE, '', 0)], 302);
       try {
         if (tokenHash) return await signIn(res, await auth.verifyEmailToken(tokenHash, url.searchParams.get('type') || 'email'));
-        if (!cookies[PKCE_COOKIE]) return html(res, 400, signInPage({ error: 'Open the sign-in link in the same browser you used to ask for it, or start again.' }));
+        if (!cookies[PKCE_COOKIE]) return html(res, 400, signInPage({ error: 'Open the sign-in link in the same browser you used to ask for it, or start again.', google: await googleEnabled() }));
         return await signIn(res, await auth.exchangeCode(code, cookies[PKCE_COOKIE]));
       } catch (error) {
         if (error.name !== 'AuthError') throw error;
-        return html(res, 400, signInPage({ error: error.message }), { 'Set-Cookie': cookie(PKCE_COOKIE, '', 0) });
+        return html(res, 400, signInPage({ error: error.message, google: await googleEnabled() }), { 'Set-Cookie': cookie(PKCE_COOKIE, '', 0) });
       }
     }
     if (p === '/auth/signout' && method === 'POST') {

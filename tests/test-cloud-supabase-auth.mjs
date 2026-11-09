@@ -89,3 +89,17 @@ test('legacy JWT API keys retain Bearer authorization while opaque keys do not',
   assert.equal(calls[0].headers.apikey, legacy);
   assert.equal(calls[0].headers.Authorization, 'Bearer ' + legacy);
 });
+
+test('providers() reads which sign-in providers are switched on, and fails closed', async () => {
+  const { calls, fetchImpl } = fakeFetch(() => [200, { external: { google: true, email: true } }]);
+  const auth = createSupabaseAuth(options(fetchImpl));
+  assert.deepEqual(await auth.providers(), { google: true });
+  assert.equal(new URL(calls[0].url).pathname, '/auth/v1/settings');
+  assert.equal(calls[0].method, 'GET');
+  await auth.providers();
+  assert.equal(calls.length, 1, 'cached');
+  const off = createSupabaseAuth(options(fakeFetch(() => [200, { external: { google: false } }]).fetchImpl));
+  assert.deepEqual(await off.providers(), { google: false });
+  const down = createSupabaseAuth(options(async () => { throw new Error('offline'); }));
+  assert.deepEqual(await down.providers(), { google: false });
+});

@@ -352,3 +352,22 @@ test('cloud context and connector replay share the cloud renderer and honest ver
     assert.equal(replay.renderer,renderCloudPacket);assert.equal(replay.verifier,verifyCloudJob);
   }finally{await server.close();}
 });
+
+
+test('Google sign-in is offered only when Supabase has it switched on', { skip }, async () => {
+  const auth = { providers: async () => ({ google: false }), googleUrl: () => 'https://auth.test/google', sendEmailLink: async () => ({ ok: true }) };
+  const off = await start({ auth });
+  try {
+    const c = off.client();
+    const page = await (await c.request('/signin')).text();
+    assert.doesNotMatch(page, /Continue with Google/);
+    assert.match(page, /Get a sign-in link by email/);
+    const go = await c.request('/auth/google');
+    assert.equal(go.status, 302);
+    assert.equal(go.headers.get('location'), '/signin');
+  } finally { await off.close(); }
+  const on = await start({ auth: { ...auth, providers: async () => ({ google: true }) } });
+  try {
+    assert.match(await (await on.client().request('/signin')).text(), /Continue with Google/);
+  } finally { await on.close(); }
+});

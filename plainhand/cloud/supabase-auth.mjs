@@ -30,7 +30,21 @@ export function createSupabaseAuth({ url, publishableKey, secretKey, fetchImpl =
     if (!user?.id || !user?.email) throw new AuthError('Sign-in did not return an account. Try again.');
     return { userId: user.id, email: user.email };
   };
+  // Which sign-in providers are switched on in the Supabase dashboard, so the sign-in page
+  // never offers a button that ends in "provider is not enabled". Cached for a minute.
+  let providerCache = null;
+  async function providers() {
+    if (providerCache && providerCache.expires > Date.now()) return providerCache.value;
+    let value = { google: false };
+    try {
+      const { ok, data } = await call('/settings', { method: 'GET' });
+      if (ok) value = { google: data?.external?.google === true };
+    } catch { /* unreachable: offer email only */ }
+    providerCache = { value, expires: Date.now() + 60_000 };
+    return value;
+  }
   return {
+    providers,
     // Where to send the browser for Google. Supabase returns to redirectTo?code=… afterwards.
     googleUrl(redirectTo, codeVerifier) {
       const params = new URLSearchParams({ provider: 'google', redirect_to: redirectTo, code_challenge: codeChallenge(codeVerifier), code_challenge_method: 's256' });
