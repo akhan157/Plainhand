@@ -453,7 +453,7 @@ user-visible text plain and short.
 | --- | --- |
 | Now | Submit OpenAI's Sign in with ChatGPT interest form (hosted app). |
 | Before launch | Create the Google sign-in client in Google Cloud (free; I provide exact steps) and paste it into Supabase. |
-| Before launch | Create a Resend account (free) and a sending domain or address. |
+| Before launch | Google sign-in client: done 2026-11-09. Email sign-in: decided 2026-11-09 to launch on Google sign-in, with Supabase's built-in mailer (a few emails an hour) for email links. Resend needs a domain; buy one (~$10–15/year) before email sign-in has to scale, then add Resend as Supabase custom SMTP. |
 | Before launch | Chrome Web Store developer registration ($5 once); Edge and Firefox (free). |
 | Before desktop release | Apply to SignPath Foundation for free Windows signing; turn on two-factor sign-in for everyone with access to the GitHub repo. |
 | Now | Complete OpenAI developer identity verification (individual or business) so Plainhand can be published under your name. |
