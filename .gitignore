@@ -98,3 +98,4 @@ scratch_jd.txt
 .vercel/
 .env.local
 .env*.local
+dist/
