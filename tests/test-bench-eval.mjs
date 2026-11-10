@@ -8,7 +8,7 @@ import { validateSubmission } from '../plainhand/evaluation/sandbox.mjs';
 import { scorePacket, scoreApplication, scoreEvaluation, aggregate, compareToBaseline } from '../plainhand/evaluation/score.mjs';
 import { personaById, jobById, portalById, scenarios } from '../plainhand/evaluation/corpus.mjs';
 import { renderPortal } from '../plainhand/evaluation/portals.mjs';
-import { runEvaluation } from '../plainhand/evaluation/runner.mjs';
+import { assertProviderUsable, runEvaluation } from '../plainhand/evaluation/runner.mjs';
 
 const pdf = Buffer.from('%PDF-1.4\n' + 'evaluation fixture '.repeat(20));
 const sha = createHash('sha256').update(pdf).digest('hex');
@@ -29,6 +29,13 @@ function validPayload(scenario) {
   }
   return { scenarioId: scenario.id, candidateConfirmed: true, fields };
 }
+
+test('a live preflight failure stops the run before scenarios; built-in providers skip it', async () => {
+  await assert.rejects(assertProviderUsable('codex', async () => { throw new Error('usage limit'); }), /Provider codex is not usable: usage limit/);
+  let called = false;
+  await assertProviderUsable('chatgpt', async () => { called = true; });
+  assert.equal(called, false);
+});
 
 test('sandbox accepts a complete submission and records the approved PDF hash', () => {
   const scenario = scenarios.find(item => item.id === 'mech-lever');
@@ -168,6 +175,54 @@ test('application scoring treats a required candidate field left blank by the ap
   assert.deepEqual(asked.candidateAnswered, ['degree']);
   const unanswered = scoreApplication({ scenario, persona, job, snapshots, plan: askedPlan, checkpoint: null, submission: null });
   assert.equal(unanswered.stop, 'needs-answers');
+});
+
+test('profile effectiveness pairs a conversation-built profile with its seeded control', () => {
+  const scenario = (mode) => ({ id: `x-${mode}`, family: 'profile-effect', pairId: 'x', profileMode: mode });
+  const built = {
+    scenario: scenario('conversation'), pass: true,
+    profile: { captureRate: 0.8, coverageOfAllFacts: 0.8, pass: true, calls: 5, seconds: 10 },
+    profileStrength: { summary: { strong: 2, good: 1, thin: 1 } },
+    evaluation: { pass: true },
+    packet: { factCoverage: 0.8, reviewPassed: true },
+    application: { completionRate: 0.9, fields: [{ correct: true, candidateSupplied: false }, { correct: true, candidateSupplied: false }], submission: { accepted: true }, falseReady: false },
+  };
+  const seeded = {
+    scenario: scenario('seeded'), pass: true,
+    profileStrength: { summary: { strong: 3, good: 1, thin: 0 } },
+    evaluation: { pass: true },
+    packet: { factCoverage: 1, reviewPassed: true },
+    application: { completionRate: 1, fields: [{ correct: true, candidateSupplied: false }, { correct: true, candidateSupplied: false }], submission: { accepted: true }, falseReady: false },
+  };
+  const minimal = {
+    scenario: scenario('minimal'), pass: true,
+    profileStrength: { summary: { strong: 1, good: 1, thin: 2 } },
+    evaluation: { pass: true },
+    packet: { factCoverage: 0.5, reviewPassed: true },
+    application: { completionRate: 0.5, fields: [{ correct: true, candidateSupplied: false }, { correct: true, candidateSupplied: true }], submission: { accepted: true }, falseReady: false },
+  };
+  const summary = aggregate([built, seeded, minimal]);
+  assert.equal(summary.profileEffect.length, 1);
+  assert.equal(summary.profileEffect[0].profileCapture, 0.8);
+  assert.equal(summary.profileEffect[0].profileCalls, 5);
+  assert.equal(summary.profileEffect[0].downstream.delta.packetFactCoverage, -0.2);
+  assert.equal(summary.profileEffect[0].downstream.delta.applicationCompletion, -0.1);
+  assert.equal(summary.profileEffect[0].downstream.deltaVsMinimal.packetFactCoverage, 0.3);
+  assert.equal(summary.profileEffect[0].downstream.deltaVsMinimal.applicationCompletion, 0.4);
+  assert.equal(summary.profileEffect[0].downstream.deltaVsMinimal.applicationFromProfile, 0.5);
+  assert.equal(summary.profileEffect[0].downstream.built.candidateRescues, 0);
+  assert.equal(summary.profileEffect[0].downstream.minimal.candidateRescues, 1);
+});
+
+test('expected lower-bound controls are counted separately from real failures', () => {
+  const summary = aggregate([
+    { scenario: { id: 'control', family: 'profile-effect', expectFail: true }, pass: false },
+    { scenario: { id: 'bad', family: 'resume' }, pass: false },
+    { scenario: { id: 'good', family: 'resume' }, pass: true },
+  ]);
+  assert.deepEqual(summary.expectedFailures, ['control']);
+  assert.deepEqual(summary.unexpectedFailures, ['bad']);
+  assert.equal(summary.passed, 1);
 });
 
 test('baseline comparison separates regressions from pre-existing failures and repeats report flakiness', () => {

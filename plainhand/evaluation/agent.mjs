@@ -18,11 +18,28 @@ const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[
 
 function quoteEvidence(quote, context) {
   const source = (context?.sources || []).find(item => item.id !== 'reviewed-understanding' && String(item.text || '').includes(quote));
-  return [{ sourceId: source?.id || 'cv', quote }];
+  return source ? [{ sourceId: source.id, quote }] : null;
+}
+
+// A controlled run may only use what the profile context actually contains.
+// This is what makes the minimal/built/seeded profile comparison meaningful:
+// a fact that the conversation did not capture must not appear in the packet.
+function availableFacts(persona, context) {
+  const text = (context?.sources || []).map(source => source.text || '').join('\n');
+  return persona.facts.filter(fact => text.includes(fact.text));
+}
+
+function fallbackEvidence(context, persona) {
+  const source = (context?.sources || []).find(item => item.id !== 'reviewed-understanding' && String(item.text || '').trim().length >= 8);
+  if (source) {
+    const quote = String(source.text).split(/\n/).map(line => line.trim()).find(line => line.length >= 8 && line.length <= 300);
+    if (quote) return [{ sourceId: source.id, quote }];
+  }
+  return [{ sourceId: 'cv', quote: persona.degreeEvidence }];
 }
 
 function evidenceFor(persona, fact, context) {
-  return quoteEvidence(fact.text, context);
+  return quoteEvidence(fact.text, context) || fallbackEvidence(context, persona);
 }
 
 function factSection(fact) {
@@ -31,9 +48,9 @@ function factSection(fact) {
   return 'Experience';
 }
 
-function resumeEntries(persona, job, context) {
-  const required = job.requiredFactIds.map(id => persona.facts.find(f => f.id === id)).filter(Boolean);
-  const rest = persona.facts.filter(f => !required.includes(f));
+function resumeEntries(persona, job, context, facts) {
+  const required = job.requiredFactIds.map(id => facts.find(f => f.id === id)).filter(Boolean);
+  const rest = facts.filter(f => !required.includes(f));
   const chosen = [...required, ...rest].slice(0, 5);
   return chosen.map(fact => ({
     section: factSection(fact),
@@ -44,34 +61,35 @@ function resumeEntries(persona, job, context) {
 }
 
 function packetFor(persona, job, context) {
-  const fact = persona.facts.find(f => job.requiredFactIds.includes(f.id)) || persona.facts[0];
+  const facts = availableFacts(persona, context);
+  const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0] || null;
+  const educationEvidence = quoteEvidence(persona.degreeEvidence, context) || fallbackEvidence(context, persona);
   return {
     headline: `${persona.profile.roles.split(',')[0]} for ${job.title}`,
     resume: [
-      ...resumeEntries(persona, job, context),
+      ...resumeEntries(persona, job, context, facts),
       {
         section: 'Education',
         heading: null,
         text: persona.degreeEvidence,
-        evidence: quoteEvidence(persona.degreeEvidence, context),
+        evidence: educationEvidence,
       },
     ],
-    coverLetter: `I am applying for the ${job.title} role at ${job.company}. ${persona.profile.story} ${fact.text}`,
-    answers: [
-      { question: 'Describe a relevant project.', answer: fact.text, evidence: evidenceFor(persona, fact, context) },
-    ],
+    coverLetter: `I am applying for the ${job.title} role at ${job.company}.${persona.profile.story ? ' ' + persona.profile.story : ''}${fact ? ' ' + fact.text : ''}`,
+    answers: fact ? [{ question: 'Describe a relevant project.', answer: fact.text, evidence: evidenceFor(persona, fact, context) }] : [],
     questions: [],
     suggestions: [],
   };
 }
 
 function standardFor(persona, context) {
-  const entries = persona.facts.map(fact => ({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) }));
-  entries.push({ section: 'Education', heading: null, text: persona.degreeEvidence, evidence: quoteEvidence(persona.degreeEvidence, context) });
+  const facts = availableFacts(persona, context);
+  const entries = facts.map(fact => ({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) }));
+  entries.push({ section: 'Education', heading: null, text: persona.degreeEvidence, evidence: quoteEvidence(persona.degreeEvidence, context) || fallbackEvidence(context, persona) });
   return {
     headline: persona.profile.roles,
     resume: entries.slice(0, 8),
-    coverLetter: `I am a ${persona.profile.roles.split(',')[0]}. ${persona.profile.story}`,
+    coverLetter: `I am a ${persona.profile.roles.split(',')[0]}.${persona.profile.story ? ' ' + persona.profile.story : ''}`,
     suggestions: [],
   };
 }
@@ -113,7 +131,8 @@ function reviewBody(persona, packet, context) {
 
 function formSuggestions(persona, job, fields, context) {
   const suggestions = [], questions = [];
-  const jobFacts = job.requiredFactIds.map(id => persona.facts.find(f => f.id === id)).filter(Boolean);
+  const facts = availableFacts(persona, context);
+  const jobFacts = job.requiredFactIds.map(id => facts.find(f => f.id === id)).filter(Boolean);
   for (const field of fields || []) {
     const label = String(field.label || '').toLowerCase();
     if (field.sectionContext && /employment/i.test(field.sectionContext.label)) {
@@ -142,8 +161,9 @@ function formSuggestions(persona, job, fields, context) {
       continue;
     }
     if (/project|achievement|describe|relevant|why|motivat/.test(label)) {
-      const fact = jobFacts[0] || persona.facts[0];
-      suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact, context) });
+      const fact = jobFacts[0] || facts[0] || null;
+      if (fact) suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact, context) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
       continue;
     }
     if (field.required) questions.push({ key: field.key, question: field.label });
@@ -168,25 +188,26 @@ export function controlledAgent({ scenario, persona, job }) {
       };
     }
     if (instruction === EVALUATE_INSTRUCTION) {
-      const candidateCorpus = [persona.profile.resume, persona.profile.roles, ...persona.facts.map(f => f.text)].join(' ').toLowerCase();
+      const facts = availableFacts(persona, data.context);
+      const candidateCorpus = [persona.profile.resume, persona.profile.roles, ...facts.map(f => f.text)].join(' ').toLowerCase();
       const matchedTerms = (job.atsTerms || []).filter(term => candidateCorpus.includes(term.toLowerCase()));
       if ((job.atsTerms || []).length > 0 && matchedTerms.length === 0) {
         return {
           score: 2.2,
           recommendation: 'Skip',
-          summary: `The role requires ${job.atsTerms.join(', ')} experience not present in ${persona.name}'s background.`,
-          matches: [{ text: 'General background documented in sources.', evidence: evidenceFor(persona, persona.facts[0], data.context) }],
+          summary: `The role requires ${job.atsTerms.join(', ')} experience not present in the available profile.`,
+          matches: [{ text: 'General background documented in the available profile.', evidence: fallbackEvidence(data.context, persona) }],
           gaps: [`No documented experience with ${job.atsTerms.join(', ')}.`],
           questions: [],
           legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
         };
       }
-      const fact = persona.facts.find(f => job.requiredFactIds.includes(f.id)) || persona.facts[0];
+      const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0];
       return {
         score: 4.6,
         recommendation: 'Apply',
-        summary: `The candidate's documented ${job.requiredFactIds[0] || 'work'} matches this ${job.title} role.`,
-        matches: [{ text: `Documented ${job.atsTerms[0] || 'experience'} relevant to the role.`, evidence: evidenceFor(persona, fact, data.context) }],
+        summary: fact ? `The candidate's documented ${job.requiredFactIds[0] || 'work'} matches this ${job.title} role.` : `The available profile has relevant background for this ${job.title} role.`,
+        matches: [{ text: fact ? `Documented ${job.atsTerms[0] || 'experience'} relevant to the role.` : 'Background documented in the available profile.', evidence: fact ? evidenceFor(persona, fact, data.context) : fallbackEvidence(data.context, persona) }],
         gaps: [],
         questions: [],
         legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],

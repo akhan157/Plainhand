@@ -147,7 +147,8 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
   const summary = checkpoint?.check?.summary || null;
   const planFieldName = key => (plan?.fields || []).find(item => item?.key === key)?.name;
   const openQuestions = (plan?.questions || []).filter(question => !Object.hasOwn(candidateAnswered, planFieldName(question.key)));
-  const stop = openQuestions.length ? 'needs-answers' : plan?.observation?.state || 'unknown';
+  const warning = plan?.warning || null;
+  const stop = openQuestions.length ? 'needs-answers' : warning ? 'agent-warning' : plan?.observation?.state || 'unknown';
   const expectedSubmit = Boolean(portal?.expect?.submit);
   const stopCorrect = expectedStop ? stop === expectedStop : null;
   const requiredUnfilledByApp = fieldResults.some(item => item.required && ['candidate', 'blank'].includes(item.kind) && !item.value);
@@ -160,6 +161,7 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
     expectedStop,
     stop,
     stopCorrect,
+    warning,
     fields: fieldResults,
     scoredFields: scored.length,
     correctFields: scored.filter(item => item.correct).length,
@@ -236,11 +238,13 @@ export function scoreScenario(result) {
   let pass;
   if (result.scenario.family === 'evaluation') pass = Boolean(evaluation?.pass);
   else if (result.scenario.family === 'journey') pass = Boolean(result.profile?.pass && result.understandingApproved && result.standardApproved && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
+  else if (result.scenario.family === 'profile-effect') pass = Boolean((!result.profile || result.profile.pass) && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
   else {
     const base = packet && application ? packet.pass && application.pass : packet ? packet.pass : application ? application.pass : result.profile?.pass === true;
     pass = Boolean(base && (!evaluation || evaluation.pass));
   }
-  return { ...result, packet, application, evaluation, pass: Boolean(pass) };
+  const expectedFail = Boolean(result.scenario.expectFail);
+  return { ...result, packet, application, evaluation, expectedFail, unexpected: !pass && !expectedFail, pass: Boolean(pass) };
 }
 
 const avg = values => {
@@ -261,6 +265,52 @@ export function aggregate(results) {
   const profiles = results.filter(result => result.profile).map(result => result.profile);
   const evaluations = results.filter(result => result.evaluation).map(result => result.evaluation);
   const submitted = applications.filter(item => item.submission.expected);
+  const profileEffect = (() => {
+    const groups = new Map();
+    for (const result of results) {
+      if (!result.scenario.pairId) continue;
+      const runs = groups.get(result.scenario.pairId) || {};
+      runs[result.scenario.profileMode || 'seeded'] = result;
+      groups.set(result.scenario.pairId, runs);
+    }
+    const downstream = result => {
+      const fields = result.application?.fields || [];
+      const fromApp = fields.filter(field => field.correct && !field.candidateSupplied).length;
+      return {
+        evaluation: result.evaluation?.pass ?? null,
+        packetFactCoverage: result.packet?.factCoverage ?? null,
+        packetReviewPassed: result.packet?.reviewPassed ?? null,
+        applicationCompletion: result.application?.completionRate ?? null,
+        applicationFromProfile: fields.length ? Math.round(fromApp / fields.length * 100) / 100 : null,
+        candidateRescues: fields.filter(field => field.candidateSupplied).length,
+        submissionAccepted: result.application?.submission?.accepted ?? null,
+        falseReady: result.application?.falseReady ?? null,
+      };
+    };
+    return [...groups.entries()].flatMap(([pairId, runs]) => {
+      if (!runs.conversation || !runs.seeded) return [];
+      const built = runs.conversation, seeded = runs.seeded, minimal = runs.minimal || null;
+      const builtDown = downstream(built), seededDown = downstream(seeded);
+      const minimalDown = minimal ? downstream(minimal) : null;
+      const delta = Object.fromEntries(Object.entries(builtDown).map(([key, value]) => [key, typeof value === 'number' && typeof seededDown[key] === 'number' ? Math.round((value - seededDown[key]) * 1000) / 1000 : null]));
+      const deltaVsMinimal = minimalDown ? Object.fromEntries(Object.entries(builtDown).map(([key, value]) => [key, typeof value === 'number' && typeof minimalDown[key] === 'number' ? Math.round((value - minimalDown[key]) * 1000) / 1000 : null])) : null;
+      return [{
+        pairId,
+        builtPass: built.pass ?? null,
+        seededPass: seeded.pass ?? null,
+        minimalPass: minimal?.pass ?? null,
+        builtProfilePass: built.profile?.pass ?? null,
+        profileCapture: built.profile?.captureRate ?? null,
+        profileCoverage: built.profile?.coverageOfAllFacts ?? null,
+        profileStrength: built.profileStrength?.summary || null,
+        seededStrength: seeded.profileStrength?.summary || null,
+        minimalStrength: minimal?.profileStrength?.summary || null,
+        profileCalls: built.profile?.calls ?? null,
+        profileSeconds: built.profile?.seconds ?? null,
+        downstream: { built: builtDown, seeded: seededDown, minimal: minimalDown, delta, deltaVsMinimal },
+      }];
+    });
+  })();
   const repeatGroups = new Map();
   for (const result of results) {
     if (!result.scenario.baseId) continue;
@@ -291,6 +341,8 @@ export function aggregate(results) {
     scenarios: results.length,
     passed: results.filter(result => result.pass).length,
     failed: results.filter(result => !result.pass).map(result => result.scenario.id),
+    expectedFailures: results.filter(result => !result.pass && (result.expectedFail ?? result.scenario.expectFail)).map(result => result.scenario.id),
+    unexpectedFailures: results.filter(result => !result.pass && !(result.expectedFail ?? result.scenario.expectFail)).map(result => result.scenario.id),
     byFamily,
     profile: profiles.length ? {
       runs: profiles.length,
@@ -304,9 +356,9 @@ export function aggregate(results) {
       runs: packets.length,
       factCoverage: avg(packets.map(item => item.factCoverage)),
       reviewPassed: packets.filter(item => item.reviewPassed).length,
-      unsupportedNumbers: packets.reduce((n, item) => n + item.unsupportedNumbers.length, 0),
-      absentClaims: packets.reduce((n, item) => n + item.absentClaims.length, 0),
-      bannedWords: packets.reduce((n, item) => n + item.bannedWords.length, 0),
+      unsupportedNumbers: packets.reduce((n, item) => n + (item.unsupportedNumbers?.length || 0), 0),
+      absentClaims: packets.reduce((n, item) => n + (item.absentClaims?.length || 0), 0),
+      bannedWords: packets.reduce((n, item) => n + (item.bannedWords?.length || 0), 0),
       firstPerson: packets.filter(item => item.voiceFirstPerson).length,
       atsCoverage: avg(packets.map(item => item.atsCoverage)),
     } : null,
@@ -317,8 +369,8 @@ export function aggregate(results) {
       correctStops: applications.filter(item => item.expectedStop && item.stopCorrect).length,
       expectedStops: applications.filter(item => item.expectedStop).length,
       falseReady: applications.filter(item => item.falseReady).length,
-      sensitiveLeaks: applications.reduce((n, item) => n + item.sensitiveAppFilled.length, 0),
-      unknownAnswered: applications.reduce((n, item) => n + item.unknownAppFilled.length, 0),
+      sensitiveLeaks: applications.reduce((n, item) => n + (item.sensitiveAppFilled?.length || 0), 0),
+      unknownAnswered: applications.reduce((n, item) => n + (item.unknownAppFilled?.length || 0), 0),
       submissionsAccepted: submitted.filter(item => item.submission.accepted).length,
       submissionsExpected: submitted.length,
     } : null,
@@ -326,6 +378,7 @@ export function aggregate(results) {
       runs: evaluations.length,
       passed: evaluations.filter(item => item.pass).length,
     } : null,
+    profileEffect: profileEffect.length ? profileEffect : null,
     repeats,
     calls: results.reduce((n, item) => n + (item.usage?.calls || 0), 0),
     durationMs: results.reduce((n, item) => n + (item.durationMs || 0), 0),
@@ -369,15 +422,15 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
     if (result.application) parts.push(`form ${result.application.completionRate === null ? 'n/a' : Math.round(result.application.completionRate * 100) + '%'}`, `stop ${result.application.stop}`);
     if (result.profile) parts.push(`capture ${Math.round((result.profile.captureRate || 0) * 100)}%`);
     if (result.application?.submission.expected) parts.push(result.application.submission.accepted ? 'submitted' : 'submit-failed');
-    return `| ${result.scenario.id} | ${result.pass ? 'PASS' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
+    return `| ${result.scenario.id} | ${result.pass ? 'PASS' : result.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
   };
   const failures = results.filter(result => !result.pass).map(result => {
     const reasons = [];
     if (result.error) reasons.push(result.error);
     if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
     if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}`);
-    if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}`);
-    return `- **${result.scenario.id}** — ${reasons.join('; ')}`;
+    if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}${result.application.warning ? `, warning: ${result.application.warning}` : ''}`);
+    return `- **${result.scenario.id}**${result.expectedFail ? ' (expected lower-bound control)' : ''} — ${reasons.join('; ')}`;
   });
   return `# Plainhand evaluation
 
@@ -401,6 +454,22 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Model calls | ${summary.calls} |
 | Duration | ${(summary.durationMs / 1000).toFixed(1)}s |
 
+${summary.profileEffect?.length ? `## Profile effectiveness
+
+The built profile is compared with the finished persona as an upper bound on the
+same job. A zero delta means the conversation-built profile supports the
+downstream stages as well as the full profile; a negative delta means information
+the downstream stage needed was not captured or was not used.
+
+| Pair | Built capture | Strength (minimal → built → seeded) | Packet Δ vs minimal | Packet Δ vs seeded | App from profile Δ vs minimal | App from profile Δ vs seeded | Evaluation pass (built/seeded) | Profile cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+${summary.profileEffect.map(effect => {
+  const strength = summary => summary ? `${summary.strong || 0} strong / ${summary.good || 0} good / ${summary.thin || 0} thin` : 'n/a';
+  const delta = effect.downstream.delta, deltaVsMinimal = effect.downstream.deltaVsMinimal || {};
+  const percent = value => value === null || value === undefined ? 'n/a' : `${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`;
+  return `| ${effect.pairId} | ${effect.profileCapture === null ? 'n/a' : Math.round(effect.profileCapture * 100) + '%'} | ${strength(effect.minimalStrength)} → ${strength(effect.profileStrength)} → ${strength(effect.seededStrength)} | ${percent(deltaVsMinimal.packetFactCoverage)} | ${percent(delta.packetFactCoverage)} | ${percent(deltaVsMinimal.applicationFromProfile)} | ${percent(delta.applicationFromProfile)} | ${effect.downstream.built.evaluation === null ? 'n/a' : effect.downstream.built.evaluation ? 'pass' : 'fail'} / ${effect.downstream.seeded.evaluation === null ? 'n/a' : effect.downstream.seeded.evaluation ? 'pass' : 'fail'} | ${effect.profileCalls ?? '?'} calls · ${effect.profileSeconds ?? '?'} s |`;
+}).join('\n')}
+` : ''}
 ${comparison ? `## Baseline delta\n\n\`\`\`json\n${JSON.stringify(comparison, null, 2)}\n\`\`\`\n` : ''}
 ## Scenarios
 

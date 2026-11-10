@@ -205,7 +205,7 @@ export function sayStream(onText) {
   };
 }
 
-export async function executeAgent(id, instruction, data, { signal, runner = runProcess, onUsage, onText, chatgpt } = {}) {
+export async function executeAgent(id, instruction, data, { signal, runner = runProcess, onUsage, onText, chatgpt, timeout = 180000 } = {}) {
   const p = providerById(id);
   // Sign in with ChatGPT runs in-process; the caller supplies the agent bound to its token store.
   if (p.id === 'chatgpt') {
@@ -222,10 +222,10 @@ export async function executeAgent(id, instruction, data, { signal, runner = run
     if (id === 'codex') args = ['exec', '--json', '--skip-git-repo-check', '--ephemeral', '--ignore-user-config', '--sandbox', 'read-only', '-c', 'features.shell_tool=false', '-c', 'features.exec_tool=false', '--color', 'never', '-o', path.join(cwd, 'result.json'), '-'];
     const streaming = id === 'claude' && typeof onText === 'function';
     if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence'];
-    if (id === 'antigravity') args = ['--input-format', 'stream-json', '--output-format', 'stream-json', '--mode', 'plan', '--sandbox', '--print-timeout', '3m'];
+    if (id === 'antigravity') args = ['--input-format', 'stream-json', '--output-format', 'stream-json', '--mode', 'plan', '--sandbox', '--print-timeout', `${Math.ceil(timeout / 1000)}s`];
     const input = id === 'antigravity' ? JSON.stringify({ event: 'user', message: { content: prompt } }) + '\n' : prompt;
     const cmd = providerCommand(p);
-    const result = await runner(cmd.command, [...cmd.prefix, ...args], { input, cwd, signal, env, shell: cmd.shell, ...(streaming ? { onOutput: claudeStream(onText) } : {}) });
+    const result = await runner(cmd.command, [...cmd.prefix, ...args], { input, cwd, signal, timeout, env, shell: cmd.shell, ...(streaming ? { onOutput: claudeStream(onText) } : {}) });
     telemetry = result.stdout;
     let output = id === 'codex' ? await readFile(path.join(cwd, 'result.json'), 'utf8').catch(() => result.stdout) : result.stdout;
     // A stream ends with the same result envelope the json format returns.

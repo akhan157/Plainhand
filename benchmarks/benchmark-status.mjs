@@ -17,7 +17,7 @@ const BENCHMARKS = [
     name: 'End-to-end evaluation',
     command: 'npm run benchmark:eval',
     prefixes: ['evaluation-'],
-    live: 'add --provider claude|codex',
+    live: 'add --provider claude|codex|antigravity',
     what: 'Profile conversation, evaluation, resume packet, portal fill, candidate-confirmed submission to an owned sandbox and a connected journey, scored against fictional ground truth.',
     docs: 'docs/internal/EVALUATION-HARNESS.md',
   },

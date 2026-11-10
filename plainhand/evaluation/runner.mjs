@@ -8,7 +8,8 @@ import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { createPlainhand } from '../../plainhand-server.mjs';
 import { emptyProfile } from '../store.mjs';
-import { inspectProviders, providerById } from '../agents.mjs';
+import { executeAgent, inspectProviders, providerById } from '../agents.mjs';
+import { profileStrength } from '../profile-strength.mjs';
 import { createSandbox } from './sandbox.mjs';
 import { createSandboxBrowser } from './browser.mjs';
 import { controlledAgent, profileFixtureAgent } from './agent.mjs';
@@ -20,6 +21,17 @@ const option = (argv, name) => { const index = argv.indexOf('--' + name); return
 const has = (argv, name) => argv.includes('--' + name);
 
 export const profileScenarios = profilePersonas.map(persona => ({ id: 'profile-' + persona.id, family: 'profile', persona: persona.id }));
+
+// A quota or sign-in failure should stop the run before it produces 24 identical
+// failures. This is one small real provider call with no candidate data.
+export async function assertProviderUsable(provider, execute = executeAgent) {
+  if (providerById(provider).builtIn) return;
+  try {
+    await execute(provider, 'Return {"ok":true}. This is a connection test; no candidate data is included.', {});
+  } catch (error) {
+    throw new Error(`Provider ${provider} is not usable: ${error.message}`);
+  }
+}
 
 async function post(base, token, endpoint, data = {}) {
   const response = await fetch(base + '/api/' + endpoint, { method: 'POST', headers: { 'content-type': 'application/json', 'x-plainhand-token': token }, body: JSON.stringify(data) });
@@ -36,8 +48,8 @@ async function runTask(app, base, kind, jobId) {
   return task;
 }
 
-async function runProfileConversation(app, personaId, maxTurns = 10) {
-  const persona = profilePersonas.find(item => item.id === personaId);
+async function runProfileConversation(app, personaId, maxTurns = 10, personaOverride = null) {
+  const persona = personaOverride || profilePersonas.find(item => item.id === personaId);
   if (!persona) throw new Error(`Unknown profile persona: ${personaId}`);
   const started = Date.now();
   const candidate = simulatedCandidate(persona);
@@ -73,6 +85,7 @@ async function runProfileConversation(app, personaId, maxTurns = 10) {
   const scored = scoreRun({ persona, candidateMessages, saved, updates, turns, revealed: candidate.said, detailsRevealed: candidate.detailed });
   return {
     ...scored,
+    strength: profileStrength(after),
     actions: actionsRun,
     transcript: turns.map((turn, i) => ({ candidate: candidateMessages[i], assistant: turn.say, actions: turn.actions })),
     saved,
@@ -82,13 +95,20 @@ async function runProfileConversation(app, personaId, maxTurns = 10) {
   };
 }
 
-async function runProfileScenario(scenario, { live, provider }) {
+async function runProfileScenario(scenario, { live, provider, agentTimeoutMs }) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-eval-profile-'));
   const started = Date.now();
   const persona = profilePersonas.find(item => item.id === scenario.persona);
+  const liveAgent = (id, instruction, data, options = {}) => executeAgent(id, instruction, data, { ...options, timeout: agentTimeoutMs });
   let app;
   try {
-    app = await createPlainhand({ root, startFeatures: false, ...(live ? { providers: inspectProviders } : { workflowOptions: { agent: profileFixtureAgent() } }) });
+    app = await createPlainhand({
+      root,
+      startFeatures: false,
+      ...(live
+        ? { providers: inspectProviders, ...(providerById(provider).builtIn ? {} : { workflowOptions: { agent: liveAgent } }) }
+        : { workflowOptions: { agent: profileFixtureAgent() } }),
+    });
     const state = await app.workspace.load();
     await app.workspace.saveProfile({ ...emptyProfile(), ...persona.profile }, state.revision);
     await app.workspace.mutate(s => { s.provider = live ? provider : 'codex'; });
@@ -145,7 +165,7 @@ function candidatePayload(scenario, persona, browser, job, pdf, cover, candidate
   return { scenarioId: scenario.id, candidateConfirmed: true, fields };
 }
 
-async function runApplicationScenario(scenario, { live, provider, retain }) {
+async function runApplicationScenario(scenario, { live, provider, retain, agentTimeoutMs }) {
   const persona = personaById(scenario.persona);
   const jobSpec = jobById(scenario.job);
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-eval-'));
@@ -158,29 +178,37 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
   let standardApproved = false;
   let evaluationResult = null;
   let packetResult = null;
+  let profileMode = scenario.profileMode || (scenario.family === 'journey' ? 'conversation' : 'seeded');
+  let seededStrength = null;
   try {
+    const liveAgent = (id, instruction, data, options = {}) => executeAgent(id, instruction, data, { ...options, timeout: agentTimeoutMs });
     const workflowOptions = {
       verifier: async () => ({ state: 'active', legitimacy: 'owned-sandbox', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'Owned evaluation sandbox; no employer was contacted.' }),
-      ...(live ? {} : { agent: controlledAgent({ scenario, persona, job: jobSpec }) }),
+      ...(live
+        ? (providerById(provider).builtIn ? {} : { agent: liveAgent })
+        : { agent: controlledAgent({ scenario, persona, job: jobSpec }) }),
     };
     app = await createPlainhand({ root, ...(browser ? { browser: browser.application } : {}), workflowOptions, startFeatures: false });
     await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${app.server.address().port}`;
-    const initialProfile = { ...emptyProfile(), ...(scenario.family === 'journey' ? persona.seedProfile : persona.profile) };
+    const initialProfile = { ...emptyProfile(), ...(profileMode === 'seeded' ? persona.profile : persona.seedProfile) };
     const state = await app.workspace.load();
     await app.workspace.saveProfile(initialProfile, state.revision);
     await app.workspace.mutate(latest => { latest.provider = live ? provider : 'codex'; });
 
-    if (scenario.family === 'journey') {
-      profileResult = await runProfileConversation(app, persona.id);
-      await runTask(app, base, 'interview');
-      await post(base, app.token, 'understanding/approve', {});
-      await runTask(app, base, 'standard');
-      await post(base, app.token, 'standard/approve', {});
-      const afterPrepState = await app.workspace.load();
-      understandingApproved = Boolean(afterPrepState.understanding?.approved);
-      standardApproved = Boolean(afterPrepState.standard?.approvedAt);
+    if (profileMode === 'conversation') {
+      profileResult = await runProfileConversation(app, persona.id, 10, persona);
+      if (scenario.family === 'journey') {
+        await runTask(app, base, 'interview');
+        await post(base, app.token, 'understanding/approve', {});
+        await runTask(app, base, 'standard');
+        await post(base, app.token, 'standard/approve', {});
+        const afterPrepState = await app.workspace.load();
+        understandingApproved = Boolean(afterPrepState.understanding?.approved);
+        standardApproved = Boolean(afterPrepState.standard?.approvedAt);
+      }
     }
+    if (profileMode !== 'conversation') seededStrength = profileStrength(await app.workspace.load());
 
     const { id } = await post(base, app.token, 'jobs', { company: jobSpec.company, title: jobSpec.title, url: `https://jobs.lever.co/synthetic/${scenario.id}`, description: jobSpec.description, location: jobSpec.location });
     await runTask(app, base, 'evaluate', id);
@@ -244,6 +272,9 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
         scenario,
         persona: persona.id,
         job: jobSpec.id,
+        profile: profileResult,
+        profileMode,
+        profileStrength: profileResult?.strength || seededStrength,
         evaluation: evaluationResult,
         packet: packetResult,
         durationMs: Date.now() - started,
@@ -304,6 +335,8 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       persona: persona.id,
       job: jobSpec.id,
       profile: profileResult,
+      profileMode,
+      profileStrength: profileResult?.strength || seededStrength,
       understandingApproved,
       standardApproved,
       evaluation: evaluationResult,
@@ -330,6 +363,8 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       persona: scenario.persona,
       job: scenario.job,
       profile: profileResult,
+      profileMode,
+      profileStrength: profileResult?.strength || seededStrength,
       understandingApproved,
       standardApproved,
       evaluation: evaluationResult,
@@ -363,14 +398,19 @@ async function mapLimit(items, limit, work) {
 export async function runEvaluation(argv = process.argv.slice(2)) {
   const provider = option(argv, 'provider');
   const live = Boolean(provider);
-  if (provider) providerById(provider);
+  const agentTimeoutSec = Math.max(10, Number(option(argv, 'agent-timeout') || (live ? 600 : 180)));
+  const agentTimeoutMs = agentTimeoutSec * 1000;
+  if (provider) {
+    providerById(provider);
+    await assertProviderUsable(provider, (id, instruction, data, options = {}) => executeAgent(id, instruction, data, { ...options, timeout: agentTimeoutMs }));
+  }
   const requested = option(argv, 'scenarios');
   const only = requested ? new Set(requested.split(',').map(item => item.trim()).filter(Boolean)) : null;
   const selectedProfiles = option(argv, 'profiles');
   const profileOnly = selectedProfiles ? new Set(selectedProfiles.split(',')) : null;
   const all = [...profileScenarios, ...scenarios].filter(item => (!only || only.has(item.id)) && (!profileOnly || item.family !== 'profile' || profileOnly.has(item.persona)));
   if (!all.length) throw new Error('No scenarios selected.');
-  const concurrency = Math.max(1, Number(option(argv, 'concurrency') || 2));
+  const concurrency = Math.max(1, Number(option(argv, 'concurrency') || (live ? 1 : 2)));
   const repeat = Math.max(1, Number(option(argv, 'repeat') || 1));
   const retain = has(argv, 'retain');
   const out = option(argv, 'out') || path.join('output', `evaluation-${live ? provider : 'controlled'}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
@@ -378,7 +418,9 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
   const scheduled = all.flatMap(scenario => Array.from({ length: repeat }, (_, index) => repeat > 1 ? { ...scenario, id: `${scenario.id}-r${index + 1}`, baseId: scenario.id } : scenario));
 
   const results = await mapLimit(scheduled, concurrency, async scenario => {
-    const result = scenario.family === 'profile' ? await runProfileScenario(scenario, { live, provider }) : await runApplicationScenario(scenario, { live, provider, retain });
+    const result = scenario.family === 'profile'
+      ? await runProfileScenario(scenario, { live, provider, agentTimeoutMs })
+      : await runApplicationScenario(scenario, { live, provider, retain, agentTimeoutMs });
     const scored = scoreScenario({ ...result, scenario });
     await writeFile(path.join(out, `${scenario.id}.json`), JSON.stringify(scored, null, 2));
     // Failures keep the raw fill plan, checkpoint and page snapshots so the cause can be traced.
@@ -386,7 +428,7 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
       const { plan, checkpoint, snapshots, readback } = result.application;
       await writeFile(path.join(out, `${scenario.id}.trace.json`), JSON.stringify({ plan, checkpoint, snapshots, readback }, null, 2));
     }
-    console.log(`${scored.pass ? 'PASS' : 'FAIL'} ${scenario.id}${result.error ? ': ' + result.error : ''}`);
+    console.log(`${scored.pass ? 'PASS' : scored.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} ${scenario.id}${result.error ? ': ' + result.error : ''}`);
     return scored;
   });
 
@@ -398,7 +440,7 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     const baseline = JSON.parse(await readFile(resolved, 'utf8'));
     comparison = compareToBaseline(summary, baseline, results);
   }
-  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', concurrency, summary, comparison, results };
+  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', concurrency, agentTimeoutSec, summary, comparison, results };
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2));
   await writeFile(path.join(out, 'SUMMARY.md'), markdownReport({ evidenceTier: report.evidenceTier, provider: report.provider, summary, results, comparison }));
   console.log(`\n${summary.passed}/${summary.scenarios} scenarios passed`);

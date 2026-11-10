@@ -446,7 +446,7 @@ export const fields = {
     { value: 'mba', label: 'Master of Business Administration' },
     { value: 'master-science', label: 'Master of Science' },
   ] },
-  achievement: { name: 'achievement', label: 'Describe a relevant project.', type: 'textarea', required: true, expect: { kind: 'jobFacts' } },
+  achievement: { name: 'achievement', label: 'Describe a relevant project.', type: 'textarea', required: true, expect: { kind: 'anyFact' } },
   why: { name: 'why', label: 'Why do you want this role?', type: 'textarea', required: false, expect: { kind: 'anyFact' } },
   authorization: { name: 'authorization', label: 'Are you authorized to work in the United States?', type: 'select-one', required: true, sensitive: true, expect: { kind: 'candidate', key: 'authorization' }, options: [
     { value: '', label: 'Choose' },
@@ -557,6 +557,15 @@ export const scenarios = [
   { id: 'swe-submit', family: 'submission', persona: 'junior-swe', job: 'junior-swe', portal: 'lever-single' },
   { id: 'designer-submit', family: 'submission', persona: 'designer', job: 'product-designer', portal: 'greenhouse-two-step' },
   { id: 'mech-mismatch', family: 'evaluation', persona: 'mech-grad', job: 'mech-mismatch-job' },
+  // The same downstream job run twice: once from a conversation-built profile,
+  // once from the finished persona. The delta is what the profile conversation
+  // actually contributes; the seeded run is the upper bound, not a competitor.
+  { id: 'profile-effect-mech-built', family: 'profile-effect', persona: 'mech-grad', job: 'grad-mech', portal: 'lever-single', profileMode: 'conversation', pairId: 'mech' },
+  { id: 'profile-effect-mech-seeded', family: 'profile-effect', persona: 'mech-grad', job: 'grad-mech', portal: 'lever-single', profileMode: 'seeded', pairId: 'mech' },
+  { id: 'profile-effect-mech-minimal', family: 'profile-effect', persona: 'mech-grad', job: 'grad-mech', portal: 'lever-single', profileMode: 'minimal', pairId: 'mech', expectFail: true },
+  { id: 'profile-effect-analyst-built', family: 'profile-effect', persona: 'career-changer', job: 'data-analyst', portal: 'lever-single', profileMode: 'conversation', pairId: 'analyst' },
+  { id: 'profile-effect-analyst-seeded', family: 'profile-effect', persona: 'career-changer', job: 'data-analyst', portal: 'lever-single', profileMode: 'seeded', pairId: 'analyst' },
+  { id: 'profile-effect-analyst-minimal', family: 'profile-effect', persona: 'career-changer', job: 'data-analyst', portal: 'lever-single', profileMode: 'minimal', pairId: 'analyst', expectFail: true },
   { id: 'ops-records', family: 'application', persona: 'ops-lead', job: 'ops-manager', portal: 'records' },
   { id: 'mech-radio', family: 'application', persona: 'mech-grad', job: 'grad-mech', portal: 'native-radio' },
   { id: 'swe-discard', family: 'application', persona: 'junior-swe', job: 'junior-swe', portal: 'discard-once' },

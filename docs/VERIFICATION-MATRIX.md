@@ -1,19 +1,24 @@
 # Plainhand verification matrix
 
-## Evaluation harness, 9 November 2026
+## Evaluation harness, 10 November 2026
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Controlled end-to-end evaluation | PASS, 24/24 | `node benchmarks/benchmark-eval.mjs --concurrency 2`: 3 profile, 6 resume, 11 application, 2 submission, 1 evaluation and 1 journey scenario on fictional candidates and an owned loopback sandbox; 0 false-ready, 0 sensitive auto-fills, 11/11 candidate-confirmed submissions accepted with matching approved resume hashes (and the cover-letter hash where attached), tracker confirmed `Applied`; real Chromium PDFs |
-| Evaluation scoring | PASS, 21/21 | Every evaluation had a valid score, the expected recommendation, the correct band and source evidence for each match; the below-4/5 role returned `Skip` and `prepare` was refused without an override |
+| Controlled end-to-end evaluation | PASS, 28/30 (2 expected lower-bound controls) | `node benchmarks/benchmark-eval.mjs --concurrency 2`: 3 profile, 6 resume, 11 application, 2 submission, 1 evaluation, 6 profile-effect and 1 journey scenario on fictional candidates and an owned loopback sandbox; 0 unexpected failures, 0 false-ready, 0 sensitive auto-fills, 17/17 candidate-confirmed submissions accepted with matching approved resume hashes (and the cover-letter hash where attached), tracker confirmed `Applied`; real Chromium PDFs |
+| Profile effectiveness triples | PASS, 4/4 built+seeded; 2/2 minimal controls failed as expected | Minimal seed vs conversation-built vs seeded full profile on two matched jobs; built and seeded covered the required facts and completed the application, minimal failed packet coverage. Controlled deltas are zero by design; live deltas are the quality signal |
+| Evaluation scoring | PASS, 27/27 | Every evaluation had a valid score, the expected recommendation, the correct band and source evidence for each match; the below-4/5 role returned `Skip` and `prepare` was refused without an override |
 | Connected journey | PASS, 1/1 | `journey-mech` passed profile conversation, approved understanding, approved standard, evaluation, packet, portal fill and candidate confirmation in one workspace |
-| Application edge cases | PASS | Repeating employment records filled both `Employment` fieldsets; the native radio degree group filled; the discard-once portal detected the first-pass loss and recovered on retry |
-| Harness regression test | PASS, 10/10 | `node --test tests/test-bench-eval.mjs`: sandbox ground-truth rejection (name, degree, repeating records), number-word/phone normalization, false-ready and plan-answer leaks, baseline regressions vs pre-existing failures, repeat flakiness, records markup, `Skip` evaluation guard, and a controlled resume + submission run |
+| Application edge cases | PASS | Repeating employment records filled both `Employment` fieldsets; the native radio degree group filled; the discard-once portal detected the first-pass loss and recovered on retry; a form-agent warning is reported as `agent-warning` |
+| Live profile-effect subset | PARTIAL, 1/6 | Antigravity on the six matched profile-effect scenarios: built profiles captured all revealed facts (1.00), the analyst seeded scenario passed, the mechanical built and seeded packets were blocked by start-date/role questions, and the analyst built form answer was a true project rejected by the old narrow field expectation (now fixed to accept any persona fact). The minimal controls failed as intended. This is a product signal, not a harness pass; a full live rerun is pending |
+| Harness regression test | PASS, 13/13 | `node --test tests/test-bench-eval.mjs`: sandbox ground-truth rejection (name, degree, repeating records), number-word/phone normalization, false-ready and plan-answer leaks, baseline regressions vs pre-existing failures, repeat flakiness, records markup, `Skip` evaluation guard, live preflight, profile-effect pairing, and a controlled resume + submission run |
 | Profile benchmark regression test | PASS, 7/7 | `node --test tests/test-profile-bench.mjs` |
 
-The controlled run proves the harness and workflow, not model quality. Live
-provider runs are opt-in with `--provider` and use account quota; none was run in
-this checkout. Real employer acceptance remains unmeasured.
+The controlled run proves the harness and workflow, not model quality. A first
+live Antigravity attempt completed 9/24 scenarios, but 12 failures were the old
+180-second per-call timeout under two concurrent live scenarios, not model
+failures. Live runs now default to one scenario, use a 600-second timeout and a
+preflight, and a live rerun is pending. Claude was at its 5-hour limit and Codex
+at its usage limit. Real employer acceptance remains unmeasured.
 
 ## Plainhand 1.1.1 and 1.1.2, 5–6 November 2026
 
