@@ -32,7 +32,7 @@ function controls(fields, portal) {
     const grouped = repeating && Boolean(field.section && field.recordIndex !== undefined);
     const key = grouped ? `${field.section}\u0000${field.recordIndex}` : null;
     if (grouped && group && group.key === key) { group.items.push(field); continue; }
-    if (grouped && group) flush();
+    if (group) flush();
     if (grouped) group = { key, section: field.section, items: [field] };
     else html.push(control(field));
   }

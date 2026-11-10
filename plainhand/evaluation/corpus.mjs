@@ -112,7 +112,8 @@ export const personas = [
     },
     facts: [
       { id: 'teaching', keywords: ['taught', 'teacher', 'students', 'statistics'], text: 'I taught algebra and statistics to 150 students a year and built the department grade tracker in Google Sheets.' },
-      { id: 'dashboard', keywords: ['grade', 'dashboard', 'sheets', 'sql', 'teachers'], text: 'I built a grade-tracking dashboard in Google Sheets and SQL that 12 teachers at my school used to spot students falling behind.' },
+      { id: 'dashboard', keywords: ['dashboard', 'tableau', 'bike', 'weather'], text: 'I built a Tableau dashboard from public bike-share data that compared ridership by weather and season.' },
+      { id: 'grade-tracker', keywords: ['grade', 'sheets', 'sql', 'teachers'], text: 'I built a grade-tracking dashboard in Google Sheets and SQL that 12 teachers at my school used to spot students falling behind.' },
       { id: 'impact', keywords: ['result', 'impact', 'outcome', 'failure', 'improve'], text: 'After we started using it, course failure rates in ninth grade dropped from 14% to 9% over one year.' },
       { id: 'sql', keywords: ['sql', 'python', 'spreadsheet', 'analysis'], text: 'I write SQL comfortably and use spreadsheets for analysis; I am learning Python with pandas.' },
       { id: 'explain', keywords: ['explain', 'findings', 'plain', 'stakeholders'], text: 'I explain data findings to colleagues and parents in plain language.' },

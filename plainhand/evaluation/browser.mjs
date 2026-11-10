@@ -77,6 +77,7 @@ export function createSandboxBrowser({ scenario }) {
         const { tag, type } = await control.first().evaluate(el => ({ tag: el.tagName.toLowerCase(), type: el.type || '' }));
         if (type === 'checkbox') {
           if (rawValue) await control.first().check();
+          else await control.first().uncheck();
         } else if (tag === 'select' || type === 'select-one') {
           await control.first().selectOption(String(rawValue));
         } else if (type === 'radio') {

@@ -87,9 +87,21 @@ function reviewBody(persona, packet, context) {
   for (const claim of claims) {
     if (/\b(?:passionate|leverage|cutting-edge|synergy|robust)\b/i.test(claim)) issues.push('Banned voice phrase in a claim.');
   }
+  const claimIssue = text => {
+    for (const number of numberTokens(text)) if (!sourceText.includes(number)) return `Number ${number} is not in the sources.`;
+    for (const absent of persona.absent) if (absent.keywords.some(keyword => hasWord(text, keyword))) return `The candidate said they have not done: ${absent.text}`;
+    if (/\b(?:passionate|leverage|cutting-edge|synergy|robust)\b/i.test(text)) return 'Banned voice phrase in a claim.';
+    return '';
+  };
   const calibration = [
-    ...(packet.resume || []).map((_, i) => ({ id: `resume:${i}`, rating: issues.length ? 'unsupported' : 'balanced', kind: 'other', reason: issues[0] || 'Grounded in source text.', suggestion: '' })),
-    ...(packet.answers || []).map((_, i) => ({ id: `answer:${i}`, rating: issues.length ? 'unsupported' : 'balanced', kind: 'other', reason: issues[0] || 'Grounded in source text.', suggestion: '' })),
+    ...(packet.resume || []).map((entry, i) => {
+      const issue = claimIssue(entry.text);
+      return { id: `resume:${i}`, claim: entry.text, rating: issue ? 'unsupported' : 'balanced', kind: 'other', reason: issue || 'Grounded in source text.', suggestion: '' };
+    }),
+    ...(packet.answers || []).map((answer, i) => {
+      const issue = claimIssue(answer.answer);
+      return { id: `answer:${i}`, claim: answer.answer, rating: issue ? 'unsupported' : 'balanced', kind: 'other', reason: issue || 'Grounded in source text.', suggestion: '' };
+    }),
   ];
   return { passed: issues.length === 0, issues, calibration };
 }
@@ -150,13 +162,15 @@ export function controlledAgent({ scenario, persona, job }) {
       };
     }
     if (instruction === EVALUATE_INSTRUCTION) {
-      if (job.expectRecommendation === 'Skip') {
+      const candidateCorpus = [persona.profile.resume, persona.profile.roles, ...persona.facts.map(f => f.text)].join(' ').toLowerCase();
+      const matchedTerms = (job.atsTerms || []).filter(term => candidateCorpus.includes(term.toLowerCase()));
+      if ((job.atsTerms || []).length > 0 && matchedTerms.length === 0) {
         return {
           score: 2.2,
           recommendation: 'Skip',
-          summary: `The role requires senior distributed storage experience not present in ${persona.name}'s background.`,
-          matches: [{ text: 'General engineering coursework only.', evidence: evidenceFor(persona, persona.facts[0]) }],
-          gaps: ['Requires 10+ years of distributed storage and Kubernetes architecture experience.'],
+          summary: `The role requires ${job.atsTerms.join(', ')} experience not present in ${persona.name}'s background.`,
+          matches: [{ text: 'General background documented in sources.', evidence: evidenceFor(persona, persona.facts[0]) }],
+          gaps: [`No documented experience with ${job.atsTerms.join(', ')}.`],
           questions: [],
           legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
         };
@@ -212,7 +226,7 @@ export function profileFixtureAgent() {
         followedUp = true;
         say = `You mentioned ${contentWords(message).slice(0, 3).join(' ')}. What made that necessary, and how did you do it?`;
       }
-      if (/short and specific|buzzwords|plain/i.test(message)) actions.push({ name: 'profile.update', input: { voice: message } });
+      if (/short and specific|buzzwords/i.test(message)) actions.push({ name: 'profile.update', input: { voice: message } });
     }
     return { say, actions };
   };
