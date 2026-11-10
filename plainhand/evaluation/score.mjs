@@ -4,7 +4,7 @@ import { hasEvidence } from '../store.mjs';
 import { captures, expectedFor, personaById, jobById, portalById } from './corpus.mjs';
 
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
-const numberTokens = text => (String(text || '').match(/\d[\d.,]*%?/g) || []);
+const numberTokens = text => (String(text || '').match(/\d(?:[\d.,]*\d)?%?|\d%?/g) || []);
 const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
 
 const NUMBER_WORDS = {
@@ -16,9 +16,9 @@ const numberWordDigits = text => Object.entries(NUMBER_WORDS)
   .filter(([word]) => new RegExp(`\\b${word}\\b`, 'i').test(text))
   .map(([, digit]) => digit)
   .join(' ');
-// Phone numbers are contact details, not evidence. Remove them before checking
-// whether a claim's number appears in the candidate's sources.
-const withoutPhones = text => String(text || '').replace(/\+?\d[\d\s().-]{7,}\d/g, ' ');
+// Phone numbers are contact details, not evidence. Remove 10+-digit phone sequences
+// while keeping hyphenated year ranges such as 2019-2023 intact.
+const withoutPhones = text => String(text || '').replace(/\+?\d[\d\s().-]{7,}\d/g, match => match.replace(/\D/g, '').length >= 10 ? ' ' : match);
 const numberCheckSource = sources => withoutPhones((sources || []).map(source => {
   const text = String(source.text || '');
   return source.id === 'profile' ? text.replace(/"phone":\s*"[^"]*"/g, '"phone": ""') : text;
@@ -199,7 +199,7 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
   const recCorrect = evaluation?.recommendation === expectedRec;
   const scoreBandCorrect = expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
   const evidenceValid = Array.isArray(evaluation?.matches) && evaluation.matches.length > 0 && evaluation.matches.every(match => hasEvidence(match, { sources: sources || [] }));
-  const guardCorrect = expectedRec === 'Skip' ? prepareRefusedWithoutOverride !== false : true;
+  const guardCorrect = expectedRec === 'Skip' ? prepareRefusedWithoutOverride === true : true;
   const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect);
   return {
     expectedRecommendation: expectedRec,
@@ -329,12 +329,11 @@ export function compareToBaseline(summary, baseline, currentResults = []) {
   };
   const baselineResults = Array.isArray(baseline.results) ? baseline.results : [];
   const baselineFailed = new Set(baseline.summary?.failed || baselineResults.filter(item => !item.pass).map(item => item.scenario?.id).filter(Boolean));
-  const baselinePassed = new Set(baselineResults.filter(item => item.pass).map(item => item.scenario?.id).filter(Boolean));
   const currentFailed = summary.failed || [];
   const currentById = new Map(currentResults.map(item => [item.scenario?.id, item]));
-  const regressions = currentFailed.filter(id => !baselineFailed.has(id) && (!baselineResults.length || baselinePassed.has(id)));
+  const regressions = currentFailed.filter(id => !baselineFailed.has(id));
   const preExistingFailures = currentFailed.filter(id => baselineFailed.has(id));
-  const improvements = [...baselineFailed].filter(id => currentResults.length ? currentById.get(id)?.pass === true : !currentFailed.includes(id));
+  const improvements = [...baselineFailed].filter(id => currentResults.length ? currentById.get(id)?.pass === true : summary.scenarios > 0 && !currentFailed.includes(id));
   return {
     scenarios: { before: before.scenarios, after: after.scenarios, delta: delta(['scenarios']) },
     passed: { before: before.passed, after: after.passed, delta: delta(['passed']) },

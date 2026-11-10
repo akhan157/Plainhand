@@ -217,7 +217,9 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
     const portal = portalById(scenario.portal);
     let discardDetected = false;
     let plan = await post(base, app.token, 'browser/autofill', { id });
-    if (portal.discardOnce || ((await app.workspace.load()).jobs.find(j => j.id === id)?.browserCheckpoint?.result?.failed?.length > 0 && plan.observation?.state === 'needs-answers')) {
+    const firstPassJob = (await app.workspace.load()).jobs.find(j => j.id === id);
+    const firstSnapshot = browser.snapshots[0]?.values || {};
+    if (firstPassJob?.browserCheckpoint?.result?.failed?.length > 0 && plan.observation?.state === 'needs-answers' && !firstSnapshot.name?.value) {
       discardDetected = true;
       plan = await post(base, app.token, 'browser/autofill', { id });
     }

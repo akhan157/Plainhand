@@ -85,24 +85,27 @@ test('sandbox rejects wrong ground truth for name, degree and repeating employme
   assert.ok(validateSubmission(records, payload).errors.includes('mismatch:title0'));
 });
 
-test('packet scoring normalizes number words and ignores phone digits', () => {
+test('packet scoring normalizes number words, preserves year ranges and ignores phone digits', () => {
   const scenario = scenarios.find(item => item.id === 'analyst-resume');
   const persona = personaById(scenario.persona), job = jobById(scenario.job);
   const sources = [
-    { id: 'profile', text: JSON.stringify(persona.profile) },
-    { id: 'cv', text: persona.profile.resume },
+    { id: 'profile', text: JSON.stringify({ name: 'Sam Okafor', phone: '+1 617 555 0100', location: 'Chicago, US' }) },
+    { id: 'cv', text: 'Sam Okafor | +1 617 555 0100\nTaught algebra for six years (2019-2023).' },
   ];
   const packet = {
     headline: 'Data analyst',
     resume: [
-      { section: 'Experience', text: 'I taught for 6 years and led 55 projects.' },
+      { section: 'Experience', text: 'I taught for 6 years from 2019 to 2023 and led 55 projects across 617 classrooms.' },
       { section: 'Projects', text: 'I improved results by 70%.' },
     ],
     coverLetter: '', answers: [], questions: [],
   };
   const score = scorePacket({ packet, persona, job, sources, review: { passed: true, issues: [] }, pdf: { bytes: pdf, head: '%PDF-' } });
   assert.ok(!score.unsupportedNumbers.includes('6'), JSON.stringify(score.unsupportedNumbers));
+  assert.ok(!score.unsupportedNumbers.includes('2019'), JSON.stringify(score.unsupportedNumbers));
+  assert.ok(!score.unsupportedNumbers.includes('2023'), JSON.stringify(score.unsupportedNumbers));
   assert.ok(score.unsupportedNumbers.includes('55'), JSON.stringify(score.unsupportedNumbers));
+  assert.ok(score.unsupportedNumbers.includes('617'), JSON.stringify(score.unsupportedNumbers));
   assert.ok(score.unsupportedNumbers.includes('70%'), JSON.stringify(score.unsupportedNumbers));
 
   const returning = personaById('returning'), returningJob = jobById('content-strategist');
@@ -163,9 +166,9 @@ test('baseline comparison separates regressions from pre-existing failures and r
     summary: { scenarios: 3, passed: 1, failed: ['b', 'c'] },
     results: [{ scenario: { id: 'a' }, pass: true }, { scenario: { id: 'b' }, pass: false }, { scenario: { id: 'c' }, pass: false }],
   };
-  const currentResults = [{ scenario: { id: 'a' }, pass: false }, { scenario: { id: 'b' }, pass: true }, { scenario: { id: 'c' }, pass: false }];
-  const comparison = compareToBaseline({ scenarios: 3, passed: 1, failed: ['a', 'c'] }, baseline, currentResults);
-  assert.deepEqual(comparison.regressions, ['a']);
+  const currentResults = [{ scenario: { id: 'a' }, pass: false }, { scenario: { id: 'b' }, pass: true }, { scenario: { id: 'c' }, pass: false }, { scenario: { id: 'new-broken' }, pass: false }];
+  const comparison = compareToBaseline({ scenarios: 4, passed: 1, failed: ['a', 'c', 'new-broken'] }, baseline, currentResults);
+  assert.deepEqual(comparison.regressions, ['a', 'new-broken']);
   assert.deepEqual(comparison.preExistingFailures, ['c']);
   assert.deepEqual(comparison.improvements, ['b']);
 });
