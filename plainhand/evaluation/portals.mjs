@@ -11,9 +11,33 @@ function control(field) {
   const common = `name="${field.name}" id="field-${field.name}"${required}`;
   if (field.type === 'textarea') return `<label for="field-${field.name}">${escape(field.label)}<textarea ${common} maxlength="1200"></textarea></label>`;
   if (field.type === 'select-one') return `<label for="field-${field.name}">${escape(field.label)}<select ${common}>${(field.options || []).map(option).join('')}</select></label>`;
+  if (field.type === 'radio') return `<fieldset><legend>${escape(field.label)}</legend>${(field.options || []).map((o, idx) => `<label><input type="radio" name="${field.name}" value="${escape(o.value)}"${field.required && idx === 0 ? ' required' : ''}> ${escape(o.label)}</label>`).join('')}</fieldset>`;
   if (field.type === 'file') return `<label for="field-${field.name}">${escape(field.label)}<input type="file" ${common} accept=".pdf"></label>`;
   if (field.type === 'checkbox') return `<label><input type="checkbox" ${common}> ${escape(field.label)}</label>`;
   return `<label for="field-${field.name}">${escape(field.label)}<input type="${field.type || 'text'}" ${common}></label>`;
+}
+
+// Repeated education or employment records share a legend, so the app's
+// fieldsOn() reports sectionContext.index/count instead of one ambiguous field.
+function controls(fields, portal) {
+  const repeating = Boolean(portal.records) || fields.some(field => field.section && field.recordIndex !== undefined);
+  const html = [];
+  let group = null;
+  const flush = () => {
+    if (!group) return;
+    html.push(`<fieldset><legend>${escape(group.section)}</legend>${group.items.map(control).join('')}</fieldset>`);
+    group = null;
+  };
+  for (const field of fields) {
+    const grouped = repeating && Boolean(field.section && field.recordIndex !== undefined);
+    const key = grouped ? `${field.section}\u0000${field.recordIndex}` : null;
+    if (grouped && group && group.key === key) { group.items.push(field); continue; }
+    if (grouped && group) flush();
+    if (grouped) group = { key, section: field.section, items: [field] };
+    else html.push(control(field));
+  }
+  flush();
+  return html.join('');
 }
 
 function stepUrl(base, step) { return `${base}?step=${step}`; }
@@ -51,12 +75,15 @@ export function renderPortal({ scenario, step = 1 }) {
   const employerRow = portal.conditional && step === 1
     ? `<label id="row-employer" hidden>Most recent employer<input name="employer" id="field-employer" required></label>`
     : '';
+  const discardOnce = portal.discardOnce && step === 1
+    ? `<script>window.discarded=false;document.querySelector('[name=name]').addEventListener('input',e=>{if(!window.discarded){window.discarded=true;e.target.value='';}});</script>`
+    : '';
 
   const next = last
     ? '<button type="submit" disabled title="Submission is the candidate\'s action">Submit application</button>'
     : `<button type="button" onclick="location.href='${stepUrl(base, step + 1)}'">Continue</button>`;
 
-  return head + challenge + `<form id="application" onsubmit="return false">${fields.map(control).join('')}${employerRow}${next}</form>${conditional}</body></html>`;
+  return head + challenge + `<form id="application" onsubmit="return false">${controls(fields, portal)}${employerRow}${next}</form>${discardOnce}${conditional}</body></html>`;
 }
 
 export function portalDefinition(scenario) {

@@ -3,6 +3,7 @@
 // quality; live runs pass --provider and use the app's real agent.
 import {
   EVALUATE_INSTRUCTION,
+  INTERVIEW_INSTRUCTION,
   PACKET_INSTRUCTION,
   REVIEW_INSTRUCTION,
   FORM_INSTRUCTION,
@@ -86,7 +87,11 @@ function reviewBody(persona, packet, context) {
   for (const claim of claims) {
     if (/\b(?:passionate|leverage|cutting-edge|synergy|robust)\b/i.test(claim)) issues.push('Banned voice phrase in a claim.');
   }
-  return { passed: issues.length === 0, issues };
+  const calibration = [
+    ...(packet.resume || []).map((_, i) => ({ id: `resume:${i}`, rating: issues.length ? 'unsupported' : 'balanced', kind: 'other', reason: issues[0] || 'Grounded in source text.', suggestion: '' })),
+    ...(packet.answers || []).map((_, i) => ({ id: `answer:${i}`, rating: issues.length ? 'unsupported' : 'balanced', kind: 'other', reason: issues[0] || 'Grounded in source text.', suggestion: '' })),
+  ];
+  return { passed: issues.length === 0, issues, calibration };
 }
 
 function formSuggestions(persona, job, fields) {
@@ -94,6 +99,17 @@ function formSuggestions(persona, job, fields) {
   const jobFacts = job.requiredFactIds.map(id => persona.facts.find(f => f.id === id)).filter(Boolean);
   for (const field of fields || []) {
     const label = String(field.label || '').toLowerCase();
+    if (field.sectionContext && /employment/i.test(field.sectionContext.label)) {
+      const rec = persona.records?.[field.sectionContext.index || 0];
+      if (rec && /employer|company/i.test(label)) {
+        suggestions.push({ key: field.key, answer: rec.employer, evidence: [{ sourceId: 'cv', quote: rec.employer }] });
+        continue;
+      }
+      if (rec && /title|role/i.test(label)) {
+        suggestions.push({ key: field.key, answer: rec.title, evidence: [{ sourceId: 'cv', quote: rec.title }] });
+        continue;
+      }
+    }
     if (/degree/.test(label)) {
       if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: [{ sourceId: 'cv', quote: persona.degreeEvidence }] });
       continue;
@@ -123,7 +139,28 @@ export function controlledAgent({ scenario, persona, job }) {
     if (options.signal?.aborted) throw new Error('Canceled.');
     if (instruction === NAVIGATION_INSTRUCTION) return data.controls?.length ? { action: 'click', ref: data.controls[0].ref, reason: 'Continue to the next form step.' } : { action: 'stop', reason: 'No supported controls.' };
     if (instruction === HUMANIZE_INSTRUCTION) return { items: (data.items || []).map(item => ({ id: item.id, text: item.text })), remaining: [] };
+    if (instruction === INTERVIEW_INSTRUCTION) {
+      return {
+        summary: `${persona.name} targets ${persona.profile.roles} roles in ${persona.profile.location}.`,
+        voice: persona.profile.voice || 'Direct, specific first-person writing.',
+        sampleAnswer: persona.facts[0].text,
+        strengths: persona.facts.slice(0, 3).map(f => f.text),
+        questions: ['Which role priority matters most to you right now?'],
+        gaps: persona.absent.map(a => a.text),
+      };
+    }
     if (instruction === EVALUATE_INSTRUCTION) {
+      if (job.expectRecommendation === 'Skip') {
+        return {
+          score: 2.2,
+          recommendation: 'Skip',
+          summary: `The role requires senior distributed storage experience not present in ${persona.name}'s background.`,
+          matches: [{ text: 'General engineering coursework only.', evidence: evidenceFor(persona, persona.facts[0]) }],
+          gaps: ['Requires 10+ years of distributed storage and Kubernetes architecture experience.'],
+          questions: [],
+          legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
+        };
+      }
       const fact = persona.facts.find(f => job.requiredFactIds.includes(f.id)) || persona.facts[0];
       return {
         score: 4.6,
@@ -156,12 +193,27 @@ const PROFILE_QUESTIONS = [
   'What was the hardest problem you solved?',
 ];
 
+const contentWords = text => (String(text || '').toLowerCase().match(/[a-z0-9%$&]+/g) || []).filter(word => word.length >= 4 || /\d/.test(word));
+
 export function profileFixtureAgent() {
   let asked = 0;
+  let followedUp = false;
   return async (id, instruction, data) => {
     if (!instruction.startsWith('Act as the conversational assistant')) return fixtureAgent(id, instruction, data);
-    const say = PROFILE_QUESTIONS[asked++ % PROFILE_QUESTIONS.length];
-    const save = String(data.message || '').length > 40 && !/everything I can think of/i.test(data.message);
-    return { say, actions: save ? [{ name: 'profile.addStory', input: { text: data.message } }] : [] };
+    const message = String(data.message || '');
+    const save = message.length > 40 && !/everything I can think of/i.test(message);
+    let say = PROFILE_QUESTIONS[asked++ % PROFILE_QUESTIONS.length];
+    const actions = [];
+    if (save) {
+      actions.push({ name: 'profile.addStory', input: { text: message } });
+      // Ask once about the first story so the deterministic candidate supplies a
+      // detail; later long messages are saved without spending another turn.
+      if (!followedUp) {
+        followedUp = true;
+        say = `You mentioned ${contentWords(message).slice(0, 3).join(' ')}. What made that necessary, and how did you do it?`;
+      }
+      if (/short and specific|buzzwords|plain/i.test(message)) actions.push({ name: 'profile.update', input: { voice: message } });
+    }
+    return { say, actions };
   };
 }
