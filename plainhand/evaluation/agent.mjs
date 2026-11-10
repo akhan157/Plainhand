@@ -16,8 +16,13 @@ import { fixtureAgent } from '../test-fixtures.mjs';
 const numberTokens = text => (String(text || '').match(/\d[\d.,]*%?/g) || []);
 const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
 
-function evidenceFor(persona, fact) {
-  return [{ sourceId: 'cv', quote: fact.text }];
+function quoteEvidence(quote, context) {
+  const source = (context?.sources || []).find(item => item.id !== 'reviewed-understanding' && String(item.text || '').includes(quote));
+  return [{ sourceId: source?.id || 'cv', quote }];
+}
+
+function evidenceFor(persona, fact, context) {
+  return quoteEvidence(fact.text, context);
 }
 
 function factSection(fact) {
@@ -26,7 +31,7 @@ function factSection(fact) {
   return 'Experience';
 }
 
-function resumeEntries(persona, job) {
+function resumeEntries(persona, job, context) {
   const required = job.requiredFactIds.map(id => persona.facts.find(f => f.id === id)).filter(Boolean);
   const rest = persona.facts.filter(f => !required.includes(f));
   const chosen = [...required, ...rest].slice(0, 5);
@@ -34,35 +39,35 @@ function resumeEntries(persona, job) {
     section: factSection(fact),
     heading: fact.id === 'pumps' || fact.id === 'ta' ? { org: persona.employer, title: persona.title, location: persona.profile.location.split(',')[0], dates: persona.dates } : null,
     text: fact.text,
-    evidence: evidenceFor(persona, fact),
+    evidence: evidenceFor(persona, fact, context),
   }));
 }
 
-function packetFor(persona, job) {
+function packetFor(persona, job, context) {
   const fact = persona.facts.find(f => job.requiredFactIds.includes(f.id)) || persona.facts[0];
   return {
     headline: `${persona.profile.roles.split(',')[0]} for ${job.title}`,
     resume: [
-      ...resumeEntries(persona, job),
+      ...resumeEntries(persona, job, context),
       {
         section: 'Education',
         heading: null,
         text: persona.degreeEvidence,
-        evidence: [{ sourceId: 'cv', quote: persona.degreeEvidence }],
+        evidence: quoteEvidence(persona.degreeEvidence, context),
       },
     ],
     coverLetter: `I am applying for the ${job.title} role at ${job.company}. ${persona.profile.story} ${fact.text}`,
     answers: [
-      { question: 'Describe a relevant project.', answer: fact.text, evidence: evidenceFor(persona, fact) },
+      { question: 'Describe a relevant project.', answer: fact.text, evidence: evidenceFor(persona, fact, context) },
     ],
     questions: [],
     suggestions: [],
   };
 }
 
-function standardFor(persona) {
-  const entries = persona.facts.map(fact => ({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact) }));
-  entries.push({ section: 'Education', heading: null, text: persona.degreeEvidence, evidence: [{ sourceId: 'cv', quote: persona.degreeEvidence }] });
+function standardFor(persona, context) {
+  const entries = persona.facts.map(fact => ({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) }));
+  entries.push({ section: 'Education', heading: null, text: persona.degreeEvidence, evidence: quoteEvidence(persona.degreeEvidence, context) });
   return {
     headline: persona.profile.roles,
     resume: entries.slice(0, 8),
@@ -106,7 +111,7 @@ function reviewBody(persona, packet, context) {
   return { passed: issues.length === 0, issues, calibration };
 }
 
-function formSuggestions(persona, job, fields) {
+function formSuggestions(persona, job, fields, context) {
   const suggestions = [], questions = [];
   const jobFacts = job.requiredFactIds.map(id => persona.facts.find(f => f.id === id)).filter(Boolean);
   for (const field of fields || []) {
@@ -114,31 +119,31 @@ function formSuggestions(persona, job, fields) {
     if (field.sectionContext && /employment/i.test(field.sectionContext.label)) {
       const rec = persona.records?.[field.sectionContext.index || 0];
       if (rec && /employer|company/i.test(label)) {
-        suggestions.push({ key: field.key, answer: rec.employer, evidence: [{ sourceId: 'cv', quote: rec.employer }] });
+        suggestions.push({ key: field.key, answer: rec.employer, evidence: quoteEvidence(rec.employer, context) });
         continue;
       }
       if (rec && /title|role/i.test(label)) {
-        suggestions.push({ key: field.key, answer: rec.title, evidence: [{ sourceId: 'cv', quote: rec.title }] });
+        suggestions.push({ key: field.key, answer: rec.title, evidence: quoteEvidence(rec.title, context) });
         continue;
       }
     }
     if (/degree/.test(label)) {
-      if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: [{ sourceId: 'cv', quote: persona.degreeEvidence }] });
+      if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: quoteEvidence(persona.degreeEvidence, context) });
       continue;
     }
     if (/start|earliest/.test(label)) { questions.push({ key: field.key, question: 'What is your exact earliest start date?' }); continue; }
     if (/level|experience/.test(label)) {
       const option = field.options?.find(item => item.value === persona.level) || field.options?.find(item => /professional/i.test(item.label));
-      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: [{ sourceId: 'cv', quote: persona.degreeEvidence }] });
+      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.degreeEvidence, context) });
       continue;
     }
     if (/employer|company/.test(label)) {
-      suggestions.push({ key: field.key, answer: persona.employer, evidence: [{ sourceId: 'cv', quote: persona.degreeEvidence }] });
+      suggestions.push({ key: field.key, answer: persona.employer, evidence: quoteEvidence(persona.degreeEvidence, context) });
       continue;
     }
     if (/project|achievement|describe|relevant|why|motivat/.test(label)) {
       const fact = jobFacts[0] || persona.facts[0];
-      suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact) });
+      suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact, context) });
       continue;
     }
     if (field.required) questions.push({ key: field.key, question: field.label });
@@ -147,6 +152,7 @@ function formSuggestions(persona, job, fields) {
 }
 
 export function controlledAgent({ scenario, persona, job }) {
+  const assistant = profileFixtureAgent();
   return async (id, instruction, data, options = {}) => {
     if (options.signal?.aborted) throw new Error('Canceled.');
     if (instruction === NAVIGATION_INSTRUCTION) return data.controls?.length ? { action: 'click', ref: data.controls[0].ref, reason: 'Continue to the next form step.' } : { action: 'stop', reason: 'No supported controls.' };
@@ -169,7 +175,7 @@ export function controlledAgent({ scenario, persona, job }) {
           score: 2.2,
           recommendation: 'Skip',
           summary: `The role requires ${job.atsTerms.join(', ')} experience not present in ${persona.name}'s background.`,
-          matches: [{ text: 'General background documented in sources.', evidence: evidenceFor(persona, persona.facts[0]) }],
+          matches: [{ text: 'General background documented in sources.', evidence: evidenceFor(persona, persona.facts[0], data.context) }],
           gaps: [`No documented experience with ${job.atsTerms.join(', ')}.`],
           questions: [],
           legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
@@ -180,18 +186,18 @@ export function controlledAgent({ scenario, persona, job }) {
         score: 4.6,
         recommendation: 'Apply',
         summary: `The candidate's documented ${job.requiredFactIds[0] || 'work'} matches this ${job.title} role.`,
-        matches: [{ text: `Documented ${job.atsTerms[0] || 'experience'} relevant to the role.`, evidence: evidenceFor(persona, fact) }],
+        matches: [{ text: `Documented ${job.atsTerms[0] || 'experience'} relevant to the role.`, evidence: evidenceFor(persona, fact, data.context) }],
         gaps: [],
         questions: [],
         legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
       };
     }
-    if (instruction === PACKET_INSTRUCTION) return packetFor(persona, job);
-    if (instruction === STANDARD_INSTRUCTION) return standardFor(persona);
+    if (instruction === PACKET_INSTRUCTION) return packetFor(persona, job, data.context);
+    if (instruction === STANDARD_INSTRUCTION) return standardFor(persona, data.context);
     if (instruction === REVIEW_INSTRUCTION) return reviewBody(persona, data.packet || {}, data.context || { sources: [] });
-    if (instruction === FORM_INSTRUCTION) return formSuggestions(persona, job, data.fields);
+    if (instruction === FORM_INSTRUCTION) return formSuggestions(persona, job, data.fields, data.context);
     if (instruction.startsWith('Act as the conversational assistant')) {
-      return { say: 'What is one project you are proud of, and what did you do on it?', actions: [] };
+      return assistant(id, instruction, data);
     }
     throw new Error(`Unknown controlled-agent instruction: ${instruction.slice(0, 60)}`);
   };

@@ -356,7 +356,7 @@ export const seedProfileFor = persona => ({
   links: persona.profile.links,
   voice: '',
   story: '',
-  resume: persona.degreeEvidence,
+  resume: `${persona.degreeEvidence}. ${persona.employer} — ${persona.title} — ${persona.dates}.`,
 });
 for (const persona of personas) persona.seedProfile = seedProfileFor(persona);
 
