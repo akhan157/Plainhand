@@ -81,7 +81,14 @@ A first live Antigravity attempt completed 9/24 scenarios, but 12 of the failure
 were the harness's old 180-second per-call timeout under two concurrent live
 scenarios, not model failures; live runs now default to one scenario and a
 600-second timeout, and a preflight stops on quota/sign-in failure. That attempt
-is recorded as a harness finding, not a quality score.
+is recorded as a harness finding, not a quality score. A targeted live Antigravity
+profile-triple run after the fixes completed 3/6: the mechanical built profile
+matched the seeded result, while the analyst built profile captured every fact it
+heard (4/4) but never heard the SQL fact, so packet coverage stayed at 0.67. The
+onboarding prompt now asks about tools, software and methods before rebuilding the
+understanding. Two analyst retests still missed the SQL fact: one heard it but did
+not save it, one never asked about tools. Prompt-only elicitation is not reliable;
+the next fix is a deterministic checklist.
 
 ## 5. Profile-building benchmark
 

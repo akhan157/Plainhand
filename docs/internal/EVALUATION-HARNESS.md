@@ -212,33 +212,42 @@ Claude was at its 5-hour limit and Codex at its usage limit during this attempt.
 ## Live profile-effect subset (Antigravity, 10 November 2026)
 
 The targeted six-scenario profile-effect run (`--concurrency 1
---agent-timeout 900`) completed **1/6** in about 46 minutes. It is small, but it
-answered the profile question more directly than the full baseline:
+--agent-timeout 900`) completed **3/6** in about 72 minutes after the timeout and
+ground-truth fixes. It answered the profile question more directly than the full
+baseline:
 
 | Pair | Minimal | Built | Seeded |
 | --- | --- | --- | --- |
-| Mechanical | evaluation 3.5 `Investigate`; packet blocked on missing project/tool facts | capture **1.00** (5/5), evaluation 4.5 `Apply`; packet blocked on start-date/internship/role questions | evaluation 4.5 `Apply`; packet blocked on a 2027 start-date question |
-| Analyst | evaluation 2.0 `Investigate`; packet blocked on project/portfolio questions | capture **1.00** (6/6), evaluation 5.0 `Apply`, packet coverage **1.00**; the form answer was a true grade-tracking project, but the old narrow field expectation rejected it | passed end to end |
+| Mechanical | evaluation 3.0 `Investigate`; packet coverage 0; application needed a candidate rescue | capture **1.00** (4/4), coverage 0.80, evaluation 4.5 `Apply`, packet coverage **1.00**, application and submission passed | same downstream result as built |
+| Analyst | evaluation 2.0 `Investigate`; packet coverage 0; application needed a candidate rescue | capture **1.00** (4/4), coverage **0.67**, evaluation 4.2 `Apply`, packet coverage **0.67** (missing SQL), application and submission passed | packet coverage **1.00**, application and submission passed |
 
 What this says:
 
-- The conversation **did capture the facts** in both built profiles: capture
-  1.00, coverage 1.00, 5–6 facts, 6–7 turns, no unsupported updates.
-- The bottleneck moved **downstream**: the model's packet questions blocked
-  approval on role/employer questions. The seeded mechanical profile was blocked
-  too, so this is not a profile-capture failure.
-- The analyst built-form “failure” was a **benchmark false negative**: the answer
-  described the grade-tracking dashboard, which is true and grounded, but the
-  field expectation only accepted the three job-required facts. The field now
-  accepts any persona fact; that live result should be rerun, not counted against
-  the app.
-- The minimal controls failed as intended, with lower evaluation scores and
-  questions about missing facts.
-- The profile-effect benchmark is therefore doing its job: it separates “the
-  profile captured the material” from “the next stages used it,” and it shows
-  where the next product fix belongs.
+- The conversation captured **every fact it heard** in both built profiles
+  (4/4), with no unsupported updates and 6 turns. The profile is not inventing or
+  mis-saving material.
+- The mechanical built profile reached the seeded downstream result. The analyst
+  built profile did not: the conversation stopped after project stories and never
+  asked about tools, so the SQL fact was never heard. The packet still listed SQL
+  in a skills line, but the evidence-backed coverage rule correctly reported the
+  missing fact.
+- The minimal controls failed as intended; their applications could only complete
+  because the simulated candidate rescued the missing answer.
+- This is the benchmark doing its job: it separates **what the profile captured**
+  from **what the next stage could use**, and points at elicitation coverage, not
+  saving or fabrication.
+- The assistant onboarding prompt now requires a tools/software/methods question
+  and saving that answer before proposing `tasks.interview`. Two Antigravity
+  retests of the analyst built profile still failed the same way: one heard the
+  SQL answer but proposed the interview without saving it, and one never asked
+  about tools at all. Both packets still missed the SQL fact and carried a
+  `corporate` absent claim. The prompt change is kept as a correct instruction,
+  but prompt-only elicitation is not reliable enough; the next fix needs a
+  deterministic checklist, not another wording change.
 
-Evidence: `output/evaluation-antigravity-2026-11-10T16-40-32-844Z`.
+Evidence: `output/evaluation-antigravity-2026-11-10T17-52-57-596Z` (3/6),
+`output/evaluation-antigravity-2026-11-10T19-05-50-849Z` and
+`output/evaluation-antigravity-2026-11-10T19-37-03-510Z` (analyst retests).
 
 ## Extending it
 
