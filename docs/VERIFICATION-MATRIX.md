@@ -4,9 +4,12 @@
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Controlled end-to-end evaluation | PASS, 19/19 | `npm run benchmark:eval -- --concurrency 2`: 3 profile, 6 resume, 8 application and 2 submission scenarios on fictional candidates and an owned loopback sandbox; 0 false-ready, 0 sensitive auto-fills, 7/7 candidate-confirmed submissions accepted, tracker confirmed `Applied`; real Chromium PDFs |
-| Harness regression test | PASS | `node --test tests/test-bench-eval.mjs`: sandbox validation, fabricated-claim detection, sensitive-field and false-ready detection, and a controlled resume + submission run |
-| Repository quick suite | PASS | `node tests/test-all.mjs --quick`: 261 passed, 0 failed, 5 known warnings |
+| Controlled end-to-end evaluation | PASS, 24/24 | `node benchmarks/benchmark-eval.mjs --concurrency 2`: 3 profile, 6 resume, 11 application, 2 submission, 1 evaluation and 1 journey scenario on fictional candidates and an owned loopback sandbox; 0 false-ready, 0 sensitive auto-fills, 11/11 candidate-confirmed submissions accepted with matching approved resume hashes (and the cover-letter hash where attached), tracker confirmed `Applied`; real Chromium PDFs |
+| Evaluation scoring | PASS, 21/21 | Every evaluation had a valid score, the expected recommendation, the correct band and source evidence for each match; the below-4/5 role returned `Skip` and `prepare` was refused without an override |
+| Connected journey | PASS, 1/1 | `journey-mech` passed profile conversation, approved understanding, approved standard, evaluation, packet, portal fill and candidate confirmation in one workspace |
+| Application edge cases | PASS | Repeating employment records filled both `Employment` fieldsets; the native radio degree group filled; the discard-once portal detected the first-pass loss and recovered on retry |
+| Harness regression test | PASS, 10/10 | `node --test tests/test-bench-eval.mjs`: sandbox ground-truth rejection (name, degree, repeating records), number-word/phone normalization, false-ready and plan-answer leaks, baseline regressions vs pre-existing failures, repeat flakiness, records markup, `Skip` evaluation guard, and a controlled resume + submission run |
+| Profile benchmark regression test | PASS, 7/7 | `node --test tests/test-profile-bench.mjs` |
 
 The controlled run proves the harness and workflow, not model quality. Live
 provider runs are opt-in with `--provider` and use account quota; none was run in

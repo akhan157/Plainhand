@@ -1,6 +1,6 @@
 # What Plainhand measures
 
-**Status:** inventory as of 26 October 2026
+**Status:** inventory as of 9 November 2026
 **Related:** [Verification matrix](VERIFICATION-MATRIX.md) · [Agent layer direction](internal/AGENT-LAYER-DIRECTION.md#how-to-tell-its-working)
 
 Most of what Plainhand has today are **checks** (a gate that passes or fails one
@@ -54,12 +54,26 @@ These are stored already; a number is one function away.
 | `benchmark:invariants` | Workflow invariants hold under repeated runs | Deterministic |
 | `test:agent-live` | Three assistant turns on a real CLI: briefing, logging, injected posting | Not yet run on the candidate's machine |
 | `benchmark:profile` (new) | Profile building by conversation, below | 26 Oct, Claude CLI |
-| `benchmark:eval` (new) | End to end: profile, resume, portal fill, candidate-confirmed sandbox submission, scored against ground truth | 9 Nov, controlled: 19/19 |
+| `benchmark:eval` (new) | End to end: profile, evaluation, resume, portal fill, candidate-confirmed sandbox submission and connected journey, scored against ground truth | 9 Nov, controlled: 24/24 |
 
 All earlier benchmarks predate the assistant; none measured the conversation.
-`benchmark:eval` is the first one that scores profile, resume and application in one
-run; see [the harness](internal/EVALUATION-HARNESS.md). Its controlled mode proves
-the harness; live mode measures a provider.
+`benchmark:eval` is the first one that scores profile, evaluation, resume, application
+and the connected journey in one run; see [the harness](internal/EVALUATION-HARNESS.md).
+Its controlled mode proves the harness; live mode measures a provider.
+
+### End-to-end evaluation, 9 November 2026
+
+`node benchmarks/benchmark-eval.mjs --concurrency 2` passed **24/24** scenarios:
+3 profile, 6 resume, 11 application, 2 submission, 1 evaluation and 1 journey.
+Across the run: profile capture **1.00** (4 runs), packet fact coverage **1.00**
+(20 runs), **11/11** candidate-confirmed submissions accepted, **21/21**
+evaluations scored correctly, 0 false-ready, 0 sensitive auto-fills and 0
+invented unknown answers. The below-4/5 role returned `Skip` and `prepare` was
+refused without an override; the connected journey passed understanding, standard,
+packet and application in one workspace. The scorer now normalizes spelled-out
+numbers and ignores phone digits, checks calibration and cover-letter hashes, and
+reports repeat flakiness and true baseline regressions. Runtime was about 84
+seconds; live provider runs were not run.
 
 ## 5. Profile-building benchmark
 

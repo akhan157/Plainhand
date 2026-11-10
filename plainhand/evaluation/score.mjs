@@ -1,20 +1,41 @@
 // Scores a completed scenario from recorded evidence, never from the model's own
 // claim that it did well. Ground truth is the fictional persona and job corpus.
+import { hasEvidence } from '../store.mjs';
 import { captures, expectedFor, personaById, jobById, portalById } from './corpus.mjs';
 
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const numberTokens = text => (String(text || '').match(/\d[\d.,]*%?/g) || []);
 const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
 
+const NUMBER_WORDS = {
+  one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
+  eleven: '11', twelve: '12', thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16', seventeen: '17', eighteen: '18', nineteen: '19',
+  twenty: '20', thirty: '30', forty: '40', fifty: '50', sixty: '60',
+};
+const numberWordDigits = text => Object.entries(NUMBER_WORDS)
+  .filter(([word]) => new RegExp(`\\b${word}\\b`, 'i').test(text))
+  .map(([, digit]) => digit)
+  .join(' ');
+// Phone numbers are contact details, not evidence. Remove them before checking
+// whether a claim's number appears in the candidate's sources.
+const withoutPhones = text => String(text || '').replace(/\+?\d[\d\s().-]{7,}\d/g, ' ');
+const numberCheckSource = sources => withoutPhones((sources || []).map(source => {
+  const text = String(source.text || '');
+  return source.id === 'profile' ? text.replace(/"phone":\s*"[^"]*"/g, '"phone": ""') : text;
+}).join('\n'));
+
 export function scorePacket({ packet, persona, job, sources, review, calibration, pdf }) {
-  const sourceText = (sources || []).map(source => source.text).join('\n');
+  const sourceText = numberCheckSource(sources);
+  const numberWords = numberWordDigits(sourceText);
+  const cleanSourceText = sourceText.replace(/,/g, '') + (numberWords ? ' ' + numberWords : '');
+  const cleanSourceTokens = new Set([...numberTokens(cleanSourceText), ...numberWords.split(/\s+/).filter(Boolean)]);
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
   const text = claims.join('\n');
   const required = job.requiredFactIds.map(id => persona.facts.find(fact => fact.id === id)).filter(Boolean);
   const covered = required.filter(fact => captures(fact.text, text));
   const missing = required.filter(fact => !covered.includes(fact));
   const absentClaims = persona.absent.filter(absent => absent.keywords.some(keyword => hasWord(text, keyword)));
-  const unsupportedNumbers = [...new Set(numberTokens(text))].filter(number => !sourceText.includes(number));
+  const unsupportedNumbers = [...new Set(numberTokens(text))].filter(number => !cleanSourceText.includes(number) && !cleanSourceTokens.has(number.replace(/,/g, '')));
   const atsCovered = job.atsTerms.filter(term => text.toLowerCase().includes(term.toLowerCase()));
   const bannedWords = persona.voice.banned.filter(word => hasWord(text, word));
   const coverLetter = String(packet?.coverLetter || '');
@@ -43,7 +64,7 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
     pdfValid,
     pdfBytes: pdf?.bytes?.length ?? null,
     pdfHead: pdf?.head ?? null,
-    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && (!persona.voice.firstPerson || firstPerson)),
+    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!persona.voice.firstPerson || firstPerson)),
   };
 }
 
@@ -53,7 +74,7 @@ function mergeActual(snapshots) {
   return actual;
 }
 
-export function scoreApplication({ scenario, persona, job, snapshots, plan, checkpoint, submission, trackerStatus, submittedAt, pdfSha, readback }) {
+export function scoreApplication({ scenario, persona, job, snapshots, plan, checkpoint, submission, trackerStatus, submittedAt, pdfSha, coverSha, discardDetected, readback }) {
   const portal = portalById(scenario.portal);
   const expectedStop = portal?.expect?.stop || null;
   const actual = mergeActual(snapshots);
@@ -96,18 +117,33 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
   const gating = scored.filter(item => item.required || ['blank', 'candidate'].includes(item.kind));
   const incorrect = scored.filter(item => !item.correct);
   const gatingIncorrect = gating.filter(item => !item.correct);
-  const sensitiveAppFilled = fieldResults.filter(item => {
-    const field = (portal?.steps?.flat() || []).find(candidate => candidate.name === item.name);
-    return field?.sensitive && item.value;
-  }).map(item => item.name);
-  const unknownAppFilled = fieldResults.filter(item => ['blank'].includes(item.kind) && item.value).map(item => item.name);
+  const planAnswers = plan?.answers || {};
+  const planFields = plan?.fields || [];
+  const planAnswerFor = field => {
+    const planField = planFields.find(item => item?.name === field.name);
+    const value = planField ? planAnswers[planField.key] : planAnswers[field.name];
+    return String(value ?? '').trim();
+  };
+  const sensitiveAppFilled = [...new Set([
+    ...fieldResults.filter(item => {
+      const field = (portal?.steps?.flat() || []).find(candidate => candidate.name === item.name);
+      return field?.sensitive && item.value;
+    }).map(item => item.name),
+    ...(portal?.steps?.flat() || []).filter(field => field.sensitive && planAnswerFor(field)).map(field => field.name),
+  ])];
+  const unknownAppFilled = [...new Set([
+    ...fieldResults.filter(item => ['blank'].includes(item.kind) && item.value).map(item => item.name),
+    ...(portal?.steps?.flat() || []).filter(field => expectedFor(field, persona, job).kind === 'blank' && planAnswerFor(field)).map(field => field.name),
+  ])];
   const resume = fieldResults.find(item => item.name === 'resume');
   const receiptResume = submission?.receipt?.fields?.resume?.file || null;
   const summary = checkpoint?.check?.summary || null;
   const stop = plan?.questions?.length ? 'needs-answers' : plan?.observation?.state || 'unknown';
   const expectedSubmit = Boolean(portal?.expect?.submit);
   const stopCorrect = expectedStop ? stop === expectedStop : null;
-  const falseReady = checkpoint?.check?.ready === true && gatingIncorrect.length > 0;
+  const requiredUnfilledByApp = fieldResults.some(item => item.required && ['candidate', 'blank'].includes(item.kind) && !item.value);
+  const falseReady = checkpoint?.check?.ready === true && (gatingIncorrect.length > 0 || requiredUnfilledByApp);
+  const coverHashMatches = !coverSha || !submission?.receipt?.fields?.cover?.file || submission.receipt.fields.cover.file.sha256 === coverSha;
   const accepted = submission?.ok === true;
   return {
     portal: scenario.portal,
@@ -125,6 +161,8 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
     unknownAppFilled,
     resumeAttached: Boolean(resume?.file),
     resumeHashMatches: Boolean(pdfSha && receiptResume?.sha256 === pdfSha),
+    coverHashMatches,
+    discardDetected: Boolean(discardDetected),
     check: summary,
     checkReady: checkpoint?.check?.ready ?? null,
     falseReady,
@@ -149,15 +187,47 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
         && Boolean(submittedAt)
         && !falseReady
         && (!pdfSha || receiptResume?.sha256 === pdfSha)
+        && coverHashMatches
+        && (!portal?.discardOnce || Boolean(discardDetected))
         && (stop === 'review' || stop === 'ready')),
+  };
+}
+
+export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithoutOverride }) {
+  const validScore = typeof evaluation?.score === 'number' && evaluation.score >= 0 && evaluation.score <= 5;
+  const expectedRec = job?.expectRecommendation || 'Apply';
+  const recCorrect = evaluation?.recommendation === expectedRec;
+  const scoreBandCorrect = expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
+  const evidenceValid = Array.isArray(evaluation?.matches) && evaluation.matches.length > 0 && evaluation.matches.every(match => hasEvidence(match, { sources: sources || [] }));
+  const guardCorrect = expectedRec === 'Skip' ? prepareRefusedWithoutOverride !== false : true;
+  const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect);
+  return {
+    expectedRecommendation: expectedRec,
+    score: evaluation?.score ?? null,
+    recommendation: evaluation?.recommendation ?? null,
+    matches: Array.isArray(evaluation?.matches) ? evaluation.matches.length : null,
+    validScore,
+    recCorrect,
+    scoreBandCorrect,
+    evidenceValid,
+    guardCorrect,
+    prepareRefusedWithoutOverride: prepareRefusedWithoutOverride ?? null,
+    pass,
   };
 }
 
 export function scoreScenario(result) {
   const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const application = result.application ? scoreApplication({ ...result.application, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
-  const pass = packet && application ? packet.pass && application.pass : packet ? packet.pass : application ? application.pass : result.profile?.pass === true;
-  return { ...result, packet, application, pass: Boolean(pass) };
+  const evaluation = result.evaluation ? scoreEvaluation({ ...result.evaluation, job: jobById(result.scenario.job) }) : null;
+  let pass;
+  if (result.scenario.family === 'evaluation') pass = Boolean(evaluation?.pass);
+  else if (result.scenario.family === 'journey') pass = Boolean(result.profile?.pass && result.understandingApproved && result.standardApproved && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
+  else {
+    const base = packet && application ? packet.pass && application.pass : packet ? packet.pass : application ? application.pass : result.profile?.pass === true;
+    pass = Boolean(base && (!evaluation || evaluation.pass));
+  }
+  return { ...result, packet, application, evaluation, pass: Boolean(pass) };
 }
 
 const avg = values => {
@@ -176,7 +246,34 @@ export function aggregate(results) {
   const applications = results.filter(result => result.application).map(result => result.application);
   const filling = applications.filter(item => item.submission.expected);
   const profiles = results.filter(result => result.profile).map(result => result.profile);
+  const evaluations = results.filter(result => result.evaluation).map(result => result.evaluation);
   const submitted = applications.filter(item => item.submission.expected);
+  const repeatGroups = new Map();
+  for (const result of results) {
+    if (!result.scenario.baseId) continue;
+    const runs = repeatGroups.get(result.scenario.baseId) || [];
+    runs.push(result);
+    repeatGroups.set(result.scenario.baseId, runs);
+  }
+  let repeats = null;
+  if (repeatGroups.size) {
+    const byScenario = {}, flakyScenarios = [];
+    let passedRuns = 0, totalRuns = 0;
+    for (const [id, runs] of repeatGroups) {
+      const passed = runs.filter(item => item.pass).length;
+      byScenario[id] = { runs: runs.length, passed, passRate: Math.round(passed / runs.length * 100) / 100 };
+      if (passed > 0 && passed < runs.length) flakyScenarios.push(id);
+      passedRuns += passed;
+      totalRuns += runs.length;
+    }
+    repeats = {
+      scenarios: repeatGroups.size,
+      runsPerScenario: Math.round(totalRuns / repeatGroups.size * 100) / 100,
+      passRate: Math.round(passedRuns / totalRuns * 100) / 100,
+      flakyScenarios,
+      byScenario,
+    };
+  }
   return {
     scenarios: results.length,
     passed: results.filter(result => result.pass).length,
@@ -212,12 +309,17 @@ export function aggregate(results) {
       submissionsAccepted: submitted.filter(item => item.submission.accepted).length,
       submissionsExpected: submitted.length,
     } : null,
+    evaluation: evaluations.length ? {
+      runs: evaluations.length,
+      passed: evaluations.filter(item => item.pass).length,
+    } : null,
+    repeats,
     calls: results.reduce((n, item) => n + (item.usage?.calls || 0), 0),
     durationMs: results.reduce((n, item) => n + (item.durationMs || 0), 0),
   };
 }
 
-export function compareToBaseline(summary, baseline) {
+export function compareToBaseline(summary, baseline, currentResults = []) {
   if (!baseline?.summary) return null;
   const before = baseline.summary, after = summary;
   const delta = (path) => {
@@ -225,6 +327,14 @@ export function compareToBaseline(summary, baseline) {
     const a = get(after, path), b = get(before, path);
     return typeof a === 'number' && typeof b === 'number' ? Math.round((a - b) * 1000) / 1000 : null;
   };
+  const baselineResults = Array.isArray(baseline.results) ? baseline.results : [];
+  const baselineFailed = new Set(baseline.summary?.failed || baselineResults.filter(item => !item.pass).map(item => item.scenario?.id).filter(Boolean));
+  const baselinePassed = new Set(baselineResults.filter(item => item.pass).map(item => item.scenario?.id).filter(Boolean));
+  const currentFailed = summary.failed || [];
+  const currentById = new Map(currentResults.map(item => [item.scenario?.id, item]));
+  const regressions = currentFailed.filter(id => !baselineFailed.has(id) && (!baselineResults.length || baselinePassed.has(id)));
+  const preExistingFailures = currentFailed.filter(id => baselineFailed.has(id));
+  const improvements = [...baselineFailed].filter(id => currentResults.length ? currentById.get(id)?.pass === true : !currentFailed.includes(id));
   return {
     scenarios: { before: before.scenarios, after: after.scenarios, delta: delta(['scenarios']) },
     passed: { before: before.passed, after: after.passed, delta: delta(['passed']) },
@@ -233,13 +343,16 @@ export function compareToBaseline(summary, baseline) {
     falseReady: { before: before.application?.falseReady ?? null, after: after.application?.falseReady ?? null, delta: delta(['application', 'falseReady']) },
     submissionsAccepted: { before: before.application?.submissionsAccepted ?? null, after: after.application?.submissionsAccepted ?? null, delta: delta(['application', 'submissionsAccepted']) },
     captureRate: { before: before.profile?.captureRate ?? null, after: after.profile?.captureRate ?? null, delta: delta(['profile', 'captureRate']) },
-    regressions: summary.failed,
+    regressions,
+    improvements,
+    preExistingFailures,
   };
 }
 
 export function markdownReport({ evidenceTier, provider, summary, results, comparison }) {
   const line = (result) => {
     const parts = [];
+    if (result.evaluation) parts.push(`eval ${result.evaluation.score ?? 'n/a'}/5 ${result.evaluation.recommendation ?? ''}`.trim());
     if (result.packet) parts.push(`resume ${result.packet.factCoverage === null ? 'n/a' : Math.round(result.packet.factCoverage * 100) + '%'}`);
     if (result.application) parts.push(`form ${result.application.completionRate === null ? 'n/a' : Math.round(result.application.completionRate * 100) + '%'}`, `stop ${result.application.stop}`);
     if (result.profile) parts.push(`capture ${Math.round((result.profile.captureRate || 0) * 100)}%`);
@@ -249,6 +362,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
   const failures = results.filter(result => !result.pass).map(result => {
     const reasons = [];
     if (result.error) reasons.push(result.error);
+    if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
     if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}`);
     if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}`);
     return `- **${result.scenario.id}** — ${reasons.join('; ')}`;
@@ -262,6 +376,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Metric | Value |
 | --- | --- |
 | Scenarios passed | ${summary.passed}/${summary.scenarios} |
+| Evaluations passed | ${summary.evaluation?.passed ?? 0}/${summary.evaluation?.runs ?? 0} |
 | Resume fact coverage | ${summary.resume?.factCoverage ?? 'n/a'} |
 | Resume unsupported numbers | ${summary.resume?.unsupportedNumbers ?? 'n/a'} |
 | Cover letters first person | ${summary.resume?.firstPerson ?? 0}/${summary.resume?.runs ?? 0} |
