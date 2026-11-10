@@ -5,9 +5,10 @@
 import http from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import { portalDefinition, renderPortal } from './portals.mjs';
-import { expectedFor, jobById, personaById } from './corpus.mjs';
+import { captures, expectedFor, jobById, personaById } from './corpus.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 
 function valueOf(entry) {
   if (!entry) return '';
@@ -33,6 +34,15 @@ export function validateSubmission(scenario, payload) {
     if (expected.kind === 'blank' && value) errors.push(`unexpected-answer:${field.name}`);
     if (field.type === 'select-one' && value && !(field.options || []).some(option => option.value === value)) errors.push(`invalid-choice:${field.name}`);
     if (field.type === 'checkbox' && field.required && !['on', 'true', 'yes'].includes(value.toLowerCase())) errors.push(`unchecked:${field.name}`);
+    // Ground truth, not merely shape: a filled answer must match what the
+    // persona and job actually say. Empty values are handled by required above.
+    if (expected.kind === 'exact' && value && norm(value) !== norm(expected.value)) errors.push(`mismatch:${field.name}`);
+    if (expected.kind === 'fact' && value && !captures(expected.text, value)) errors.push(`mismatch:${field.name}`);
+    if (expected.kind === 'anyOf' && value && !expected.texts.some(text => captures(text, value))) errors.push(`mismatch:${field.name}`);
+    if (expected.kind === 'candidate' && value) {
+      const expectedCandidate = typeof expected.value === 'boolean' ? (expected.value ? 'on' : '') : String(expected.value ?? '');
+      if (expectedCandidate && norm(value) !== norm(expectedCandidate)) errors.push(`mismatch:${field.name}`);
+    }
     if (entry?.file) {
       const file = entry.file;
       if (!file.name || !file.base64) errors.push(`file-bytes:${field.name}`);

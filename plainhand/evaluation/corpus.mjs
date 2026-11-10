@@ -97,10 +97,12 @@ export const personas = [
         'Experience',
         'Example High School — Mathematics Teacher — 2020 to 2026',
         'I taught algebra and statistics to 150 students a year and built the department grade tracker in Google Sheets.',
-        'I built a Tableau dashboard from public bike-share data that compared ridership by weather and season.',
+        'I built a grade-tracking dashboard in Google Sheets and SQL that 12 teachers at my school used to spot students falling behind.',
+        'After we started using it, course failure rates in ninth grade dropped from 14% to 9% over one year.',
         '',
         'Projects',
         'City Bike Share Dashboard — 2025',
+        'I built a Tableau dashboard from public bike-share data that compared ridership by weather and season.',
         'I write SQL comfortably and use spreadsheets for analysis; I am learning Python with pandas.',
         '',
         'Education',
@@ -110,7 +112,8 @@ export const personas = [
     },
     facts: [
       { id: 'teaching', keywords: ['taught', 'teacher', 'students', 'statistics'], text: 'I taught algebra and statistics to 150 students a year and built the department grade tracker in Google Sheets.' },
-      { id: 'dashboard', keywords: ['dashboard', 'tableau', 'bike', 'weather'], text: 'I built a Tableau dashboard from public bike-share data that compared ridership by weather and season.' },
+      { id: 'dashboard', keywords: ['grade', 'dashboard', 'sheets', 'sql', 'teachers'], text: 'I built a grade-tracking dashboard in Google Sheets and SQL that 12 teachers at my school used to spot students falling behind.' },
+      { id: 'impact', keywords: ['result', 'impact', 'outcome', 'failure', 'improve'], text: 'After we started using it, course failure rates in ninth grade dropped from 14% to 9% over one year.' },
       { id: 'sql', keywords: ['sql', 'python', 'spreadsheet', 'analysis'], text: 'I write SQL comfortably and use spreadsheets for analysis; I am learning Python with pandas.' },
       { id: 'explain', keywords: ['explain', 'findings', 'plain', 'stakeholders'], text: 'I explain data findings to colleagues and parents in plain language.' },
     ],
@@ -120,6 +123,7 @@ export const personas = [
   },
   {
     id: 'junior-swe',
+    aliases: ['quiet-junior'],
     name: 'Jordan Patel',
     employer: 'Example University',
     title: 'Teaching Assistant',
@@ -181,6 +185,7 @@ export const personas = [
     employer: 'Synthetic Logistics',
     title: 'Operations Manager',
     dates: '2018 to 2026',
+    records: [{ employer: 'Synthetic Logistics', title: 'Operations Manager' }, { employer: 'Example Services', title: 'Team Lead' }],
     level: 'professional',
     degree: 'mba',
     degreeLabel: 'Master of Business Administration',
@@ -207,10 +212,12 @@ export const personas = [
         'Operations manager with eight years in logistics. Example Institute — Master of Business Administration — 2020.',
         '',
         'Experience',
-        'Synthetic Logistics — Operations Manager — 2018 to 2026',
+        'Synthetic Logistics — Operations Manager — 2022 to 2026',
         'I redesigned the Beacon scheduling process at Synthetic Logistics; it cut overtime by 22% and kept the same delivery window.',
         'I managed a team of 12 dispatchers and ran the weekly review with vendors.',
         'I negotiated two vendor contracts and brought annual cost down by $140,000.',
+        'Example Services — Team Lead — 2018 to 2022',
+        'I led a small dispatch team and covered the night shift during the 2020 peak.',
         '',
         'Education',
         'Example Institute — Master of Business Administration — 2020',
@@ -331,6 +338,27 @@ export const personas = [
   },
 ];
 
+// Minimal starting profile for connected journey runs: identity and evidence are
+// seeded, while voice and story are built from the conversation rather than
+// assumed from the finished persona.
+export const seedProfileFor = persona => ({
+  ...emptyProfile(),
+  name: persona.profile.name,
+  email: persona.profile.email,
+  phone: persona.profile.phone,
+  location: persona.profile.location,
+  timezone: persona.profile.timezone,
+  roles: persona.profile.roles,
+  compensation: persona.profile.compensation,
+  eligibility: persona.profile.eligibility,
+  graduation: persona.profile.graduation,
+  links: persona.profile.links,
+  voice: '',
+  story: '',
+  resume: persona.degreeEvidence,
+});
+for (const persona of personas) persona.seedProfile = seedProfileFor(persona);
+
 export const jobs = [
   {
     id: 'grad-mech',
@@ -386,6 +414,17 @@ export const jobs = [
     atsTerms: ['editorial', 'campaigns', 'analytics', 'style guide', 'help articles'],
     description: 'SYNTHETIC TEST JOB. Fictional Media seeks a content strategist in Seattle. Maintain an editorial guide, plan launch campaigns across email and social, and use article analytics to choose topics. Write and rewrite help content. A career break is not a barrier.',
   },
+  {
+    id: 'mech-mismatch-job',
+    company: 'Fictional Cloud Core',
+    title: 'Principal Distributed Storage Architect',
+    location: 'Boston, US',
+    requiredFactIds: ['fsae'],
+    atsTerms: ['Kubernetes', 'Raft', 'Go'],
+    expectRecommendation: 'Skip',
+    maxScore: 3.5,
+    description: 'SYNTHETIC TEST JOB. Fictional Cloud Core seeks a principal distributed storage architect with 10+ years operating multi-region consensus engines, kernel bypass networking, and petabyte-scale object storage in Go and Rust.',
+  },
 ];
 
 // Field expectations are deliberately explicit. A scorer should never have to
@@ -420,6 +459,16 @@ export const fields = {
     { value: 'professional', label: 'Professional' },
   ] },
   employer: { name: 'employer', label: 'Most recent employer', type: 'text', required: true, expect: { kind: 'exact', valueFrom: 'employer' } },
+  employer0: { name: 'employer0', label: 'Employer', type: 'text', required: true, section: 'Employment', recordIndex: 0, expect: { kind: 'record', index: 0, key: 'employer' } },
+  title0: { name: 'title0', label: 'Job title', type: 'text', required: true, section: 'Employment', recordIndex: 0, expect: { kind: 'record', index: 0, key: 'title' } },
+  employer1: { name: 'employer1', label: 'Employer', type: 'text', required: true, section: 'Employment', recordIndex: 1, expect: { kind: 'record', index: 1, key: 'employer' } },
+  title1: { name: 'title1', label: 'Job title', type: 'text', required: true, section: 'Employment', recordIndex: 1, expect: { kind: 'record', index: 1, key: 'title' } },
+  degreeRadio: { name: 'degree', label: 'Highest degree', type: 'radio', required: true, expect: { kind: 'degree' }, options: [
+    { value: 'bachelor-science', label: 'Bachelor of Science' },
+    { value: 'bachelor-arts', label: 'Bachelor of Arts' },
+    { value: 'mba', label: 'Master of Business Administration' },
+    { value: 'master-science', label: 'Master of Science' },
+  ] },
 };
 
 export const portals = {
@@ -466,6 +515,23 @@ export const portals = {
     expect: { submit: false, stop: 'login' },
     login: true,
   },
+  'records': {
+    id: 'records',
+    steps: [[fields.name, fields.email, fields.resume, fields.employer0, fields.title0, fields.employer1, fields.title1, fields.achievement]],
+    expect: { submit: true },
+    records: true,
+  },
+  'native-radio': {
+    id: 'native-radio',
+    steps: [[fields.name, fields.email, fields.resume, fields.degreeRadio, fields.achievement]],
+    expect: { submit: true },
+  },
+  'discard-once': {
+    id: 'discard-once',
+    steps: [[fields.name, fields.email, fields.resume, fields.achievement]],
+    expect: { submit: true },
+    discardOnce: true,
+  },
 };
 
 // One scenario per measured behavior. The corpus is small on purpose: every entry
@@ -487,9 +553,14 @@ export const scenarios = [
   { id: 'analyst-login', family: 'application', persona: 'career-changer', job: 'data-analyst', portal: 'workday-login' },
   { id: 'swe-submit', family: 'submission', persona: 'junior-swe', job: 'junior-swe', portal: 'lever-single' },
   { id: 'designer-submit', family: 'submission', persona: 'designer', job: 'product-designer', portal: 'greenhouse-two-step' },
+  { id: 'mech-mismatch', family: 'evaluation', persona: 'mech-grad', job: 'mech-mismatch-job' },
+  { id: 'ops-records', family: 'application', persona: 'ops-lead', job: 'ops-manager', portal: 'records' },
+  { id: 'mech-radio', family: 'application', persona: 'mech-grad', job: 'grad-mech', portal: 'native-radio' },
+  { id: 'swe-discard', family: 'application', persona: 'junior-swe', job: 'junior-swe', portal: 'discard-once' },
+  { id: 'journey-mech', family: 'journey', persona: 'mech-grad', job: 'grad-mech', portal: 'lever-single' },
 ];
 
-export const personaById = id => personas.find(p => p.id === id);
+export const personaById = id => personas.find(p => p.id === id || p.aliases?.includes(id));
 export const jobById = id => jobs.find(j => j.id === id);
 export const portalById = id => portals[id];
 
@@ -508,6 +579,7 @@ export function expectedFor(field, persona, job) {
   const spec = field.expect;
   if (!spec) return { kind: 'none' };
   if (spec.kind === 'profile') return { kind: 'exact', value: persona.profile[spec.key] || '' };
+  if (spec.kind === 'record') return { kind: 'exact', value: persona.records?.[spec.index]?.[spec.key] || '' };
   if (spec.kind === 'degree') return { kind: 'exact', value: persona.degree };
   if (spec.kind === 'exact') return { kind: 'exact', value: spec.valueFrom ? persona[spec.valueFrom] : spec.value };
   if (spec.kind === 'resume') return { kind: 'file', name: 'resume.pdf' };
