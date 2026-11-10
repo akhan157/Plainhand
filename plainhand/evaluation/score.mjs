@@ -30,7 +30,9 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const cleanSourceText = sourceText.replace(/,/g, '') + (numberWords ? ' ' + numberWords : '');
   const cleanSourceTokens = new Set([...numberTokens(cleanSourceText), ...numberWords.split(/\s+/).filter(Boolean)]);
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
-  const text = claims.join('\n');
+  // The candidate's own phone is contact detail, not a claim; any other phone stays checked.
+  const ownPhone = String(persona.profile?.phone || '').replace(/\D/g, '').slice(-10);
+  const text = claims.join('\n').replace(/\+?\d[\d\s().-]{7,}\d/g, match => ownPhone.length === 10 && match.replace(/\D/g, '').endsWith(ownPhone) ? ' ' : match);
   const required = job.requiredFactIds.map(id => persona.facts.find(fact => fact.id === id)).filter(Boolean);
   const covered = required.filter(fact => captures(fact.text, text));
   const missing = required.filter(fact => !covered.includes(fact));
@@ -74,7 +76,7 @@ function mergeActual(snapshots) {
   return actual;
 }
 
-export function scoreApplication({ scenario, persona, job, snapshots, plan, checkpoint, submission, trackerStatus, submittedAt, pdfSha, coverSha, discardDetected, readback }) {
+export function scoreApplication({ scenario, persona, job, snapshots, plan, checkpoint, submission, trackerStatus, submittedAt, pdfSha, coverSha, discardDetected, candidateAnswered = {}, readback }) {
   const portal = portalById(scenario.portal);
   const expectedStop = portal?.expect?.stop || null;
   const actual = mergeActual(snapshots);
@@ -83,12 +85,15 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
     const value = persona.candidateAnswers?.[field.name];
     if (value !== undefined) candidateFills[field.name] = typeof value === 'boolean' ? (value ? 'on' : '') : String(value);
   }
+  // Answers the candidate gave to the app's questions are the candidate's, not the app's.
+  for (const [name, value] of Object.entries(candidateAnswered)) candidateFills[name] = String(value);
   const fieldResults = [];
   for (const field of portal?.steps?.flat() || []) {
     const expected = expectedFor(field, persona, job);
     const appEntry = actual[field.name] || { value: '', file: '' };
-    const appValue = String(appEntry.value || '').trim();
-    const appFile = String(appEntry.file || '').trim();
+    const byCandidate = Object.hasOwn(candidateAnswered, field.name);
+    const appValue = byCandidate ? '' : String(appEntry.value || '').trim();
+    const appFile = byCandidate ? '' : String(appEntry.file || '').trim();
     const candidateValue = candidateFills[field.name] ?? '';
     const answerText = appValue || candidateValue;
     let correct = null;
@@ -138,7 +143,9 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
   const resume = fieldResults.find(item => item.name === 'resume');
   const receiptResume = submission?.receipt?.fields?.resume?.file || null;
   const summary = checkpoint?.check?.summary || null;
-  const stop = plan?.questions?.length ? 'needs-answers' : plan?.observation?.state || 'unknown';
+  const planFieldName = key => (plan?.fields || []).find(item => item?.key === key)?.name;
+  const openQuestions = (plan?.questions || []).filter(question => !Object.hasOwn(candidateAnswered, planFieldName(question.key)));
+  const stop = openQuestions.length ? 'needs-answers' : plan?.observation?.state || 'unknown';
   const expectedSubmit = Boolean(portal?.expect?.submit);
   const stopCorrect = expectedStop ? stop === expectedStop : null;
   const requiredUnfilledByApp = fieldResults.some(item => item.required && ['candidate', 'blank'].includes(item.kind) && !item.value);
@@ -163,6 +170,8 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
     resumeHashMatches: Boolean(pdfSha && receiptResume?.sha256 === pdfSha),
     coverHashMatches,
     discardDetected: Boolean(discardDetected),
+    appQuestions: (plan?.questions || []).length,
+    candidateAnswered: Object.keys(candidateAnswered),
     check: summary,
     checkReady: checkpoint?.check?.ready ?? null,
     falseReady,
@@ -206,6 +215,8 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
     score: evaluation?.score ?? null,
     recommendation: evaluation?.recommendation ?? null,
     matches: Array.isArray(evaluation?.matches) ? evaluation.matches.length : null,
+    summary: evaluation?.summary ?? null,
+    gaps: Array.isArray(evaluation?.gaps) ? evaluation.gaps : [],
     validScore,
     recCorrect,
     scoreBandCorrect,

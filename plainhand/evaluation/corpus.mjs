@@ -34,7 +34,7 @@ export const personas = [
         'Riley Chen',
         'Boston, US | riley@example.invalid | +1 617 555 0100',
         '',
-        'Mechanical engineering graduate, B.S. Mechanical Engineering, Example University, 2027. Seeking a hands-on design role in robotics.',
+        'Mechanical engineering student, B.S. Mechanical Engineering, Example University, 2027 (expected). Seeking a hands-on design role in robotics.',
         'I want a hands-on design role where I can build and test prototypes, ideally in robotics or medical devices.',
         '',
         'Experience',

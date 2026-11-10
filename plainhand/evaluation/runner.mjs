@@ -12,7 +12,7 @@ import { inspectProviders, providerById } from '../agents.mjs';
 import { createSandbox } from './sandbox.mjs';
 import { createSandboxBrowser } from './browser.mjs';
 import { controlledAgent, profileFixtureAgent } from './agent.mjs';
-import { scenarios, personaById, jobById, portalById } from './corpus.mjs';
+import { scenarios, personaById, jobById, portalById, expectedFor } from './corpus.mjs';
 import { personas as profilePersonas, simulatedCandidate, scoreRun } from '../benchmarks/profile-bench.mjs';
 import { scoreScenario, aggregate, markdownReport, compareToBaseline } from './score.mjs';
 
@@ -36,21 +36,27 @@ async function runTask(app, base, kind, jobId) {
   return task;
 }
 
-async function runProfileConversation(app, personaId) {
+async function runProfileConversation(app, personaId, maxTurns = 10) {
   const persona = profilePersonas.find(item => item.id === personaId);
   if (!persona) throw new Error(`Unknown profile persona: ${personaId}`);
   const started = Date.now();
   const candidate = simulatedCandidate(persona);
   const candidateMessages = [], turns = [], updates = [], actionsRun = [];
   let message = 'Help me build my profile.';
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < maxTurns; i++) {
+    if (i > 0) {
+      const answer = candidate.reply(turns.at(-1).say);
+      turns.at(-1).onTopic = answer.onTopic;
+      if (answer.done) break;
+      message = answer.text;
+    }
     candidateMessages.push(message);
     const turnStarted = Date.now();
     const { turnId } = await app.agent.message(message);
     await app.agent.running;
     const history = await app.agent.history({ limit: 200 });
     const reply = history.messages.filter(item => item.turnId === turnId && item.role === 'assistant').at(-1);
-    const turn = { say: reply?.text || '', status: reply?.status || 'missing', actions: [], ms: Date.now() - turnStarted };
+    const turn = { say: reply?.text || '', status: reply?.status || 'missing', actions: [], onTopic: false, ms: Date.now() - turnStarted };
     const proposal = reply?.proposalId && history.proposals.find(item => item.id === reply.proposalId);
     if (proposal?.status === 'pending') {
       turn.actions = proposal.actions.map(action => action.name);
@@ -59,11 +65,7 @@ async function runProfileConversation(app, personaId) {
       await app.agent.confirm({ proposalId: proposal.id, accept: true });
       await app.workflow.queue;
     }
-    const answer = candidate.reply(turn.say);
-    turn.onTopic = answer.onTopic;
     turns.push(turn);
-    if (answer.done) break;
-    message = answer.text;
   }
   const after = await app.workspace.load();
   const saved = after.conversation.filter(item => item.role === 'user' && item.via === 'assistant').map(item => item.text);
@@ -72,6 +74,8 @@ async function runProfileConversation(app, personaId) {
   return {
     ...scored,
     actions: actionsRun,
+    transcript: turns.map((turn, i) => ({ candidate: candidateMessages[i], assistant: turn.say, actions: turn.actions })),
+    saved,
     calls: usage.totals.calls,
     seconds: Math.round((Date.now() - started) / 100) / 10,
     pass: scored.revealed > 0 && scored.captured === scored.revealed && scored.coverageOfAllFacts >= 0.66 && scored.failedTurns === 0 && scored.notVerbatim === 0 && scored.unsupportedUpdates.length === 0 && scored.absentClaimsSaved.length === 0,
@@ -105,6 +109,21 @@ async function runProfileScenario(scenario, { live, provider }) {
   }
 }
 
+// The simulated candidate answers a question the app asked about a field only when
+// the fictional ground truth settles it; anything else stays the app's stop.
+function candidateAnswerFor(planField, portal, persona, job) {
+  const field = (portal?.steps?.flat() || []).find(item => item.name === planField?.name);
+  if (!field || field.sensitive) return null;
+  const expected = expectedFor(field, persona, job);
+  if (expected.kind === 'exact' && expected.value) {
+    if (planField.options?.length && !planField.options.some(option => option.value === expected.value)) return null;
+    return String(expected.value);
+  }
+  if (expected.kind === 'fact' && expected.text) return expected.text;
+  if (expected.kind === 'anyOf' && expected.texts[0]) return expected.texts[0];
+  return null;
+}
+
 function candidatePayload(scenario, persona, browser, job, pdf, cover, candidateDom = {}) {
   const portal = portalById(scenario.portal);
   const merged = {};
@@ -134,6 +153,11 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
   const sandbox = scenario.portal ? await createSandbox({ scenario }) : null;
   const browser = scenario.portal ? createSandboxBrowser({ scenario }) : null;
   let app;
+  let profileResult = null;
+  let understandingApproved = false;
+  let standardApproved = false;
+  let evaluationResult = null;
+  let packetResult = null;
   try {
     const workflowOptions = {
       verifier: async () => ({ state: 'active', legitimacy: 'owned-sandbox', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'Owned evaluation sandbox; no employer was contacted.' }),
@@ -147,9 +171,6 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
     await app.workspace.saveProfile(initialProfile, state.revision);
     await app.workspace.mutate(latest => { latest.provider = live ? provider : 'codex'; });
 
-    let profileResult = null;
-    let understandingApproved = false;
-    let standardApproved = false;
     if (scenario.family === 'journey') {
       profileResult = await runProfileConversation(app, persona.id);
       await runTask(app, base, 'interview');
@@ -166,7 +187,7 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
     const afterEval = await app.workspace.load();
     const evaluatedJob = afterEval.jobs.find(j => j.id === id);
     const evalSources = (await app.workspace.context(afterEval)).sources;
-    const evaluationResult = { evaluation: evaluatedJob.evaluation, sources: evalSources, prepareRefusedWithoutOverride: null };
+    evaluationResult = { evaluation: evaluatedJob.evaluation, sources: evalSources, prepareRefusedWithoutOverride: null };
 
     if (scenario.family === 'evaluation') {
       try {
@@ -189,7 +210,12 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       };
     }
 
-    await post(base, app.token, 'jobs/update', { id, selected: true });
+    const needsOverride = (evaluatedJob.evaluation?.score ?? 5) < 4;
+    await post(base, app.token, 'jobs/update', {
+      id,
+      selected: true,
+      ...(needsOverride ? { overrideReason: 'Evaluation harness: proceeding to test packet and application stages.' } : {}),
+    });
     await runTask(app, base, 'prepare', id);
     await post(base, app.token, 'packet/approve', { id });
     const prepared = (await app.workspace.load()).jobs.find(job => job.id === id);
@@ -199,7 +225,7 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
     const coverPath = (prepared.artifacts || []).find(file => /cover-letter.*\.pdf$/.test(file));
     const coverBytes = coverPath ? await app.workspace.readBinary(coverPath) : null;
     const cover = coverBytes ? { path: coverPath, bytes: coverBytes, sha: createHash('sha256').update(coverBytes).digest('hex') } : null;
-    const packetResult = { packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
+    packetResult = { packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
 
     if (scenario.family === 'resume') {
       const usage = await app.workflow.usage.summary(await app.workspace.load());
@@ -223,6 +249,20 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       discardDetected = true;
       plan = await post(base, app.token, 'browser/autofill', { id });
     }
+    // The app holds the whole fill while it has questions; a candidate answers them
+    // in review and the reviewed answers are filled in one step, as in the product.
+    const candidateAnswered = {};
+    if (portal.expect.submit && !portal.expect.stop && plan.observation?.state === 'ready' && plan.questions?.length) {
+      const replies = plan.questions.map(question => {
+        const planField = (plan.fields || []).find(field => field.key === question.key);
+        return { question, planField, value: candidateAnswerFor(planField, portal, persona, jobSpec) };
+      });
+      if (replies.every(reply => reply.value !== null)) {
+        const answers = { ...plan.answers };
+        for (const reply of replies) { answers[reply.question.key] = reply.value; candidateAnswered[reply.planField.name] = reply.value; }
+        await post(base, app.token, 'browser/fill', { id, answers });
+      }
+    }
     const finalJob = (await app.workspace.load()).jobs.find(j => j.id === id);
     let submission = null;
     if (portal.expect.submit) {
@@ -244,6 +284,7 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       pdfSha: pdf.sha,
       coverSha: cover?.sha || null,
       discardDetected,
+      candidateAnswered,
       readback: await browser.readValues(),
     };
     const usage = await app.workflow.usage.summary(await app.workspace.load());
@@ -262,7 +303,20 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       retainedWorkspace: retain ? root : null,
     };
   } catch (error) {
-    return { scenario, persona: scenario.persona, job: scenario.job, error: error.message, durationMs: Date.now() - started };
+    const usage = app ? await app.workflow.usage.summary(await app.workspace.load()).catch(() => null) : null;
+    return {
+      scenario,
+      persona: scenario.persona,
+      job: scenario.job,
+      profile: profileResult,
+      understandingApproved,
+      standardApproved,
+      evaluation: evaluationResult,
+      packet: packetResult,
+      usage: usage ? { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value } : null,
+      error: error.message,
+      durationMs: Date.now() - started,
+    };
   } finally {
     await browser?.application.closeAll().catch(() => {});
     await app?.close().catch(() => {});
@@ -306,6 +360,11 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     const result = scenario.family === 'profile' ? await runProfileScenario(scenario, { live, provider }) : await runApplicationScenario(scenario, { live, provider, retain });
     const scored = scoreScenario({ ...result, scenario });
     await writeFile(path.join(out, `${scenario.id}.json`), JSON.stringify(scored, null, 2));
+    // Failures keep the raw fill plan, checkpoint and page snapshots so the cause can be traced.
+    if (!scored.pass && result.application) {
+      const { plan, checkpoint, snapshots, readback } = result.application;
+      await writeFile(path.join(out, `${scenario.id}.trace.json`), JSON.stringify({ plan, checkpoint, snapshots, readback }, null, 2));
+    }
     console.log(`${scored.pass ? 'PASS' : 'FAIL'} ${scenario.id}${result.error ? ': ' + result.error : ''}`);
     return scored;
   });

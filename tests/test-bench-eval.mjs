@@ -118,6 +118,16 @@ test('packet scoring normalizes number words, preserves year ranges and ignores 
     pdf: { bytes: pdf, head: '%PDF-' },
   });
   assert.ok(!commaScore.unsupportedNumbers.includes('4,000'), JSON.stringify(commaScore.unsupportedNumbers));
+
+  const phoneScore = scorePacket({
+    packet: { headline: 'Content strategist', resume: [], coverLetter: `Reach me at (${returning.profile.phone.replace(/\D/g, '').slice(-10, -7)}) ${returning.profile.phone.replace(/\D/g, '').slice(-7, -4)}-${returning.profile.phone.replace(/\D/g, '').slice(-4)}, or not at 415 555 0199.`, answers: [], questions: [] },
+    persona: returning,
+    job: returningJob,
+    sources: [{ id: 'profile', text: JSON.stringify(returning.profile) }, { id: 'cv', text: returning.profile.resume }],
+    review: { passed: true, issues: [] },
+    pdf: { bytes: pdf, head: '%PDF-' },
+  });
+  assert.deepEqual(phoneScore.unsupportedNumbers, ['415', '555', '0199']);
 });
 
 test('application scoring treats a required candidate field left blank by the app as false-ready', () => {
@@ -145,6 +155,19 @@ test('application scoring treats a required candidate field left blank by the ap
   const leakPlan = { fields: [{ name: 'authorization', key: '0:0' }], answers: { '0:0': 'yes' }, questions: [], observation: { state: 'review' } };
   const leak = scoreApplication({ scenario, persona, job, snapshots: [], plan: leakPlan, checkpoint: null, submission: null });
   assert.ok(leak.sensitiveAppFilled.includes('authorization'));
+
+  // A question the candidate answered is the candidate's fill, not the app's, and is not a stop.
+  const askedPlan = { fields: [{ name: 'degree', key: '0:5' }], answers: {}, questions: [{ key: '0:5', question: 'Which degree?' }], observation: { state: 'ready' } };
+  const asked = scoreApplication({ scenario, persona, job, snapshots, plan: askedPlan, checkpoint: null, submission: null, candidateAnswered: { degree: persona.degree } });
+  const degree = asked.fields.find(item => item.name === 'degree');
+  assert.equal(degree.value, '');
+  assert.equal(degree.candidateSupplied, true);
+  assert.equal(degree.correct, true);
+  assert.equal(asked.stop, 'ready');
+  assert.equal(asked.appQuestions, 1);
+  assert.deepEqual(asked.candidateAnswered, ['degree']);
+  const unanswered = scoreApplication({ scenario, persona, job, snapshots, plan: askedPlan, checkpoint: null, submission: null });
+  assert.equal(unanswered.stop, 'needs-answers');
 });
 
 test('baseline comparison separates regressions from pre-existing failures and repeats report flakiness', () => {
