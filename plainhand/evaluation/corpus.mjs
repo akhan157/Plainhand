@@ -245,6 +245,8 @@ export const personas = [
     degreeLabel: 'Bachelor of Arts',
     degreeEvidence: 'Example University — Bachelor of Arts, Design — 2021',
     candidateAnswers: { authorization: 'yes', attest: true, salary: 'Open to discussion' },
+    // What the candidate says when the app asks a role question it cannot settle from sources.
+    roleAnswers: 'Yes, https://example.invalid/avery is my portfolio. It shows the Atlas design system and the research-to-prototype work.',
     profile: {
       ...emptyProfile(),
       name: 'Avery Quinn',

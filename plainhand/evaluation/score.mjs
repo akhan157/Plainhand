@@ -24,7 +24,7 @@ const numberCheckSource = sources => withoutPhones((sources || []).map(source =>
   return source.id === 'profile' ? text.replace(/"phone":\s*"[^"]*"/g, '"phone": ""') : text;
 }).join('\n'));
 
-export function scorePacket({ packet, persona, job, sources, review, calibration, pdf }) {
+export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false }) {
   const sourceText = numberCheckSource(sources);
   const numberWords = numberWordDigits(sourceText);
   const cleanSourceText = sourceText.replace(/,/g, '') + (numberWords ? ' ' + numberWords : '');
@@ -62,6 +62,8 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
     averageSentenceWords,
     reviewPassed,
     questions: Array.isArray(packet?.questions) ? packet.questions.length : null,
+    questionsAsked: packetQuestionsAsked,
+    roleAnswered,
     calibration: calibration || null,
     pdfValid,
     pdfBytes: pdf?.bytes?.length ?? null,

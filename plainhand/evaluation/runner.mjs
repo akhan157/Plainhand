@@ -217,6 +217,17 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       ...(needsOverride ? { overrideReason: 'Evaluation harness: proceeding to test packet and application stages.' } : {}),
     });
     await runTask(app, base, 'prepare', id);
+    // When the app asks a role question, the candidate answers it as in the product:
+    // save role answers, re-evaluate on the changed context, then prepare again.
+    let packetQuestionsAsked = (await app.workspace.load()).jobs.find(job => job.id === id).packet?.questions || [];
+    if (packetQuestionsAsked.length && persona.roleAnswers) {
+      await post(base, app.token, 'jobs/update', { id, roleAnswers: persona.roleAnswers });
+      await runTask(app, base, 'evaluate', id);
+      const reevaluated = (await app.workspace.load()).jobs.find(job => job.id === id);
+      evaluationResult.reevaluatedScore = reevaluated.evaluation?.score ?? null;
+      if ((reevaluated.evaluation?.score ?? 5) < 4 && !reevaluated.overrideReason) await post(base, app.token, 'jobs/update', { id, overrideReason: 'Evaluation harness: proceeding to test packet and application stages.' });
+      await runTask(app, base, 'prepare', id);
+    }
     await post(base, app.token, 'packet/approve', { id });
     const prepared = (await app.workspace.load()).jobs.find(job => job.id === id);
     const sources = (await app.workspace.context(await app.workspace.load())).sources;
@@ -225,7 +236,7 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
     const coverPath = (prepared.artifacts || []).find(file => /cover-letter.*\.pdf$/.test(file));
     const coverBytes = coverPath ? await app.workspace.readBinary(coverPath) : null;
     const cover = coverBytes ? { path: coverPath, bytes: coverBytes, sha: createHash('sha256').update(coverBytes).digest('hex') } : null;
-    packetResult = { packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
+    packetResult = { packetQuestionsAsked, roleAnswered: Boolean(packetQuestionsAsked.length && persona.roleAnswers), packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
 
     if (scenario.family === 'resume') {
       const usage = await app.workflow.usage.summary(await app.workspace.load());
@@ -303,8 +314,18 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       retainedWorkspace: retain ? root : null,
     };
   } catch (error) {
-    const usage = app ? await app.workflow.usage.summary(await app.workspace.load()).catch(() => null) : null;
+    const state = app ? await app.workspace.load().catch(() => null) : null;
+    const usage = state ? await app.workflow.usage.summary(state).catch(() => null) : null;
+    // A blocked packet keeps the reviewer's findings and open questions so the cause is visible.
+    const failedJob = state?.jobs?.find(job => job.company === jobSpec.company && job.title === jobSpec.title);
+    const blocked = failedJob ? {
+      stage: failedJob.stage || null,
+      evaluationQuestions: failedJob.evaluation?.questions || [],
+      packetQuestions: failedJob.packet?.questions || [],
+      reviewAttempts: (failedJob.reviewAttempts || []).map(item => ({ attempt: item.attempt, passed: item.passed, issues: item.issues })),
+    } : null;
     return {
+      blocked,
       scenario,
       persona: scenario.persona,
       job: scenario.job,
