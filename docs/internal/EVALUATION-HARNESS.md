@@ -13,10 +13,12 @@ scores the result from recorded evidence:
 
 | Dimension | What is scored |
 | --- | --- |
-| Profile building | Facts captured in the candidate's words, unsupported profile updates, invented or absent claims, one-question turns, calls, time |
-| Resume building | Required facts covered, unsupported numbers, claims the candidate said they lack, banned voice phrases, ATS term coverage, factual review, real PDF |
-| Application filling | Expected values in the actual DOM, completion rate, required fields, sensitive fields never auto-filled, unknown facts blocking correctly, resume upload, false-ready |
-| Submission | A candidate-confirmed payload accepted by the owned sandbox, server-side validation, exact approved PDF hash, receipt |
+| Profile building | Facts captured in the candidate's words, unsupported profile updates, invented or absent claims, one-question and on-topic turns, calls, time |
+| Evaluation | Score band, recommendation, evidence for every match, and a below-4/5 role refusing `prepare` without the candidate's override |
+| Resume building | Required facts covered, unsupported numbers (number words and phone digits handled), claims the candidate said they lack, banned voice phrases, ATS term coverage, factual review, calibration, real PDF |
+| Application filling | Expected values in the actual DOM, completion rate, required fields, sensitive fields never auto-filled, unknown facts blocking correctly, resume upload, false-ready, discard-and-retry recovery |
+| Submission | A candidate-confirmed payload accepted by the owned sandbox, server-side validation, exact approved resume and cover-letter hashes, receipt |
+| Connected journey | Profile conversation → understanding → approved standard → evaluation → packet → portal fill → candidate confirmation in one workspace |
 
 Everything is scored against `plainhand/evaluation/corpus.mjs`; a model is never
 asked whether it did well.
@@ -24,9 +26,10 @@ asked whether it did well.
 ## How to run
 
 ```bash
-npm run benchmark:eval                                   # deterministic, ~30 s
+npm run benchmark:eval                                   # deterministic, ~85 s
 npm run benchmark:eval -- --scenarios mech-lever         # one scenario
 npm run benchmark:eval -- --concurrency 2                # parallel scenarios
+npm run benchmark:eval -- --repeat 3                     # variance across repeats
 npm run benchmark:eval -- --baseline output/evaluation-controlled-...  # delta
 npm run benchmark:eval:live                              # real Claude CLI, opt-in
 node benchmarks/benchmark-eval.mjs --provider codex      # another provider
@@ -41,20 +44,26 @@ deleted after the result is recorded.
 
 ## The sandbox
 
-`plainhand/evaluation/portals.mjs` renders seven portal shapes: one-page Lever,
+`plainhand/evaluation/portals.mjs` renders eleven portal shapes: one-page Lever,
 two-step Greenhouse, Ashby with a cover-letter upload, a conditional question, a
-sensitive-heavy form, an unknown required fact, a CAPTCHA wall and a Workday-style
-sign-in wall.
+sensitive-heavy form, an unknown required fact, a CAPTCHA wall, a Workday-style
+sign-in wall, repeating employment records, a native radio group, and a form that
+discards the first input once. The records template renders both `Employment`
+fieldsets before the achievement question, so the app must use each fieldset's
+own section index instead of one shared label.
 
 `ApplicationBrowser` opens them through a Playwright route for
 `https://jobs.lever.co/synthetic/<scenario>`. The production inspection, fill,
 readback and submit guard all run unchanged. Non-GET requests are aborted; the app
-never presses a submit control.
+never presses a submit control. On the discard-once template the harness detects
+the empty field on the first pass and runs one explicit retry, recording
+`discardDetected`; the scenario fails if that recovery is missing.
 
 After the app has filled and stopped at review, the harness acts as the candidate:
-it supplies only the fields reserved for the person (work authorization, legal
-attestation, salary) and POSTs the extracted values and the approved PDF hash to
-`plainhand/evaluation/sandbox.mjs` on loopback. The sandbox validates required
+the real Playwright DOM receives only the fields reserved for the person (work
+authorization, legal attestation, salary), then the harness POSTs the extracted
+values, the approved PDF hashes and the candidate's confirmation over real
+loopback HTTP to `plainhand/evaluation/sandbox.mjs`. The sandbox validates required
 fields, choices, file magic, file size and hash, and that no sensitive field was
 filled by the app. When the sandbox accepts, the harness performs the candidate's
 own confirmation (`Applied` plus `submittedAt`), so the tracker lifecycle is
@@ -70,8 +79,11 @@ passes only when it stops correctly and no submission is attempted.
 | --- | --- | --- |
 | Profile | 3 | engineering graduate, career changer, junior engineer (fictional; deterministic candidate) |
 | Resume | 6 | six candidates against six jobs, no portal |
-| Application | 8 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall |
+| Application | 11 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry |
 | Submission | 2 | candidate-confirmed submission through one-step and two-step portals |
+| Evaluation | 1 | a principal role the mechanical graduate must score `Skip`; `prepare` is refused below 4/5 |
+| Journey | 1 | profile conversation → understanding → standard → evaluation → packet → portal → candidate confirmation |
+| **Total** | **24** | |
 
 Add a scenario by adding a persona, job or portal to `corpus.mjs` and one entry
 to `scenarios`. A scorer must be able to name the expected value for every field;
@@ -89,11 +101,33 @@ must stay green before a live run means anything.
 
 ## Current controlled result (9 November 2026)
 
-`npm run benchmark:eval -- --concurrency 2`: **19/19 scenarios passed**, 0
-false-ready, 0 sensitive fields auto-filled, 2/2 candidate-confirmed submissions
-accepted, all six resume packets covered their required facts with no unsupported
-numbers and no absent claims, and real Chromium PDFs were generated. Runtime
-about 32 seconds on this laptop.
+`node benchmarks/benchmark-eval.mjs --concurrency 2`: **24/24 scenarios passed**
+in about 84 seconds on this laptop. All families passed: 3/3 profile, 6/6 resume,
+11/11 application, 2/2 submission, 1/1 evaluation and 1/1 journey.
+
+- Profile capture was **1.00** across 4 runs (3 profile scenarios plus the journey
+  conversation): 0 unsupported updates, 0 absent claims saved, 0 failed turns and
+  every turn asked one question; `onTopicQuestions` is now recorded from the
+  candidate's answer instead of always reading 0.
+- All **20** resume/packet runs covered their required facts (**fact coverage
+  1.00**), passed the factual review and calibration, used first person, and had
+  0 unsupported numbers, 0 absent claims and 0 banned words. ATS coverage
+  averaged 0.74.
+- All **11** candidate-confirmed submissions were accepted by the loopback
+  sandbox with matching approved resume hashes (and the cover-letter hash where a
+  cover letter was attached); tracker status became `Applied` with `submittedAt`.
+  Application completion was **1.00** across **11** fill runs, with 0 false-ready,
+  0 sensitive auto-fills and 0 invented unknown answers.
+- All **21** evaluations passed the new scorer: valid score, expected
+  recommendation, correct band, evidence for every match, and a below-4/5 role
+  refused `prepare` without an override.
+- The three stop scenarios stopped correctly (`needs-answers`, `challenge`,
+  `login`). The discard-once portal detected the first-pass loss and recovered on
+  retry. The records portal filled both employment fieldsets and the native radio
+  portal filled the degree group.
+- `journey-mech` passed the connected path: profile pass, understanding approved,
+  standard approved, evaluation pass, packet pass and application pass in one
+  workspace.
 
 This proves the harness, not model quality. The first live run is the next step.
 

@@ -18,7 +18,7 @@ const BENCHMARKS = [
     command: 'npm run benchmark:eval',
     prefixes: ['evaluation-'],
     live: 'add --provider claude|codex',
-    what: 'Profile conversation, resume packet, portal fill and candidate-confirmed submission to an owned sandbox, scored against fictional ground truth.',
+    what: 'Profile conversation, evaluation, resume packet, portal fill, candidate-confirmed submission to an owned sandbox and a connected journey, scored against fictional ground truth.',
     docs: 'docs/internal/EVALUATION-HARNESS.md',
   },
   {
@@ -110,8 +110,10 @@ async function summarize(id, directory) {
     const results = await readJson(path.join(directory.path, 'results.json'));
     if (results?.summary) {
       const s = results.summary;
+      const evaluation = s.evaluation?.runs ? ` · eval ${s.evaluation.passed}/${s.evaluation.runs}` : '';
+      const repeats = s.repeats ? ` · repeats ${s.repeats.passRate ?? 'n/a'} (${s.repeats.flakyScenarios.length} flaky)` : '';
       return {
-        result: `${s.passed}/${s.scenarios} passed · resume ${s.resume?.factCoverage ?? 'n/a'} · form ${s.application?.completionRate ?? 'n/a'} · submissions ${s.application?.submissionsAccepted ?? 0}/${s.application?.submissionsExpected ?? 0}${results.live ? ` · ${results.provider}` : ' · controlled'}`,
+        result: `${s.passed}/${s.scenarios} passed · resume ${s.resume?.factCoverage ?? 'n/a'} · form ${s.application?.completionRate ?? 'n/a'} · submissions ${s.application?.submissionsAccepted ?? 0}/${s.application?.submissionsExpected ?? 0}${evaluation}${repeats}${results.live ? ` · ${results.provider}` : ' · controlled'}`,
         at: results.date || directory.at.toISOString(),
       };
     }

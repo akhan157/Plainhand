@@ -26,7 +26,7 @@ const jobs = [
 ];
 const liveIndex = process.argv.indexOf('--live');
 if (liveIndex >= 0) jobs.push(['Live model workflow (fictional candidate/employer)', process.execPath, ['tests/test-plainhand-live.mjs', '--provider', process.argv[liveIndex + 1]], root]);
-for (const directory of ['plainhand', 'plainhand/web', 'lib', 'tests', 'benchmarks', 'dashboard/node', 'bin', '.']) {
+for (const directory of ['plainhand', 'plainhand/web', 'plainhand/evaluation', 'lib', 'tests', 'benchmarks', 'dashboard/node', 'bin', '.']) {
   for (const file of await readdir(path.join(root, directory))) if (/\.(mjs|js)$/.test(file)) jobs.unshift([`Syntax ${directory}/${file}`, process.execPath, ['--check', `${directory}/${file}`], root]);
 }
 for (const [index, [name, command, args, cwd]] of jobs.entries()) {

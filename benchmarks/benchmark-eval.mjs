@@ -34,7 +34,8 @@ if (process.argv.includes('--help')) {
 }
 
 try {
-  await runEvaluation(process.argv.slice(2));
+  const { report } = await runEvaluation(process.argv.slice(2));
+  if (report.summary.failed.length) process.exitCode = 1;
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

@@ -36,6 +36,48 @@ async function runTask(app, base, kind, jobId) {
   return task;
 }
 
+async function runProfileConversation(app, personaId) {
+  const persona = profilePersonas.find(item => item.id === personaId);
+  if (!persona) throw new Error(`Unknown profile persona: ${personaId}`);
+  const started = Date.now();
+  const candidate = simulatedCandidate(persona);
+  const candidateMessages = [], turns = [], updates = [], actionsRun = [];
+  let message = 'Help me build my profile.';
+  for (let i = 0; i < 8; i++) {
+    candidateMessages.push(message);
+    const turnStarted = Date.now();
+    const { turnId } = await app.agent.message(message);
+    await app.agent.running;
+    const history = await app.agent.history({ limit: 200 });
+    const reply = history.messages.filter(item => item.turnId === turnId && item.role === 'assistant').at(-1);
+    const turn = { say: reply?.text || '', status: reply?.status || 'missing', actions: [], ms: Date.now() - turnStarted };
+    const proposal = reply?.proposalId && history.proposals.find(item => item.id === reply.proposalId);
+    if (proposal?.status === 'pending') {
+      turn.actions = proposal.actions.map(action => action.name);
+      actionsRun.push(...turn.actions);
+      for (const action of proposal.actions) if (action.name === 'profile.update') for (const [field, value] of Object.entries(action.input || {})) updates.push({ field, value: String(value) });
+      await app.agent.confirm({ proposalId: proposal.id, accept: true });
+      await app.workflow.queue;
+    }
+    const answer = candidate.reply(turn.say);
+    turn.onTopic = answer.onTopic;
+    turns.push(turn);
+    if (answer.done) break;
+    message = answer.text;
+  }
+  const after = await app.workspace.load();
+  const saved = after.conversation.filter(item => item.role === 'user' && item.via === 'assistant').map(item => item.text);
+  const usage = await app.workflow.usage.summary(after);
+  const scored = scoreRun({ persona, candidateMessages, saved, updates, turns, revealed: candidate.said, detailsRevealed: candidate.detailed });
+  return {
+    ...scored,
+    actions: actionsRun,
+    calls: usage.totals.calls,
+    seconds: Math.round((Date.now() - started) / 100) / 10,
+    pass: scored.revealed > 0 && scored.captured === scored.revealed && scored.coverageOfAllFacts >= 0.66 && scored.failedTurns === 0 && scored.notVerbatim === 0 && scored.unsupportedUpdates.length === 0 && scored.absentClaimsSaved.length === 0,
+  };
+}
+
 async function runProfileScenario(scenario, { live, provider }) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-eval-profile-'));
   const started = Date.now();
@@ -43,48 +85,15 @@ async function runProfileScenario(scenario, { live, provider }) {
   let app;
   try {
     app = await createPlainhand({ root, startFeatures: false, ...(live ? { providers: inspectProviders } : { workflowOptions: { agent: profileFixtureAgent() } }) });
-    await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     const state = await app.workspace.load();
     await app.workspace.saveProfile({ ...emptyProfile(), ...persona.profile }, state.revision);
     await app.workspace.mutate(s => { s.provider = live ? provider : 'codex'; });
-    const candidate = simulatedCandidate(persona);
-    const candidateMessages = [], turns = [], updates = [], actionsRun = [];
-    let message = 'Help me build my profile.';
-    for (let i = 0; i < 8; i++) {
-      candidateMessages.push(message);
-      const turnStarted = Date.now();
-      const { turnId } = await app.agent.message(message);
-      await app.agent.running;
-      const history = await app.agent.history({ limit: 200 });
-      const reply = history.messages.filter(item => item.turnId === turnId && item.role === 'assistant').at(-1);
-      const turn = { say: reply?.text || '', status: reply?.status || 'missing', actions: [], ms: Date.now() - turnStarted };
-      const proposal = reply?.proposalId && history.proposals.find(item => item.id === reply.proposalId);
-      if (proposal?.status === 'pending') {
-        turn.actions = proposal.actions.map(action => action.name);
-        actionsRun.push(...turn.actions);
-        for (const action of proposal.actions) if (action.name === 'profile.update') for (const [field, value] of Object.entries(action.input || {})) updates.push({ field, value: String(value) });
-        await app.agent.confirm({ proposalId: proposal.id, accept: true });
-        await app.workflow.queue;
-      }
-      const answer = candidate.reply(turn.say);
-      turns.push(turn);
-      if (answer.done) break;
-      message = answer.text;
-    }
-    const after = await app.workspace.load();
-    const saved = after.conversation.filter(item => item.role === 'user' && item.via === 'assistant').map(item => item.text);
-    const usage = await app.workflow.usage.summary(after);
-    const scored = scoreRun({ persona, candidateMessages, saved, updates, turns, revealed: candidate.said, detailsRevealed: candidate.detailed });
+    const profile = await runProfileConversation(app, scenario.persona);
+    const usage = await app.workflow.usage.summary(await app.workspace.load());
     return {
       scenario: { ...scenario, job: null, portal: null },
       persona: persona.id,
-      profile: {
-        ...scored,
-        actions: actionsRun,
-        calls: usage.totals.calls,
-        seconds: Math.round((Date.now() - started) / 100) / 10,
-        pass: scored.revealed > 0 && scored.captured === scored.revealed && scored.notVerbatim === 0 && scored.unsupportedUpdates.length === 0 && scored.absentClaimsSaved.length === 0,
-      },
+      profile,
       usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
       durationMs: Date.now() - started,
     };
@@ -96,7 +105,7 @@ async function runProfileScenario(scenario, { live, provider }) {
   }
 }
 
-function candidatePayload(scenario, persona, browser, job, pdf, cover) {
+function candidatePayload(scenario, persona, browser, job, pdf, cover, candidateDom = {}) {
   const portal = portalById(scenario.portal);
   const merged = {};
   for (const snapshot of browser.snapshots) for (const [name, entry] of Object.entries(snapshot.values || {})) merged[name] = entry;
@@ -108,7 +117,8 @@ function candidatePayload(scenario, persona, browser, job, pdf, cover) {
   for (const field of portal.steps.flat()) {
     const answer = persona.candidateAnswers?.[field.name];
     if (answer === undefined) continue;
-    fields[field.name] = { value: typeof answer === 'boolean' ? (answer ? 'on' : '') : String(answer), source: 'candidate' };
+    const fallback = typeof answer === 'boolean' ? (answer ? 'on' : '') : String(answer);
+    fields[field.name] = { value: candidateDom[field.name]?.value || fallback, source: 'candidate' };
   }
   const resumeField = fields.resume || (fields.resume = { value: '', source: 'app' });
   resumeField.file = { name: path.basename(job.pdf), base64: pdf.bytes.toString('base64'), sha256: pdf.sha };
@@ -121,20 +131,64 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
   const jobSpec = jobById(scenario.job);
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-eval-'));
   const started = Date.now();
-  const sandbox = await createSandbox({ scenario });
-  const browser = createSandboxBrowser({ scenario });
+  const sandbox = scenario.portal ? await createSandbox({ scenario }) : null;
+  const browser = scenario.portal ? createSandboxBrowser({ scenario }) : null;
   let app;
   try {
     const workflowOptions = {
       verifier: async () => ({ state: 'active', legitimacy: 'owned-sandbox', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'Owned evaluation sandbox; no employer was contacted.' }),
       ...(live ? {} : { agent: controlledAgent({ scenario, persona, job: jobSpec }) }),
     };
-    app = await createPlainhand({ root, browser: browser.application, workflowOptions, startFeatures: false });
+    app = await createPlainhand({ root, ...(browser ? { browser: browser.application } : {}), workflowOptions, startFeatures: false });
     await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${app.server.address().port}`;
-    await app.workspace.mutate(state => { state.profile = { ...persona.profile }; state.provider = live ? provider : 'codex'; });
+    const initialProfile = { ...emptyProfile(), ...(scenario.family === 'journey' ? persona.seedProfile : persona.profile) };
+    const state = await app.workspace.load();
+    await app.workspace.saveProfile(initialProfile, state.revision);
+    await app.workspace.mutate(latest => { latest.provider = live ? provider : 'codex'; });
+
+    let profileResult = null;
+    let understandingApproved = false;
+    let standardApproved = false;
+    if (scenario.family === 'journey') {
+      profileResult = await runProfileConversation(app, persona.id);
+      await runTask(app, base, 'interview');
+      await post(base, app.token, 'understanding/approve', {});
+      await runTask(app, base, 'standard');
+      await post(base, app.token, 'standard/approve', {});
+      const afterPrepState = await app.workspace.load();
+      understandingApproved = Boolean(afterPrepState.understanding?.approved);
+      standardApproved = Boolean(afterPrepState.standard?.approvedAt);
+    }
+
     const { id } = await post(base, app.token, 'jobs', { company: jobSpec.company, title: jobSpec.title, url: `https://jobs.lever.co/synthetic/${scenario.id}`, description: jobSpec.description, location: jobSpec.location });
     await runTask(app, base, 'evaluate', id);
+    const afterEval = await app.workspace.load();
+    const evaluatedJob = afterEval.jobs.find(j => j.id === id);
+    const evalSources = (await app.workspace.context(afterEval)).sources;
+    const evaluationResult = { evaluation: evaluatedJob.evaluation, sources: evalSources, prepareRefusedWithoutOverride: null };
+
+    if (scenario.family === 'evaluation') {
+      try {
+        // Selecting also refuses a below-4/5 role without an override, so it sits
+        // inside the same guard probe as prepare.
+        await post(base, app.token, 'jobs/update', { id, selected: true });
+        await runTask(app, base, 'prepare', id);
+        evaluationResult.prepareRefusedWithoutOverride = false;
+      } catch (err) {
+        evaluationResult.prepareRefusedWithoutOverride = /scored below 4\/5/i.test(err.message);
+      }
+      const usage = await app.workflow.usage.summary(await app.workspace.load());
+      return {
+        scenario,
+        persona: persona.id,
+        job: jobSpec.id,
+        evaluation: evaluationResult,
+        durationMs: Date.now() - started,
+        usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+      };
+    }
+
     await post(base, app.token, 'jobs/update', { id, selected: true });
     await runTask(app, base, 'prepare', id);
     await post(base, app.token, 'packet/approve', { id });
@@ -145,20 +199,35 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
     const coverPath = (prepared.artifacts || []).find(file => /cover-letter.*\.pdf$/.test(file));
     const coverBytes = coverPath ? await app.workspace.readBinary(coverPath) : null;
     const cover = coverBytes ? { path: coverPath, bytes: coverBytes, sha: createHash('sha256').update(coverBytes).digest('hex') } : null;
-    const packetResult = { packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf };
+    const packetResult = { packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
 
     if (scenario.family === 'resume') {
       const usage = await app.workflow.usage.summary(await app.workspace.load());
-      return { scenario, persona: persona.id, job: jobSpec.id, packet: packetResult, durationMs: Date.now() - started, usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value } };
+      return {
+        scenario,
+        persona: persona.id,
+        job: jobSpec.id,
+        evaluation: evaluationResult,
+        packet: packetResult,
+        durationMs: Date.now() - started,
+        usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+      };
     }
 
-    const plan = await post(base, app.token, 'browser/autofill', { id });
-    const finalJob = (await app.workspace.load()).jobs.find(job => job.id === id);
     const portal = portalById(scenario.portal);
+    let discardDetected = false;
+    let plan = await post(base, app.token, 'browser/autofill', { id });
+    if (portal.discardOnce || ((await app.workspace.load()).jobs.find(j => j.id === id)?.browserCheckpoint?.result?.failed?.length > 0 && plan.observation?.state === 'needs-answers')) {
+      discardDetected = true;
+      plan = await post(base, app.token, 'browser/autofill', { id });
+    }
+    const finalJob = (await app.workspace.load()).jobs.find(j => j.id === id);
     let submission = null;
     if (portal.expect.submit) {
-      const payload = candidatePayload(scenario, persona, browser, finalJob, pdf, cover);
-      submission = sandbox.submit(payload);
+      const candidateDom = await browser.fillAsCandidate(persona.candidateAnswers || {});
+      const payload = candidatePayload(scenario, persona, browser, finalJob, pdf, cover, candidateDom);
+      const res = await fetch(sandbox.url + '/api/submissions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      submission = await res.json();
       if (submission.ok) await post(base, app.token, 'jobs/update', { id, status: 'Applied', confirmSubmitted: true });
     }
     const confirmed = (await app.workspace.load()).jobs.find(job => job.id === id);
@@ -171,6 +240,8 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       trackerStatus: confirmed.status,
       submittedAt: confirmed.submittedAt || null,
       pdfSha: pdf.sha,
+      coverSha: cover?.sha || null,
+      discardDetected,
       readback: await browser.readValues(),
     };
     const usage = await app.workflow.usage.summary(await app.workspace.load());
@@ -178,6 +249,10 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
       scenario,
       persona: persona.id,
       job: jobSpec.id,
+      profile: profileResult,
+      understandingApproved,
+      standardApproved,
+      evaluation: evaluationResult,
       packet: packetResult,
       application,
       usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
@@ -187,9 +262,9 @@ async function runApplicationScenario(scenario, { live, provider, retain }) {
   } catch (error) {
     return { scenario, persona: scenario.persona, job: scenario.job, error: error.message, durationMs: Date.now() - started };
   } finally {
-    await browser.application.closeAll().catch(() => {});
+    await browser?.application.closeAll().catch(() => {});
     await app?.close().catch(() => {});
-    await sandbox.close().catch(() => {});
+    await sandbox?.close().catch(() => {});
     if (!retain) await rm(root, { recursive: true, force: true });
   }
 }
@@ -239,7 +314,7 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
   if (baselinePath) {
     const resolved = baselinePath.endsWith('.json') ? baselinePath : path.join(baselinePath, 'results.json');
     const baseline = JSON.parse(await readFile(resolved, 'utf8'));
-    comparison = compareToBaseline(summary, baseline);
+    comparison = compareToBaseline(summary, baseline, results);
   }
   const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', concurrency, summary, comparison, results };
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2));
