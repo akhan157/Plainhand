@@ -65,18 +65,20 @@ export function splitSentences(text) {
 
 const SALUTATION = /^(?:dear|hello|hi|to whom)\b[^.!?]*[,:]?$/i;
 const SIGN_OFF = /^(?:sincerely|best|best regards|kind regards|regards|warm regards|warmly|respectfully|thanks|thank you|yours(?: truly| sincerely)?)\b[^.!?]{0,40}$/i;
-// A letter's closing name line ("Riley Chen") is not a claim, but only by
-// position: it directly follows the sign-off, or it is the candidate's own name.
-// Other short lines ("I know Kubernetes", "Certified Scrum Master") are claims.
+// A letter's closing name line ("Riley Chen") is not a claim. When the candidate's
+// name is known (the judge always passes it), only that exact line is skipped, so
+// a credential under the sign-off ("Certified Scrum Master") still reaches the
+// judge. Without a name, only a name-shaped last line below the sign-off is
+// skipped. Other short lines ("I know Kubernetes") are always claims.
 const NAME_LINE = /^[A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,3}$/;
 const sameName = (a, b) => String(a || '').trim().toLowerCase().replace(/\s+/g, ' ') === String(b || '').trim().toLowerCase().replace(/\s+/g, ' ');
 export function coverLetterClaims(text, candidateName = '') {
   const sentences = splitSentences(text);
   return sentences.filter((sentence, i) => {
     if (SALUTATION.test(sentence) || SIGN_OFF.test(sentence)) return false;
-    if (candidateName && sameName(sentence, candidateName)) return false;
-    if (i > 0 && SIGN_OFF.test(sentences[i - 1]) && NAME_LINE.test(sentence)) return false;
-    return true;
+    if (candidateName) return !sameName(sentence, candidateName);
+    const closingName = i === sentences.length - 1 && sentences.slice(0, i).some(line => SIGN_OFF.test(line)) && NAME_LINE.test(sentence);
+    return !closingName;
   });
 }
 

@@ -330,6 +330,9 @@ test('short factual cover-letter lines are claims; only the closing name is skip
   const letter = 'Dear Hiring Team,\nI know Kubernetes\nManaged global teams\nCertified Scrum Master\nBest regards,\nRiley Chen';
   assert.deepEqual(coverLetterClaims(letter), ['I know Kubernetes', 'Managed global teams', 'Certified Scrum Master']);
   assert.deepEqual(coverLetterClaims('Thanks for reading.\nRiley Chen', 'Riley Chen'), ['Thanks for reading.'], "the candidate's own name is skipped by identity");
+  const credential = 'Best regards,\nCertified Scrum Master\nRiley Chen';
+  assert.deepEqual(coverLetterClaims(credential, 'Riley Chen'), ['Certified Scrum Master'], 'a credential under the sign-off is a claim');
+  assert.deepEqual(coverLetterClaims(credential), ['Certified Scrum Master'], 'without a known name only the last line can be the closing name');
   const claims = extractClaims({ coverLetter: letter });
   assert.deepEqual(claims.filter(claim => claim.part === 'cover').map(claim => claim.text), ['I know Kubernetes', 'Managed global teams', 'Certified Scrum Master']);
 });

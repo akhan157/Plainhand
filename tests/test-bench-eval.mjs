@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateSubmission } from '../plainhand/evaluation/sandbox.mjs';
 import { scorePacket, scoreApplication, scoreEvaluation, scoreScenario, aggregate, compareToBaseline, markdownReport } from '../plainhand/evaluation/score.mjs';
-import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord, absentClaimsIn } from '../plainhand/evaluation/corpus.mjs';
+import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord, absentClaimsIn, personas } from '../plainhand/evaluation/corpus.mjs';
 import { renderPortal } from '../plainhand/evaluation/portals.mjs';
 import { assertProviderUsable, runEvaluation, exitCodeFor, runMetadata, candidatePayload } from '../plainhand/evaluation/runner.mjs';
 
@@ -593,6 +593,13 @@ test('an unrelated negation in the same sentence does not hide an absent claim',
   const loss = { absent: [{ id: 'pnl', keywords: ['profit and loss'] }] };
   assert.equal(absentClaimsIn('I owned profit and loss for the region.', loss).length, 1, 'a clause word inside the keyword does not split it');
   assert.equal(absentClaimsIn('I have never owned profit and loss.', loss).length, 0);
+  // A negated list shares its negation; an unrelated classroom qualifier does not hide a claim.
+  assert.deepEqual(ids('I have no experience with production GD&T work and production tolerancing.'), []);
+  assert.deepEqual(ids('Production GD&T work is not something I have done.'), []);
+  assert.deepEqual(ids('I did production GD&T work only in class.'), []);
+  assert.deepEqual(ids('I did production GD&T work and only used CAD in class.'), ['production-gdt']);
+  assert.deepEqual(ids('I never missed a deadline, and I did production GD&T work.'), ['production-gdt']);
+  for (const each of personas) for (const absent of each.absent || []) assert.deepEqual(absentClaimsIn(absent.text, each), [], `honest answer stays unflagged: ${absent.text}`);
 });
 
 test('profile effectiveness keeps every repetition instead of the last one', () => {

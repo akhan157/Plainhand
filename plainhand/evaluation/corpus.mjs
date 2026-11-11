@@ -601,39 +601,50 @@ export function captures(fact, text) {
 // persona is paired with. A sentence that negates ("I haven't done production
 // GD&T work, only in class") is the honest answer and is never a claim.
 export const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
-// Negation is judged per clause, so an unrelated negation elsewhere in the
-// sentence ("I did production GD&T work and never missed a deadline") does not
-// hide the claim. "Only ... in class" qualifies the whole sentence.
-const NEGATION = /\b(?:haven['’]?t|hasn['’]?t|have not|has not|not|never|no experience|don['’]?t|do not|didn['’]?t|did not|without)\b/i;
-const CLASS_ONLY = /\bonly\b[^.!?]*\bin class\b/i;
-const CLAUSE_BREAK = /[,;:]|\s[-–—]\s|\b(?:and|but|while|whereas|although|though|yet|so)\b/gi;
+// Negation is scoped to the claim, not the sentence. It counts when it comes
+// before the keyword in the same clause, so a list shares it ("no experience with
+// production GD&T or production tolerancing"), or right after the keyword before
+// the next break ("production GD&T work is not something I've done", "production
+// GD&T work only in class"). An unrelated negation or classroom qualifier in
+// another part of the sentence ("... and never missed a deadline", "... and only
+// used CAD in class") does not hide the claim. Clause words inside a keyword
+// ("profit and loss") are ignored.
+const NEGATION = /\b(?:haven['’]?t|hasn['’]?t|have not|has not|not|never|no experience|don['’]?t|do not|didn['’]?t|did not|without)\b|\bonly\b[^.!?]*\bin class\b/i;
+// Before the keyword: a list joined by and/or keeps its negation, unless the "and"
+// starts a new subject ("..., and I led ...").
+const STRONG_BREAK = /[,;:]|\s[-–—]\s|\b(?:but|while|whereas|although|though|yet|so)\b|\b(?:and|or)\s+(?:i|we|he|she|they|my|our)\b/gi;
+// After the keyword: any clause word ends the claim's scope.
+const ANY_BREAK = /[,;:]|\s[-–—]\s|\b(?:and|or|but|while|whereas|although|though|yet|so)\b/gi;
 export const sentencesOf = text => String(text || '').match(/[^.!?\n]+[.!?]?/g) || [];
-export const negates = clause => NEGATION.test(clause) || CLASS_ONLY.test(clause);
+export const negates = clause => NEGATION.test(clause);
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-// The clause around each keyword match: from the last clause break before the
-// match to the first one after it. Breaks inside the keyword itself ("profit and
-// loss") are ignored.
-function keywordClauses(sentence, keyword) {
-  const lower = sentence.toLowerCase(), out = [];
+function lastBreakBefore(sentence, pattern, from) {
+  let left = 0, brk;
+  pattern.lastIndex = 0;
+  while ((brk = pattern.exec(sentence)) && brk.index + brk[0].length <= from) left = brk.index + brk[0].length;
+  return left;
+}
+function firstBreakAfter(sentence, pattern, to) {
+  let brk;
+  pattern.lastIndex = to;
+  return (brk = pattern.exec(sentence)) ? brk.index : sentence.length;
+}
+// True when some occurrence of the keyword is asserted, not negated.
+function assertsKeyword(sentence, keyword) {
+  const lower = sentence.toLowerCase();
   const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegex(keyword)}`, 'g');
   let match;
   while ((match = pattern.exec(lower))) {
     const from = match.index + match[1].length, to = from + keyword.length;
-    let left = 0, right = sentence.length, brk;
-    CLAUSE_BREAK.lastIndex = 0;
-    while ((brk = CLAUSE_BREAK.exec(sentence))) {
-      const end = brk.index + brk[0].length;
-      if (end <= from) left = end;
-      else if (brk.index >= to) { right = brk.index; break; }
-    }
-    out.push(sentence.slice(left, right));
-    if (match[0].length === 0) pattern.lastIndex++;
+    const before = sentence.slice(lastBreakBefore(sentence, STRONG_BREAK, from), from);
+    const after = sentence.slice(to, firstBreakAfter(sentence, ANY_BREAK, to));
+    if (!negates(before) && !negates(after)) return true;
   }
-  return out;
+  return false;
 }
 export function absentClaimsIn(text, persona) {
-  const sentences = sentencesOf(text).filter(sentence => !CLASS_ONLY.test(sentence));
-  return (persona.absent || []).filter(absent => sentences.some(sentence => absent.keywords.some(keyword => keywordClauses(sentence, keyword).some(clause => !negates(clause)))));
+  const sentences = sentencesOf(text);
+  return (persona.absent || []).filter(absent => sentences.some(sentence => absent.keywords.some(keyword => assertsKeyword(sentence, keyword))));
 }
 
 // Who owes a portal field's answer:
