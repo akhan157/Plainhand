@@ -89,11 +89,12 @@ export function briefing(state) {
     const toRecord = area === 'followup' || item.kind.startsWith('interview-prep-');
     const go = area === 'campaign' ? { label: 'Open campaigns', run: () => navigate('campaigns') }
       : area === 'insights' ? { label: 'Open insights', run: () => navigate('insights') }
+      : area === 'inbox' ? { label: 'Review email', run: () => navigate('applications') }
       : job ? { label: toRecord ? 'Open record' : 'Open role', run: () => openJob(job.id, toRecord ? 'record' : 'fit') } : null;
     if (!go) continue;
     const failing = /fail/.test(item.kind), quiet = /paused/.test(item.kind);
     items.push({ key: `x-${item.kind}-${item.jobId || i}`, rank: failing ? 2 : quiet ? 8 : 4, tone: failing ? 'danger' : quiet ? 'neutral' : 'accent',
-      icon: area === 'campaign' ? 'layers' : area === 'insights' ? 'star' : area === 'followup' ? 'send' : item.kind.startsWith('interview-prep-') ? 'calendar' : 'flag', title: item.text, meta: job ? label(job) : '', action: go });
+      icon: area === 'campaign' ? 'layers' : area === 'insights' ? 'star' : area === 'followup' ? 'send' : area === 'inbox' ? 'inbox' : item.kind.startsWith('interview-prep-') ? 'calendar' : 'flag', title: item.text, meta: job ? label(job) : '', action: go });
   }
   return items.sort((a, b) => a.rank - b.rank);
 }

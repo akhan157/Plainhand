@@ -2,6 +2,13 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Status proposals from an email.** Paste an email on Applications, or have
+  your own agent send it with `plainhand_inbox_add`. Plainhand matches it to
+  one tracked application by rule and never guesses. It proposes a status
+  change, an interview round or a next action, each quoting the email; an
+  offer is proposed as Offer at most. Nothing changes until you press Apply,
+  which only you can do. Email text is cleaned like a posting before any
+  provider sees it, and links are shown but never followed.
 - **Interview prep.** For a scheduled round, Plainhand builds a prep pack from
   the cleaned posting, the packet the interviewer read and your own stories:
   the claims to be ready to back up, likely questions with sample answers

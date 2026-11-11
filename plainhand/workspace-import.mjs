@@ -5,7 +5,7 @@ import { now, syncTracker } from './store.mjs';
 // up what is here. Machine-specific state does not travel: packet approvals (their PDFs
 // are not in the export), browser checkpoints and in-flight tasks are reset.
 
-const STATE_KEYS = ['profile', 'provider', 'jobs', 'sources', 'tasks', 'conversation', 'understanding', 'events', 'contextPrefs', 'connectionChecks'];
+const STATE_KEYS = ['profile', 'provider', 'jobs', 'sources', 'tasks', 'conversation', 'understanding', 'events', 'contextPrefs', 'connectionChecks', 'inbox'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const HISTORY_FILE = 'data/plainhand/conversation.jsonl', PROPOSALS_FILE = 'data/plainhand/agent-proposals.json';
 

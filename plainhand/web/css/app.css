@@ -991,3 +991,9 @@ tbody tr:last-child th[scope="row"] { border-bottom: 0; }
 @media (max-width: 719px) {
   .ip-card, .ip-fb { padding: var(--sp-3); }
 }
+
+/* Emails about applications */
+.ix-proposal { list-style: none; display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.ix-assign { display: grid; gap: var(--sp-2); max-width: 32rem; }
+.ix-link { overflow-wrap: anywhere; }
+.fu-quote cite { display: block; font-style: normal; font-size: var(--fs-sm); color: var(--text-3); margin-bottom: var(--sp-1); }

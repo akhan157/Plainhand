@@ -155,6 +155,13 @@ integrations. Final submission always remains manual.
   packet or posting marks the pack stale (`packetHash`, `jobHash`).
 
 ### 4. TRACK — the tracker is the spine
+- Email status proposals (`plainhand/features/inbox.mjs`), stored as
+  `state.inbox`. Producer: `inbox.add` (the Applications paste form or an MCP
+  agent); the `inbox-classify` task adds provider proposals to matched items.
+  Consumers: the Applications Emails card, Home attention (`inbox-*`), and
+  `inbox.list` (tainted) for agents. `inbox.apply` is candidate-only and writes
+  through `jobs.setStatus` and the record actions, so status history, the
+  tracker and events update as usual. Nothing is sent; no link is followed.
 - `data/applications.md` — one row per company+role, NEVER duplicated
 - New entries via TSV in `batch/tracker-additions/` + `merge-tracker.mjs`;
   status updates edited in place

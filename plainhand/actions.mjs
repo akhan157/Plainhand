@@ -495,7 +495,7 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       return { result: { status: 'Applied' } };
     } });
 
-  for (const feature of features) feature.register?.({ define, workspace, workflow, usage, helpers: { mutateJob, recordWrite, findJob, label, ActionError, buildDigest } });
+  for (const feature of features) feature.register?.({ define, workspace, workflow, usage, helpers: { mutateJob, recordWrite, findJob, label, ActionError, buildDigest, run: (name, input, options) => registry.run(name, input, options), undo: (token, options) => registry.undo(token, options) } });
 
   function publicDefinition(definition) {
     const { run, undo, summarize, panel, candidateWhen, ...rest } = definition;
@@ -503,7 +503,7 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
   }
 
   const summarize = (name, input) => { const definition = definitions.get(name); return definition?.summarize ? definition.summarize(input || {}) : definition?.title || name; };
-  return {
+  const registry = {
     list({ tiers = TIERS } = {}) { return [...definitions.values()].filter(d => tiers.includes(d.tier)).map(publicDefinition); },
     get(name) { const definition = definitions.get(name); return definition ? publicDefinition(definition) : null; },
     summarize,
@@ -543,4 +543,5 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       return { ok: true, name: entry.name };
     },
   };
+  return registry;
 }
