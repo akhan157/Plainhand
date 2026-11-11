@@ -9,5 +9,8 @@
 import * as followups from './followups.mjs';
 import { insights } from './insights.mjs';
 import campaigns from './campaigns.mjs';
+import * as interviewPrep from './interview-prep.mjs';
+import * as inbox from './inbox.mjs';
+import * as skillPlan from './skill-plan.mjs';
 
-export const FEATURES = [campaigns, followups, insights];
+export const FEATURES = [campaigns, followups, insights, interviewPrep, inbox, skillPlan];
