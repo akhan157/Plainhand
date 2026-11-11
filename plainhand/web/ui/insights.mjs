@@ -3,6 +3,7 @@
 // Data comes from the insights.* registry actions (plainhand/features/insights.mjs).
 // Missing data is shown as "not enough outcomes", never as 0%.
 import { html, useEffect, useState, store, api, toast, navigate, Icon, plural } from './core.mjs';
+import { SkillGaps } from './skill-plan.mjs';
 import { ActionButton, Button, Card, PageHeading, Empty, Notice, Pill, Field, Spinner } from './components.mjs';
 
 const act = async (name, input = {}) => (await api('action', { name, input })).result;
@@ -161,9 +162,11 @@ export function InsightsPage() {
   const { summary, patterns, recs } = data;
   if (summary.empty) return html`${heading}
     <${Card}><${Empty} icon="layers" title="No applications to learn from yet." action=${html`<${Button} iconEnd="arrow" onClick=${() => navigate('jobs')}>Find roles</${Button}>`}>Once you apply and record what happens (a reply, an interview, an offer or a rejection), Insights shows whether your scores go with interviews. Until then there is nothing to measure, which is not the same as 0%.</${Empty}></${Card}>
+    <${SkillGaps} />
     <${ObservedAssumed} summary=${summary} />`;
   return html`${heading}
     <${ScoreBands} summary=${summary} />
+    <${SkillGaps} />
     <${Suggestions} recs=${recs} reload=${load} />
     <${Patterns} patterns=${patterns} />
     <${ObservedAssumed} summary=${summary} />`;

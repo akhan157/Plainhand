@@ -997,3 +997,13 @@ tbody tr:last-child th[scope="row"] { border-bottom: 0; }
 .ix-assign { display: grid; gap: var(--sp-2); max-width: 32rem; }
 .ix-link { overflow-wrap: anywhere; }
 .fu-quote cite { display: block; font-style: normal; font-size: var(--fs-sm); color: var(--text-3); margin-bottom: var(--sp-1); }
+
+/* Skill gaps and learning plan on Insights. */
+.sp-table th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: var(--fw-semibold); color: var(--text); white-space: normal; border-bottom: 1px solid var(--border); padding: 12px 8px; }
+.sp-table td.num { font-variant-numeric: tabular-nums; text-align: right; }
+.sp-gap > span { display: block; }
+.sp-roles { font-weight: normal; font-size: var(--fs-sm); color: var(--text-2); }
+.sp-list { list-style: none; padding: 0; margin: var(--sp-3) 0; display: grid; gap: var(--sp-3); }
+.sp-item { padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); display: grid; gap: var(--sp-2); }
+.sp-item p { margin: 0; }
+.sp-label { display: inline-block; min-width: 5.5em; color: var(--text-3); font-size: var(--fs-sm); }

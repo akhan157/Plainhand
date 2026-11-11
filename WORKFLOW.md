@@ -154,6 +154,14 @@ integrations. Final submission always remains manual.
   `attention()` (`interview-prep-needed`, `interview-prep-stale`). A changed
   packet or posting marks the pack stale (`packetHash`, `jobHash`).
 
+- Skill-gap plan (`plainhand/features/skill-plan.mjs`), stored as
+  `state.skillPlan`. Producer: the `skill-plan` task (`skillPlan.build`), from
+  `job.evaluation.gaps` (grouped with `clusterGaps` in `profile-strength.mjs`),
+  role choice/status, and candidate context. Gap wording is untrusted and
+  cleaned with `providerDescription`; postings are never sent. Consumers: the
+  Insights Skill gaps card, `skillPlan.get`, the `insights-skill-plan` briefing
+  item. Never writes to the profile. Stale when the evaluations change.
+
 ### 4. TRACK — the tracker is the spine
 - Email status proposals (`plainhand/features/inbox.mjs`), stored as
   `state.inbox`. Producer: `inbox.add` (the Applications paste form or an MCP

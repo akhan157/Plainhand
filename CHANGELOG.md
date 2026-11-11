@@ -2,6 +2,12 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Skill gaps and a learning plan.** Insights shows which gaps keep coming up
+  across your evaluated roles, ranked towards roles you chose or applied to.
+  Pick up to ten and build a plan: what to learn in the postings' words, one
+  small project, a time estimate, search terms (no links), and adjacent
+  experience quoted from your own sources. The plan never changes your profile
+  or says you have the skill; you add finished work as a story yourself.
 - **Status proposals from an email.** Paste an email on Applications, or have
   your own agent send it with `plainhand_inbox_add`. Plainhand matches it to
   one tracked application by rule and never guesses. It proposes a status

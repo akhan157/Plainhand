@@ -32,7 +32,7 @@ export const PRACTICE_KIND = 'interview-practice';
 export const ATTENTION_DAYS = 3;
 const PRACTICE_LIMIT = 20;
 const CLOSED = ['Rejected', 'Discarded', 'SKIP', 'Offer'];
-const LABELS = { profile: 'Profile details', cv: 'Resume', interview: 'Your interview answers and stories', 'structured-resume': 'Structured resume', narrative: 'Career narrative', 'proof-points': 'Proof points', stories: 'Story bank', 'writing-samples': 'Your writing samples' };
+export const LABELS = { profile: 'Profile details', cv: 'Resume', interview: 'Your interview answers and stories', 'structured-resume': 'Structured resume', narrative: 'Career narrative', 'proof-points': 'Proof points', stories: 'Story bank', 'writing-samples': 'Your writing samples' };
 
 export const prepOf = job => (job?.interviewPrep && typeof job.interviewPrep === 'object' && !Array.isArray(job.interviewPrep) ? job.interviewPrep : {});
 const packetHash = job => digest(job?.packet || null);
@@ -47,7 +47,7 @@ const invalid = () => new Error('The agent returned an invalid interview prep pa
 const text = (value, max) => { if (typeof value !== 'string' || !value.trim() || value.length > max) throw invalid(); return value.trim(); };
 const strs = (value, max, min = 0, width = 600) => { if (!Array.isArray(value) || value.length > max || value.length < min) throw invalid(); return value.map(v => text(v, width)); };
 const evidenceOf = value => (Array.isArray(value) ? value : []).slice(0, 8).map(e => ({ sourceId: String(e?.sourceId || ''), quote: String(e?.quote || '') }));
-const urlLike = value => /https?:\/\/|www\.|\b[a-z0-9-]+\.(com|org|net|io|ai|co|dev|app)\b/i.test(value);
+export const urlLike = value => /https?:\/\/|www\.|\b[a-z0-9-]+\.(com|org|net|io|ai|co|dev|app)\b/i.test(value);
 
 // What the interviewer read: each packet item with a stable id.
 export function submittedItems(job) {
