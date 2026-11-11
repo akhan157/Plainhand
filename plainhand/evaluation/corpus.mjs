@@ -604,9 +604,9 @@ export const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.rep
 // Negation is scoped to the claim, not the sentence. It counts when it comes
 // before the keyword in the same clause, or right after the keyword before the
 // next clause word ("production GD&T work is not something I've done"). A negated
-// list shares its negation only when the keyword directly follows the "and"/"or"
-// ("no experience with production GD&T or production tolerancing"); a new
-// predicate after "and" ("I never missed a deadline and owned the P&L") is its own
+// list shares its negation across "or", and across "and" only when the keyword
+// directly follows it ("no experience with production GD&T and production
+// tolerancing"); a new predicate after "and" ("I never missed a deadline and owned the P&L") is its own
 // assertion. "Only ... in class" qualifies the whole clause around the keyword
 // ("I only did production GD&T work in class"), but not another clause ("... and
 // only used CAD in class"). Clause words inside a keyword ("profit and loss") are
@@ -614,8 +614,10 @@ export const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.rep
 const NEGATION = /\b(?:haven['’]?t|hasn['’]?t|have not|has not|not|never|no experience|don['’]?t|do not|didn['’]?t|did not|without)\b/i;
 const CLASS_ONLY = /\bonly\b[^.!?]*\bin class\b/i;
 const BREAK = /[,;:]|\s[-–—]\s|\b(?:and|or|but|while|whereas|although|though|yet|so)\b/gi;
-const LIST_JOIN = /^(?:and|or)$/i;
 const DETERMINER_GAP = /^\s*(?:(?:a|an|the|any)\s+)?$/i;
+// Under a negation, "or" distributes ("haven't managed designers or had direct
+// reports"); "and" does only for a list where the keyword directly follows it.
+const sharesNegation = (brk, sentence, from) => /^or$/i.test(brk.word) || (/^and$/i.test(brk.word) && DETERMINER_GAP.test(sentence.slice(brk.end, from)));
 export const sentencesOf = text => String(text || '').match(/[^.!?\n]+[.!?]?/g) || [];
 export const negates = clause => NEGATION.test(clause) || CLASS_ONLY.test(clause);
 const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -631,7 +633,7 @@ function assertsKeyword(sentence, keyword) {
     const clauseLeft = Math.max(0, ...outside.filter(brk => brk.end <= from).map(brk => brk.end));
     const clauseRight = Math.min(sentence.length, ...outside.filter(brk => brk.start >= to).map(brk => brk.start));
     // Scope of a leading negation: back past list joins that the keyword directly follows.
-    const scopeLeft = Math.max(0, ...outside.filter(brk => brk.end <= from && !(LIST_JOIN.test(brk.word) && DETERMINER_GAP.test(sentence.slice(brk.end, from)))).map(brk => brk.end));
+    const scopeLeft = Math.max(0, ...outside.filter(brk => brk.end <= from && !sharesNegation(brk, sentence, from)).map(brk => brk.end));
     const before = sentence.slice(scopeLeft, from), after = sentence.slice(to, clauseRight), clause = sentence.slice(clauseLeft, clauseRight);
     if (!NEGATION.test(before) && !NEGATION.test(after) && !CLASS_ONLY.test(clause)) return true;
   }

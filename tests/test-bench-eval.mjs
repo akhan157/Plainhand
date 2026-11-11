@@ -603,6 +603,9 @@ test('an unrelated negation in the same sentence does not hide an absent claim',
   assert.deepEqual(ids('I never missed a deadline and did production GD&T work.'), ['production-gdt'], 'a negation does not carry into a new predicate');
   assert.equal(absentClaimsIn('I never missed a delivery window and owned profit and loss for our region.', loss).length, 1);
   assert.equal(absentClaimsIn('I have not owned a budget or profit and loss.', loss).length, 0, 'a negated list shares its negation');
+  assert.deepEqual(ids('I have not done production GD&T work or worked on a production line.'), [], '"or" carries a negation across verbs');
+  const designer = personas.find(each => (each.absent || []).some(absent => absent.keywords.includes('direct reports')));
+  assert.deepEqual(absentClaimsIn("I haven't managed designers or had direct reports.", designer), []);
   for (const each of personas) for (const absent of each.absent || []) assert.deepEqual(absentClaimsIn(absent.text, each), [], `honest answer stays unflagged: ${absent.text}`);
 });
 
