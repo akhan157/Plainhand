@@ -41,6 +41,17 @@ function Evidence({ text, evidence = [] }) {
   return html`<div class="evidence"><p>${text}</p>${evidence.length ? html`<details><summary><${Icon} name="quote" />Supporting evidence · ${evidence.length} ${evidence.length === 1 ? 'source' : 'sources'}</summary>${evidence.map((e, i) => html`<blockquote key=${i}><cite>${e.sourceId}</cite>${e.quote}</blockquote>`)}</details>` : null}</div>`;
 }
 
+// Deterministic posting check (plainhand/posting-integrity.mjs): what was hidden in the posting
+// or addressed to AI tools, and what Plainhand kept from the AI because of it.
+function PostingCheck({ integrity }) {
+  const warnings = (integrity.findings || []).filter(f => f.severity === 'warn');
+  if (!warnings.length) return html`<p class="muted-text">Posting check: ${integrity.summary}</p>`;
+  return html`<${Notice} tone="warn" title="Posting check: something is hidden or aimed at AI tools">
+    <p>${integrity.summary} Read the original posting before you rely on it. Plainhand keeps these parts from the AI and follows no links from a posting.</p>
+    ${warnings.map((f, i) => html`<details key=${i}><summary>${f.detail}</summary>${(f.excerpts || []).map((text, j) => html`<blockquote key=${j}>${text}</blockquote>`)}</details>`)}
+  </${Notice}>`;
+}
+
 function Section({ title, children, actions, id }) {
   return html`<section class="panel-section" aria-labelledby=${id}><div class="section-head"><h3 id=${id}>${title}</h3>${actions || null}</div>${children}</section>`;
 }
@@ -70,6 +81,7 @@ function FitTab({ job }) {
   return html`
     ${verification ? html`<${Notice} tone=${verification.state === 'active' ? 'success' : 'warn'} title=${`Posting ${verification.state} · checked ${ago(verification.checkedAt)}`}>${verification.reason}</${Notice}>`
       : html`<${Notice} tone="info">This posting has not been verified. Evaluation checks the live page on supported sites before comparing it with your profile.</${Notice}>`}
+    ${job.integrity ? html`<${PostingCheck} integrity=${job.integrity} />` : null}
     <div class="action-row">
       <${ActionButton} class="primary" icon="spark" disabled=${!!evaluating} onClick=${() => queueTask('evaluate', job.id)}>${evaluation ? 'Evaluate again' : 'Evaluate fit'}</${ActionButton}>
       ${evaluation ? html`<${ActionButton} icon=${job.selected ? 'check' : 'plus'} aria-pressed=${job.selected ? 'true' : 'false'} onClick=${select}>${job.selected ? 'Selected for application' : 'Choose this role'}</${ActionButton}>` : null}

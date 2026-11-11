@@ -8,6 +8,7 @@ import { discover, verifyJob, defaultFieldAnswers, isSensitiveLabel } from './jo
 import { UsageLedger } from './usage.mjs';
 import { AnswerBank } from './answer-bank.mjs';
 import { providerJob } from './application-record.mjs';
+import { integrityRecord } from './posting-integrity.mjs';
 import { logUnderstanding } from './profile-strength.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
@@ -185,6 +186,9 @@ export class Workflow {
         if (job.verification.description) job.description = job.verification.description;
         if (job.verification.state === 'closed') throw new Error('This posting is closed. Keep it for reference or discard it.');
         if (!job.description || job.description.length < 100) throw new Error('Paste the job description before evaluating. The page could not be read.');
+        // Deterministic posting check before any provider sees the text (posting-integrity.mjs).
+        // Hidden passages only count when this description is the page the verifier read.
+        job.integrity = integrityRecord(job.description, job.verification.description === job.description ? job.verification.hidden : []);
         await this.progress(id, 'Matching the role against your evidence');
         const result = await run(EVALUATE_INSTRUCTION, { job: providerJob(job) });
         if (typeof result.score !== 'number' || result.score < 0 || result.score > 5 || !['Apply', 'Investigate', 'Skip'].includes(result.recommendation)) throw new Error('The agent returned an invalid evaluation. Retry.');
@@ -196,7 +200,7 @@ export class Workflow {
         if (result.score < 4 && result.recommendation === 'Apply') result.recommendation = 'Investigate';
         job.evaluation = result; job.stage = 'evaluated'; job.status = job.status || 'Evaluated'; job.contextHash = context.hash;
         job.reportPath = `reports/hl-${job.id.slice(0, 8)}-${slug(job.company)}-${now().slice(0, 10)}.md`;
-        const report = `# ${job.company} — ${job.title}\n\n**Score:** ${result.score}/5\n**URL:** ${job.url}\n**PDF:** pending\n**Legitimacy:** ${job.verification.legitimacy}\n**Verification:** ${job.verification.state}\n\n## A. Role summary\n${result.summary}\n\n## B. Evidence and fit\n${result.matches.map(m => `- ${m.text}\n  Sources: ${m.evidence.map(e => `${e.sourceId}: “${e.quote}”`).join('; ')}`).join('\n')}\n\n## C. Level and gaps\n${result.gaps.map(s => '- ' + s).join('\n')}\n\n## D. Compensation\nCandidate preference: ${state.profile.compensation || 'Not provided; ask the candidate.'}\n\n## E. Personalization\n${state.profile.roles}\n\n## F. Questions and next action\n${result.recommendation}\n${result.questions.map(s => '- ' + s).join('\n')}\n\n## G. Posting legitimacy\n${job.verification.reason}\n${result.legitimacyNotes.map(s => '- ' + s).join('\n')}\n`;
+        const report = `# ${job.company} — ${job.title}\n\n**Score:** ${result.score}/5\n**URL:** ${job.url}\n**PDF:** pending\n**Legitimacy:** ${job.verification.legitimacy}\n**Verification:** ${job.verification.state}\n\n## A. Role summary\n${result.summary}\n\n## B. Evidence and fit\n${result.matches.map(m => `- ${m.text}\n  Sources: ${m.evidence.map(e => `${e.sourceId}: “${e.quote}”`).join('; ')}`).join('\n')}\n\n## C. Level and gaps\n${result.gaps.map(s => '- ' + s).join('\n')}\n\n## D. Compensation\nCandidate preference: ${state.profile.compensation || 'Not provided; ask the candidate.'}\n\n## E. Personalization\n${state.profile.roles}\n\n## F. Questions and next action\n${result.recommendation}\n${result.questions.map(s => '- ' + s).join('\n')}\n\n## G. Posting legitimacy\n**Posting check:** ${job.integrity.summary}\n${job.integrity.findings.filter(f => f.severity === 'warn').map(f => `- ${f.detail}`).join('\n')}${job.integrity.findings.some(f => f.severity === 'warn') ? '\n' : ''}\n${job.verification.reason}\n${result.legitimacyNotes.map(s => '- ' + s).join('\n')}\n`;
         await this.workspace.mutate(async latest => {
           await this.assertContext(latest, context);
           const current = latest.jobs.find(j => j.id === job.id);

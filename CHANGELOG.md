@@ -2,6 +2,14 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Posting check before the AI reads a job.** A deterministic gate
+  (`plainhand/posting-integrity.mjs`) strips invisible characters (zero-width,
+  text-direction controls, Unicode tag characters, decoding any message hidden
+  in them), withholds sentences addressed to AI tools from every provider call,
+  and has the browser verifier leave out text hidden on the live page
+  (transparent, tiny, same colour as the background, off-screen) along with
+  the links inside it. The verdict opens report section G and shows in the job
+  panel. The saved posting is never rewritten.
 - **The hosted cloud server.** One stateless Node handler for Vercel
   (`plainhand/cloud/app.mjs`): Supabase sign-in (Google and email links),
   30-day httpOnly session cookies, per-candidate Postgres workspaces behind the

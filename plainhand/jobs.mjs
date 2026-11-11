@@ -10,6 +10,7 @@ import { setSubmissionGuard } from './browser-guard.mjs';
 import { navigationSnapshot, executeNavigation } from './browser-driver.mjs';
 import { extractForm } from './adapters/upstream/extract.mjs';
 import { isSubmitControl } from './adapters/upstream/submit-guard.mjs';
+import { collectHiddenText } from './posting-integrity.mjs';
 import { ResumeTransfers } from './browser-transfers.mjs';
 import { ashbySchemaRead } from './browser-schema.mjs';
 import { nativeChoices, fillNativeChoices } from './adapters/native-choices.mjs';
@@ -170,12 +171,15 @@ export async function verifyJob(job) {
     const page = await context.newPage();
     const response = await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.locator('h1').first().waitFor({ timeout: 6000 }).catch(() => {});
+    // Hides rendered-but-invisible text (transparent, tiny, same colour as the background,
+    // off-screen) so the captured description is what a person sees on the page.
+    const hidden = await page.evaluate(collectHiddenText).catch(() => []);
     const snapshot = await page.evaluate(() => ({ title: document.querySelector('h1')?.innerText || document.title, text: document.body.innerText, apply: [...document.querySelectorAll('a,button,input[type=submit]')].some(e => /apply|submit application/i.test(e.innerText || e.value || '')) }));
     const expired = /job (?:is )?no longer available|job (?:has been|is) closed|position (?:has been|is) filled|job not found|opening (?:has been|is) closed/i.test(snapshot.text);
     const titleWords = job.title.toLowerCase().split(/\W+/).filter(w => w.length > 3);
     const titleMatch = titleWords.length > 0 && titleWords.every(w => snapshot.title.toLowerCase().includes(w));
     const active = response?.ok() && !expired && titleMatch && snapshot.text.length > 400 && snapshot.apply;
-    return { state: expired || response?.status() === 404 ? 'closed' : active ? 'active' : 'unconfirmed', legitimacy: active ? 'official-ats-unconfirmed-employer' : 'unconfirmed', reason: active ? 'Title, job description, and application control observed on a supported ATS. Employer identity is not independently verified.' : expired ? 'The posting appears closed.' : 'Could not confirm the exact role and a live application form. Review the original posting.', checkedAt: new Date().toISOString(), title: snapshot.title, description: snapshot.text.slice(0, 45000), url: page.url() };
+    return { state: expired || response?.status() === 404 ? 'closed' : active ? 'active' : 'unconfirmed', legitimacy: active ? 'official-ats-unconfirmed-employer' : 'unconfirmed', reason: active ? 'Title, job description, and application control observed on a supported ATS. Employer identity is not independently verified.' : expired ? 'The posting appears closed.' : 'Could not confirm the exact role and a live application form. Review the original posting.', checkedAt: new Date().toISOString(), title: snapshot.title, description: snapshot.text.slice(0, 45000), hidden, url: page.url() };
   } catch (error) { return { state: 'unconfirmed', legitimacy: 'unconfirmed', reason: /Executable|browserType.launch/.test(error.message) ? 'Install Chromium with npx playwright install chromium, then verify again.' : 'Browser verification could not finish. The site may need manual access; retry or paste the description.', checkedAt: new Date().toISOString(), description: job.description || '' }; }
   finally { await browser?.close(); }
 }

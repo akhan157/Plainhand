@@ -115,6 +115,15 @@ integrations. Final submission always remains manual.
   Machine Summary YAML, legitimacy tier
 - Section G holds draft answers for that specific application
 - Score < 4.0/5 → recommend against applying
+- Posting check (`plainhand/posting-integrity.mjs`), deterministic, before any
+  provider call. Producer: the evaluate task, with the browser verifier
+  (`verifyJob`) reporting text hidden on the live page and leaving it out of
+  the captured description. Stored as `job.integrity`; its summary opens report
+  section G and the job panel. Consumers: `providerJob` (evaluate, packet,
+  review), form answers and the agent's `jobs.get` all send the sanitized copy:
+  invisible characters stripped, sentences addressed to AI tools withheld. The
+  saved `job.description` is never rewritten, so packet staleness hashes don't
+  move. A changed description clears `job.integrity` until the next evaluation.
 
 ### 3. TAILOR — per-job artifacts are generated
 - Mode: `pdf` (or `latex`)

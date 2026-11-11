@@ -11,6 +11,7 @@ import { AnswerBank } from './plainhand/answer-bank.mjs';
 import { Corrections } from './plainhand/corrections.mjs';
 import { AuditLog } from './plainhand/audit.mjs';
 import { followUpQueue } from './plainhand/application-record.mjs';
+import { providerDescription } from './plainhand/posting-integrity.mjs';
 import { createRegistry, STATUS_VALUES, CORE_ATTENTION } from './plainhand/actions.mjs';
 import { profileStrength } from './plainhand/profile-strength.mjs';
 import { currentCalibration } from './plainhand/claim-calibration.mjs';
@@ -94,7 +95,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
     if (unanswered.length) {
       try {
         const context = await workspace.context(state);
-        const result = await workflow.agent(state.provider, FORM_INSTRUCTION, { context, job: { company: job.company, title: job.title, description: job.description }, packet: job.packet, fields: unanswered }, { usageContext: { jobId: job.id, purpose: 'form-answers' } });
+        const result = await workflow.agent(state.provider, FORM_INSTRUCTION, { context, job: { company: job.company, title: job.title, description: providerDescription(job.description || '') }, packet: job.packet, fields: unanswered }, { usageContext: { jobId: job.id, purpose: 'form-answers' } });
         if (!Array.isArray(result.suggestions) || !Array.isArray(result.questions)) throw new Error('Invalid form suggestions.');
         for (const suggestion of result.suggestions) {
           const field = unanswered.find(f => f.key === suggestion.key);
