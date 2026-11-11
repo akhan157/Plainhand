@@ -601,12 +601,39 @@ export function captures(fact, text) {
 // persona is paired with. A sentence that negates ("I haven't done production
 // GD&T work, only in class") is the honest answer and is never a claim.
 export const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
-const NEGATION = /\b(?:haven['’]?t|hasn['’]?t|have not|has not|not|never|no experience|don['’]?t|do not|didn['’]?t|did not|without)\b|\bonly\b[^.!?]*\bin class\b/i;
+// Negation is judged per clause, so an unrelated negation elsewhere in the
+// sentence ("I did production GD&T work and never missed a deadline") does not
+// hide the claim. "Only ... in class" qualifies the whole sentence.
+const NEGATION = /\b(?:haven['’]?t|hasn['’]?t|have not|has not|not|never|no experience|don['’]?t|do not|didn['’]?t|did not|without)\b/i;
+const CLASS_ONLY = /\bonly\b[^.!?]*\bin class\b/i;
+const CLAUSE_BREAK = /[,;:]|\s[-–—]\s|\b(?:and|but|while|whereas|although|though|yet|so)\b/gi;
 export const sentencesOf = text => String(text || '').match(/[^.!?\n]+[.!?]?/g) || [];
-export const negates = sentence => NEGATION.test(sentence);
+export const negates = clause => NEGATION.test(clause) || CLASS_ONLY.test(clause);
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// The clause around each keyword match: from the last clause break before the
+// match to the first one after it. Breaks inside the keyword itself ("profit and
+// loss") are ignored.
+function keywordClauses(sentence, keyword) {
+  const lower = sentence.toLowerCase(), out = [];
+  const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegex(keyword)}`, 'g');
+  let match;
+  while ((match = pattern.exec(lower))) {
+    const from = match.index + match[1].length, to = from + keyword.length;
+    let left = 0, right = sentence.length, brk;
+    CLAUSE_BREAK.lastIndex = 0;
+    while ((brk = CLAUSE_BREAK.exec(sentence))) {
+      const end = brk.index + brk[0].length;
+      if (end <= from) left = end;
+      else if (brk.index >= to) { right = brk.index; break; }
+    }
+    out.push(sentence.slice(left, right));
+    if (match[0].length === 0) pattern.lastIndex++;
+  }
+  return out;
+}
 export function absentClaimsIn(text, persona) {
-  const claims = sentencesOf(text).filter(sentence => !negates(sentence));
-  return (persona.absent || []).filter(absent => claims.some(sentence => absent.keywords.some(keyword => hasWord(sentence, keyword))));
+  const sentences = sentencesOf(text).filter(sentence => !CLASS_ONLY.test(sentence));
+  return (persona.absent || []).filter(absent => sentences.some(sentence => absent.keywords.some(keyword => keywordClauses(sentence, keyword).some(clause => !negates(clause)))));
 }
 
 // Who owes a portal field's answer:

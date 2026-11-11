@@ -341,9 +341,23 @@ export function aggregate(results) {
     for (const result of results) {
       if (!result.scenario.pairId) continue;
       const runs = groups.get(result.scenario.pairId) || {};
-      runs[result.scenario.profileMode || 'seeded'] = result;
+      (runs[result.scenario.profileMode || 'seeded'] ||= []).push(result);
       groups.set(result.scenario.pairId, runs);
     }
+    // Repetitions (--repeat) are all kept: numbers are averaged, and a boolean
+    // becomes a rate (0–1) once there is more than one run.
+    const combine = values => {
+      const present = values.filter(value => value !== null && value !== undefined);
+      if (!present.length) return null;
+      if (present.every(value => typeof value === 'boolean')) return values.length === 1 ? present[0] : avg(present.map(Number));
+      if (present.every(value => typeof value === 'number')) return avg(present);
+      if (present.every(value => value && typeof value === 'object' && !Array.isArray(value))) {
+        const keys = [...new Set(present.flatMap(Object.keys))];
+        return Object.fromEntries(keys.map(key => [key, combine(present.map(value => value[key]))]));
+      }
+      return present[0];
+    };
+    const pick = (list, read) => list ? combine(list.map(read)) : null;
     const downstream = result => {
       const fields = result.application?.fields || [];
       const fromApp = fields.filter(field => field.correct && !field.candidateSupplied).length;
@@ -361,23 +375,24 @@ export function aggregate(results) {
     return [...groups.entries()].flatMap(([pairId, runs]) => {
       if (!runs.conversation || !runs.seeded) return [];
       const built = runs.conversation, seeded = runs.seeded, minimal = runs.minimal || null;
-      const builtDown = downstream(built), seededDown = downstream(seeded);
-      const minimalDown = minimal ? downstream(minimal) : null;
+      const builtDown = pick(built, downstream), seededDown = pick(seeded, downstream);
+      const minimalDown = minimal ? pick(minimal, downstream) : null;
       const delta = Object.fromEntries(Object.entries(builtDown).map(([key, value]) => [key, typeof value === 'number' && typeof seededDown[key] === 'number' ? Math.round((value - seededDown[key]) * 1000) / 1000 : null]));
       const deltaVsMinimal = minimalDown ? Object.fromEntries(Object.entries(builtDown).map(([key, value]) => [key, typeof value === 'number' && typeof minimalDown[key] === 'number' ? Math.round((value - minimalDown[key]) * 1000) / 1000 : null])) : null;
       return [{
         pairId,
-        builtPass: built.pass ?? null,
-        seededPass: seeded.pass ?? null,
-        minimalPass: minimal?.pass ?? null,
-        builtProfilePass: built.profile?.pass ?? null,
-        profileCapture: built.profile?.captureRate ?? null,
-        profileCoverage: built.profile?.coverageOfAllFacts ?? null,
-        profileStrength: built.profileStrength?.summary || null,
-        seededStrength: seeded.profileStrength?.summary || null,
-        minimalStrength: minimal?.profileStrength?.summary || null,
-        profileCalls: built.profile?.calls ?? null,
-        profileSeconds: built.profile?.seconds ?? null,
+        repetitions: { built: built.length, seeded: seeded.length, minimal: minimal?.length ?? 0 },
+        builtPass: pick(built, run => run.pass ?? null),
+        seededPass: pick(seeded, run => run.pass ?? null),
+        minimalPass: pick(minimal, run => run.pass ?? null),
+        builtProfilePass: pick(built, run => run.profile?.pass ?? null),
+        profileCapture: pick(built, run => run.profile?.captureRate ?? null),
+        profileCoverage: pick(built, run => run.profile?.coverageOfAllFacts ?? null),
+        profileStrength: pick(built, run => run.profileStrength?.summary || null),
+        seededStrength: pick(seeded, run => run.profileStrength?.summary || null),
+        minimalStrength: pick(minimal, run => run.profileStrength?.summary || null),
+        profileCalls: pick(built, run => run.profile?.calls ?? null),
+        profileSeconds: pick(built, run => run.profile?.seconds ?? null),
         downstream: { built: builtDown, seeded: seededDown, minimal: minimalDown, delta, deltaVsMinimal },
       }];
     });
@@ -553,7 +568,8 @@ ${summary.profileEffect.map(effect => {
   const strength = summary => summary ? `${summary.strong || 0} strong / ${summary.good || 0} good / ${summary.thin || 0} thin` : 'n/a';
   const delta = effect.downstream.delta, deltaVsMinimal = effect.downstream.deltaVsMinimal || {};
   const percent = value => value === null || value === undefined ? 'n/a' : `${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`;
-  return `| ${effect.pairId} | ${effect.profileCapture === null ? 'n/a' : Math.round(effect.profileCapture * 100) + '%'} | ${strength(effect.minimalStrength)} → ${strength(effect.profileStrength)} → ${strength(effect.seededStrength)} | ${percent(deltaVsMinimal.packetFactCoverage)} | ${percent(delta.packetFactCoverage)} | ${percent(deltaVsMinimal.applicationFromProfile)} | ${percent(delta.applicationFromProfile)} | ${effect.downstream.built.evaluation === null ? 'n/a' : effect.downstream.built.evaluation ? 'pass' : 'fail'} / ${effect.downstream.seeded.evaluation === null ? 'n/a' : effect.downstream.seeded.evaluation ? 'pass' : 'fail'} | ${effect.profileCalls ?? '?'} calls · ${effect.profileSeconds ?? '?'} s |`;
+  const passCell = value => value === null || value === undefined ? 'n/a' : typeof value === 'number' ? `${Math.round(value * 100)}% pass` : value ? 'pass' : 'fail';
+  return `| ${effect.pairId}${effect.repetitions.built > 1 ? ` (×${effect.repetitions.built})` : ''} | ${effect.profileCapture === null ? 'n/a' : Math.round(effect.profileCapture * 100) + '%'} | ${strength(effect.minimalStrength)} → ${strength(effect.profileStrength)} → ${strength(effect.seededStrength)} | ${percent(deltaVsMinimal.packetFactCoverage)} | ${percent(delta.packetFactCoverage)} | ${percent(deltaVsMinimal.applicationFromProfile)} | ${percent(delta.applicationFromProfile)} | ${passCell(effect.downstream.built.evaluation)} / ${passCell(effect.downstream.seeded.evaluation)} | ${effect.profileCalls ?? '?'} calls · ${effect.profileSeconds ?? '?'} s |`;
 }).join('\n')}
 ` : ''}
 ${comparison ? `## Baseline delta\n\n\`\`\`json\n${JSON.stringify(comparison, null, 2)}\n\`\`\`\n` : ''}

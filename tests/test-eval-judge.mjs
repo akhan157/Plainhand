@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extractClaims, checkClaims, splitSentences, JOB_SOURCE_ID } from '../plainhand/evaluation/claims.mjs';
+import { extractClaims, coverLetterClaims, checkClaims, splitSentences, JOB_SOURCE_ID } from '../plainhand/evaluation/claims.mjs';
 import { gradePacket, liveJudge, DIMENSIONS, RUBRIC, RUBRIC_INSTRUCTION, summarizeJudgements } from '../plainhand/evaluation/judge.mjs';
 import { CLAIMS_INSTRUCTION } from '../plainhand/evaluation/claims.mjs';
 import { main, calibrate, runJudge, MISSING_RAW_MESSAGE, NO_JUDGE_MESSAGE, TEMPLATE_FILE } from '../benchmarks/benchmark-judge.mjs';
@@ -324,4 +324,12 @@ test('summarizeJudgements pools claim counts and averages dimensions', () => {
   assert.equal(summary.dimensions.relevance, 4);
   assert.equal(summary.rubricRuns, 1);
   assert.equal(summary.downgradedQuotes, 1);
+});
+
+test('short factual cover-letter lines are claims; only the closing name is skipped', () => {
+  const letter = 'Dear Hiring Team,\nI know Kubernetes\nManaged global teams\nCertified Scrum Master\nBest regards,\nRiley Chen';
+  assert.deepEqual(coverLetterClaims(letter), ['I know Kubernetes', 'Managed global teams', 'Certified Scrum Master']);
+  assert.deepEqual(coverLetterClaims('Thanks for reading.\nRiley Chen', 'Riley Chen'), ['Thanks for reading.'], "the candidate's own name is skipped by identity");
+  const claims = extractClaims({ coverLetter: letter });
+  assert.deepEqual(claims.filter(claim => claim.part === 'cover').map(claim => claim.text), ['I know Kubernetes', 'Managed global teams', 'Certified Scrum Master']);
 });

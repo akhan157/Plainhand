@@ -157,7 +157,7 @@ export async function gradePacket({ packet, sources = [], job, persona, judge, s
 
 // Claims and rubric for one packet: 1 claim call plus `samples` rubric calls.
 export async function judgePacket({ packet, sources = [], job, persona, judge, samples = 1 }) {
-  const claims = extractClaims(packet);
+  const claims = extractClaims(packet, { candidateName: persona?.name });
   const claimResult = await checkClaims({ claims, sources, job, persona, judge, packet }).catch(error => ({ error: error.message }));
   const rubric = await gradePacket({ packet, sources, job, persona, judge, samples }).catch(error => ({ error: error.message }));
   return { claims: claimResult, rubric };

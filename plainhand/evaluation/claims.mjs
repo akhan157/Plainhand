@@ -65,8 +65,20 @@ export function splitSentences(text) {
 
 const SALUTATION = /^(?:dear|hello|hi|to whom)\b[^.!?]*[,:]?$/i;
 const SIGN_OFF = /^(?:sincerely|best|best regards|kind regards|regards|warm regards|warmly|respectfully|thanks|thank you|yours(?: truly| sincerely)?)\b[^.!?]{0,40}$/i;
-// A letter's closing name line ("Riley Chen") is not a claim.
-const isLetterFurniture = sentence => SALUTATION.test(sentence) || SIGN_OFF.test(sentence) || (!/[.!?\d]/.test(sentence) && sentence.split(/\s+/).length <= 3);
+// A letter's closing name line ("Riley Chen") is not a claim, but only by
+// position: it directly follows the sign-off, or it is the candidate's own name.
+// Other short lines ("I know Kubernetes", "Certified Scrum Master") are claims.
+const NAME_LINE = /^[A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,3}$/;
+const sameName = (a, b) => String(a || '').trim().toLowerCase().replace(/\s+/g, ' ') === String(b || '').trim().toLowerCase().replace(/\s+/g, ' ');
+export function coverLetterClaims(text, candidateName = '') {
+  const sentences = splitSentences(text);
+  return sentences.filter((sentence, i) => {
+    if (SALUTATION.test(sentence) || SIGN_OFF.test(sentence)) return false;
+    if (candidateName && sameName(sentence, candidateName)) return false;
+    if (i > 0 && SIGN_OFF.test(sentences[i - 1]) && NAME_LINE.test(sentence)) return false;
+    return true;
+  });
+}
 
 const headingText = heading => [heading?.title, heading?.org, heading?.location, heading?.dates].map(item => String(item ?? '').trim()).filter(Boolean).join(', ');
 
@@ -90,7 +102,7 @@ export function packetText(packet) {
 // Atomic claims: { id, part: 'resume'|'answer'|'cover', text, ... }. The headline
 // and each distinct resume heading (title, employer, dates) count as resume claims
 // because titles and dates can be inflated too.
-export function extractClaims(packet) {
+export function extractClaims(packet, { candidateName = '' } = {}) {
   const claims = [];
   const add = (id, part, text, extra = {}) => {
     const clean = String(text ?? '').trim();
@@ -109,7 +121,7 @@ export function extractClaims(packet) {
   (packet?.answers || []).forEach((answer, n) => {
     splitSentences(answer?.answer).forEach((sentence, i) => add(`answer:${n}.${i}`, 'answer', sentence, { entry: n, question: answer?.question ?? null }));
   });
-  splitSentences(packet?.coverLetter).filter(sentence => !isLetterFurniture(sentence)).forEach((sentence, i) => add(`cover:${i}`, 'cover', sentence));
+  coverLetterClaims(packet?.coverLetter, candidateName).forEach((sentence, i) => add(`cover:${i}`, 'cover', sentence));
   return claims;
 }
 

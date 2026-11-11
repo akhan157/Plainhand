@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { validateSubmission } from '../plainhand/evaluation/sandbox.mjs';
 import { scorePacket, scoreApplication, scoreEvaluation, scoreScenario, aggregate, compareToBaseline, markdownReport } from '../plainhand/evaluation/score.mjs';
-import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord } from '../plainhand/evaluation/corpus.mjs';
+import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord, absentClaimsIn } from '../plainhand/evaluation/corpus.mjs';
 import { renderPortal } from '../plainhand/evaluation/portals.mjs';
 import { assertProviderUsable, runEvaluation, exitCodeFor, runMetadata, candidatePayload } from '../plainhand/evaluation/runner.mjs';
 
@@ -581,4 +581,34 @@ test('a sensitive field the app filled is labelled app in the payload, so the sa
   assert.equal(clean.fields.authorization.source, 'candidate');
   const check = validateSubmission(scenario, clean);
   assert.equal(check.ok, true, check.errors.join(', '));
+});
+
+test('an unrelated negation in the same sentence does not hide an absent claim', () => {
+  const persona = personaById('mech-grad');
+  const ids = text => absentClaimsIn(text, persona).map(absent => absent.id);
+  assert.deepEqual(ids('I did production GD&T work and never missed a deadline.'), ['production-gdt']);
+  assert.deepEqual(ids('I did production GD&T work.'), ['production-gdt']);
+  assert.deepEqual(ids("I haven't done production GD&T work, only what we covered in class."), []);
+  assert.deepEqual(ids('I have not done production GD&T work, but I led the design team.'), []);
+  const loss = { absent: [{ id: 'pnl', keywords: ['profit and loss'] }] };
+  assert.equal(absentClaimsIn('I owned profit and loss for the region.', loss).length, 1, 'a clause word inside the keyword does not split it');
+  assert.equal(absentClaimsIn('I have never owned profit and loss.', loss).length, 0);
+});
+
+test('profile effectiveness keeps every repetition instead of the last one', () => {
+  const run = (mode, rep, completion, evaluation) => ({
+    scenario: { id: `x-${mode}-r${rep}`, baseId: `x-${mode}`, family: 'profile-effect', pairId: 'x', profileMode: mode }, pass: true,
+    profile: mode === 'conversation' ? { captureRate: completion, pass: true, calls: 4, seconds: 10 } : undefined,
+    evaluation: { pass: evaluation },
+    packet: { factCoverage: completion, reviewPassed: true },
+    application: { completionRate: completion, fields: [], submission: { accepted: true }, falseReady: false },
+  });
+  const summary = aggregate([run('conversation', 1, 0.5, true), run('conversation', 2, 1, false), run('seeded', 1, 1, true), run('seeded', 2, 1, true)]);
+  const effect = summary.profileEffect[0];
+  assert.deepEqual(effect.repetitions, { built: 2, seeded: 2, minimal: 0 });
+  assert.equal(effect.downstream.built.applicationCompletion, 0.75, 'both repetitions are averaged, not the last one kept');
+  assert.equal(effect.profileCapture, 0.75);
+  assert.equal(effect.downstream.built.evaluation, 0.5, 'a boolean becomes a pass rate across repetitions');
+  assert.equal(effect.downstream.delta.applicationCompletion, -0.25);
+  assert.match(markdownReport({ summary, results: [] }), /50% pass/);
 });
