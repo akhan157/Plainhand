@@ -8,11 +8,13 @@ import { discover, verifyJob, defaultFieldAnswers, isSensitiveLabel } from './jo
 import { UsageLedger } from './usage.mjs';
 import { AnswerBank } from './answer-bank.mjs';
 import { providerJob } from './application-record.mjs';
+import { integrityRecord } from './posting-integrity.mjs';
 import { logUnderstanding } from './profile-strength.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision } from './standard.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized } from './humanize.mjs';
+import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings } from './resume-format.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
@@ -87,10 +89,10 @@ export class TaskPaused extends Error {}
 export class Workflow {
   // defaultProvider: the provider id used when the candidate has not selected one (the
   // hosted connector, where the chat app itself does the model work). null locally.
-  constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket } = {}) {
+  constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket, textExtractor = extractPdfText } = {}) {
     this.workspace = workspace; this.usage = new UsageLedger(workspace);
     this.agent = (...args) => this.usage.track(agent, ...args);
-    this.verifier = verifier; this.scanner = scanner; this.renderer = renderer;
+    this.verifier = verifier; this.scanner = scanner; this.renderer = renderer; this.textExtractor = textExtractor;
     this.controllers = new Map(); this.queue = Promise.resolve();
     this.handlers = new Map(); this.defaultProvider = null;
   }
@@ -122,6 +124,14 @@ export class Workflow {
     });
     this.queue = this.queue.then(() => this.run(id)).catch(() => {});
     return id;
+  }
+  // The ATS check on the rendered resume PDF. Advisory: it never fails or blocks a task.
+  async atsCheck(artifacts, profile, packet, job, context) {
+    try {
+      const pdf = await this.workspace.readBinary(artifacts.pdf);
+      const supportText = [...(context.sources || []).map(s => s.text), profile.resume, profile.story].filter(Boolean).join('\n');
+      return await atsCheckPdf(pdf, { profile, lines: packet.resume.map(e => e.text), posting: job.description, supportText }, { extract: pdf => this.textExtractor(pdf) });
+    } catch { return { state: 'unavailable', checks: [], keywords: { covered: [], suggested: [], gaps: [] }, hint: 'The resume text check could not run.', checkedAt: now() }; }
   }
   async progress(id, message) { await this.workspace.mutate(state => { const t = state.tasks.find(t => t.id === id); if (t && t.status !== 'canceled') { t.status = 'running'; t.message = message; } }); }
   async cancel(id) {
@@ -185,6 +195,9 @@ export class Workflow {
         if (job.verification.description) job.description = job.verification.description;
         if (job.verification.state === 'closed') throw new Error('This posting is closed. Keep it for reference or discard it.');
         if (!job.description || job.description.length < 100) throw new Error('Paste the job description before evaluating. The page could not be read.');
+        // Deterministic posting check before any provider sees the text (posting-integrity.mjs).
+        // Hidden passages only count when this description is the page the verifier read.
+        job.integrity = integrityRecord(job.description, job.verification.description === job.description ? job.verification.hidden : []);
         await this.progress(id, 'Matching the role against your evidence');
         const result = await run(EVALUATE_INSTRUCTION, { job: providerJob(job) });
         if (typeof result.score !== 'number' || result.score < 0 || result.score > 5 || !['Apply', 'Investigate', 'Skip'].includes(result.recommendation)) throw new Error('The agent returned an invalid evaluation. Retry.');
@@ -196,7 +209,7 @@ export class Workflow {
         if (result.score < 4 && result.recommendation === 'Apply') result.recommendation = 'Investigate';
         job.evaluation = result; job.stage = 'evaluated'; job.status = job.status || 'Evaluated'; job.contextHash = context.hash;
         job.reportPath = `reports/hl-${job.id.slice(0, 8)}-${slug(job.company)}-${now().slice(0, 10)}.md`;
-        const report = `# ${job.company} — ${job.title}\n\n**Score:** ${result.score}/5\n**URL:** ${job.url}\n**PDF:** pending\n**Legitimacy:** ${job.verification.legitimacy}\n**Verification:** ${job.verification.state}\n\n## A. Role summary\n${result.summary}\n\n## B. Evidence and fit\n${result.matches.map(m => `- ${m.text}\n  Sources: ${m.evidence.map(e => `${e.sourceId}: “${e.quote}”`).join('; ')}`).join('\n')}\n\n## C. Level and gaps\n${result.gaps.map(s => '- ' + s).join('\n')}\n\n## D. Compensation\nCandidate preference: ${state.profile.compensation || 'Not provided; ask the candidate.'}\n\n## E. Personalization\n${state.profile.roles}\n\n## F. Questions and next action\n${result.recommendation}\n${result.questions.map(s => '- ' + s).join('\n')}\n\n## G. Posting legitimacy\n${job.verification.reason}\n${result.legitimacyNotes.map(s => '- ' + s).join('\n')}\n`;
+        const report = `# ${job.company} — ${job.title}\n\n**Score:** ${result.score}/5\n**URL:** ${job.url}\n**PDF:** pending\n**Legitimacy:** ${job.verification.legitimacy}\n**Verification:** ${job.verification.state}\n\n## A. Role summary\n${result.summary}\n\n## B. Evidence and fit\n${result.matches.map(m => `- ${m.text}\n  Sources: ${m.evidence.map(e => `${e.sourceId}: “${e.quote}”`).join('; ')}`).join('\n')}\n\n## C. Level and gaps\n${result.gaps.map(s => '- ' + s).join('\n')}\n\n## D. Compensation\nCandidate preference: ${state.profile.compensation || 'Not provided; ask the candidate.'}\n\n## E. Personalization\n${state.profile.roles}\n\n## F. Questions and next action\n${result.recommendation}\n${result.questions.map(s => '- ' + s).join('\n')}\n\n## G. Posting legitimacy\n**Posting check:** ${job.integrity.summary}\n${job.integrity.findings.filter(f => f.severity === 'warn').map(f => `- ${f.detail}`).join('\n')}${job.integrity.findings.some(f => f.severity === 'warn') ? '\n' : ''}\n${job.verification.reason}\n${result.legitimacyNotes.map(s => '- ' + s).join('\n')}\n`;
         await this.workspace.mutate(async latest => {
           await this.assertContext(latest, context);
           const current = latest.jobs.find(j => j.id === job.id);
@@ -293,7 +306,8 @@ export class Workflow {
           if (!current.selected) throw new Error('This role is no longer selected.');
           const artifacts = await this.renderer(this.workspace, latest, job, packet);
           check();
-          Object.assign(current, taskChanges(original, job), artifacts, { approvedHash: null, stage: packet.questions.length ? 'awaiting-answer' : 'packet-ready', status: current.status === 'Evaluated' ? 'Apply' : current.status });
+          const atsCheck = await this.atsCheck(artifacts, latest.profile, packet, job, context);
+          Object.assign(current, taskChanges(original, job), artifacts, { atsCheck, approvedHash: null, stage: packet.questions.length ? 'awaiting-answer' : 'packet-ready', status: current.status === 'Evaluated' ? 'Apply' : current.status });
           markApplied(latest, job.id, draftStarted);
           if (revising) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: job.id, request }].slice(-200);
           await this.workspace.write(`output/packet-${job.id}.json`, JSON.stringify({ jobId: job.id, company: job.company, role: job.title, contextHash: context.hash, packet, review, reviewAttempts, calibration: job.calibration, ...artifacts }, null, 2));

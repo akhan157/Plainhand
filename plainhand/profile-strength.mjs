@@ -39,18 +39,24 @@ function depth(state) {
 }
 
 // Gap texts are written by the model, so similar gaps are grouped by shared words.
-export function recurringGaps(evaluated) {
+// `clusterGaps` is the shared grouping: each cluster keeps its first wording, every
+// wording seen, and the jobs (in order) that raised it. The skill-gap map reuses it.
+export function clusterGaps(evaluated) {
   const clusters = [];
   for (const job of evaluated) {
     for (const gap of job.evaluation.gaps || []) {
       const set = tokens(gap);
       if (!set.size) continue;
       const cluster = clusters.find(c => jaccard(c.tokens, set) >= 0.4);
-      if (cluster) { cluster.jobs.add(job.id); for (const w of set) cluster.tokens.add(w); }
-      else clusters.push({ text: gap, tokens: set, jobs: new Set([job.id]) });
+      if (cluster) { cluster.jobs.add(job.id); if (!cluster.texts.includes(gap)) cluster.texts.push(gap); for (const w of set) cluster.tokens.add(w); }
+      else clusters.push({ text: gap, texts: [gap], tokens: set, jobs: new Set([job.id]) });
     }
   }
-  return clusters.filter(c => c.jobs.size >= 2).sort((a, b) => b.jobs.size - a.jobs.size).map(c => ({ text: c.text, roles: c.jobs.size }));
+  return clusters;
+}
+
+export function recurringGaps(evaluated) {
+  return clusterGaps(evaluated).filter(c => c.jobs.size >= 2).sort((a, b) => b.jobs.size - a.jobs.size).map(c => ({ text: c.text, roles: c.jobs.size }));
 }
 
 function coverage(jobs = []) {

@@ -16,14 +16,14 @@ The same zip is accepted by Microsoft Edge Add-ons.
 
 **Description:**
 
-> Plainhand helps you apply for jobs without retyping the same answers on every site.
+> Plainhand helps you apply for jobs without retyping the same information on every site.
 >
-> • Save this job: one click saves the company, role, link and posting to your Plainhand workspace.
-> • Fill this page: on an application form, Plainhand fills the fields it has answers for, using the resume, cover letter and answers you already reviewed and approved in Plainhand. It attaches your approved resume and cover letter files.
-> • You stay in charge: sensitive questions (work authorization, salary, demographics, legal consent) are left for you. Plainhand never presses Submit. You check the form and submit it yourself.
-> • I submitted this: one click records the application in your tracker.
+> • Save this job: one click stores the company, role and posting link in your Plainhand account.
+> • Fill this page: Plainhand enters the answers you approved in Plainhand and attaches your approved resume and cover letter files.
+> • You stay in charge: sensitive questions, such as work authorization, salary, demographics and legal consent, are left for you. Plainhand never presses Submit; you review the form and submit it yourself.
+> • I submitted this: after you apply, one click records the application in your tracker.
 >
-> Works with common application systems such as Greenhouse, Lever, Ashby, Workday, SmartRecruiters, Workable and Recruitee. Requires a free Plainhand account.
+> A free Plainhand account is required.
 
 ## Privacy practices tab
 

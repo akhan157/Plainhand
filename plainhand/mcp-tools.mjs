@@ -14,7 +14,7 @@ export const TIER_TEXT = {
 export const FALLBACK_PANELS = { 'understanding.approve': () => ({ type: 'profile' }), 'packet.approve': input => ({ type: 'packet', id: input.jobId }),
   'corrections.approve': () => ({ type: 'workspace' }), 'corrections.reject': () => ({ type: 'workspace' }),
   'jobs.confirmSubmitted': input => ({ type: 'job', id: input.jobId }), 'jobs.setStatus': input => ({ type: 'job', id: input.jobId }) };
-export const PANEL_VIEWS = { job: 'applications', packet: 'applications', record: 'applications', profile: 'profile', workspace: 'settings', insights: 'insights', campaigns: 'campaigns' };
+export const PANEL_VIEWS = { job: 'applications', packet: 'applications', record: 'applications', profile: 'profile', workspace: 'settings', insights: 'insights', campaigns: 'campaigns', inbox: 'applications' };
 const PANEL_TABS = { packet: 'packet', record: 'record', form: 'apply' };
 
 // `record.setNextAction` → `plainhand_record_setNextAction`. MCP tool names allow
@@ -74,6 +74,7 @@ export function candidateSteps(panelType, where = 'the role') {
     record: `Open Applications, select ${where}, open its Record tab and do it there yourself.`,
     insights: 'Open Insights and approve, reject or defer the suggestion yourself.',
     campaigns: 'Open Campaigns and do it there yourself.',
+    inbox: 'Open Applications, find the email under Emails about your applications, read the quote and apply it there yourself.',
   }[panelType] || 'Open Plainhand and do it there yourself.';
 }
 

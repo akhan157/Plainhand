@@ -969,3 +969,41 @@ tbody tr:last-child th[scope="row"] { border-bottom: 0; }
 
 /* Copyable hosted chat instructions wrap at phone widths and at 200% zoom. */
 .chat-request { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font: inherit; min-width: 0; }
+
+/* ---------- Interview prep (Record tab, plainhand/web/ui/interview-prep.mjs) ---------- */
+.ip-section .muted-text { margin-bottom: var(--sp-3); }
+.ip-list, .ip-feedback { list-style: none; padding: 0; margin: var(--sp-3) 0 0; display: grid; gap: var(--sp-3); }
+.ip-card, .ip-fb { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); padding: var(--sp-4); display: grid; gap: var(--sp-3); min-width: 0; }
+.ip-card.stale { border-color: var(--warn-border); }
+.ip-head, .ip-fb header { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
+.ip-head h4 { font-size: var(--fs-md); margin: 0; }
+.ip-head small { color: var(--text-3); }
+.ip-card .notice, .ip-fb .notice { margin: 0; }
+.ip-pack { display: grid; gap: var(--sp-3); }
+.ip-recap, .ip-questions { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--sp-3); }
+.ip-questions > li, .ip-recap > li { display: grid; gap: var(--sp-1); overflow-wrap: anywhere; }
+.ip-questions small { color: var(--text-3); }
+.ip-recap blockquote { margin: var(--sp-1) 0 0; padding: var(--sp-2) var(--sp-3); border-left: 3px solid var(--border-strong); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; white-space: pre-wrap; }
+.ip-recap cite { display: block; font-style: normal; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.ip-answer { margin: 0; white-space: pre-wrap; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: var(--sp-3) var(--sp-4); }
+.ip-practice { display: grid; gap: var(--sp-3); border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+.ip-practice h5 { margin: 0; font-size: var(--fs-md); }
+@media (max-width: 719px) {
+  .ip-card, .ip-fb { padding: var(--sp-3); }
+}
+
+/* Emails about applications */
+.ix-proposal { list-style: none; display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.ix-assign { display: grid; gap: var(--sp-2); max-width: 32rem; }
+.ix-link { overflow-wrap: anywhere; }
+.fu-quote cite { display: block; font-style: normal; font-size: var(--fs-sm); color: var(--text-3); margin-bottom: var(--sp-1); }
+
+/* Skill gaps and learning plan on Insights. */
+.sp-table th[scope="row"] { text-transform: none; letter-spacing: 0; font-weight: var(--fw-semibold); color: var(--text); white-space: normal; border-bottom: 1px solid var(--border); padding: 12px 8px; }
+.sp-table td.num { font-variant-numeric: tabular-nums; text-align: right; }
+.sp-gap > span { display: block; }
+.sp-roles { font-weight: normal; font-size: var(--fs-sm); color: var(--text-2); }
+.sp-list { list-style: none; padding: 0; margin: var(--sp-3) 0; display: grid; gap: var(--sp-3); }
+.sp-item { padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); display: grid; gap: var(--sp-2); }
+.sp-item p { margin: 0; }
+.sp-label { display: inline-block; min-width: 5.5em; color: var(--text-3); font-size: var(--fs-sm); }

@@ -93,7 +93,7 @@ Tier rules (enforced in `registry.run`, never by the caller):
 | read | `workspace.digest`, `jobs.list`, `jobs.get`, `followups.list`, `audit.list`, `usage.summary`, `profile.get`, `profile.strength` (taints the turn when it returns gaps written from postings), `line.get` (where the candidate draws the line on wording), `context.get` (what the provider receives), `answers.list` |
 | write | `context.exclude` (narrowing what is shared; clears approvals through the context fingerprint), `profile.addStory` (text must be the candidate's own words), `line.addStatement` (the candidate's own words about how strongly their experience may be worded), `profile.addWritingSample` (the candidate's own text, for voice), `profile.update` (location, roles, graduation, phone, timezone, links, story, voice, constraints; never work authorization or compensation), `record.addContact`, `record.removeContact`, `record.addInterview`, `record.setInterviewStatus`, `record.removeInterview`, `record.setNextAction`, `jobs.add`, `jobs.select`, `jobs.setContext`, `jobs.setStatus` (never `Applied`), `sources.add`, `sources.remove`, `corrections.propose` |
 | task | `tasks.interview`, `tasks.discover`, `tasks.evaluate`, `tasks.prepare`, `tasks.standard` (write the standard application), `tasks.revise` (change a packet or the standard as the candidate asked, in their words), `tasks.cancel` |
-| candidate | `context.include` (widening what is shared), `answers.update`, `answers.remove`, `understanding.approve`, `calibration.decide` (use the suggested wording or keep their own for a flagged claim; unsupported claims can't be kept), `line.removeStatement`, `standard.approve`, `settings.autonomy` (preparing strong matches on its own; off by default), `jobs.setApplyLink` (the employer's link for a job-board posting), `profile.removeWritingSample`, `packet.approve`, `corrections.approve`, `corrections.reject`, `jobs.confirmSubmitted` |
+| candidate | `context.include` (widening what is shared), `answers.update`, `answers.remove`, `understanding.approve`, `calibration.decide` (use the suggested wording or keep their own for a flagged claim; unsupported claims can't be kept), `line.removeStatement`, `standard.approve`, `settings.autonomy` (preparing strong matches on its own; off by default), `jobs.setApplyLink` (the employer's link for a job-board posting), `profile.removeWritingSample`, `packet.approve`, `corrections.approve`, `corrections.reject`, `jobs.confirmSubmitted`, `inbox.apply` (a proposed status, interview round or next action from an email) |
 
 Browser form assistance (`/api/browser/*`: open, autofill, fill, attention,
 resume, handoff) stays on its existing routes in the form panel. It is
@@ -236,7 +236,7 @@ so they never edit the server, workflow or registry core. A module may export:
 | Export | Purpose |
 | --- | --- |
 | `name` | Stable id |
-| `register({ define, workspace, workflow, usage, helpers })` | Define registry actions (same tiers and rules as core actions). `helpers`: `mutateJob`, `recordWrite`, `findJob`, `label`, `ActionError`, `buildDigest` |
+| `register({ define, workspace, workflow, usage, helpers })` | Define registry actions (same tiers and rules as core actions). `helpers`: `mutateJob`, `recordWrite`, `findJob`, `label`, `ActionError`, `buildDigest`, `run` (the registry run, for features that apply through existing actions), `undo` |
 | `tasks: { kind: { handler, needsProfile = true } }` | Task kinds run through the journaled, cancellable queue. `handler({ task, state, job, context, run, check, assertJob, workspace, signal, progress })`; `run(instruction, extra)` calls the provider with candidate context and usage metering |
 | `attention(state)` | Extra briefing items `[{ kind, jobId?, text }]`; pure, and a throwing hook is ignored |
 | `start({ workspace, workflow, registry, emit })` | Background work while the server runs; return an async `stop()` called on shutdown. Tests can pass `startFeatures: false` to `createPlainhand` |
@@ -246,7 +246,7 @@ Integration rules for feature modules:
 - `GET /api/state` includes `featureAttention`: the digest's attention items
   whose kind is not a core kind (`CORE_ATTENTION` in `plainhand/actions.mjs`).
   Home shows them and routes by kind prefix: `campaign-*` to Campaigns,
-  `insights-*` to Insights, `followup-*` to the role's Record tab.
+  `insights-*` to Insights, `followup-*` to the role's Record tab, `inbox-*` to the emails card on Applications.
 - Feature tasks start through their own registry actions. `POST /api/tasks`
   accepts a feature task kind only as a retry (`retryOf`) of a failed task of
   that kind, reusing its input.

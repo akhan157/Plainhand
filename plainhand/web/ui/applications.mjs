@@ -3,6 +3,7 @@ import { html, useState, store, openJob, navigate, Icon, ago, Day, relativeDay, 
 import { Button, Card, PageHeading, Empty, Notice, Pill, Score, StagePill } from './components.mjs';
 import { StatusSelect } from './jobpanel.mjs';
 import { matches } from './jobs.mjs';
+import { Inbox } from './inbox.mjs';
 
 export function FollowUps() {
   const state = store.state;
@@ -45,6 +46,7 @@ export function ApplicationsPage() {
     <${PageHeading} title="Applications" subtitle="Every application in one clear picture: status, follow-ups and what happens next."
       actions=${html`<${Button} icon="search" onClick=${() => navigate('jobs')}>Find roles</${Button}>`} />
     <${Queues} />
+    <${Inbox} />
     <${FollowUps} />
     <${Card} title="Tracker" icon="briefcase" id="tracker-title" subtitle=${`${jobs.length} evaluated ${jobs.length === 1 ? 'role' : 'roles'}${legacy.length ? ` · ${legacy.length} from your existing tracker` : ''}`}
       actions=${html`<div class="search"><${Icon} name="search" /><label class="visually-hidden" for="app-search">Search applications</label><input id="app-search" type="search" placeholder="Search applications" value=${query} onInput=${e => setQuery(e.currentTarget.value)} /></div>`}>

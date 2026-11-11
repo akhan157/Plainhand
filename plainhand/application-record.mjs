@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { providerDescription } from './posting-integrity.mjs';
 
 // The people, interview rounds and next step for one exact company and role.
 // It lives on the job under `record`, so it cannot drift onto another role, and
@@ -100,9 +101,14 @@ export function setNextAction(job, input, { at = new Date().toISOString() } = {}
 
 // What reaches a provider: the posting and its evaluation state, never the
 // candidate's private application record.
+// The posting is untrusted: providers get the posting-integrity copy (invisible characters
+// stripped, sentences addressed to AI tools withheld), never the stored check results, the
+// hidden passages the verifier found, or the verifier's second copy of the page text.
 export function providerJob(job) {
-  const { record, ...rest } = job;
-  return rest;
+  const { record, integrity, verification, atsCheck, interviewPrep, ...rest } = job;
+  const result = { ...rest, description: providerDescription(rest.description || '') };
+  if (verification) { const { description, hidden, ...checked } = verification; result.verification = checked; }
+  return result;
 }
 
 export function trackerNote(job) {

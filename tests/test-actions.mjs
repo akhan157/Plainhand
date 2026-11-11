@@ -63,7 +63,7 @@ test('every action declares a valid tier, and the registry never exposes handler
       assert.equal(definition.run, undefined);
       assert.equal(definition.undo, undefined);
     }
-    assert.deepEqual(h.registry.list({ tiers: ['candidate'] }).map(d => d.name).sort(), ['answers.remove', 'answers.update', 'calibration.decide', 'context.include', 'corrections.approve', 'corrections.reject', 'followups.markSent', 'format.save', 'insights.approve', 'insights.defer', 'insights.reject', 'jobs.confirmSubmitted', 'jobs.setApplyLink', 'line.removeStatement', 'packet.approve', 'profile.removeWritingSample', 'settings.autonomy', 'standard.approve', 'understanding.approve']);
+    assert.deepEqual(h.registry.list({ tiers: ['candidate'] }).map(d => d.name).sort(), ['answers.remove', 'answers.update', 'calibration.decide', 'context.include', 'corrections.approve', 'corrections.reject', 'followups.markSent', 'format.save', 'inbox.apply', 'insights.approve', 'insights.defer', 'insights.reject', 'jobs.confirmSubmitted', 'jobs.setApplyLink', 'line.removeStatement', 'packet.approve', 'profile.removeWritingSample', 'settings.autonomy', 'standard.approve', 'understanding.approve']);
     await assert.rejects(h.registry.run('jobs.delete', {}), code('unknown_action'));
     await assert.rejects(h.registry.run('workspace.digest', {}, { actor: 'robot' }), /Unknown actor/);
   } finally { await h.close(); }

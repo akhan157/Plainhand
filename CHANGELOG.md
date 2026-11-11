@@ -10,6 +10,43 @@
   real CLI; the controlled run is 28/30 on 10 November 2026 (two expected
   lower-bound profile controls). See
   [the harness](docs/internal/EVALUATION-HARNESS.md).
+- **Skill gaps and a learning plan.** Insights shows which gaps keep coming up
+  across your evaluated roles, ranked towards roles you chose or applied to.
+  Pick up to ten and build a plan: what to learn in the postings' words, one
+  small project, a time estimate, search terms (no links), and adjacent
+  experience quoted from your own sources. The plan never changes your profile
+  or says you have the skill; you add finished work as a story yourself.
+- **Status proposals from an email.** Paste an email on Applications, or have
+  your own agent send it with `plainhand_inbox_add`. Plainhand matches it to
+  one tracked application by rule and never guesses. It proposes a status
+  change, an interview round or a next action, each quoting the email; an
+  offer is proposed as Offer at most. Nothing changes until you press Apply,
+  which only you can do. Email text is cleaned like a posting before any
+  provider sees it, and links are shown but never followed.
+- **Interview prep.** For a scheduled round, Plainhand builds a prep pack from
+  the cleaned posting, the packet the interviewer read and your own stories:
+  the claims to be ready to back up, likely questions with sample answers
+  (humanized, each citing exact source quotes), honest bridges for evaluation
+  gaps, questions to ask, and things to look up yourself. No links and no
+  invented company facts. Practice an answer to see which claims your sources
+  don't support. Out-of-date packs are flagged, and the briefing nudges when a
+  round is within three days.
+- **Resume PDF check.** After the tailored resume is rendered, Plainhand
+  extracts the PDF's text layer (Poppler `pdftotext`) and checks it the way an
+  applicant tracking system reads it: contact details as literal text, no
+  garbled glyphs, sane reading order. Posting keywords (from the cleaned
+  posting) are sorted into covered, supported-but-missing and gaps; a keyword
+  you can't support is never suggested. Shown on the Packet tab; contact or
+  garbling problems join the pre-submit list. Without `pdftotext` it records
+  an install hint and never blocks preparing.
+- **Posting check before the AI reads a job.** A deterministic gate
+  (`plainhand/posting-integrity.mjs`) strips invisible characters (zero-width,
+  text-direction controls, Unicode tag characters, decoding any message hidden
+  in them), withholds sentences addressed to AI tools from every provider call,
+  and has the browser verifier leave out text hidden on the live page
+  (transparent, tiny, same colour as the background, off-screen) along with
+  the links inside it. The verdict opens report section G and shows in the job
+  panel. The saved posting is never rewritten.
 - **The hosted cloud server.** One stateless Node handler for Vercel
   (`plainhand/cloud/app.mjs`): Supabase sign-in (Google and email links),
   30-day httpOnly session cookies, per-candidate Postgres workspaces behind the

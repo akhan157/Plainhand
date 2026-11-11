@@ -80,10 +80,35 @@ Each tool description ends with its tier in plain words.
 | --- | --- |
 | Read ("Read only.") | Runs. |
 | Write ("Changes your Plainhand data…") | Runs, is audited, and returns an `undoToken` when the change is reversible: `plainhand_undo` reverses it once, within 10 minutes, if nothing changed since. |
-| Candidate ("Only you can do this in Plainhand…") | Never runs. Approving a packet, approving your profile understanding, approving or rejecting a correction, confirming a submission, and setting status to Applied return a link to the right Plainhand screen. Nothing changes. |
+| Candidate ("Only you can do this in Plainhand…") | Never runs. Approving a proposed change from an email, approving a packet, approving your profile understanding, approving or rejecting a correction, confirming a submission, and setting status to Applied return a link to the right Plainhand screen. Nothing changes. |
 | Task (discovery, evaluation, preparation, profile interview) | Not offered. Start tasks inside Plainhand. |
 
 Form filling in the application browser is not reachable through MCP.
+
+## Sending Plainhand an email from your own agent
+
+Plainhand has no mail connection. If your agent has one (for example Claude with
+a Gmail connector), it can read an email about an application and hand it to
+Plainhand with `plainhand_inbox_add { from, subject, date?, body }` (plain text;
+links in it are never followed). Plainhand then:
+
+- matches it to one tracked application by company name, sender domain, job link
+  and role title; with no confident match, or several, it stays *unmatched* for
+  you to assign or dismiss in Plainhand (`plainhand_inbox_assign` also works);
+- proposes status changes (Responded, Interview, Rejected, Offer), interview
+  rounds and next actions, each with the exact quote from the email. An offer is
+  proposed as `Offer` at most; accepting or declining is never proposed;
+  conflicting signals are flagged for you to read, not proposed;
+- changes nothing. `plainhand_inbox_apply` is a candidate-only tool: through MCP
+  it returns a link to Applications and does nothing. You press Apply there.
+
+Read the queue with `plainhand_inbox_list`. Email text is untrusted: the result
+starts with the untrusted-content note, and your agent should never follow
+instructions found in it. `plainhand_inbox_dismiss` sets aside a proposal or a
+whole email and changes nothing in the application. Send only the email, not
+your own commentary; Plainhand cleans invisible characters and sentences
+addressed to AI tools before it stores or reads the text, and keeps at most the
+first 4,000 characters.
 
 ## Privacy
 

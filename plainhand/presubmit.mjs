@@ -3,6 +3,7 @@
 // Plainhand left it to them, or mismatched (the page did not keep the value, or the
 // attached resume is not the approved one). Nothing here clicks or submits.
 import { isSensitiveLabel } from './field-policy.mjs';
+import { documentChecks } from './ats-check.mjs';
 
 const RESUME = '__resume__';
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -27,7 +28,7 @@ function flagReason(field, question) {
 // questions: what it asked the candidate. fill: the last fill result (filled, skipped, failed
 // labels). readback: current values read from the page (key → value), when available.
 // resume: { attached, approved } file hashes, when known.
-export function presubmitCheck({ fields = [], answers = {}, questions = [], fill = null, readback = null, profile = {}, resume = null } = {}) {
+export function presubmitCheck({ fields = [], answers = {}, questions = [], fill = null, readback = null, profile = {}, resume = null, atsCheck = null } = {}) {
   const asked = new Map(questions.map(q => [q.key, q]));
   const failed = new Set(fill?.failed || []);
   const items = fields.map(field => {
@@ -52,5 +53,6 @@ export function presubmitCheck({ fields = [], answers = {}, questions = [], fill
     requiredFlagged: count(i => i.status === 'flagged' && i.required),
   };
   // Ready means nothing required is left and nothing disagrees; the candidate still checks and submits.
-  return { items, summary, ready: summary.requiredFlagged === 0 && summary.mismatched === 0 };
+  // Resume PDF problems found by plainhand/ats-check.mjs; advisory, they do not change ready.
+  return { items, summary, documentChecks: documentChecks(atsCheck), ready: summary.requiredFlagged === 0 && summary.mismatched === 0 };
 }

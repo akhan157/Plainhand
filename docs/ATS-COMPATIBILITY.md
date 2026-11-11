@@ -71,3 +71,37 @@ Submission remains blocked by three independent layers: the DOM interlock
 (`browser-guard.mjs`), the network write guard, and submit-control refusal.
 Widening the portal surface changes none of them; the candidate still performs
 the final submit.
+
+## Resume PDF text check
+
+An applicant tracking system reads the text layer embedded in a PDF, not the
+rendered page. After Plainhand renders the tailored resume, `plainhand/ats-check.mjs`
+extracts that text with Poppler `pdftotext` (default reading order, local only)
+and checks it the way a parser sees it. No model is involved.
+
+| Check | Fails when |
+| :--- | :--- |
+| Text layer | the PDF has no selectable text |
+| Contact details | the profile's name, email or phone is not literal text (whitespace and phone punctuation are normalised; an empty phone is not required) |
+| Readable characters | U+FFFD, private-use glyphs, `(cid:N)` codes, or more than 2% control characters appear |
+| Reading order | fewer than 70% of the resume's lines (first six words each) are found, or fewer than 85% of those found are in order, which is what column or table interleaving looks like |
+
+**Keywords.** Skill and tool terms come from the posting after
+`providerDescription` (`plainhand/posting-integrity.mjs`), never the raw
+description, so text aimed at AI tools cannot add keywords. Each term is
+`covered` (in the resume text), `suggested` (in the candidate's sources or
+profile but missing from the resume; offered as an optional change) or a `gap`
+(in neither). Plainhand never suggests adding an unsupported keyword: gaps stay
+visible and are never stuffed into the resume. Keyword results do not change the
+overall state.
+
+**Result.** Stored on the job as `job.atsCheck = { state, checks, keywords:
+{ covered, suggested, gaps }, checkedAt }`, with `state` of `passed`, `issues`
+(any failed check) or `unavailable` (plus a `hint`). If `pdftotext` is missing
+the state is `unavailable` with an install hint; the check never throws and never
+blocks preparing the packet. It is advisory.
+
+**Where it shows.** The Packet tab has a compact "Resume PDF check" summary. Contact,
+garbling and empty-text failures also appear under "Check your resume file" in the
+pre-submit list (`presubmitCheck(...).documentChecks`) as things to double-check;
+they do not change `ready`.

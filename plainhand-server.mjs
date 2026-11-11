@@ -11,6 +11,7 @@ import { AnswerBank } from './plainhand/answer-bank.mjs';
 import { Corrections } from './plainhand/corrections.mjs';
 import { AuditLog } from './plainhand/audit.mjs';
 import { followUpQueue } from './plainhand/application-record.mjs';
+import { providerDescription } from './plainhand/posting-integrity.mjs';
 import { createRegistry, STATUS_VALUES, CORE_ATTENTION } from './plainhand/actions.mjs';
 import { profileStrength } from './plainhand/profile-strength.mjs';
 import { currentCalibration } from './plainhand/claim-calibration.mjs';
@@ -21,6 +22,7 @@ import { isSensitiveLabel } from './plainhand/field-policy.mjs';
 import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
+import { markStalePrep } from './plainhand/features/interview-prep.mjs';
 import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
 import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
@@ -94,7 +96,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
     if (unanswered.length) {
       try {
         const context = await workspace.context(state);
-        const result = await workflow.agent(state.provider, FORM_INSTRUCTION, { context, job: { company: job.company, title: job.title, description: job.description }, packet: job.packet, fields: unanswered }, { usageContext: { jobId: job.id, purpose: 'form-answers' } });
+        const result = await workflow.agent(state.provider, FORM_INSTRUCTION, { context, job: { company: job.company, title: job.title, description: providerDescription(job.description || '') }, packet: job.packet, fields: unanswered }, { usageContext: { jobId: job.id, purpose: 'form-answers' } });
         if (!Array.isArray(result.suggestions) || !Array.isArray(result.questions)) throw new Error('Invalid form suggestions.');
         for (const suggestion of result.suggestions) {
           const field = unanswered.find(f => f.key === suggestion.key);
@@ -103,7 +105,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         plan.questions = result.questions.filter(q => unanswered.some(f => f.key === q.key) && typeof q.question === 'string').map(q => ({ key: q.key, question: q.question.slice(0, 2000) }));
       } catch { plan.warning = 'Your agent could not finish the remaining answers. Common fields are ready; add your own answers below or retry inspection.'; }
     }
-    plan.check = presubmitCheck({ fields: plan.fields, answers: plan.answers, questions: plan.questions || [], profile: state.profile });
+    plan.check = presubmitCheck({ fields: plan.fields, answers: plan.answers, questions: plan.questions || [], profile: state.profile, atsCheck: job.atsCheck });
     appBrowserPlans.set(job.id, plan); return plan;
   }
   const server = http.createServer(async (req, res) => {
@@ -147,6 +149,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         const state = await workspace.load();
         const context = await workspace.context(state);
         for (const job of state.jobs) job.stale = !!job.packet && (job.contextHash !== context.hash || job.packetJobHash !== digest([job.url, job.company, job.title, job.description]));
+        for (const job of state.jobs) markStalePrep(job);
         // Calibration as seen through the candidate's current line and choices.
         for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
         return json(res, 200, { ...state,
@@ -429,7 +432,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
               if (plan.observation.state !== 'ready' || plan.warning || plan.questions?.length) return { ...plan, steps, navigation };
               const result = await browser.fill(job, plan.answers, await workspace.safe(job.pdf), await coverLetterPath(job));
               steps.push({ at: now(), filled: result.filled, skipped: result.skipped });
-              job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, steps, navigation, check: presubmitCheck({ fields, answers: plan.answers, questions: plan.questions || [], fill: result, profile: state.profile }) };
+              job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, steps, navigation, check: presubmitCheck({ fields, answers: plan.answers, questions: plan.questions || [], fill: result, profile: state.profile, atsCheck: job.atsCheck }) };
               // Persist each finished page before navigating; a process interruption
               // must not erase evidence just because this request has not returned.
               await workspace.saveBrowserCheckpoint(job);
@@ -468,7 +471,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
             if (!input.answers || typeof input.answers !== 'object' || Array.isArray(input.answers)) throw new Error('Review the form answers first.');
             const result = await browser.fill(job, input.answers, await workspace.safe(job.pdf), await coverLetterPath(job));
             const plan = appBrowserPlans.get(job.id);
-            const check = presubmitCheck({ fields: plan?.fields || [], answers: input.answers, questions: plan?.questions || [], fill: result, profile: state.profile });
+            const check = presubmitCheck({ fields: plan?.fields || [], answers: input.answers, questions: plan?.questions || [], fill: result, profile: state.profile, atsCheck: job.atsCheck });
             job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, check, navigation: job.browserCheckpoint?.navigation || [] }; job.stage = 'awaiting-user-submit'; await syncTracker(workspace, state);
             await workspace.saveBrowserCheckpoint(job);
             // Answers the candidate typed are offered for reuse; they reach the answer bank only after approval.

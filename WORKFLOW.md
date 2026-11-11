@@ -115,6 +115,15 @@ integrations. Final submission always remains manual.
   Machine Summary YAML, legitimacy tier
 - Section G holds draft answers for that specific application
 - Score < 4.0/5 → recommend against applying
+- Posting check (`plainhand/posting-integrity.mjs`), deterministic, before any
+  provider call. Producer: the evaluate task, with the browser verifier
+  (`verifyJob`) reporting text hidden on the live page and leaving it out of
+  the captured description. Stored as `job.integrity`; its summary opens report
+  section G and the job panel. Consumers: `providerJob` (evaluate, packet,
+  review), form answers and the agent's `jobs.get` all send the sanitized copy:
+  invisible characters stripped, sentences addressed to AI tools withheld. The
+  saved `job.description` is never rewritten, so packet staleness hashes don't
+  move. A changed description clears `job.integrity` until the next evaluation.
 
 ### 3. TAILOR — per-job artifacts are generated
 - Mode: `pdf` (or `latex`)
@@ -128,8 +137,39 @@ integrations. Final submission always remains manual.
 - Cover letters: `output/cover-letter-{candidate}-{company-slug}-{role-slug}-{date}.html/pdf`
 - Per-job answers: `output/answers-{candidate}-{company-slug}-{role-slug}-{date}.md`
 - ALL prose passes through /humanizer before delivery (CLAUDE.md rule)
+- Resume PDF check (`plainhand/ats-check.mjs`), stored as `job.atsCheck`
+  (`{ state, checks, keywords, checkedAt, hint? }`). Producer: the
+  prepare/revise task (`Workflow.atsCheck()`), right after the resume PDF is
+  rendered; it is replaced on every regeneration. Consumers: `presubmitCheck`
+  (`documentChecks`) at APPLY, and the Packet tab and pre-submit list in the job
+  panel. It is advisory and never blocks preparing, approval or submission;
+  `providerJob` strips it. Poppler `pdftotext` is optional (`unavailable`).
+
+- Interview prep (`plainhand/features/interview-prep.mjs`), stored as
+  `job.interviewPrep[roundId]`. Producer: the `interview-prep` task
+  (`interviewPrep.start`); the `interview-practice` task appends `practice[]`.
+  Inputs: `job.packet`, `job.evaluation.gaps`, the round's stage and date plus
+  the candidate's own notes (never contacts), candidate context, and the cleaned
+  posting. Consumers: the Record tab, the `interviewPrep.packs` read action, and
+  `attention()` (`interview-prep-needed`, `interview-prep-stale`). A changed
+  packet or posting marks the pack stale (`packetHash`, `jobHash`).
+
+- Skill-gap plan (`plainhand/features/skill-plan.mjs`), stored as
+  `state.skillPlan`. Producer: the `skill-plan` task (`skillPlan.build`), from
+  `job.evaluation.gaps` (grouped with `clusterGaps` in `profile-strength.mjs`),
+  role choice/status, and candidate context. Gap wording is untrusted and
+  cleaned with `providerDescription`; postings are never sent. Consumers: the
+  Insights Skill gaps card, `skillPlan.get`, the `insights-skill-plan` briefing
+  item. Never writes to the profile. Stale when the evaluations change.
 
 ### 4. TRACK — the tracker is the spine
+- Email status proposals (`plainhand/features/inbox.mjs`), stored as
+  `state.inbox`. Producer: `inbox.add` (the Applications paste form or an MCP
+  agent); the `inbox-classify` task adds provider proposals to matched items.
+  Consumers: the Applications Emails card, Home attention (`inbox-*`), and
+  `inbox.list` (tainted) for agents. `inbox.apply` is candidate-only and writes
+  through `jobs.setStatus` and the record actions, so status history, the
+  tracker and events update as usual. Nothing is sent; no link is followed.
 - `data/applications.md` — one row per company+role, NEVER duplicated
 - New entries via TSV in `batch/tracker-additions/` + `merge-tracker.mjs`;
   status updates edited in place
