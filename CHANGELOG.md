@@ -2,6 +2,14 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Resume PDF check.** After the tailored resume is rendered, Plainhand
+  extracts the PDF's text layer (Poppler `pdftotext`) and checks it the way an
+  applicant tracking system reads it: contact details as literal text, no
+  garbled glyphs, sane reading order. Posting keywords (from the cleaned
+  posting) are sorted into covered, supported-but-missing and gaps; a keyword
+  you can't support is never suggested. Shown on the Packet tab; contact or
+  garbling problems join the pre-submit list. Without `pdftotext` it records
+  an install hint and never blocks preparing.
 - **Posting check before the AI reads a job.** A deterministic gate
   (`plainhand/posting-integrity.mjs`) strips invisible characters (zero-width,
   text-direction controls, Unicode tag characters, decoding any message hidden

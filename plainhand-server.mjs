@@ -104,7 +104,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         plan.questions = result.questions.filter(q => unanswered.some(f => f.key === q.key) && typeof q.question === 'string').map(q => ({ key: q.key, question: q.question.slice(0, 2000) }));
       } catch { plan.warning = 'Your agent could not finish the remaining answers. Common fields are ready; add your own answers below or retry inspection.'; }
     }
-    plan.check = presubmitCheck({ fields: plan.fields, answers: plan.answers, questions: plan.questions || [], profile: state.profile });
+    plan.check = presubmitCheck({ fields: plan.fields, answers: plan.answers, questions: plan.questions || [], profile: state.profile, atsCheck: job.atsCheck });
     appBrowserPlans.set(job.id, plan); return plan;
   }
   const server = http.createServer(async (req, res) => {
@@ -430,7 +430,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
               if (plan.observation.state !== 'ready' || plan.warning || plan.questions?.length) return { ...plan, steps, navigation };
               const result = await browser.fill(job, plan.answers, await workspace.safe(job.pdf), await coverLetterPath(job));
               steps.push({ at: now(), filled: result.filled, skipped: result.skipped });
-              job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, steps, navigation, check: presubmitCheck({ fields, answers: plan.answers, questions: plan.questions || [], fill: result, profile: state.profile }) };
+              job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, steps, navigation, check: presubmitCheck({ fields, answers: plan.answers, questions: plan.questions || [], fill: result, profile: state.profile, atsCheck: job.atsCheck }) };
               // Persist each finished page before navigating; a process interruption
               // must not erase evidence just because this request has not returned.
               await workspace.saveBrowserCheckpoint(job);
@@ -469,7 +469,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
             if (!input.answers || typeof input.answers !== 'object' || Array.isArray(input.answers)) throw new Error('Review the form answers first.');
             const result = await browser.fill(job, input.answers, await workspace.safe(job.pdf), await coverLetterPath(job));
             const plan = appBrowserPlans.get(job.id);
-            const check = presubmitCheck({ fields: plan?.fields || [], answers: input.answers, questions: plan?.questions || [], fill: result, profile: state.profile });
+            const check = presubmitCheck({ fields: plan?.fields || [], answers: input.answers, questions: plan?.questions || [], fill: result, profile: state.profile, atsCheck: job.atsCheck });
             job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, check, navigation: job.browserCheckpoint?.navigation || [] }; job.stage = 'awaiting-user-submit'; await syncTracker(workspace, state);
             await workspace.saveBrowserCheckpoint(job);
             // Answers the candidate typed are offered for reuse; they reach the answer bank only after approval.

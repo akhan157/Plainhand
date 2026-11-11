@@ -137,6 +137,13 @@ integrations. Final submission always remains manual.
 - Cover letters: `output/cover-letter-{candidate}-{company-slug}-{role-slug}-{date}.html/pdf`
 - Per-job answers: `output/answers-{candidate}-{company-slug}-{role-slug}-{date}.md`
 - ALL prose passes through /humanizer before delivery (CLAUDE.md rule)
+- Resume PDF check (`plainhand/ats-check.mjs`), stored as `job.atsCheck`
+  (`{ state, checks, keywords, checkedAt, hint? }`). Producer: the
+  prepare/revise task (`Workflow.atsCheck()`), right after the resume PDF is
+  rendered; it is replaced on every regeneration. Consumers: `presubmitCheck`
+  (`documentChecks`) at APPLY, and the Packet tab and pre-submit list in the job
+  panel. It is advisory and never blocks preparing, approval or submission;
+  `providerJob` strips it. Poppler `pdftotext` is optional (`unavailable`).
 
 ### 4. TRACK — the tracker is the spine
 - `data/applications.md` — one row per company+role, NEVER duplicated

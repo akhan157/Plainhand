@@ -14,6 +14,7 @@ import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision } from './standard.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized } from './humanize.mjs';
+import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings } from './resume-format.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
@@ -88,10 +89,10 @@ export class TaskPaused extends Error {}
 export class Workflow {
   // defaultProvider: the provider id used when the candidate has not selected one (the
   // hosted connector, where the chat app itself does the model work). null locally.
-  constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket } = {}) {
+  constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket, textExtractor = extractPdfText } = {}) {
     this.workspace = workspace; this.usage = new UsageLedger(workspace);
     this.agent = (...args) => this.usage.track(agent, ...args);
-    this.verifier = verifier; this.scanner = scanner; this.renderer = renderer;
+    this.verifier = verifier; this.scanner = scanner; this.renderer = renderer; this.textExtractor = textExtractor;
     this.controllers = new Map(); this.queue = Promise.resolve();
     this.handlers = new Map(); this.defaultProvider = null;
   }
@@ -123,6 +124,14 @@ export class Workflow {
     });
     this.queue = this.queue.then(() => this.run(id)).catch(() => {});
     return id;
+  }
+  // The ATS check on the rendered resume PDF. Advisory: it never fails or blocks a task.
+  async atsCheck(artifacts, profile, packet, job, context) {
+    try {
+      const pdf = await this.workspace.readBinary(artifacts.pdf);
+      const supportText = [...(context.sources || []).map(s => s.text), profile.resume, profile.story].filter(Boolean).join('\n');
+      return await atsCheckPdf(pdf, { profile, lines: packet.resume.map(e => e.text), posting: job.description, supportText }, { extract: pdf => this.textExtractor(pdf) });
+    } catch { return { state: 'unavailable', checks: [], keywords: { covered: [], suggested: [], gaps: [] }, hint: 'The resume text check could not run.', checkedAt: now() }; }
   }
   async progress(id, message) { await this.workspace.mutate(state => { const t = state.tasks.find(t => t.id === id); if (t && t.status !== 'canceled') { t.status = 'running'; t.message = message; } }); }
   async cancel(id) {
@@ -297,7 +306,8 @@ export class Workflow {
           if (!current.selected) throw new Error('This role is no longer selected.');
           const artifacts = await this.renderer(this.workspace, latest, job, packet);
           check();
-          Object.assign(current, taskChanges(original, job), artifacts, { approvedHash: null, stage: packet.questions.length ? 'awaiting-answer' : 'packet-ready', status: current.status === 'Evaluated' ? 'Apply' : current.status });
+          const atsCheck = await this.atsCheck(artifacts, latest.profile, packet, job, context);
+          Object.assign(current, taskChanges(original, job), artifacts, { atsCheck, approvedHash: null, stage: packet.questions.length ? 'awaiting-answer' : 'packet-ready', status: current.status === 'Evaluated' ? 'Apply' : current.status });
           markApplied(latest, job.id, draftStarted);
           if (revising) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: job.id, request }].slice(-200);
           await this.workspace.write(`output/packet-${job.id}.json`, JSON.stringify({ jobId: job.id, company: job.company, role: job.title, contextHash: context.hash, packet, review, reviewAttempts, calibration: job.calibration, ...artifacts }, null, 2));

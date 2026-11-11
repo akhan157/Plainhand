@@ -113,6 +113,20 @@ function FitTab({ job }) {
 // Informational: the candidate decides; nothing here blocks approval except what the
 // factual review already blocks.
 const BANDS = { balanced: ['success', 'Balanced'], undersold: ['info', 'Underselling you'], inflated: ['warn', 'Stronger than your evidence'], mixed: ['warn', 'Some undersold, some stretched'] };
+// Resume PDF text check (plainhand/ats-check.mjs): how a tracking system reads the PDF.
+function AtsCheck({ job }) {
+  const ats = job.atsCheck;
+  if (!ats) return null;
+  if (ats.state === 'unavailable') return html`<p class="muted-text">Resume PDF check skipped. ${ats.hint || ''}</p>`;
+  const fails = ats.checks.filter(c => c.status === 'fail');
+  const { covered = [], suggested = [], gaps = [] } = ats.keywords || {};
+  return html`<details class="cal-within" open=${fails.length > 0}><summary>Resume PDF check: ${fails.length ? `${fails.length} to look at` : 'reads cleanly'}${covered.length + suggested.length + gaps.length ? ` · ${covered.length} of ${covered.length + suggested.length + gaps.length} posting keywords covered` : ''}</summary>
+    ${fails.length ? html`<ul class="plain-list">${fails.map(c => html`<li key=${c.id}><strong>${c.label}</strong> <span class="muted-text">${c.detail}</span></li>`)}</ul>` : null}
+    ${suggested.length ? html`<p class="muted-text">In your sources but not on this resume: ${suggested.join(', ')}. Ask for a change if they fit this role.</p>` : null}
+    ${gaps.length ? html`<p class="muted-text">Not in your sources, so not added: ${gaps.join(', ')}.</p>` : null}
+  </details>`;
+}
+
 function Calibration({ job }) {
   const calibration = job.calibration;
   if (!calibration?.claims?.length) return null;
@@ -170,6 +184,7 @@ function PacketTab({ job }) {
     ${job.fromStandard ? html`<p class="from-standard"><${Icon} name="layers" />From your standard: ${[[job.fromStandard.kept, 'kept'], [job.fromStandard.changed, 'reworded'], [job.fromStandard.added, 'added'], [job.fromStandard.removed, 'left out']].filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') || 'unchanged'}</p>` : null}
     ${job.autoSelectedAt ? html`<${Notice} tone="info" title="Prepared on its own">Plainhand prepared this strong match from your standard. Nothing has been sent; review it like any other.</${Notice}>` : null}
     <${Calibration} job=${job} />
+    <${AtsCheck} job=${job} />
     ${store.demo || job.submittedAt ? null : html`<${RequestBox} id=${'revise-' + job.id} label="Ask for a change" placeholder="Make it shorter; lead with the pump project" disabled=${!!preparing || !!runningTask('revise', job.id)} onSubmit=${text => queueTask('revise', job.id, { request: text })} />`}
     <div class="download-row">${store.demo ? html`<${Pill} tone="warn">Sample documents · demo only</${Pill}>` : (job.artifacts || []).map(file => html`<a key=${file} class="button small" href=${artifactHref(file)} download><${Icon} name="download" />${artifactLabel(file)}</a>`)}</div>
     <${Section} title="Resume preview" id="pk-resume">
@@ -217,12 +232,14 @@ function ApplyLink({ job }) {
 const CHECK_REASONS = { sensitive: 'Personal or legal', 'no-information': 'Not in your profile', document: 'Document', choice: 'Your choice' };
 function PresubmitCheck({ check, preview }) {
   if (!check?.items?.length) return null;
+  const docs = check.documentChecks || [];
   const need = check.items.filter(i => i.status === 'flagged').sort((a, b) => Number(b.required) - Number(a.required));
   const mismatch = check.items.filter(i => i.status === 'mismatch');
   const filled = check.items.filter(i => i.status === 'filled');
   const s = check.summary;
   return html`<${Section} title=${preview ? 'What Plainhand will fill' : 'Before you submit'} id="ap-check">
     <div class="cal-head"><${Pill} tone=${check.ready ? 'success' : 'warn'}>${check.ready ? (preview ? 'Required fields covered' : 'Ready for your final review') : s.mismatched ? `${s.mismatched} to check` : `${s.requiredFlagged} required need you`}</${Pill}><span>${s.filled} filled · ${s.flagged} for you${s.mismatched ? ` · ${s.mismatched} to check` : ''}</span></div>
+    ${docs.length ? html`<h4>Check your resume file</h4><ul class="plain-list check-list-items">${docs.map(i => html`<li key=${i.key}><strong>${i.label}</strong><span class="muted-text">${i.text}</span></li>`)}</ul>` : null}
     ${mismatch.length ? html`<h4>Check these on the page</h4><ul class="plain-list check-list-items">${mismatch.map(i => html`<li key=${i.key}><strong>${i.label}</strong><span class="muted-text">${i.text}</span></li>`)}</ul>` : null}
     ${need.length ? html`<h4>For you to answer</h4><ul class="plain-list check-list-items">${need.map(i => html`<li key=${i.key}><strong>${i.label.slice(0, 160)}</strong>${i.required ? html` <small class="req-tag">Required</small>` : null}<span class="muted-text">${CHECK_REASONS[i.reason] || ''}${i.text ? ` · ${i.text}` : ''}</span></li>`)}</ul>` : null}
     ${filled.length ? html`<details class="cal-within"><summary>${filled.length} filled by Plainhand</summary><ul class="plain-list check-list-items">${filled.map(i => html`<li key=${i.key}><strong>${i.label.slice(0, 160)}</strong><span class="muted-text">from ${i.source}</span></li>`)}</ul></details>` : null}
