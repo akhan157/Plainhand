@@ -105,7 +105,7 @@ export function setNextAction(job, input, { at = new Date().toISOString() } = {}
 // stripped, sentences addressed to AI tools withheld), never the stored check results, the
 // hidden passages the verifier found, or the verifier's second copy of the page text.
 export function providerJob(job) {
-  const { record, integrity, verification, atsCheck, ...rest } = job;
+  const { record, integrity, verification, atsCheck, interviewPrep, ...rest } = job;
   const result = { ...rest, description: providerDescription(rest.description || '') };
   if (verification) { const { description, hidden, ...checked } = verification; result.verification = checked; }
   return result;

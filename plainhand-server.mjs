@@ -22,6 +22,7 @@ import { isSensitiveLabel } from './plainhand/field-policy.mjs';
 import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
+import { markStalePrep } from './plainhand/features/interview-prep.mjs';
 import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
 import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
@@ -148,6 +149,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         const state = await workspace.load();
         const context = await workspace.context(state);
         for (const job of state.jobs) job.stale = !!job.packet && (job.contextHash !== context.hash || job.packetJobHash !== digest([job.url, job.company, job.title, job.description]));
+        for (const job of state.jobs) markStalePrep(job);
         // Calibration as seen through the candidate's current line and choices.
         for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
         return json(res, 200, { ...state,

@@ -24,6 +24,7 @@ import { currentCalibration } from '../claim-calibration.mjs';
 import { candidateLine } from '../claim-line.mjs';
 import { standardStatus, autonomyOf } from '../standard.mjs';
 import { FEATURES } from '../features/index.mjs';
+import { markStalePrep } from '../features/interview-prep.mjs';
 import { StorageError } from '../storage.mjs';
 import { newCodeVerifier } from './supabase-auth.mjs';
 import { importResume } from './resume-import.mjs';
@@ -257,6 +258,7 @@ export function createCloudApp(deps) {
     const state = await workspace.load();
     const context = await workspace.context(state);
     for (const job of state.jobs) job.stale = !!job.packet && (job.contextHash !== context.hash || job.packetJobHash !== digest([job.url, job.company, job.title, job.description]));
+    for (const job of state.jobs) markStalePrep(job);
     for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
     return { ...state,
       cloud: true,

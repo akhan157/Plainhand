@@ -7,6 +7,7 @@ import { html, useEffect, useState, store, api, refresh, toast, token, setJobTab
 import { ActionButton, Button, IconButton, LinkButton, Notice, Empty, Field, Tabs, Disclosure, Pill, Score, StagePill, Dialog } from './components.mjs';
 import { TaskCard } from './conversation.mjs';
 import { FollowUps } from './followups.mjs';
+import { InterviewPrep } from './interview-prep.mjs';
 import { RequestBox } from './profile.mjs';
 
 const artifactHref = file => `/api/artifact?path=${encodeURIComponent(file)}&token=${encodeURIComponent(token)}`;
@@ -385,6 +386,7 @@ function RecordTab({ job }) {
         </form>
       </${Disclosure}>
     </${Section}>
+    <${InterviewPrep} job=${job} />
     <${Section} title="Contacts" id="rec-contacts">
       ${contacts.length ? html`<ul class="record-list">${contacts.map(c => html`<li key=${c.id}><span class="record-icon"><${Icon} name="user" /></span>
         <div class="record-main"><strong>${c.name}${c.role ? ' · ' + c.role : ''}</strong><p>${c.type}${c.email ? html` · <a href=${'mailto:' + c.email}>${c.email}</a>` : null}${c.phone ? ' · ' + c.phone : ''}${c.linkedin ? html` · <a href=${safeLink(c.linkedin)} target="_blank" rel="noreferrer">Profile</a>` : null}${c.notes ? ' · ' + c.notes : ''}</p></div>

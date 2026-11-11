@@ -145,6 +145,15 @@ integrations. Final submission always remains manual.
   panel. It is advisory and never blocks preparing, approval or submission;
   `providerJob` strips it. Poppler `pdftotext` is optional (`unavailable`).
 
+- Interview prep (`plainhand/features/interview-prep.mjs`), stored as
+  `job.interviewPrep[roundId]`. Producer: the `interview-prep` task
+  (`interviewPrep.start`); the `interview-practice` task appends `practice[]`.
+  Inputs: `job.packet`, `job.evaluation.gaps`, the round's stage and date plus
+  the candidate's own notes (never contacts), candidate context, and the cleaned
+  posting. Consumers: the Record tab, the `interviewPrep.packs` read action, and
+  `attention()` (`interview-prep-needed`, `interview-prep-stale`). A changed
+  packet or posting marks the pack stale (`packetHash`, `jobHash`).
+
 ### 4. TRACK — the tracker is the spine
 - `data/applications.md` — one row per company+role, NEVER duplicated
 - New entries via TSV in `batch/tracker-additions/` + `merge-tracker.mjs`;

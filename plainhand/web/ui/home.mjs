@@ -86,13 +86,14 @@ export function briefing(state) {
   for (const [i, item] of (state.featureAttention || []).entries()) {
     const job = item.jobId ? jobs.get(item.jobId) : null;
     const area = item.kind.split('-')[0];
+    const toRecord = area === 'followup' || item.kind.startsWith('interview-prep-');
     const go = area === 'campaign' ? { label: 'Open campaigns', run: () => navigate('campaigns') }
       : area === 'insights' ? { label: 'Open insights', run: () => navigate('insights') }
-      : job ? { label: area === 'followup' ? 'Open record' : 'Open role', run: () => openJob(job.id, area === 'followup' ? 'record' : 'fit') } : null;
+      : job ? { label: toRecord ? 'Open record' : 'Open role', run: () => openJob(job.id, toRecord ? 'record' : 'fit') } : null;
     if (!go) continue;
     const failing = /fail/.test(item.kind), quiet = /paused/.test(item.kind);
     items.push({ key: `x-${item.kind}-${item.jobId || i}`, rank: failing ? 2 : quiet ? 8 : 4, tone: failing ? 'danger' : quiet ? 'neutral' : 'accent',
-      icon: area === 'campaign' ? 'layers' : area === 'insights' ? 'star' : area === 'followup' ? 'send' : 'flag', title: item.text, meta: job ? label(job) : '', action: go });
+      icon: area === 'campaign' ? 'layers' : area === 'insights' ? 'star' : area === 'followup' ? 'send' : item.kind.startsWith('interview-prep-') ? 'calendar' : 'flag', title: item.text, meta: job ? label(job) : '', action: go });
   }
   return items.sort((a, b) => a.rank - b.rank);
 }

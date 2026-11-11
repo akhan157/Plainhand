@@ -2,6 +2,14 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Interview prep.** For a scheduled round, Plainhand builds a prep pack from
+  the cleaned posting, the packet the interviewer read and your own stories:
+  the claims to be ready to back up, likely questions with sample answers
+  (humanized, each citing exact source quotes), honest bridges for evaluation
+  gaps, questions to ask, and things to look up yourself. No links and no
+  invented company facts. Practice an answer to see which claims your sources
+  don't support. Out-of-date packs are flagged, and the briefing nudges when a
+  round is within three days.
 - **Resume PDF check.** After the tailored resume is rendered, Plainhand
   extracts the PDF's text layer (Poppler `pdftotext`) and checks it the way an
   applicant tracking system reads it: contact details as literal text, no
