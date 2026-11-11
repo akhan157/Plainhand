@@ -1,6 +1,6 @@
 # What Plainhand measures
 
-**Status:** inventory as of 26 October 2026
+**Status:** inventory as of 10 November 2026
 **Related:** [Verification matrix](VERIFICATION-MATRIX.md) · [Agent layer direction](internal/AGENT-LAYER-DIRECTION.md#how-to-tell-its-working)
 
 Most of what Plainhand has today are **checks** (a gate that passes or fails one
@@ -54,8 +54,41 @@ These are stored already; a number is one function away.
 | `benchmark:invariants` | Workflow invariants hold under repeated runs | Deterministic |
 | `test:agent-live` | Three assistant turns on a real CLI: briefing, logging, injected posting | Not yet run on the candidate's machine |
 | `benchmark:profile` (new) | Profile building by conversation, below | 26 Oct, Claude CLI |
+| `benchmark:eval` (new) | End to end: profile, evaluation, resume, portal fill, candidate-confirmed sandbox submission, profile-effect triples and connected journey, scored against ground truth | 10 Nov, controlled: 28/30 (2 expected lower-bound controls) |
 
 All earlier benchmarks predate the assistant; none measured the conversation.
+`benchmark:eval` is the first one that scores profile, evaluation, resume, application
+and the connected journey in one run; see [the harness](internal/EVALUATION-HARNESS.md).
+Its controlled mode proves the harness; live mode measures a provider.
+
+### End-to-end evaluation, 10 November 2026
+
+`node benchmarks/benchmark-eval.mjs --concurrency 2` passed **28 of 30**
+scenarios: 3 profile, 6 resume, 11 application, 2 submission, 1 evaluation,
+6 profile-effect and 1 journey. The two failures are the expected minimal-profile
+controls, which deliberately have no conversation; there were **0 unexpected
+failures**. Across the run: profile capture **1.00** (6 runs), built/seeded packet
+fact coverage **1.00** (the aggregate 0.923 includes the two minimal controls at
+0), **17/17** candidate-confirmed submissions accepted, **27/27** evaluations
+scored correctly, 0 false-ready, 0 sensitive auto-fills and 0 invented unknown
+answers. The profile-effect triples compare minimal seed, conversation-built and
+full seeded profiles downstream; controlled deltas are zero by design. The scorer
+now normalizes spelled-out numbers and ignores phone digits, checks calibration
+and cover-letter hashes, and reports repeat flakiness, expected controls and true
+baseline regressions. Runtime was about 67 seconds.
+
+A first live Antigravity attempt completed 9/24 scenarios, but 12 of the failures
+were the harness's old 180-second per-call timeout under two concurrent live
+scenarios, not model failures; live runs now default to one scenario and a
+600-second timeout, and a preflight stops on quota/sign-in failure. That attempt
+is recorded as a harness finding, not a quality score. A targeted live Antigravity
+profile-triple run after the fixes completed 3/6: the mechanical built profile
+matched the seeded result, while the analyst built profile captured every fact it
+heard (4/4) but never heard the SQL fact, so packet coverage stayed at 0.67. The
+onboarding prompt now asks about tools, software and methods before rebuilding the
+understanding. Two analyst retests still missed the SQL fact: one heard it but did
+not save it, one never asked about tools. Prompt-only elicitation is not reliable;
+the next fix is a deterministic checklist.
 
 ## 5. Profile-building benchmark
 
