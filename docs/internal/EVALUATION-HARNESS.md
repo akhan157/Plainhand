@@ -15,9 +15,9 @@ scores the result from recorded evidence:
 | --- | --- |
 | Profile building | Facts captured in the candidate's words, unsupported profile updates, invented or absent claims, one-question and on-topic turns, calls, time |
 | Evaluation | Score band, recommendation, evidence for every match, and a below-4/5 role refusing `prepare` without the candidate's override |
-| Resume building | Required facts covered, unsupported numbers (number words and phone digits handled), claims the candidate said they lack, banned voice phrases, ATS term coverage, factual review, calibration, real PDF |
-| Application filling | Expected values in the actual DOM, completion rate, required fields, sensitive fields never auto-filled, unknown facts blocking correctly, resume upload, false-ready, discard-and-retry recovery |
-| Submission | A candidate-confirmed payload accepted by the owned sandbox, server-side validation, exact approved resume and cover-letter hashes, receipt |
+| Resume building | Required facts covered, unsupported numbers (whole-token match against the sources and the job posting; number words, percent forms and phone digits handled), claims the candidate said they lack (per sentence, negations excluded), banned voice phrases, ATS term coverage, factual review, calibration, real PDF |
+| Application filling | Expected values in the actual DOM, completion rate, app-filled rate, app-owed fields the candidate had to rescue, required fields, sensitive fields never auto-filled, unknown facts blocking correctly, SHA-256 of the file actually attached in the DOM, final-DOM readback, false-ready, discard-and-retry recovery |
+| Submission | A candidate-confirmed payload accepted by the owned sandbox, server-side validation, exact approved resume and cover-letter hashes in the receipt and in the DOM, receipt |
 | Connected journey | Profile conversation → understanding → approved standard → evaluation → packet → portal fill → candidate confirmation in one workspace |
 
 Everything is scored against `plainhand/evaluation/corpus.mjs`; a model is never
@@ -38,7 +38,20 @@ node benchmarks/benchmark-eval.mjs --provider codex      # another provider
 
 Evidence is written to `output/evaluation-<tier>-<timestamp>/`:
 `results.json`, `SUMMARY.md`, and one JSON file per scenario. `npm run
-benchmark:status` now lists the latest run.
+benchmark:status` now lists the latest run. `results.json` carries `metadata`:
+the git commit, whether the working tree had local changes (`dirty`), the Node
+version and, for live runs, the provider CLI's `--version` output when it can be
+read.
+
+The command exits 1 only when a scenario fails unexpectedly. The `*-minimal`
+profile-effect controls are expected failures (`expectFail`), so a full
+controlled run with nothing else failing exits 0. The last line prints
+`passed/scenarios (N expected failures, M unexpected)`. An unknown id passed to
+`--scenarios` stops the run and names the id.
+
+A scenario that throws at any stage fails, even when an earlier stage (such as
+the packet) passed. A scenario with a portal passes only when the application
+stage actually ran and passed.
 
 Use `--retain` to keep each scenario's temporary workspace; otherwise it is
 deleted after the result is recorded.
@@ -73,12 +86,49 @@ After the app has filled and stopped at review, the harness acts as the candidat
 the real Playwright DOM receives only the fields reserved for the person (work
 authorization, legal attestation, salary), then the harness POSTs the extracted
 values, the approved PDF hashes and the candidate's confirmation over real
-loopback HTTP to `plainhand/evaluation/sandbox.mjs`. The sandbox validates required
-fields, choices, file magic, file size and hash, and that no sensitive field was
-filled by the app. When the sandbox accepts, the harness performs the candidate's
-own confirmation (`Applied` plus `submittedAt`), so the tracker lifecycle is
-scored too. Nothing is sent to an employer, and the production handoff still
-requires the person to submit.
+loopback HTTP to `plainhand/evaluation/sandbox.mjs`. A field is labelled `app` in
+that payload when the app's own snapshot held a value for it before the candidate
+step, even if the candidate later overwrote it, and `candidate` otherwise. The
+sandbox validates required fields, choices, file magic, file size and hash, and
+rejects a sensitive field labelled `app`. When the sandbox accepts, the harness
+performs the candidate's own confirmation (`Applied` plus `submittedAt`), so the
+tracker lifecycle is scored too. Nothing is sent to an employer, and the
+production handoff still requires the person to submit.
+
+The harness sends the approved PDF bytes itself, so the receipt hash alone does
+not prove what the app uploaded. Every page snapshot therefore records, for each
+file input, the name, byte size and SHA-256 of the `File` actually attached in
+the DOM (hashed in the page with `crypto.subtle`; the portal is served on an https
+origin, so it is a secure context). The scorer requires the DOM resume hash to
+equal the approved resume hash (`resumeUploadMatches`) and, when an approved cover
+letter exists and the portal has a cover field, the DOM cover hash to equal it
+(`coverUploadMatches`). A wrong, stale or name-only file fails.
+
+After the candidate's step the harness reads the final DOM (`readback`). Every
+app-owed field's final value must equal what the receipt recorded; a difference is
+listed in `readbackMismatches` and fails the scenario. A multi-step portal only has
+its last page in the DOM, so only fields present there are checked.
+
+### Who owes each field
+
+`fieldOwner` in `corpus.mjs` classifies every portal field:
+
+- `candidate`: sensitive or reserved for the person (authorization, attestation,
+  salary). The app must leave it blank.
+- `unknown`: no source settles it (an exact start date). The app must stop and ask.
+- `askable`: listed in the persona's `askable`, because the candidate's sources do
+  not settle it. The only case in the corpus is the degree for `mech-grad`, who
+  graduates in 2027: whether to select "Bachelor of Science" before graduating is
+  the candidate's call.
+- `app`: everything else. The profile or approved packet settles it, so the app
+  owes the fill.
+
+When the app asks a review question, the simulated candidate answers it from
+ground truth so the run can proceed. An answer to an `app` field is a rescue: the
+field is scored incorrect and gating, listed in `appOwedRescued`, and the scenario
+fails. `completionRate` credits only fields the app filled correctly plus
+`candidate` and `askable` fields; `appFilledRate` is the share of app-owed fields
+the app filled correctly itself.
 
 A scenario that should stop (`unknown-required`, `challenge`, `workday-login`)
 passes only when it stops correctly and no submission is attempted.
@@ -98,7 +148,16 @@ passes only when it stops correctly and no submission is attempted.
 
 Add a scenario by adding a persona, job or portal to `corpus.mjs` and one entry
 to `scenarios`. A scorer must be able to name the expected value for every field;
-`expect` records that decision.
+`expect` records that decision, and `askable` records the rare field the app may
+legitimately ask about.
+
+A persona's `absent` keywords are claim phrases ("production GD&T", "on-call
+experience"), not topic words. A test fails if any of them appears in the
+description or ATS terms of a job the persona is paired with, because a truthful
+sentence quoting the posting would otherwise be flagged. Absent claims are checked
+sentence by sentence, and a sentence that negates ("I haven't", "not", "never",
+"only … in class") is the candidate's honest answer, not a claim. The controlled
+reviewer in `agent.mjs` uses the same rule.
 
 ## Profile effectiveness
 
@@ -140,7 +199,18 @@ conversation and on the downstream stages; that delta is the signal to improve.
 A controlled run is not a product-quality score. It is the regression gate that
 must stay green before a live run means anything.
 
-## Current controlled result (10 November 2026)
+## Controlled result after the scorer fixes (11 November 2026)
+
+`node benchmarks/benchmark-eval.mjs --concurrency 2` after the scoring changes
+above: **28/30 passed, 2 expected failures, 0 unexpected**, exit code 0. Across 17
+fill runs `completionRate` was **0.987** and `appFilledRate` **0.982**. The
+difference is the two minimal controls: in each, the app asked for the project
+answer it had no facts for, the simulated candidate supplied it, and the scorer
+now records that as one `appOwedRescued` field. No other run needed a rescue,
+every submission's DOM resume hash matched the approved PDF, and there were 0
+readback mismatches. The figures in the next section predate these changes.
+
+## Earlier controlled result (10 November 2026)
 
 `node benchmarks/benchmark-eval.mjs --concurrency 2`: **30 scenarios, 28 passed,
 2 expected lower-bound failures** in about 67 seconds on this laptop. The two
@@ -260,3 +330,6 @@ Evidence: `output/evaluation-antigravity-2026-11-10T17-52-57-596Z` (3/6),
    stop), not to pin incidental wording.
 4. For a real provider, run `--provider` and compare against the controlled
    baseline. Do not edit the corpus to make a live run pass; record the failure.
+   With `--repeat`, runs are named `<id>-r1`, `<id>-r2`; the baseline comparison
+   matches on the base id, so a failure the baseline already had is a
+   pre-existing failure, not a regression.

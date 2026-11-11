@@ -12,9 +12,9 @@ import {
 import { HUMANIZE_INSTRUCTION } from '../humanize.mjs';
 import { NAVIGATION_INSTRUCTION } from '../browser-driver.mjs';
 import { fixtureAgent } from '../test-fixtures.mjs';
+import { absentClaimsIn } from './corpus.mjs';
 
 const numberTokens = text => (String(text || '').match(/\d[\d.,]*%?/g) || []);
-const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
 
 function quoteEvidence(quote, context) {
   const source = (context?.sources || []).find(item => item.id !== 'reviewed-understanding' && String(item.text || '').includes(quote));
@@ -104,15 +104,14 @@ function reviewBody(persona, packet, context) {
   const issues = [];
   const allText = claims.join('\n');
   for (const number of numberTokens(allText)) if (!sourceText.includes(number)) issues.push(`Number ${number} is not in the sources.`);
-  for (const absent of persona.absent) {
-    if (absent.keywords.some(keyword => hasWord(allText, keyword))) issues.push(`The candidate said they have not done: ${absent.text}`);
-  }
+  // Same per-sentence, negation-aware rule as the scorer.
+  for (const absent of absentClaimsIn(allText, persona)) issues.push(`The candidate said they have not done: ${absent.text}`);
   for (const claim of claims) {
     if (/\b(?:passionate|leverage|cutting-edge|synergy|robust)\b/i.test(claim)) issues.push('Banned voice phrase in a claim.');
   }
   const claimIssue = text => {
     for (const number of numberTokens(text)) if (!sourceText.includes(number)) return `Number ${number} is not in the sources.`;
-    for (const absent of persona.absent) if (absent.keywords.some(keyword => hasWord(text, keyword))) return `The candidate said they have not done: ${absent.text}`;
+    for (const absent of absentClaimsIn(text, persona)) return `The candidate said they have not done: ${absent.text}`;
     if (/\b(?:passionate|leverage|cutting-edge|synergy|robust)\b/i.test(text)) return 'Banned voice phrase in a claim.';
     return '';
   };

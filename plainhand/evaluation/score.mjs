@@ -1,11 +1,10 @@
 // Scores a completed scenario from recorded evidence, never from the model's own
 // claim that it did well. Ground truth is the fictional persona and job corpus.
 import { hasEvidence } from '../store.mjs';
-import { captures, expectedFor, personaById, jobById, portalById } from './corpus.mjs';
+import { captures, expectedFor, fieldOwner, hasWord, absentClaimsIn, personaById, jobById, portalById } from './corpus.mjs';
 
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const numberTokens = text => (String(text || '').match(/\d(?:[\d.,]*\d)?%?|\d%?/g) || []);
-const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
 
 const NUMBER_WORDS = {
   one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
@@ -14,8 +13,12 @@ const NUMBER_WORDS = {
 };
 const numberWordDigits = text => Object.entries(NUMBER_WORDS)
   .filter(([word]) => new RegExp(`\\b${word}\\b`, 'i').test(text))
-  .map(([, digit]) => digit)
-  .join(' ');
+  .map(([, digit]) => digit);
+// "30 percent" and "30 per cent" are the same token as "30%".
+const percentWords = text => String(text || '').replace(/(\d)\s*(?:percent|per cent)\b/gi, '$1%');
+// A number token compares as itself with thousands separators removed: "4,000"
+// and "4000" are one token, "30%" keeps its percent sign.
+const canonicalNumber = token => token.replace(/,/g, '');
 // Phone numbers are contact details, not evidence. Remove 10+-digit phone sequences
 // while keeping hyphenated year ranges such as 2019-2023 intact.
 const withoutPhones = text => String(text || '').replace(/\+?\d[\d\s().-]{7,}\d/g, match => match.replace(/\D/g, '').length >= 10 ? ' ' : match);
@@ -24,11 +27,23 @@ const numberCheckSource = sources => withoutPhones((sources || []).map(source =>
   return source.id === 'profile' ? text.replace(/"phone":\s*"[^"]*"/g, '"phone": ""') : text;
 }).join('\n'));
 
+// The whole-token set of numbers the sources state. A packet number is supported
+// only when the same token appears: "20" is not supported by "2027", and "70%" is
+// not supported by a bare "70". A bare number is supported by its percent form.
+export function sourceNumberTokens(sourceText) {
+  const tokens = new Set(numberTokens(percentWords(sourceText)).map(canonicalNumber));
+  for (const digit of numberWordDigits(sourceText)) tokens.add(digit);
+  return tokens;
+}
+export function numberSupported(token, sourceTokens) {
+  const canonical = canonicalNumber(token);
+  if (sourceTokens.has(canonical)) return true;
+  return !canonical.endsWith('%') && sourceTokens.has(canonical + '%');
+}
+
 export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false }) {
-  const sourceText = numberCheckSource(sources);
-  const numberWords = numberWordDigits(sourceText);
-  const cleanSourceText = sourceText.replace(/,/g, '') + (numberWords ? ' ' + numberWords : '');
-  const cleanSourceTokens = new Set([...numberTokens(cleanSourceText), ...numberWords.split(/\s+/).filter(Boolean)]);
+  // The posting is an allowed source for numbers: a packet may quote "10+ years".
+  const sourceTokens = sourceNumberTokens(numberCheckSource([...(sources || []), ...(job?.description ? [{ id: 'job', text: job.description }] : [])]));
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
   // The candidate's own phone is contact detail, not a claim; any other phone stays checked.
   const ownPhone = String(persona.profile?.phone || '').replace(/\D/g, '').slice(-10);
@@ -36,8 +51,9 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const required = job.requiredFactIds.map(id => persona.facts.find(fact => fact.id === id)).filter(Boolean);
   const covered = required.filter(fact => captures(fact.text, text));
   const missing = required.filter(fact => !covered.includes(fact));
-  const absentClaims = persona.absent.filter(absent => absent.keywords.some(keyword => hasWord(text, keyword)));
-  const unsupportedNumbers = [...new Set(numberTokens(text))].filter(number => !cleanSourceText.includes(number) && !cleanSourceTokens.has(number.replace(/,/g, '')));
+  // Per sentence; a sentence that negates is the candidate's honest answer, not a claim.
+  const absentClaims = absentClaimsIn(text, persona);
+  const unsupportedNumbers = [...new Set(numberTokens(percentWords(text)))].filter(number => !numberSupported(number, sourceTokens));
   const atsCovered = job.atsTerms.filter(term => text.toLowerCase().includes(term.toLowerCase()));
   const bannedWords = persona.voice.banned.filter(word => hasWord(text, word));
   const coverLetter = String(packet?.coverLetter || '');
@@ -92,6 +108,7 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
   const fieldResults = [];
   for (const field of portal?.steps?.flat() || []) {
     const expected = expectedFor(field, persona, job);
+    const owner = fieldOwner(field, persona, job);
     const appEntry = actual[field.name] || { value: '', file: '' };
     const byCandidate = Object.hasOwn(candidateAnswered, field.name);
     const appValue = byCandidate ? '' : String(appEntry.value || '').trim();
@@ -109,21 +126,53 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
       correct = candidateValue ? norm(answerText) === norm(candidateValue) : Boolean(candidateValue);
       if (receiptValue !== undefined) correct = correct && norm(receiptValue) === norm(candidateValue);
     }
+    const candidateSupplied = Boolean(candidateValue) && !appValue;
+    // The candidate may answer any question so the run can proceed, but a field
+    // the app owed (its sources settle it) and did not fill is the app's miss.
+    const appOwedRescued = owner === 'app' && candidateSupplied;
     fieldResults.push({
       name: field.name,
       label: field.label,
       required: Boolean(field.required),
       kind: expected.kind,
+      owner,
       value: appValue,
       file: appFile,
-      candidateSupplied: Boolean(candidateValue) && !appValue,
-      correct: Boolean(correct),
+      candidateSupplied,
+      appOwedRescued,
+      // The candidate's answer was right, but the app gets no credit for it.
+      answerCorrect: Boolean(correct),
+      correct: Boolean(correct) && !appOwedRescued,
     });
   }
   const scored = fieldResults.filter(item => item.kind !== 'none');
-  const gating = scored.filter(item => item.required || ['blank', 'candidate'].includes(item.kind));
+  const gating = scored.filter(item => item.required || item.appOwedRescued || ['blank', 'candidate'].includes(item.kind));
   const incorrect = scored.filter(item => !item.correct);
   const gatingIncorrect = gating.filter(item => !item.correct);
+  const appOwedRescued = scored.filter(item => item.appOwedRescued).map(item => item.name);
+  const appOwed = scored.filter(item => item.owner === 'app');
+  const appFilledCorrect = appOwed.filter(item => item.correct && !item.candidateSupplied);
+  // Uploaded bytes, read from the DOM's own File object, against the approved files.
+  const resumeUploadMatches = Boolean(pdfSha && actual.resume?.sha256 === pdfSha);
+  const portalHasCover = (portal?.steps?.flat() || []).some(field => field.name === 'cover');
+  const coverUploadMatches = !coverSha || !portalHasCover ? !actual.cover?.file : actual.cover?.sha256 === coverSha;
+  // The final DOM after the candidate's step must still hold what was submitted.
+  // A multi-step portal only has its last page in the DOM, so only fields present
+  // there are checked.
+  const singleStep = (portal?.steps?.length || 0) === 1;
+  const readbackMismatches = [];
+  const receiptFields = submission?.receipt?.fields;
+  if (readback && receiptFields) {
+    for (const item of fieldResults) {
+      if (item.owner !== 'app') continue;
+      const dom = readback[item.name];
+      if (!dom && !singleStep) continue;
+      const sent = receiptFields[item.name];
+      if (item.kind === 'file') {
+        if (sent?.file && dom?.sha256 !== sent.file.sha256) readbackMismatches.push(item.name);
+      } else if (String(dom?.value ?? '').trim() !== String(sent?.value ?? '').trim()) readbackMismatches.push(item.name);
+    }
+  }
   const planAnswers = plan?.answers || {};
   const planFields = plan?.fields || [];
   const planAnswerFor = field => {
@@ -165,7 +214,12 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
     fields: fieldResults,
     scoredFields: scored.length,
     correctFields: scored.filter(item => item.correct).length,
+    // Credits only fields the app filled correctly plus fields that are the
+    // candidate's to answer (sensitive or askable); a rescued app-owed field is incorrect.
     completionRate: scored.length ? Math.round((scored.length - incorrect.length) / scored.length * 100) / 100 : null,
+    appOwedFields: appOwed.length,
+    appFilledRate: appOwed.length ? Math.round(appFilledCorrect.length / appOwed.length * 100) / 100 : null,
+    appOwedRescued,
     incorrect: incorrect.map(item => item.name),
     gatingIncorrect: gatingIncorrect.map(item => item.name),
     sensitiveAppFilled,
@@ -173,6 +227,10 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
     resumeAttached: Boolean(resume?.file),
     resumeHashMatches: Boolean(pdfSha && receiptResume?.sha256 === pdfSha),
     coverHashMatches,
+    resumeUpload: actual.resume?.file ? { name: actual.resume.file, bytes: actual.resume.bytes ?? null, sha256: actual.resume.sha256 ?? null } : null,
+    resumeUploadMatches,
+    coverUploadMatches,
+    readbackMismatches,
     discardDetected: Boolean(discardDetected),
     appQuestions: (plan?.questions || []).length,
     candidateAnswered: Object.keys(candidateAnswered),
@@ -199,8 +257,12 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
         && trackerStatus === 'Applied'
         && Boolean(submittedAt)
         && !falseReady
-        && (!pdfSha || receiptResume?.sha256 === pdfSha)
+        && Boolean(pdfSha) && receiptResume?.sha256 === pdfSha
         && coverHashMatches
+        && resumeUploadMatches
+        && coverUploadMatches
+        && !appOwedRescued.length
+        && !readbackMismatches.length
         && (!portal?.discardOnce || Boolean(discardDetected))
         && (stop === 'review' || stop === 'ready')),
   };
@@ -235,14 +297,23 @@ export function scoreScenario(result) {
   const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const application = result.application ? scoreApplication({ ...result.application, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const evaluation = result.evaluation ? scoreEvaluation({ ...result.evaluation, job: jobById(result.scenario.job) }) : null;
+  const family = result.scenario.family;
   let pass;
-  if (result.scenario.family === 'evaluation') pass = Boolean(evaluation?.pass);
-  else if (result.scenario.family === 'journey') pass = Boolean(result.profile?.pass && result.understandingApproved && result.standardApproved && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
-  else if (result.scenario.family === 'profile-effect') pass = Boolean((!result.profile || result.profile.pass) && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
-  else {
+  if (family === 'evaluation') pass = Boolean(evaluation?.pass);
+  else if (family === 'journey') pass = Boolean(result.profile?.pass && result.understandingApproved && result.standardApproved && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
+  else if (family === 'profile-effect') pass = Boolean((!result.profile || result.profile.pass) && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
+  else if (family === 'profile') pass = result.profile?.pass === true;
+  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass));
+  else if (result.scenario.portal) {
+    // A portal scenario is only scored once the application stage actually ran;
+    // a packet that passed before a later crash is not an application result.
+    pass = Boolean(packet?.pass && application?.pass && (!evaluation || evaluation.pass));
+  } else {
     const base = packet && application ? packet.pass && application.pass : packet ? packet.pass : application ? application.pass : result.profile?.pass === true;
     pass = Boolean(base && (!evaluation || evaluation.pass));
   }
+  // A scenario that threw never passes, whatever stage it reached first.
+  if (result.error) pass = false;
   const expectedFail = Boolean(result.scenario.expectFail);
   return { ...result, packet, application, evaluation, expectedFail, unexpected: !pass && !expectedFail, pass: Boolean(pass) };
 }
@@ -366,6 +437,9 @@ export function aggregate(results) {
       runs: applications.length,
       fillRuns: filling.length,
       completionRate: avg(filling.map(item => item.completionRate)),
+      appFilledRate: avg(filling.map(item => item.appFilledRate)),
+      appOwedRescued: applications.reduce((n, item) => n + (item.appOwedRescued?.length || 0), 0),
+      readbackMismatches: applications.reduce((n, item) => n + (item.readbackMismatches?.length || 0), 0),
       correctStops: applications.filter(item => item.expectedStop && item.stopCorrect).length,
       expectedStops: applications.filter(item => item.expectedStop).length,
       falseReady: applications.filter(item => item.falseReady).length,
@@ -394,17 +468,26 @@ export function compareToBaseline(summary, baseline, currentResults = []) {
     return typeof a === 'number' && typeof b === 'number' ? Math.round((a - b) * 1000) / 1000 : null;
   };
   const baselineResults = Array.isArray(baseline.results) ? baseline.results : [];
-  const baselineFailed = new Set(baseline.summary?.failed || baselineResults.filter(item => !item.pass).map(item => item.scenario?.id).filter(Boolean));
+  // Repeated runs are named a-r1, a-r2; both sides compare on the base scenario id.
+  const baseOf = (id, results) => {
+    const scenario = results.find(item => item.scenario?.id === id)?.scenario;
+    return scenario?.baseId || scenario?.id || id;
+  };
+  const baselineFailed = new Set((baseline.summary?.failed || baselineResults.filter(item => !item.pass).map(item => item.scenario?.id).filter(Boolean)).map(id => baseOf(id, baselineResults)));
   const currentFailed = summary.failed || [];
-  const currentById = new Map(currentResults.map(item => [item.scenario?.id, item]));
-  const regressions = currentFailed.filter(id => !baselineFailed.has(id));
-  const preExistingFailures = currentFailed.filter(id => baselineFailed.has(id));
-  const improvements = [...baselineFailed].filter(id => currentResults.length ? currentById.get(id)?.pass === true : summary.scenarios > 0 && !currentFailed.includes(id));
+  const regressions = currentFailed.filter(id => !baselineFailed.has(baseOf(id, currentResults)));
+  const preExistingFailures = currentFailed.filter(id => baselineFailed.has(baseOf(id, currentResults)));
+  const improvements = [...baselineFailed].filter(id => {
+    if (!currentResults.length) return summary.scenarios > 0 && !currentFailed.some(current => baseOf(current, currentResults) === id);
+    const runs = currentResults.filter(item => (item.scenario?.baseId || item.scenario?.id) === id);
+    return runs.length > 0 && runs.every(item => item.pass === true);
+  });
   return {
     scenarios: { before: before.scenarios, after: after.scenarios, delta: delta(['scenarios']) },
     passed: { before: before.passed, after: after.passed, delta: delta(['passed']) },
     factCoverage: { before: before.resume?.factCoverage ?? null, after: after.resume?.factCoverage ?? null, delta: delta(['resume', 'factCoverage']) },
     completionRate: { before: before.application?.completionRate ?? null, after: after.application?.completionRate ?? null, delta: delta(['application', 'completionRate']) },
+    appFilledRate: { before: before.application?.appFilledRate ?? null, after: after.application?.appFilledRate ?? null, delta: delta(['application', 'appFilledRate']) },
     falseReady: { before: before.application?.falseReady ?? null, after: after.application?.falseReady ?? null, delta: delta(['application', 'falseReady']) },
     submissionsAccepted: { before: before.application?.submissionsAccepted ?? null, after: after.application?.submissionsAccepted ?? null, delta: delta(['application', 'submissionsAccepted']) },
     captureRate: { before: before.profile?.captureRate ?? null, after: after.profile?.captureRate ?? null, delta: delta(['profile', 'captureRate']) },
@@ -419,7 +502,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
     const parts = [];
     if (result.evaluation) parts.push(`eval ${result.evaluation.score ?? 'n/a'}/5 ${result.evaluation.recommendation ?? ''}`.trim());
     if (result.packet) parts.push(`resume ${result.packet.factCoverage === null ? 'n/a' : Math.round(result.packet.factCoverage * 100) + '%'}`);
-    if (result.application) parts.push(`form ${result.application.completionRate === null ? 'n/a' : Math.round(result.application.completionRate * 100) + '%'}`, `stop ${result.application.stop}`);
+    if (result.application) parts.push(`form ${result.application.completionRate === null ? 'n/a' : Math.round(result.application.completionRate * 100) + '%'}`, `app-filled ${result.application.appFilledRate == null ? 'n/a' : Math.round(result.application.appFilledRate * 100) + '%'}`, `stop ${result.application.stop}`);
     if (result.profile) parts.push(`capture ${Math.round((result.profile.captureRate || 0) * 100)}%`);
     if (result.application?.submission.expected) parts.push(result.application.submission.accepted ? 'submitted' : 'submit-failed');
     return `| ${result.scenario.id} | ${result.pass ? 'PASS' : result.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
@@ -429,7 +512,8 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
     if (result.error) reasons.push(result.error);
     if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
     if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}`);
-    if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}${result.application.warning ? `, warning: ${result.application.warning}` : ''}`);
+    if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, app-owed rescued ${result.application.appOwedRescued?.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, readback ${result.application.readbackMismatches?.join(', ') || 'ok'}, upload ${result.application.resumeUploadMatches === false || result.application.coverUploadMatches === false ? 'mismatch' : 'ok'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}${result.application.warning ? `, warning: ${result.application.warning}` : ''}`);
+    if ((result.scenario.portal && !result.application) && !result.error) reasons.push('application stage did not run');
     return `- **${result.scenario.id}**${result.expectedFail ? ' (expected lower-bound control)' : ''} — ${reasons.join('; ')}`;
   });
   return `# Plainhand evaluation
@@ -446,6 +530,8 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Resume unsupported numbers | ${summary.resume?.unsupportedNumbers ?? 'n/a'} |
 | Cover letters first person | ${summary.resume?.firstPerson ?? 0}/${summary.resume?.runs ?? 0} |
 | Application completion (fill scenarios) | ${summary.application?.completionRate ?? 'n/a'} |
+| App-filled rate (app-owed fields the app filled correctly) | ${summary.application?.appFilledRate ?? 'n/a'} |
+| App-owed fields rescued by the candidate | ${summary.application?.appOwedRescued ?? 'n/a'} |
 | Correct stops | ${summary.application?.correctStops ?? 0}/${summary.application?.expectedStops ?? 0} |
 | False-ready | ${summary.application?.falseReady ?? 'n/a'} |
 | Sensitive fields auto-filled | ${summary.application?.sensitiveLeaks ?? 'n/a'} |

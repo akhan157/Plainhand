@@ -6,6 +6,8 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { createPlainhand } from '../../plainhand-server.mjs';
 import { emptyProfile } from '../store.mjs';
 import { executeAgent, inspectProviders, providerById } from '../agents.mjs';
@@ -130,7 +132,11 @@ async function runProfileScenario(scenario, { live, provider, agentTimeoutMs }) 
 }
 
 // The simulated candidate answers a question the app asked about a field only when
-// the fictional ground truth settles it; anything else stays the app's stop.
+// the fictional ground truth settles it; anything else stays the app's stop. It
+// answers app-owed fields too (name, records, employer), so the run proceeds and
+// stays measurable, but the scorer counts such an answer as the app's miss
+// (`appOwedRescued`); only sensitive and persona-`askable` fields are the
+// candidate's to answer (corpus.mjs fieldOwner).
 function candidateAnswerFor(planField, portal, persona, job) {
   const field = (portal?.steps?.flat() || []).find(item => item.name === planField?.name);
   if (!field || field.sensitive) return null;
@@ -144,20 +150,25 @@ function candidateAnswerFor(planField, portal, persona, job) {
   return null;
 }
 
-function candidatePayload(scenario, persona, browser, job, pdf, cover, candidateDom = {}) {
+export function candidatePayload(scenario, persona, browser, job, pdf, cover, candidateDom = {}, candidateAnswered = {}) {
   const portal = portalById(scenario.portal);
   const merged = {};
   for (const snapshot of browser.snapshots) for (const [name, entry] of Object.entries(snapshot.values || {})) merged[name] = entry;
   const fields = {};
+  // A value the app's own snapshot held before the candidate step is the app's,
+  // even when the candidate later overwrote it, so the sandbox can reject an
+  // app-filled sensitive field. Answers the candidate gave to the app's review
+  // questions are the candidate's.
+  const appFilled = name => Boolean(merged[name]?.value || merged[name]?.file) && !Object.hasOwn(candidateAnswered, name);
   for (const [name, entry] of Object.entries(merged)) {
     if (!entry.value && !entry.file) continue;
-    fields[name] = { value: entry.value || '', source: 'app' };
+    fields[name] = { value: entry.value || '', source: appFilled(name) ? 'app' : 'candidate' };
   }
   for (const field of portal.steps.flat()) {
     const answer = persona.candidateAnswers?.[field.name];
     if (answer === undefined) continue;
     const fallback = typeof answer === 'boolean' ? (answer ? 'on' : '') : String(answer);
-    fields[field.name] = { value: candidateDom[field.name]?.value || fallback, source: 'candidate' };
+    fields[field.name] = { value: candidateDom[field.name]?.value || fallback, source: appFilled(field.name) ? 'app' : 'candidate' };
   }
   const resumeField = fields.resume || (fields.resume = { value: '', source: 'app' });
   resumeField.file = { name: path.basename(job.pdf), base64: pdf.bytes.toString('base64'), sha256: pdf.sha };
@@ -309,7 +320,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
     let submission = null;
     if (portal.expect.submit) {
       const candidateDom = await browser.fillAsCandidate(persona.candidateAnswers || {});
-      const payload = candidatePayload(scenario, persona, browser, finalJob, pdf, cover, candidateDom);
+      const payload = candidatePayload(scenario, persona, browser, finalJob, pdf, cover, candidateDom, candidateAnswered);
       const res = await fetch(sandbox.url + '/api/submissions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       submission = await res.json();
       if (submission.ok) await post(base, app.token, 'jobs/update', { id, status: 'Applied', confirmSubmitted: true });
@@ -381,6 +392,28 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
   }
 }
 
+// Expected lower-bound controls (expectFail) fail by design; only an unexpected
+// failure fails the command.
+export const exitCodeFor = summary => (summary?.unexpectedFailures?.length ? 1 : 0);
+
+const run = promisify(execFile);
+const quietly = async (command, args) => {
+  try { return (await run(command, args, { timeout: 10000, cwd: process.cwd() })).stdout.trim(); } catch { return null; }
+};
+
+// What produced these numbers: the commit (and whether the tree had local
+// changes), the Node version and, for live runs, the provider CLI version.
+export async function runMetadata(provider = null) {
+  const commit = await quietly('git', ['rev-parse', 'HEAD']);
+  const status = await quietly('git', ['status', '--porcelain']);
+  let providerVersion = null;
+  if (provider) {
+    const definition = providerById(provider);
+    if (definition.command) providerVersion = (await quietly(definition.command, ['--version']))?.split('\n')[0] || null;
+  }
+  return { commit, dirty: status === null ? null : status.length > 0, node: process.version, ...(provider ? { providerVersion } : {}) };
+}
+
 async function mapLimit(items, limit, work) {
   const results = new Array(items.length);
   let next = 0;
@@ -406,6 +439,11 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
   }
   const requested = option(argv, 'scenarios');
   const only = requested ? new Set(requested.split(',').map(item => item.trim()).filter(Boolean)) : null;
+  if (only) {
+    const known = new Set([...profileScenarios, ...scenarios].map(item => item.id));
+    const unknown = [...only].filter(id => !known.has(id));
+    if (unknown.length) throw new Error(`Unknown scenario id${unknown.length > 1 ? 's' : ''}: ${unknown.join(', ')}. Run with --list to see the ids.`);
+  }
   const selectedProfiles = option(argv, 'profiles');
   const profileOnly = selectedProfiles ? new Set(selectedProfiles.split(',')) : null;
   const all = [...profileScenarios, ...scenarios].filter(item => (!only || only.has(item.id)) && (!profileOnly || item.family !== 'profile' || profileOnly.has(item.persona)));
@@ -423,6 +461,8 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
       : await runApplicationScenario(scenario, { live, provider, retain, agentTimeoutMs });
     const scored = scoreScenario({ ...result, scenario });
     await writeFile(path.join(out, `${scenario.id}.json`), JSON.stringify(scored, null, 2));
+    // The raw packet and its sources, for benchmark-judge.mjs; kept apart so results.json stays small.
+    if (result.packet?.packet) await writeFile(path.join(out, `${scenario.id}.packet.json`), JSON.stringify({ packet: result.packet.packet, sources: result.packet.sources || [] }, null, 2));
     // Failures keep the raw fill plan, checkpoint and page snapshots so the cause can be traced.
     if (!scored.pass && result.application) {
       const { plan, checkpoint, snapshots, readback } = result.application;
@@ -440,10 +480,11 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     const baseline = JSON.parse(await readFile(resolved, 'utf8'));
     comparison = compareToBaseline(summary, baseline, results);
   }
-  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', concurrency, agentTimeoutSec, summary, comparison, results };
+  const metadata = await runMetadata(live ? provider : null);
+  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', metadata, concurrency, agentTimeoutSec, summary, comparison, results };
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2));
   await writeFile(path.join(out, 'SUMMARY.md'), markdownReport({ evidenceTier: report.evidenceTier, provider: report.provider, summary, results, comparison }));
-  console.log(`\n${summary.passed}/${summary.scenarios} scenarios passed`);
+  console.log(`\n${summary.passed}/${summary.scenarios} scenarios passed (${summary.expectedFailures.length} expected failure${summary.expectedFailures.length === 1 ? '' : 's'}, ${summary.unexpectedFailures.length} unexpected)`);
   console.log('Evidence: ' + out);
   return { out, report };
 }

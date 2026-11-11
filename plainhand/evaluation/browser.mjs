@@ -1,14 +1,21 @@
 // Routes the production ApplicationBrowser at an owned synthetic portal, captures
 // the values after every fill, and keeps all execution on the local machine.
+import { createHash } from 'node:crypto';
 import { chromium } from 'playwright';
 import { ApplicationBrowser } from '../jobs.mjs';
 import { renderPortal, portalUrl } from './portals.mjs';
 
+// Reads every named control. A file input records the name, byte size and SHA-256
+// of the file actually attached in the DOM, so the scorer can prove which bytes
+// the app uploaded instead of trusting the file name. The portal is served on an
+// https origin (a secure context), so the page hashes with crypto.subtle; if that
+// is ever unavailable the bytes come back as base64 and are hashed here.
 export async function readValues(page) {
   if (!page || page.isClosed()) return {};
   try {
-    return await page.evaluate(() => {
+    const values = await page.evaluate(async () => {
       const out = {};
+      const hex = buffer => [...new Uint8Array(buffer)].map(byte => byte.toString(16).padStart(2, '0')).join('');
       for (const node of document.querySelectorAll('input,textarea,select')) {
         if (!node.name) continue;
         if (node.type === 'radio') {
@@ -17,11 +24,30 @@ export async function readValues(page) {
           continue;
         }
         const value = node.type === 'checkbox' ? (node.checked ? 'on' : '') : node.type === 'file' ? '' : node.value;
-        const file = node.type === 'file' ? node.files?.[0]?.name || '' : '';
-        out[node.name] = { value, file, type: node.type || node.tagName.toLowerCase() };
+        const attached = node.type === 'file' ? node.files?.[0] || null : null;
+        const entry = { value, file: attached?.name || '', type: node.type || node.tagName.toLowerCase() };
+        if (attached) {
+          const buffer = await attached.arrayBuffer();
+          entry.bytes = buffer.byteLength;
+          if (globalThis.crypto?.subtle) entry.sha256 = hex(await crypto.subtle.digest('SHA-256', buffer));
+          else {
+            let binary = '';
+            const view = new Uint8Array(buffer);
+            for (let i = 0; i < view.length; i += 0x8000) binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
+            entry.base64 = btoa(binary);
+          }
+        }
+        out[node.name] = entry;
       }
       return out;
     });
+    for (const entry of Object.values(values)) {
+      if (entry.base64 === undefined) continue;
+      entry.sha256 = createHash('sha256').update(Buffer.from(entry.base64, 'base64')).digest('hex');
+      entry.hashedIn = 'node';
+      delete entry.base64;
+    }
+    return values;
   } catch { return {}; }
 }
 

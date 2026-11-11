@@ -16,6 +16,13 @@ export const personas = [
     degreeLabel: 'Bachelor of Science',
     degreeEvidence: 'B.S. Mechanical Engineering, Example University, 2027',
     candidateAnswers: { authorization: 'yes', attest: true, salary: 'Open to discussion' },
+    // Portal fields the app may legitimately ask the candidate about because the
+    // candidate's sources do not settle them. Riley graduates in 2027, so whether
+    // to choose "Bachelor of Science" as the highest degree before graduation is
+    // the candidate's call, not a profile fact. Every other non-sensitive field is
+    // owed by the app; a candidate answer to it is scored as a rescue (see
+    // fieldOwner below).
+    askable: ['degree'],
     profile: {
       ...emptyProfile(),
       name: 'Riley Chen',
@@ -58,7 +65,7 @@ export const personas = [
       { id: 'tools', keywords: ['solidworks', 'ansys', 'matlab', 'skills'], text: 'I use SolidWorks every day, ANSYS for basic FEA, and MATLAB to process test data.' },
       { id: 'goal', keywords: ['hands-on', 'design', 'prototype', 'robotics'], text: 'I want a hands-on design role where I can build and test prototypes, ideally in robotics or medical devices.' },
     ],
-    absent: [{ id: 'production-gdt', keywords: ['gd&t', 'tolerancing', 'production line'], text: "I haven't done production GD&T work, only what we covered in class." }],
+    absent: [{ id: 'production-gdt', keywords: ['production gd&t', 'gd&t work', 'gd&t experience', 'production tolerancing', 'production line'], text: "I haven't done production GD&T work, only what we covered in class." }],
     voice: { banned: ['passionate', 'leverage', 'cutting-edge', 'synergy', 'robust'], firstPerson: true },
     allowNoNumber: true,
   },
@@ -118,7 +125,7 @@ export const personas = [
       { id: 'sql', keywords: ['sql', 'python', 'spreadsheet', 'analysis'], text: 'I write SQL comfortably and use spreadsheets for analysis; I am learning Python with pandas.' },
       { id: 'explain', keywords: ['explain', 'findings', 'plain', 'stakeholders'], text: 'I explain data findings to colleagues and parents in plain language.' },
     ],
-    absent: [{ id: 'corporate', keywords: ['corporate', 'stakeholder', 'business experience', 'industry'], text: "I haven't worked in a company setting yet, only at the school." }],
+    absent: [{ id: 'corporate', keywords: ['corporate', 'business experience', 'industry experience', 'company setting', 'worked at a company'], text: "I haven't worked in a company setting yet, only at the school." }],
     voice: { banned: ['passionate', 'leverage', 'cutting-edge', 'synergy', 'robust'], firstPerson: true },
     allowNoNumber: true,
   },
@@ -176,7 +183,7 @@ export const personas = [
       { id: 'ta', keywords: ['ta', 'office hours', 'students', 'guide'], text: 'As a TA I held office hours for 60 students and wrote the debugging guide the course still hands out.' },
       { id: 'review', keywords: ['code review', 'team', 'learn'], text: 'I want a team that does code review seriously, because that is how I learn fastest.' },
     ],
-    absent: [{ id: 'production', keywords: ['production', 'on-call', 'scale', 'professional company'], text: "I haven't worked on a production system at a company yet." }],
+    absent: [{ id: 'production', keywords: ['production system', 'production experience', 'production code at', 'on-call experience', 'carried a pager', 'at scale', 'professional company'], text: "I haven't worked on a production system at a company yet." }],
     voice: { banned: ['passionate', 'leverage', 'cutting-edge', 'synergy', 'robust'], firstPerson: true },
     allowNoNumber: true,
   },
@@ -585,6 +592,38 @@ export function captures(fact, text) {
   let n = 0;
   for (const w of need) if (have.has(w)) n++;
   return n / need.size >= 0.6;
+}
+
+// Absent claims: each persona's `absent` keywords are claim phrases ("production
+// GD&T", "on-call experience"), not topic words, so a truthful sentence that
+// quotes the posting ("the role has an on-call rotation") is not flagged. A test
+// asserts no keyword occurs in the description or ATS terms of any job the
+// persona is paired with. A sentence that negates ("I haven't done production
+// GD&T work, only in class") is the honest answer and is never a claim.
+export const hasWord = (text, keyword) => new RegExp(`(^|[^a-z0-9])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(String(text || '').toLowerCase());
+const NEGATION = /\b(?:haven['’]?t|hasn['’]?t|have not|has not|not|never|no experience|don['’]?t|do not|didn['’]?t|did not|without)\b|\bonly\b[^.!?]*\bin class\b/i;
+export const sentencesOf = text => String(text || '').match(/[^.!?\n]+[.!?]?/g) || [];
+export const negates = sentence => NEGATION.test(sentence);
+export function absentClaimsIn(text, persona) {
+  const claims = sentencesOf(text).filter(sentence => !negates(sentence));
+  return (persona.absent || []).filter(absent => claims.some(sentence => absent.keywords.some(keyword => hasWord(sentence, keyword))));
+}
+
+// Who owes a portal field's answer:
+//   'candidate' — sensitive or candidate-reserved (authorization, attestation, salary);
+//   'askable'   — the persona's sources do not settle it (persona.askable), so the
+//                 app is right to ask and the candidate's answer is legitimate;
+//   'unknown'   — no source settles it and the app must stop and ask (left blank);
+//   'app'       — the candidate's profile or approved packet settles it, so the app
+//                 owes the fill. A candidate answer here is a rescue, not credit.
+//   'none'      — not scored.
+export function fieldOwner(field, persona, job) {
+  const kind = expectedFor(field, persona, job).kind;
+  if (kind === 'none') return 'none';
+  if (field.sensitive || kind === 'candidate') return 'candidate';
+  if (kind === 'blank') return 'unknown';
+  if ((persona.askable || []).includes(field.name)) return 'askable';
+  return 'app';
 }
 
 export function expectedFor(field, persona, job) {

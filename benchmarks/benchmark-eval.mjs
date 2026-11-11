@@ -7,7 +7,7 @@
 //   node benchmarks/benchmark-eval.mjs --provider claude --concurrency 2
 //   node benchmarks/benchmark-eval.mjs --scenarios mech-lever,swe-submit
 //   node benchmarks/benchmark-eval.mjs --baseline output/evaluation-controlled-...
-import { runEvaluation, profileScenarios } from '../plainhand/evaluation/runner.mjs';
+import { runEvaluation, profileScenarios, exitCodeFor } from '../plainhand/evaluation/runner.mjs';
 import { scenarios } from '../plainhand/evaluation/corpus.mjs';
 
 if (process.argv.includes('--list')) {
@@ -36,7 +36,7 @@ if (process.argv.includes('--help')) {
 
 try {
   const { report } = await runEvaluation(process.argv.slice(2));
-  if (report.summary.failed.length) process.exitCode = 1;
+  process.exitCode = exitCodeFor(report.summary);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
