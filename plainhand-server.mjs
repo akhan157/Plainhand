@@ -24,6 +24,7 @@ import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { markStalePrep } from './plainhand/features/interview-prep.mjs';
 import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
+import { applicationsCsv, calendarIcs } from './plainhand/exports.mjs';
 import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
 import { NAVIGATION_INSTRUCTION } from './plainhand/browser-driver.mjs';
@@ -192,6 +193,16 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         res.setHeader('Content-Disposition', 'attachment; filename="plainhand-workspace.json"');
         const conversation = await agent.history({ limit: 500 });
         return json(res, 200, { ...(await workspace.load()), agentUsage: await workflow.usage.records(), agentConversation: conversation.messages, agentProposals: await agent.proposals(), exportedAt: now() });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/applications.csv') {
+        const state = await workspace.load();
+        res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-applications.csv"', 'Cache-Control': 'no-store' });
+        return res.end(applicationsCsv({ ...state, tracker: await workspace.read('data/applications.md') }));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/calendar.ics') {
+        const state = await workspace.load();
+        res.writeHead(200, { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-calendar.ics"', 'Cache-Control': 'no-store' });
+        return res.end(calendarIcs(state));
       }
       if (req.method === 'GET' && url.pathname === '/api/artifact') {
         const requested = url.searchParams.get('path');
