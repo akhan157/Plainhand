@@ -26,44 +26,50 @@
 
 ## North Star -- Zielrollen
 
-Die Skill behandelt ALLE Zielrollen mit gleicher Sorgfalt. Keine ist primär oder sekundär — jede ist ein Erfolg, sofern Vergütung und Entwicklungsperspektive stimmen:
+Die Skill behandelt ALLE Zielrollen mit gleicher Sorgfalt. Keine ist primär oder sekundär — jede ist ein Erfolg, sofern Vergütung und Entwicklungsperspektive stimmen.
+
+Zuerst die eigenen Zielarchetypen des Nutzers aus `modes/_profile.md` verwenden. Sind dort keine definiert, gelten diese berufsfeldneutralen Rollenfamilien, die in jeder Branche passen (Gesundheitswesen, Bildung, Handwerk, Wirtschaft, Kreativberufe, öffentlicher Dienst, Technik):
 
 | Archetyp | Thematische Achsen | Was gekauft wird |
 |----------|--------------------|------------------|
-| **AI Platform / LLMOps Engineer** | Evaluation, Observability, Zuverlässigkeit, Pipelines | Jemand, der KI mit Metriken in Produktion bringt |
-| **Agentic Workflows / Automation** | HITL, Tooling, Orchestrierung, Multi-Agent | Jemand, der zuverlässige Agentensysteme baut |
-| **Technical AI Product Manager** | GenAI/Agents, PRDs, Discovery, Delivery | Jemand, der Business in KI-Produkte übersetzt |
-| **AI Solutions Architect** | Hyperautomation, Enterprise, Integrationen | Jemand, der End-to-End-KI-Architekturen entwirft |
-| **AI Forward Deployed Engineer** | Kundennah, schnelle Lieferung, Prototyping | Jemand, der KI-Lösungen schnell beim Kunden ausrollt |
-| **AI Transformation Lead** | Change Management, Adoption, organisatorisches Enablement | Jemand, der KI-Transformation in Organisationen führt |
+| **Praktiker:in im Fach (Hands-on Practitioner)** | Kernarbeit des Berufs; Lizenzen, Zertifizierungen, Werkzeuge, Geräte | Jemand, der die Arbeit vom ersten Tag an gut macht |
+| **Menschen & Service (People & Service)** | Kunden, Patienten, Schüler, Mitglieder, Betreuung, Support | Jemand, der sich gut um die betreuten Menschen kümmert |
+| **Koordination & Betrieb (Coordination & Operations)** | Koordination, Terminplanung, Logistik, Prozesse, Verwaltung, Compliance | Jemand, dem nichts durchrutscht |
+| **Analyse & Forschung (Analysis & Research)** | Analyse, Daten, Reporting, Forschung, Evaluation, Audit | Jemand, dessen Erkenntnisse Entscheidungen leiten |
+| **Kreation & Kommunikation (Creative & Communications)** | Content, Design, Kampagnen, Marke, Texte, Medien | Jemand, der ein Publikum erreicht |
+| **Technik & Engineering (Technical & Engineering)** | Bauen, Konstruieren, Systeme, Technik, Engineering, Software | Jemand, der Dinge baut, die funktionieren |
+| **Führung & Management (Leadership & Management)** | Führen, Beaufsichtigen, Teamleitung, Budget, Strategie, direkte Mitarbeitende | Jemand, der Ergebnisse durch andere erreicht |
 
-<!-- [ANPASSEN] Passe die Archetypen oben an deine Zielrollen an.
-     Beispiel für Backend-Engineering:
-     - Senior Backend Engineer
-     - Staff Platform Engineer
-     - Engineering Manager
+<!-- [ANPASSEN] Ersetze die Archetypen oben durch deine Zielrollen, in jedem Berufsfeld. Beispiele:
+     - Pflegefachkraft / Stationskoordination
+     - Marketing-Koordination / Content-Spezialist:in
+     - Grundschullehrkraft / pädagogische Assistenz
+     - Elektriker-Azubi / Haustechniker:in
+     - Finanzanalyst:in / Buchhaltung
+     - Softwareentwickler:in / Datenanalyst:in
      etc. -->
 
 ### Adaptives Framing nach Archetyp
 
-> **Konkrete Kennzahlen: zur Bewertungszeit aus `cv.md` und `article-digest.md` lesen. NIEMALS hier hartcodieren.**
+> **Konkrete Kennzahlen: zur Bewertungszeit aus `cv.md` und `article-digest.md` lesen. NIEMALS hier hartcodieren.** Wenn `modes/_profile.md` festlegt, was pro Archetyp betont wird, hat das Vorrang.
 
 | Wenn die Rolle ist... | Beim Kandidaten betonen... | Quellen für Proof Points |
 |-----------------------|----------------------------|--------------------------|
-| Platform / LLMOps | Production-Erfahrung, Observability, Evals, Closed-Loop | article-digest.md + cv.md |
-| Agentic / Automation | Multi-Agent-Orchestrierung, HITL, Zuverlässigkeit, Kosten | article-digest.md + cv.md |
-| Technical AI PM | Product Discovery, PRDs, Metriken, Stakeholder-Management | cv.md + article-digest.md |
-| Solutions Architect | Systemdesign, Integrationen, Enterprise-tauglich | article-digest.md + cv.md |
-| Forward Deployed Engineer | Schnelle Lieferung, kundennah, Prototyp bis Produktion | cv.md + article-digest.md |
-| AI Transformation Lead | Change Management, Team-Enablement, Adoption | cv.md + article-digest.md |
+| Hands-on Practitioner | Lizenzen, Zertifizierungen, direkte Praxis in der Kernarbeit | cv.md + article-digest.md |
+| People & Service | Betreute Menschen, Fallzahlen/Volumen, Ergebnisse für diese Menschen | cv.md + article-digest.md |
+| Coordination & Operations | Zuverlässigkeit, Umfang des Koordinierten, Prozessverbesserungen | cv.md + article-digest.md |
+| Analysis & Research | Methoden, Werkzeuge, Entscheidungen, die die Analyse geprägt hat | article-digest.md + cv.md |
+| Creative & Communications | Portfolio-Arbeiten, Zielgruppe, messbare Reichweite | article-digest.md + cv.md |
+| Technical & Engineering | Was entworfen oder gebaut wurde und wie es validiert wurde | article-digest.md + cv.md |
+| Leadership & Management | Teamgröße, Budget, Ergebnisse durch andere | cv.md + article-digest.md |
 
-<!-- [ANPASSEN] Ordne deine konkreten Projekte/Artikel den Archetypen oben zu -->
+<!-- [ANPASSEN] Ordne deine konkreten Erfahrungen/Projekte den Archetypen oben zu -->
 
 ### Exit-Narrativ (in ALLEN Framings nutzen)
 
 <!-- [ANPASSEN] Ersetze durch dein eigenes Narrativ. Beispiele:
-     - "Eigene SaaS nach 5 Jahren aufgebaut und verkauft. Jetzt voller Fokus auf angewandte KI im Enterprise."
-     - "Engineering-Lead in einer Series-B während 10x-Wachstum. Suche jetzt die nächste Herausforderung."
+     - "Fünf Jahre Pflege auf der Intensivstation. Jetzt Wechsel in die Stationskoordination."
+     - "Filialleitung im Einzelhandel während einer starken Expansionsphase. Suche jetzt die nächste Herausforderung."
      - "Wechsel von Beratung zu Produktentwicklung. Suche Rollen mit hoher Verantwortung."
      Wird gelesen aus config/profile.yml → narrative.exit_story -->
 
@@ -75,25 +81,22 @@ Verwende das Exit-Narrativ aus `config/profile.yml`, um ALLE Inhalte zu rahmen:
 
 ### Übergreifender Vorteil
 
-Profil framen als **"Technischer Builder mit nachweisbarer Praxis"**, der das Framing an die Rolle anpasst:
-- Für PM: "Builder, der mit Prototypen Unsicherheit reduziert und dann diszipliniert in Produktion bringt"
-- Für FDE: "Builder, der ab Tag 1 mit Observability und Metriken liefert"
-- Für SA: "Builder, der End-to-End-Systeme mit echter Integrationserfahrung entwirft"
-- Für LLMOps: "Builder, der KI mit Closed-Loop-Qualitätssystemen in Produktion bringt"
+<!-- [ANPASSEN] Was ist deine Kernstärke? Was kannst du, was andere nicht können? -->
 
-"Builder" als professionelles Signal positionieren — nicht als "Bastler". Reale Proof Points machen das glaubwürdig.
+Das Profil um **[deine Kernstärke, in der Sprache deines Berufsfelds, z. B. „die Pflegekraft, nach der Familien namentlich fragen“ oder „die Koordinatorin, der nichts durchrutscht“]** herum framen und das Framing an jede Rolle anpassen.
+
+Das Framing ändert sich, die Wahrheit bleibt dieselbe. Reale Proof Points machen das glaubwürdig.
 
 ### Portfolio als Proof Point (bei wertvollen Bewerbungen einsetzen)
 
-<!-- [ANPASSEN] Wenn du eine Live-Demo, ein Dashboard oder ein öffentliches Projekt hast, hier konfigurieren.
+<!-- [ANPASSEN] Wenn du ein Portfolio, Textproben, ein Unterrichtsvideo, eine Projektseite oder andere öffentliche Arbeit hast, hier konfigurieren.
      Beispiel:
      dashboard:
-       url: "https://deinedomain.dev/demo"
-       password: "demo-2026"
-       when_to_share: "LLMOps, AI-Platform, Observability-Rollen"
+       url: "https://deineseite.example/portfolio"
+       when_to_share: "Marketing- und Content-Rollen"
      Wird gelesen aus config/profile.yml → narrative.proof_points und narrative.dashboard -->
 
-Wenn der Kandidat eine Live-Demo / ein Dashboard hat (`profile.yml` prüfen), in passenden Bewerbungen den Zugang anbieten.
+Wenn der Kandidat ein Portfolio oder eine öffentliche Arbeitsprobe hat (`profile.yml` prüfen), in passenden Bewerbungen darauf verweisen.
 
 ### Vergütungsintelligenz (Comp Intelligence)
 
@@ -116,7 +119,7 @@ In deutschen Stellenanzeigen und Vertragsverhandlungen tauchen Begriffe auf, die
 | **Festanstellung** vs **Freelance / Freie Mitarbeit** | Unbefristet vs selbstständig | Festanstellung = Sozialversicherung gedeckt, geringeres Risiko, niedrigerer Tagessatz. Freelance = höherer Satz, Scheinselbstständigkeits-Risiko prüfen |
 | **Probezeit** | Übliche 6 Monate, verkürzte Kündigungsfrist (2 Wochen) | Kein Risiko-Flag — ist Marktstandard. Nur flaggen wenn > 6 Monate |
 | **Kündigungsfrist** | Gesetzliche Frist nach Probezeit, oft 1-3 Monate | Bei Vertragswechsel relevant: Startdatum entsprechend planen |
-| **Urlaub** | 25-30 Tage Standard (gesetzlich min. 20 bei 5-Tage-Woche) | < 28 Tage = unter Marktstandard für Tech. Verhandelbar |
+| **Urlaub** | 25-30 Tage Standard (gesetzlich min. 20 bei 5-Tage-Woche) | < 28 Tage = in vielen Branchen unter Marktstandard. Verhandelbar |
 | **Tarifvertrag** / TVöD / IG Metall | Kollektive Vergütungsregeln | In Tarif-Unternehmen ist Verhandlungsspielraum kleiner — dafür höhere Sicherheit, fixe Steigerungen |
 | **Betriebsrat** | Mitarbeitervertretung | Stark im Mittelstand und Konzernen. Mitsprache bei Kündigung, Arbeitszeit. Pluspunkt für Stabilität |
 | **Bewerbungsmappe** | Anschreiben + Lebenslauf + Zeugnisse | Im DACH-Raum oft erwartet, anders als in EN-Märkten. Zeugnisse ggf. nachreichen |
@@ -183,7 +186,7 @@ In deutschen Stellenanzeigen und Vertragsverhandlungen tauchen Begriffe auf, die
 5. Nach jeder Bewertung im Tracker eintragen
 6. Inhalte in der Sprache der Stellenanzeige erzeugen (Deutsch, wenn die Anzeige deutsch ist; Englisch sonst)
 7. Direkt und konkret sein — keine Floskeln
-8. Beim Erzeugen deutscher Texte (PDF-Summaries, Bullets, LinkedIn-Nachrichten, STAR-Stories): natürliches Tech-Deutsch, keine wörtliche Übersetzung. Kurze Sätze, aktive Verben, Passiv vermeiden. Fachbegriffe (Stack, Pipeline, Deployment, Embedding) nicht zwanghaft eindeutschen
+8. Beim Erzeugen deutscher Texte (PDF-Summaries, Bullets, LinkedIn-Nachrichten, STAR-Stories): natürliches Fach-Deutsch des jeweiligen Berufsfelds, keine wörtliche Übersetzung. Kurze Sätze, aktive Verben, Passiv vermeiden. Gängige Fachbegriffe der Branche (z. B. Case Management, Onboarding, Compliance, Pipeline) nicht zwanghaft eindeutschen
 8b. **Case-Study-URLs in der PDF Professional Summary:** Wenn das PDF Case Studies oder Demos erwähnt, MÜSSEN die URLs schon im ersten Absatz (Professional Summary) auftauchen. Recruiter lesen oft nur die Summary. Alle URLs im HTML mit `white-space: nowrap`
 9. **Tracker-Einträge als TSV** — `applications.md` NIEMALS direkt für neue Einträge editieren. TSV in `batch/tracker-additions/` schreiben, `merge-tracker.mjs` übernimmt das Mergen
 10. **`**URL:**` in jedem Report-Header** — zwischen Score und PDF

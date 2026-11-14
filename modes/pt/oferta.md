@@ -4,7 +4,7 @@ Quando o candidato cola uma vaga (texto ou URL), entregar SEMPRE os 6 blocos:
 
 ## Passo 0 -- Detecção de Arquétipo
 
-Classificar a vaga em um dos 6 arquétipos (ver `_shared.md`). Se for híbrido, indicar os 2 mais próximos. Isso determina:
+Classificar a vaga em um dos arquétipos (primeiro os do candidato em `modes/_profile.md`; se não houver, as famílias de função de `_shared.md`). Se for híbrido, indicar os 2 mais próximos. Isso determina:
 - Quais proof points priorizar no bloco B
 - Como reescrever o summary no bloco E
 - Quais histórias STAR preparar no bloco F
@@ -13,8 +13,8 @@ Classificar a vaga em um dos 6 arquétipos (ver `_shared.md`). Se for híbrido, 
 
 Tabela com:
 - Arquétipo detectado
-- Domain (platform/agentic/LLMOps/ML/enterprise)
-- Função (build/consult/manage/deploy)
+- Domain (setor / especialidade, ex.: saúde, educação, ofícios técnicos, finanças, software)
+- Função (executar/atender/coordenar/assessorar/gerir/construir)
 - Senioridade
 - Remoto (full/híbrido/presencial)
 - Tamanho do time (se mencionado)
@@ -25,12 +25,14 @@ Tabela com:
 Ler `cv.md`. Criar tabela com cada requisito do JD mapeado para linhas exatas do currículo.
 
 **Adaptado ao arquétipo:**
-- Se FDE → priorizar proof points de entrega rápida e proximidade com cliente
-- Se SA → priorizar design de sistemas e integrações
-- Se PM → priorizar product discovery e métricas
-- Se LLMOps → priorizar evals, observability, pipelines
-- Se Agentic → priorizar multi-agent, HITL, orquestração
-- Se Transformation → priorizar gestão de mudança, adoção, escalabilidade
+- Usar a ênfase que `modes/_profile.md` define para esse arquétipo, quando houver
+- Se Hands-on Practitioner → priorizar registros, licenças, certificações e prática direta do trabalho central
+- Se People & Service → priorizar as pessoas atendidas, o volume e os resultados para elas
+- Se Coordination & Operations → priorizar confiabilidade, escala do que foi coordenado e melhorias de processo
+- Se Analysis & Research → priorizar métodos, ferramentas e as decisões que a análise orientou
+- Se Creative & Communications → priorizar peças de portfólio, público e alcance mensurável
+- Se Technical & Engineering → priorizar o que foi projetado ou construído e como foi validado
+- Se Leadership & Management → priorizar tamanho da equipe, orçamento e resultados entregues por meio de outros
 
 Seção de **gaps** com estratégia de mitigação para cada um. Para cada gap:
 1. É um hard blocker ou um nice-to-have?
@@ -82,12 +84,13 @@ A coluna **Reflection** captura o que foi aprendido ou o que seria feito diferen
 **Story Bank:** Se `interview-prep/story-bank.md` existir, verificar se alguma dessas histórias já está lá. Se não, adicionar as novas. Com o tempo, isso constrói um banco reutilizável de 5-10 histórias-mestre que podem ser adaptadas para qualquer pergunta de entrevista.
 
 **Selecionadas e enquadradas conforme o arquétipo:**
-- FDE → enfatizar velocidade de entrega e proximidade com cliente
-- SA → enfatizar decisões de arquitetura
-- PM → enfatizar discovery e trade-offs
-- LLMOps → enfatizar métricas, evals, production hardening
-- Agentic → enfatizar orquestração, tratamento de erros, HITL
-- Transformation → enfatizar adoção e mudança organizacional
+- Hands-on Practitioner → enfatizar habilidade em condições reais e decisões de julgamento
+- People & Service → enfatizar empatia, situações difíceis bem conduzidas e resultados para as pessoas atendidas
+- Coordination & Operations → enfatizar acompanhamento até o fim, conciliação de prioridades e um processo quebrado que foi consertado
+- Analysis & Research → enfatizar a pergunta, o método e o que mudou por causa disso
+- Creative & Communications → enfatizar o público, a ideia e a resposta que ela recebeu
+- Technical & Engineering → enfatizar o problema, os trade-offs e como foi testado
+- Leadership & Management → enfatizar desenvolvimento de pessoas, decisões difíceis e resultados da equipe
 
 Incluir também:
 - 1 case study recomendado (qual projeto apresentar e como)

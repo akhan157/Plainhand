@@ -74,46 +74,51 @@ Blok G, ilanın gerçek ve aktif bir açık pozisyon olup olmadığını değerl
 
 ## North Star — Hedef Roller
 
-Sistem tüm hedef rollere eşit özenle yaklaşır. Maaş ve gelişim fırsatı uygunsa her biri başarıdır:
+Sistem tüm hedef rollere eşit özenle yaklaşır. Maaş ve gelişim fırsatı uygunsa her biri başarıdır.
+
+Önce kullanıcının `modes/_profile.md` dosyasında tanımladığı kendi hedef arketiplerini kullan. Orada hiçbiri tanımlı değilse, her sektöre (sağlık, eğitim, zanaat ve teknik meslekler, iş dünyası, yaratıcı alanlar, kamu hizmeti, teknoloji) uyan şu rol ailelerini kullan:
 
 | Arketip | Odak alanları | İşverenin aradığı |
 |---------|--------------|-------------------|
-| **AI Platform / LLMOps Engineer** | Değerlendirme, gözlemlenebilirlik, güvenilirlik, pipeline'lar | Yapay zekayı metriklerle production'a taşıyan biri |
-| **Agentic Workflows / Automation** | HITL, tooling, orchestration, multi-agent | Güvenilir ajan sistemleri kuran biri |
-| **Technical AI Product Manager** | GenAI/Agents, PRD, discovery, delivery | İş gereksinimlerini AI ürününe çeviren biri |
-| **AI Solutions Architect** | Hyperautomation, enterprise, entegrasyonlar | Uçtan uca AI mimarileri tasarlayan biri |
-| **AI Forward Deployed Engineer** | Müşteri yönlü, hızlı teslimat, prototipleme | AI çözümlerini müşteride hızlıca hayata geçiren biri |
-| **AI Transformation Lead** | Değişim yönetimi, benimseme, kurumsal enablement | Organizasyonlarda AI dönüşümünü yöneten biri |
+| **Sahadaki uygulayıcı (Hands-on Practitioner)** | Mesleğin asıl işi; gerekli lisanslar, sertifikalar, araçlar, ekipman | İşi ilk günden iyi yapan biri |
+| **İnsan ve hizmet (People & Service)** | Müşteriler, hastalar, öğrenciler, danışanlar, üyeler, bakım, destek | Hizmet ettiği insanlarla gerçekten ilgilenen biri |
+| **Koordinasyon ve operasyon (Coordination & Operations)** | Koordinasyon, planlama, lojistik, süreçler, idari işler, mevzuata uyum | Hiçbir şeyi gözden kaçırmayan biri |
+| **Analiz ve araştırma (Analysis & Research)** | Analiz, veri, raporlama, araştırma, değerlendirme, denetim | Vardığı sonuçlar kararlara yön veren biri |
+| **Yaratıcılık ve iletişim (Creative & Communications)** | İçerik, tasarım, kampanya, marka, metin yazarlığı, medya | Bir kitleye ulaşabilen biri |
+| **Teknik ve mühendislik (Technical & Engineering)** | İnşa etmek, tasarlamak, sistemler, teknik, mühendislik, yazılım | Çalışan şeyler inşa eden biri |
+| **Liderlik ve yönetim (Leadership & Management)** | Yönetmek, denetlemek, ekip liderliği, bütçe, strateji, doğrudan bağlı çalışanlar | Başkaları aracılığıyla sonuç alan biri |
 
 
 ### Arketip Tespiti
 
-Her ilanı aşağıdaki türlerden birine (ya da en fazla ikisine) sınıflandır:
+Her ilanı kullanıcının `modes/_profile.md` dosyasındaki kendi hedef arketiplerinden birine (ya da en fazla ikisine) sınıflandır. Orada tanımlı arketip yoksa yukarıdaki rol ailelerini kullan:
 
 | Arketip | İlanda öne çıkan sinyaller |
 |---------|---------------------------|
-| AI Platform / LLMOps | "observability", "evals", "pipelines", "monitoring", "reliability" |
-| Agentic / Automation | "agent", "HITL", "orchestration", "workflow", "multi-agent" |
-| Technical AI PM | "PRD", "roadmap", "discovery", "stakeholder", "product manager" |
-| AI Solutions Architect | "architecture", "enterprise", "integration", "design", "systems" |
-| AI Forward Deployed | "client-facing", "deploy", "prototype", "fast delivery", "field" |
-| AI Transformation | "change management", "adoption", "enablement", "transformation" |
+| Hands-on Practitioner | mesleğin asıl işini yapmak; gerekli lisanslar, sertifikalar, araçlar veya ekipman |
+| People & Service | "müşteri", "hasta", "öğrenci", "danışan", "üye", "bakım", "destek" |
+| Coordination & Operations | "koordinasyon", "planlama", "lojistik", "süreç", "idari", "mevzuata uyum" |
+| Analysis & Research | "analiz", "veri", "raporlama", "araştırma", "değerlendirme", "denetim" |
+| Creative & Communications | "içerik", "tasarım", "kampanya", "marka", "metin", "medya" |
+| Technical & Engineering | "geliştirme", "tasarım", "sistemler", "teknik", "mühendislik", "yazılım" |
+| Leadership & Management | "yönetim", "denetleme", "ekip yönetimi", "bütçe", "strateji", "bağlı çalışanlar" |
 
 Arketipi tespit ettikten sonra kullanıcıya özgü çerçeveleme ve kanıt noktaları için `modes/_profile.md` dosyasını oku.
 
 ### Arketipe Göre Uyarlama
 
-> **Somut rakamlar ve metrikler: değerlendirme sırasında `cv.md` ve `article-digest.md` dosyalarından okunacak. Buraya sabit yazma.**
+> **Somut rakamlar ve metrikler: değerlendirme sırasında `cv.md` ve `article-digest.md` dosyalarından okunacak. Buraya sabit yazma.** `modes/_profile.md` bir arketip için neyin öne çıkarılacağını belirtiyorsa o geçerlidir.
 
 
 | Rol ise... | Adayda şunu öne çıkar... | Kanıt kaynakları |
 |-----------|--------------------------|-----------------|
-| Platform / LLMOps | Production deneyimi, observability, evals, closed-loop | article-digest.md + cv.md |
-| Agentic / Automation | Multi-agent orchestration, HITL, güvenilirlik, maliyet | article-digest.md + cv.md |
-| Technical AI PM | Product discovery, PRD'ler, metrikler, paydaş yönetimi | cv.md + article-digest.md |
-| Solutions Architect | Sistem tasarımı, entegrasyonlar, enterprise uyum | article-digest.md + cv.md |
-| Forward Deployed Engineer | Hızlı teslimat, müşteri yönlü, prototipten production'a | cv.md + article-digest.md |
-| AI Transformation Lead | Değişim yönetimi, ekip enablement, benimseme | cv.md + article-digest.md |
+| Hands-on Practitioner | Lisanslar, sertifikalar, asıl işin doğrudan pratiği | cv.md + article-digest.md |
+| People & Service | Hizmet verilen insanlar, hacim, onlar için elde edilen sonuçlar | cv.md + article-digest.md |
+| Coordination & Operations | Güvenilirlik, koordine edilen işin ölçeği, süreç iyileştirmeleri | cv.md + article-digest.md |
+| Analysis & Research | Yöntemler, araçlar, analizin yön verdiği kararlar | article-digest.md + cv.md |
+| Creative & Communications | Portfolyo çalışmaları, hedef kitle, ölçülebilir erişim | article-digest.md + cv.md |
+| Technical & Engineering | Neyin tasarlandığı ya da inşa edildiği ve nasıl doğrulandığı | article-digest.md + cv.md |
+| Leadership & Management | Ekip büyüklüğü, bütçe, başkaları aracılığıyla elde edilen sonuçlar | cv.md + article-digest.md |
 
 ### Kariyer Anlatısı (Tüm içeriklerde kullanılacak)
 
@@ -127,18 +132,14 @@ Arketipi tespit ettikten sonra kullanıcıya özgü çerçeveleme ve kanıt nokt
 ### Temel Güç
 
 
-Profili **"Gerçek dünya kanıtına sahip teknik builder"** olarak çerçevele — role göre uyarla:
-- PM için: "Prototiplerle belirsizliği azaltıp sonra disiplinli biçimde üretime taşıyan builder"
-- FDE için: "İlk günden observability ve metriklerle teslim eden builder"
-- SA için: "Gerçek entegrasyon deneyimiyle uçtan uca sistemler tasarlayan builder"
-- LLMOps için: "Kapalı döngü kalite sistemleriyle yapay zekayı production'a taşıyan builder"
+Profili **[adayın kendi alanının diliyle imza gücü; ör. "ailelerin adıyla istediği hemşire" ya da "hiçbir şeyi gözden kaçırmayan koordinatör"]** etrafında çerçevele ve her role göre uyarla.
 
-"Builder"ı profesyonel bir sinyal olarak konumlandır — hobici değil. Gerçek kanıt noktaları bunu inandırıcı kılar.
+Çerçeve değişir, gerçek aynı kalır. Gerçek kanıt noktaları bunu inandırıcı kılar.
 
 ### Portfolyo / Demo
 
 
-Adayın canlı bir demosu veya dashboardu varsa (`profile.yml`'ye bak), ilgili başvurularda erişim bilgisini paylaş.
+Adayın bir portfolyosu ya da herkese açık bir iş örneği (yazı örnekleri, ders videosu, proje sitesi, canlı demo vb.) varsa (`profile.yml`'ye bak), ilgili başvurularda paylaş.
 
 ### Ücret Araştırması
 
@@ -229,7 +230,7 @@ Türkçe iş ilanlarında ve sözleşme müzakerelerinde, yabancı piyasalarda k
 5. Değerlendirmeden sonra takipçiye kaydet
 6. İçeriği ilanın dilinde üret — ilan Türkçeyse Türkçe, İngilizce ise İngilizce
 7. Doğrudan ve eyleme dönük ol — gereksiz ayrıntı yazma
-8. Türkçe metin üretirken: doğal Türkçe kullan, kelimesi kelimesine çeviriden kaçın. Kısa cümleler, aktif fiiller. Stack, pipeline, deploy, backend, frontend gibi yerleşik teknik terimler zorla Türkçeleştirilmemeli
+8. Türkçe metin üretirken: doğal Türkçe kullan, kelimesi kelimesine çeviriden kaçın. Kısa cümleler, aktif fiiller. Sektörde yerleşmiş terimler (ör. onboarding, compliance, pipeline) zorla Türkçeleştirilmemeli
 8b. **PDF Professional Summary'de vaka çalışması URL'leri:** Adayın demo veya proje linki varsa ilk paragrafta göster — recruiter genellikle sadece summary'i okur
 9. **Takipçi eklemeleri TSV olarak** — `applications.md`'ye doğrudan yeni satır ekleme. TSV'yi `batch/tracker-additions/` klasörüne yaz, `merge-tracker.mjs` halleder
 10. Her rapor başlığına `**URL:**` alanını ekle — Puan ile PDF arasına

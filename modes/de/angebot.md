@@ -4,7 +4,7 @@ Wenn der Kandidat eine Stellenanzeige einfügt (Text oder URL), IMMER alle 6 Bl�
 
 ## Schritt 0 — Archetyp-Erkennung
 
-Die Stellenanzeige einem der 6 Archetypen zuordnen (siehe `_shared.md`). Bei Hybriden die zwei nächstliegenden angeben. Daraus folgt:
+Die Stellenanzeige einem der Archetypen zuordnen (zuerst die eigenen aus `modes/_profile.md`, sonst die Rollenfamilien in `_shared.md`). Bei Hybriden die zwei nächstliegenden angeben. Daraus folgt:
 - Welche Proof Points in Block B Vorrang haben
 - Wie das Summary in Block E umgeschrieben wird
 - Welche STAR-Stories in Block F vorbereitet werden
@@ -13,8 +13,8 @@ Die Stellenanzeige einem der 6 Archetypen zuordnen (siehe `_shared.md`). Bei Hyb
 
 Tabelle mit:
 - Erkannter Archetyp
-- Domain (Platform / Agentic / LLMOps / ML / Enterprise)
-- Funktion (Build / Consult / Manage / Deploy)
+- Domain (Branche / Fachgebiet, z. B. Gesundheitswesen, Bildung, Handwerk, Finanzen, Software)
+- Funktion (Ausführen / Betreuen / Koordinieren / Beraten / Leiten / Aufbauen)
 - Seniorität
 - Remote (Vollremote / Hybrid / Vor Ort)
 - Teamgröße (falls erwähnt)
@@ -25,12 +25,14 @@ Tabelle mit:
 `cv.md` lesen. Tabelle erstellen, in der jede Anforderung aus der Stellenanzeige auf exakte Zeilen aus dem Lebenslauf gemappt wird.
 
 **Angepasst an den Archetyp:**
-- FDE → Proof Points zu schneller Lieferung und Kundennähe priorisieren
-- SA → Systemdesign und Integrationen priorisieren
-- PM → Product Discovery und Metriken priorisieren
-- LLMOps → Evals, Observability, Pipelines priorisieren
-- Agentic → Multi-Agent, HITL, Orchestrierung priorisieren
-- Transformation → Change Management, Adoption, Skalierung priorisieren
+- Die Gewichtung aus `modes/_profile.md` für diesen Archetyp verwenden, wenn dort eine festgelegt ist
+- Hands-on Practitioner → Lizenzen, Zertifizierungen und direkte Praxis in der Kernarbeit priorisieren
+- People & Service → betreute Menschen, Volumen und Ergebnisse für diese Menschen priorisieren
+- Coordination & Operations → Zuverlässigkeit, Umfang des Koordinierten und Prozessverbesserungen priorisieren
+- Analysis & Research → Methoden, Werkzeuge und die Entscheidungen, die die Analyse geprägt hat, priorisieren
+- Creative & Communications → Portfolio-Arbeiten, Zielgruppe und messbare Reichweite priorisieren
+- Technical & Engineering → priorisieren, was entworfen oder gebaut wurde und wie es validiert wurde
+- Leadership & Management → Teamgröße, Budget und Ergebnisse durch andere priorisieren
 
 Abschnitt **Lücken (Gaps)** mit Mitigationsstrategie für jede einzelne. Pro Gap:
 1. Ist das ein Hard Blocker oder ein Nice-to-have?
@@ -81,12 +83,13 @@ Die Spalte **Reflection** erfasst, was gelernt wurde oder was man heute anders m
 **Story Bank:** Wenn `interview-prep/story-bank.md` existiert, prüfen, ob die Stories schon dort stehen. Falls nicht, neue ergänzen. Mit der Zeit entsteht so eine wiederverwendbare Bank von 5-10 Master-Stories, die sich an jede Frage im Vorstellungsgespräch anpassen lassen.
 
 **Ausgewählt und an den Archetyp angepasst:**
-- FDE → Lieferungs-Tempo und Kundennähe betonen
-- SA → Architektur-Entscheidungen betonen
-- PM → Discovery und Trade-offs betonen
-- LLMOps → Metriken, Evals, Production-Hardening betonen
-- Agentic → Orchestrierung, Error Handling, HITL betonen
-- Transformation → Adoption und organisatorischen Wandel betonen
+- Hands-on Practitioner → Können unter realen Bedingungen und Ermessensentscheidungen betonen
+- People & Service → Empathie, gemeisterte schwierige Situationen und Ergebnisse für die betreuten Menschen betonen
+- Coordination & Operations → Verlässlichkeit, Jonglieren von Prioritäten und das Reparieren eines kaputten Prozesses betonen
+- Analysis & Research → die Fragestellung, die Methode und was sich dadurch verändert hat betonen
+- Creative & Communications → Zielgruppe, Idee und die Resonanz darauf betonen
+- Technical & Engineering → das Problem, die Trade-offs und wie es getestet wurde betonen
+- Leadership & Management → Menschen entwickeln, harte Entscheidungen und Teamergebnisse betonen
 
 Außerdem aufnehmen:
 - 1 empfohlene Case Study (welches Projekt vorgestellt wird und wie)

@@ -4,7 +4,7 @@ Quand le candidat colle une offre (texte ou URL), TOUJOURS livrer les 6 blocs.
 
 ## Etape 0 -- Detection d'archetype
 
-Classer l'offre dans l'un des 6 archetypes (voir `_shared.md`). Si hybride, indiquer les 2 plus proches. Cela determine :
+Classer l'offre dans l'un des archetypes (d'abord ceux du candidat dans `modes/_profile.md`, sinon les familles de roles de `_shared.md`). Si hybride, indiquer les 2 plus proches. Cela determine :
 - Quels proof points prioriser dans le bloc B
 - Comment reecrire le summary dans le bloc E
 - Quelles stories STAR preparer dans le bloc F
@@ -13,8 +13,8 @@ Classer l'offre dans l'un des 6 archetypes (voir `_shared.md`). Si hybride, indi
 
 Tableau avec :
 - Archetype detecte
-- Domaine (Platform / Agentic / LLMOps / ML / Enterprise)
-- Fonction (Build / Conseil / Management / Deploy)
+- Domaine (secteur / specialite, ex. sante, education, metiers manuels, finance, logiciel)
+- Fonction (Execution / Accompagnement / Coordination / Conseil / Management / Construction)
 - Seniorite
 - Remote (Full remote / Hybride / Sur site)
 - Taille d'equipe (si mentionnee)
@@ -25,12 +25,14 @@ Tableau avec :
 Lire `cv.md`. Creer un tableau ou chaque prerequis de l'offre est mappe sur des lignes exactes du CV.
 
 **Adapte a l'archetype :**
-- FDE -> prioriser les proof points de livraison rapide et proximite client
-- SA -> prioriser la conception systeme et les integrations
-- PM -> prioriser la product discovery et les metriques
-- LLMOps -> prioriser evals, observability, pipelines
-- Agentic -> prioriser multi-agent, HITL, orchestration
-- Transformation -> prioriser conduite du changement, adoption, passage a l'echelle
+- Utiliser l'accent que `modes/_profile.md` fixe pour cet archetype, s'il en definit un
+- Hands-on Practitioner -> prioriser diplomes, habilitations, certifications et pratique directe du coeur du metier
+- People & Service -> prioriser les personnes servies, le volume et les resultats obtenus pour elles
+- Coordination & Operations -> prioriser la fiabilite, l'ampleur de ce qui a ete coordonne, les ameliorations de processus
+- Analysis & Research -> prioriser les methodes, les outils et les decisions que l'analyse a eclairees
+- Creative & Communications -> prioriser les pieces de portfolio, l'audience et la portee mesurable
+- Technical & Engineering -> prioriser ce qui a ete concu ou construit et comment ca a ete valide
+- Leadership & Management -> prioriser la taille d'equipe, le budget et les resultats obtenus a travers les autres
 
 Section **Lacunes (Gaps)** avec strategie de mitigation pour chacune. Pour chaque lacune :
 1. Est-ce un bloqueur dur ou un nice-to-have ?
@@ -64,7 +66,7 @@ Tableau avec donnees et sources citees. Si pas de donnees, le dire clairement --
 ## Bloc E -- Plan de personnalisation
 
 | # | Section | Etat actuel | Changement propose | Justification |
-|---|---------|-------------|--------------------|----- ---------|
+|---|---------|-------------|--------------------|---------------|
 | 1 | Summary | ... | ... | ... |
 | ... | ... | ... | ... | ... |
 
@@ -82,12 +84,13 @@ La colonne **Reflection** capture ce qui a ete appris ou ce qui serait fait diff
 **Story Bank :** Si `interview-prep/story-bank.md` existe, verifier si ces stories y sont deja. Sinon, ajouter les nouvelles. Avec le temps, cela construit une banque reutilisable de 5-10 stories maitre adaptables a n'importe quelle question d'entretien.
 
 **Selectionnees et cadrees selon l'archetype :**
-- FDE -> mettre en avant la vitesse de livraison et la proximite client
-- SA -> mettre en avant les decisions d'architecture
-- PM -> mettre en avant la discovery et les arbitrages
-- LLMOps -> mettre en avant les metriques, evals, hardening en production
-- Agentic -> mettre en avant l'orchestration, la gestion d'erreurs, le HITL
-- Transformation -> mettre en avant l'adoption et le changement organisationnel
+- Hands-on Practitioner -> mettre en avant la maitrise en conditions reelles et les decisions de jugement
+- People & Service -> mettre en avant l'empathie, les situations difficiles gerees, les resultats pour les personnes servies
+- Coordination & Operations -> mettre en avant le suivi rigoureux, la gestion de priorites multiples, un processus defaillant remis d'aplomb
+- Analysis & Research -> mettre en avant la question, la methode et ce qui a change grace a elles
+- Creative & Communications -> mettre en avant l'audience, l'idee et l'accueil recu
+- Technical & Engineering -> mettre en avant le probleme, les arbitrages et la facon dont ca a ete teste
+- Leadership & Management -> mettre en avant le developpement des personnes, les decisions difficiles et les resultats d'equipe
 
 Inclure aussi :
 - 1 case study recommandee (quel projet presenter et comment)

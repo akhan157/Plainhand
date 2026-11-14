@@ -44,44 +44,50 @@
 
 ## North Star -- ターゲット求人
 
-skill はすべてのターゲット求人を同等の注意で扱う。プライマリもセカンダリもない — 報酬と成長の見込みが適切であれば、どれも勝利となる：
+skill はすべてのターゲット求人を同等の注意で扱う。プライマリもセカンダリもない — 報酬と成長の見込みが適切であれば、どれも勝利となる。
+
+まず `modes/_profile.md` で定義されたユーザー自身のターゲットアーキタイプを使う。定義がなければ、どの業界（医療・介護、教育、技能職、ビジネス、クリエイティブ、公共サービス、テクノロジー）にも当てはまる以下の職種ファミリーを使う：
 
 | アーキタイプ | テーマ軸 | 企業が求めているもの |
 |-------------|---------|---------------------|
-| **AI Platform / LLMOps Engineer** | Evals、Observability、信頼性、Pipelines | メトリクス付きで AI を本番投入できる人 |
-| **Agentic Workflows / Automation** | HITL、Tooling、オーケストレーション、Multi-Agent | 信頼性の高いエージェントシステムを構築する人 |
-| **Technical AI Product Manager** | GenAI/Agents、PRD、Discovery、Delivery | ビジネスを AI プロダクトに翻訳する人 |
-| **AI Solutions Architect** | ハイパーオートメーション、エンタープライズ、Integrations | エンドツーエンドの AI アーキテクチャを設計する人 |
-| **AI Forward Deployed Engineer** | クライアント密着、高速デリバリー、Prototyping | AI ソリューションをクライアントに素早く導入する人 |
-| **AI Transformation Lead** | Change management、Adoption、組織の Enablement | 組織の AI トランスフォーメーションをリードする人 |
+| **現場の実務者（Hands-on Practitioner）** | その職種の中核業務、必要な資格・免許・認定、道具・機器 | 初日からきちんと仕事をこなせる人 |
+| **対人・サービス（People & Service）** | 顧客、患者、生徒、利用者、会員、ケア、サポート | 相手を大切にし、しっかり支えられる人 |
+| **調整・運営（Coordination & Operations）** | 調整、スケジュール管理、物流、業務プロセス、事務・管理、コンプライアンス | 抜け漏れを出さない人 |
+| **分析・調査（Analysis & Research）** | 分析、データ、レポーティング、調査・研究、評価、監査 | 意思決定を導く結論を出せる人 |
+| **クリエイティブ・広報（Creative & Communications）** | コンテンツ、デザイン、キャンペーン、ブランド、ライティング、メディア | 届けたい相手に届けられる人 |
+| **技術・エンジニアリング（Technical & Engineering）** | 作る、設計する、システム、技術、エンジニアリング、ソフトウェア | ちゃんと動くものを作れる人 |
+| **リーダーシップ・マネジメント（Leadership & Management）** | 管理、監督、チームを率いる、予算、戦略、直属の部下 | 人を通じて成果を出せる人 |
 
-<!-- [PERSONALIZAR] 上記のアーキタイプをあなたのターゲット求人に合わせて調整。
-     バックエンドエンジニアリングの例：
-     - Senior Backend Engineer
-     - Staff Platform Engineer
-     - Engineering Manager
+<!-- [PERSONALIZAR] 上記のアーキタイプを、分野を問わずあなたのターゲット求人に置き換えてください。例：
+     - 看護師 / 臨床コーディネーター
+     - マーケティングコーディネーター / コンテンツ担当
+     - 小学校教諭 / 学習支援員
+     - 電気工事士見習い / 設備保全技術者
+     - 財務アナリスト / 経理担当
+     - ソフトウェアエンジニア / データアナリスト
      など -->
 
 ### アーキタイプ別の適応フレーミング
 
-> **具体的なメトリクス：評価時に `cv.md` と `article-digest.md` から読む。ここに絶対にハードコードしない。**
+> **具体的なメトリクス：評価時に `cv.md` と `article-digest.md` から読む。ここに絶対にハードコードしない。** `modes/_profile.md` がアーキタイプごとの強調点を定めている場合は、そちらを優先する。
 
 | 求人が... | 候補者で強調するもの... | Proof Points のソース |
 |----------|----------------------|----------------------|
-| Platform / LLMOps | 本番経験、Observability、Evals、Closed-Loop | article-digest.md + cv.md |
-| Agentic / Automation | マルチエージェントのオーケストレーション、HITL、信頼性、コスト | article-digest.md + cv.md |
-| Technical AI PM | Product Discovery、PRD、メトリクス、ステークホルダーマネジメント | cv.md + article-digest.md |
-| Solutions Architect | システム設計、Integrations、Enterprise-ready | article-digest.md + cv.md |
-| Forward Deployed Engineer | 高速デリバリー、クライアント密着、プロトタイプから本番へ | cv.md + article-digest.md |
-| AI Transformation Lead | Change management、チーム Enablement、Adoption | cv.md + article-digest.md |
+| Hands-on Practitioner | 資格・免許・認定、中核業務の実務経験 | cv.md + article-digest.md |
+| People & Service | 支えた相手、対応件数、その人たちにもたらした結果 | cv.md + article-digest.md |
+| Coordination & Operations | 確実さ、調整した規模、業務プロセスの改善 | cv.md + article-digest.md |
+| Analysis & Research | 手法、ツール、分析が支えた意思決定 | article-digest.md + cv.md |
+| Creative & Communications | ポートフォリオ作品、オーディエンス、測定できるリーチ | article-digest.md + cv.md |
+| Technical & Engineering | 何を設計・構築し、どう検証したか | article-digest.md + cv.md |
+| Leadership & Management | チーム規模、予算、人を通じて出した成果 | cv.md + article-digest.md |
 
-<!-- [PERSONALIZAR] あなたの具体的なプロジェクト・記事を上記のアーキタイプにマッピング -->
+<!-- [PERSONALIZAR] あなたの具体的な経験・プロジェクトを上記のアーキタイプにマッピング -->
 
 ### トランジションナラティブ（すべてのフレーミングで使用）
 
 <!-- [PERSONALIZAR] あなた自身のナラティブに置き換えてください。例：
-     - 「5 年で自社 SaaS を構築・売却。今はエンタープライズの Applied AI に完全フォーカス。」
-     - 「Series-B で 10 倍成長期のエンジニアリングリード。次の挑戦を探している。」
+     - 「ICU で看護師として 5 年。今は臨床コーディネーターへの転身を目指している。」
+     - 「急拡大期の小売チェーンで店長を務めた。次の挑戦を探している。」
      - 「コンサルからプロダクトへ転身。責任の大きいロールを探している。」
      config/profile.yml -> narrative.exit_story から読む -->
 
@@ -93,25 +99,22 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 
 ### 横断的アドバンテージ
 
-プロフィールを **「実績のある実践的なテクニカル Builder」** としてフレーミングし、求人に応じて調整する：
-- PM 向け：「プロトタイプで不確実性を減らし、その後規律を持って本番に持っていく Builder」
-- FDE 向け：「初日から Observability とメトリクス付きで出荷する Builder」
-- SA 向け：「実際の統合経験を持ちエンドツーエンドのシステムを設計する Builder」
-- LLMOps 向け：「closed-loop の品質システムで AI を本番投入する Builder」
+<!-- [PERSONALIZAR] あなたの「決め技」は何か？ 他の人にはできない、あなたにできることは？ -->
 
-「Builder」をプロフェッショナルなシグナルとして位置づける — 「趣味人」ではなく。実際の proof point がこれを信頼できるものにする。
+プロフィールを **[あなたの分野の言葉で表した決め技。例：「家族から名指しで頼られる看護師」「何ひとつ取りこぼさないコーディネーター」]** を軸にフレーミングし、求人ごとに調整する。
+
+フレーミングは変わっても、事実は変わらない。実際の proof point がこれを信頼できるものにする。
 
 ### Proof Point としてのポートフォリオ（高価値な応募で使う）
 
-<!-- [PERSONALIZAR] ライブデモ、ダッシュボード、公開プロジェクトがある場合はここに設定。
+<!-- [PERSONALIZAR] ポートフォリオ、文章サンプル、授業動画、プロジェクトサイトなど公開している成果物がある場合はここに設定。
      例：
      dashboard:
-       url: "https://yourdomain.dev/demo"
-       password: "demo-2026"
-       when_to_share: "LLMOps、AI-Platform、Observability 系の求人"
+       url: "https://yoursite.example/portfolio"
+       when_to_share: "マーケティング・コンテンツ系の求人"
      config/profile.yml -> narrative.proof_points と narrative.dashboard から読む -->
 
-候補者がライブデモ/ダッシュボードを持っている場合（`profile.yml` で確認）、関連する応募でアクセスを提供する。
+候補者がポートフォリオや公開している成果物を持っている場合（`profile.yml` で確認）、関連する応募で紹介する。
 
 ### 報酬インテリジェンス（Comp Intelligence）
 
@@ -206,7 +209,7 @@ skill はすべてのターゲット求人を同等の注意で扱う。プラ�
 5. 各評価後に tracker に記録する
 6. 求人の言語で生成する（日本語求人 = 日本語）
 7. 直接的で実用的に — 前置きを省く
-8. 日本語のテキスト（PDF サマリー、箇条書き、LinkedIn メッセージ、STAR ストーリー）を生成する際：自然な日本語テック表現、直訳ではない。短い文、能動態、受動態を避ける。テック用語（stack、pipeline、deployment、embedding）は訳す必要なし
+8. 日本語のテキスト（PDF サマリー、箇条書き、LinkedIn メッセージ、STAR ストーリー）を生成する際：その業界で自然に使われる日本語の表現、直訳ではない。短い文、能動態、受動態を避ける。業界で定着しているカタカナ語・英語の用語（例：オンボーディング、コンプライアンス、パイプライン）は無理に訳す必要なし
 8b. **PDF Professional Summary のケーススタディ URL：** PDF がケーススタディやデモに言及する場合、URL は最初の段落（Professional Summary）に既に現れる必要がある。リクルーターはサマリーしか読まないことが多い。HTML 内のすべての URL は `white-space: nowrap`
 9. **tracker エントリは TSV で** — `applications.md` を新規エントリのために直接編集しない。TSV を `batch/tracker-additions/` に書き、`merge-tracker.mjs` が merge を処理する
 10. **すべての report ヘッダーに `**URL:**` を含める** — Score と PDF の間

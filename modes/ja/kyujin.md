@@ -4,7 +4,7 @@
 
 ## ステップ 0 -- アーキタイプ検出
 
-求人を 6 つのアーキタイプのいずれかに分類する（`_shared.md` 参照）。ハイブリッドの場合は最も近い 2 つを示す。これにより以下が決まる：
+求人をアーキタイプのいずれかに分類する（まず `modes/_profile.md` のユーザー自身のアーキタイプ、なければ `_shared.md` の職種ファミリー）。ハイブリッドの場合は最も近い 2 つを示す。これにより以下が決まる：
 - ブロック B でどの proof point を優先するか
 - ブロック E でサマリーをどう書き換えるか
 - ブロック F でどの STAR ストーリーを準備するか
@@ -13,8 +13,8 @@
 
 テーブル：
 - 検出されたアーキタイプ
-- ドメイン（platform/agentic/LLMOps/ML/enterprise）
-- ファンクション（build/consult/manage/deploy）
+- ドメイン（業界・専門分野。例：医療・介護、教育、技能職、金融、ソフトウェア）
+- ファンクション（実務/支援・対応/調整/助言/管理/構築）
 - シニアリティ
 - リモート（full/ハイブリッド/出社）
 - チームサイズ（記載がある場合）
@@ -25,12 +25,14 @@
 `cv.md` を読む。JD の各要件を履歴書の正確な行にマッピングしたテーブルを作成。
 
 **アーキタイプに応じて適応：**
-- FDE → 高速デリバリーとクライアント密着の proof point を優先
-- SA → システム設計と統合を優先
-- PM → Product Discovery とメトリクスを優先
-- LLMOps → Evals、Observability、Pipelines を優先
-- Agentic → Multi-agent、HITL、オーケストレーションを優先
-- Transformation → Change management、Adoption、スケーラビリティを優先
+- `modes/_profile.md` がそのアーキタイプの強調点を定めている場合はそれを使う
+- Hands-on Practitioner → 資格・免許・認定と、中核業務の実務経験を優先
+- People & Service → 支えた相手、対応件数、その人たちにもたらした結果を優先
+- Coordination & Operations → 確実さ、調整した規模、業務プロセスの改善を優先
+- Analysis & Research → 手法、ツール、分析が支えた意思決定を優先
+- Creative & Communications → ポートフォリオ作品、オーディエンス、測定できるリーチを優先
+- Technical & Engineering → 何を設計・構築し、どう検証したかを優先
+- Leadership & Management → チーム規模、予算、人を通じて出した成果を優先
 
 **ギャップ**セクション（各ギャップの緩和策付き）：
 1. Hard blocker か nice-to-have か？
@@ -84,12 +86,13 @@ JD の要件にマッピングした 6-10 の STAR+R ストーリー（STAR + **
 **Story Bank：** `interview-prep/story-bank.md` が存在する場合、これらのストーリーが既にあるか確認。なければ新しいものを追加。時間の経過とともに、どの面接の質問にも適応できる 5-10 のマスターストーリーのバンクが構築される。
 
 **アーキタイプに応じたストーリー選択とフレーミング：**
-- FDE → デリバリー速度とクライアント密着を強調
-- SA → アーキテクチャの意思決定を強調
-- PM → Discovery とトレードオフを強調
-- LLMOps → メトリクス、Evals、本番ハードニングを強調
-- Agentic → オーケストレーション、エラーハンドリング、HITL を強調
-- Transformation → Adoption と組織変革を強調
+- Hands-on Practitioner → 実際の現場での腕前と判断を強調
+- People & Service → 共感、乗り越えた難しい場面、支えた相手にもたらした結果を強調
+- Coordination & Operations → やり抜く力、複数の優先事項のさばき方、うまく回っていなかったプロセスの立て直しを強調
+- Analysis & Research → 問い、手法、それによって何が変わったかを強調
+- Creative & Communications → オーディエンス、アイデア、得られた反響を強調
+- Technical & Engineering → 課題、トレードオフ、どうテストしたかを強調
+- Leadership & Management → 人の育成、難しい決断、チームとしての成果を強調
 
 さらに：
 - 推奨ケーススタディ 1 つ（どのプロジェクトをどう提示するか）

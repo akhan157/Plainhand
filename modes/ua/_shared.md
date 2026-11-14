@@ -85,20 +85,23 @@
 
 ## Визначення архетипу
 
-Класифікувати кожну вакансію в один з типів (або гібрид 2-х):
+Класифікувати кожну вакансію в один із власних цільових архетипів кандидата з `modes/_profile.md` (або гібрид 2-х). Якщо там нічого не задано — використовувати ці сімейства ролей, які підходять для будь-якої галузі (медицина, освіта, робітничі професії, бізнес, творчі професії, державна служба, технології):
 
 ### Універсальні архетипи
 
-| Архетип                            | Ключові сигнали в JD                                               |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| **AI Platform / LLMOps Engineer**  | "observability", "evals", "pipelines", "monitoring", "reliability" |
-| **Agentic Workflows / Automation** | "agent", "HITL", "orchestration", "workflow", "multi-agent"        |
-| **Technical AI Product Manager**   | "PRD", "roadmap", "discovery", "stakeholder", "product manager"    |
-| **AI Solutions Architect**         | "architecture", "enterprise", "integration", "design", "systems"   |
-| **AI Forward Deployed Engineer**   | "client-facing", "deploy", "prototype", "fast delivery", "field"   |
-| **AI Transformation Lead**         | "change management", "adoption", "enablement", "transformation"    |
+| Архетип | Ключові сигнали в JD |
+| --- | --- |
+| **Практик своєї справи (Hands-on Practitioner)** | виконання основної роботи професії; потрібні ліцензії, допуски, сертифікати, інструменти чи обладнання |
+| **Люди та сервіс (People & Service)** | "клієнти", "пацієнти", "учні", "відвідувачі", "учасники", "догляд", "підтримка" |
+| **Координація та операції (Coordination & Operations)** | "координувати", "графік", "логістика", "процеси", "адміністрування", "відповідність вимогам" |
+| **Аналіз та дослідження (Analysis & Research)** | "аналіз", "дані", "звітність", "дослідження", "оцінка", "аудит" |
+| **Креатив та комунікації (Creative & Communications)** | "контент", "дизайн", "кампанія", "бренд", "тексти", "медіа" |
+| **Техніка та інженерія (Technical & Engineering)** | "будувати", "проєктувати", "системи", "технічний", "інженерія", "ПЗ" |
+| **Лідерство та управління (Leadership & Management)** | "керувати", "наглядати", "очолити команду", "бюджет", "стратегія", "прямі підлеглі" |
 
-### Архетипи для українського ринку
+### Приклади архетипів для українського ІТ-ринку
+
+Використовувати лише якщо кандидат шукає роботу в ІТ; це окремі випадки сімейства Technical & Engineering (і Leadership & Management для тімлідів).
 
 | Архетип                             | Ключові сигнали в JD                                                 |
 | ----------------------------------- | -------------------------------------------------------------------- |
@@ -116,18 +119,17 @@
 
 ### Адаптивний фреймінг за архетипом
 
-> **Конкретні метрики: читати під час оцінки з `cv.md` та `article-digest.md`. НІКОЛИ не хардкодити.**
+> **Конкретні метрики: читати під час оцінки з `cv.md` та `article-digest.md`. НІКОЛИ не хардкодити.** Якщо `modes/_profile.md` визначає, що підкреслювати для архетипу, — він має пріоритет.
 
-| Якщо роль...              | Підкреслити про кандидата...                          | Джерела proof points      |
-| ------------------------- | ----------------------------------------------------- | ------------------------- |
-| Platform / LLMOps         | Production systems, observability, evals, reliability | article-digest.md + cv.md |
-| Agentic / Automation      | Multi-agent orchestration, HITL, fault tolerance      | article-digest.md + cv.md |
-| Technical AI PM           | Product discovery, PRD, metrics, delivery             | cv.md + article-digest.md |
-| Solutions Architect       | System design, integrations, enterprise-ready         | article-digest.md + cv.md |
-| Forward Deployed Engineer | Fast delivery, client-facing, prototype → prod        | cv.md + article-digest.md |
-| Backend                   | Highload, microservices, scaling, distributed systems | cv.md                     |
-| DevOps/SRE                | Infrastructure, CI/CD, monitoring, automation         | cv.md                     |
-| Tech Lead / EM            | Leadership, hiring, tech strategy, delivery           | cv.md                     |
+| Якщо роль... | Підкреслити про кандидата... | Джерела proof points |
+| --- | --- | --- |
+| Hands-on Practitioner | Ліцензії, допуски, сертифікати, пряма практика основної роботи | cv.md + article-digest.md |
+| People & Service | Кого обслуговував, обсяг, результати для цих людей | cv.md + article-digest.md |
+| Coordination & Operations | Надійність, масштаб того, що координував, покращення процесів | cv.md + article-digest.md |
+| Analysis & Research | Методи, інструменти, рішення, ухвалені на основі аналізу | article-digest.md + cv.md |
+| Creative & Communications | Роботи з портфоліо, аудиторія, вимірюване охоплення | article-digest.md + cv.md |
+| Technical & Engineering | Що спроєктував чи побудував і як це перевірялося (для ІТ: Backend — highload, мікросервіси; DevOps/SRE — інфраструктура, CI/CD, моніторинг) | article-digest.md + cv.md |
+| Leadership & Management | Розмір команди, бюджет, результати через інших | cv.md + article-digest.md |
 
 ---
 
@@ -137,7 +139,7 @@
 
 - **Валюта**: Українське ІТ працює переважно в **USD**. Зарплати майже завжди обговорюються й виплачуються в доларах (навіть для ФОП). Для не-ІТ позицій — гривні (₴ / UAH).
 - **Gross vs Net**: Для ФОП (найпоширеніша форма в ІТ) — зазвичай обговорюється net-сума, податки — відповідальність ФОП. Для штатних — уточнити: `gross` чи `на руки (net)`. ПДФО: 18% + військовий збір 5% (станом на 2024+).
-- **Джерела даних**: DOU.ua/salaries (основне), djinni.co/salaries, Glassdoor, Levels.fyi (для міжнародних), Blind.
+- **Джерела даних**: для ІТ — DOU.ua/salaries (основне), djinni.co/salaries, Levels.fyi (для міжнародних), Blind; для інших галузей — work.ua, robota.ua, Glassdoor.
 - **Бонуси**: Рідкість в українському ІТ. Частіше — перегляд зарплати раз на рік. Деякі продуктові компанії мають квартальні бонуси.
 
 ### Оформлення трудових відносин
@@ -215,7 +217,7 @@
 5. Реєструвати в трекері після оцінки
 6. Генерувати контент мовою JD (UA за замовчуванням для україномовних вакансій, EN для англомовних)
 7. Бути прямим і конкретним — без води
-8. Для україномовних вакансій: технічна українська, короткі речення.
+8. Для україномовних вакансій: жива професійна українська в лексиці своєї галузі, короткі речення.
    8b. URL-и кейсів у Professional Summary PDF (рекрутер може прочитати тільки це).
 9. **Додавання до трекера як TSV** — не додавати НОВІ записи в `data/applications.md` напряму; для нових записів писати TSV у `batch/tracker-additions/` і робити merge. Пряме редагування існуючих рядків допустиме для оновлення `status`/`notes`.
 10. **Включати `**URL:**` в заголовок кожного звіту.**

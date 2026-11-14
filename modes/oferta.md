@@ -4,7 +4,7 @@ When the candidate pastes a job (text or URL), ALWAYS deliver the 7 blocks (A-F 
 
 ## Step 0 — Archetype Detection
 
-Classify the job into one of the 6 archetypes (see `_shared.md`). If it is a hybrid, indicate the 2 closest ones. This determines:
+Classify the job into one of the archetypes (the user's own from `_profile.md`, else the role families in `_shared.md`). If it is a hybrid, indicate the 2 closest ones. This determines:
 - Which proof points to prioritize in block B
 - How to rewrite the summary in block E
 - Which STAR stories to prepare in block F
@@ -13,8 +13,8 @@ Classify the job into one of the 6 archetypes (see `_shared.md`). If it is a hyb
 
 Table with:
 - Archetype detected
-- Domain (platform/agentic/LLMOps/ML/enterprise)
-- Function (build/consult/manage/deploy)
+- Domain (the industry or setting, e.g. hospital, school district, retail, construction, software)
+- Function (deliver/serve/coordinate/analyze/create/build/lead)
 - Seniority
 - Remote (full/hybrid/onsite)
 - Team size (if mentioned)
