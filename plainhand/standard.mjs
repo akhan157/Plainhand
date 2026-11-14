@@ -20,7 +20,9 @@ export function standardStatus(state, contextHash) {
 export function standardInput(state, contextHash) {
   if (standardStatus(state, contextHash) !== 'approved') return null;
   const { headline, resume, coverLetter } = state.standard.draft;
-  return { headline, resume: resume.map(({ section, text }) => ({ section, text })), coverLetter };
+  // Headings travel with each line so the agent knows which role a bullet belongs to
+  // and can choose and order roles for each job.
+  return { headline, resume: resume.map(({ section, heading, text }) => ({ section, ...(heading ? { heading } : {}), text })), coverLetter };
 }
 
 export function approveStandard(state, at) {

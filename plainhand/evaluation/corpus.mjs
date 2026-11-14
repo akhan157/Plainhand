@@ -773,6 +773,34 @@ export const jobs = [
     maxScore: 3.5,
     description: 'SYNTHETIC TEST JOB. Fictional Bridge Engineering seeks a senior structural engineer with a Professional Engineer license and 10+ years designing steel and concrete highway bridges, including load rating and structural analysis software.',
   },
+  // Same candidates, jobs that need a different part of their experience first.
+  {
+    id: 'training-coordinator',
+    company: 'Fictional Grocers Co',
+    title: 'Store Training Coordinator',
+    location: 'Phoenix, US',
+    requiredFactIds: ['training', 'customers', 'schedule'],
+    atsTerms: ['training', 'onboarding', 'customer service', 'scheduling', 'coaching'],
+    description: 'SYNTHETIC TEST JOB. Fictional Grocers Co seeks a store training coordinator in Phoenix to onboard and train new cashiers and stockers across three stores, coach staff on customer service and complaint handling, and schedule training sessions around shift coverage. Retail experience required; a degree is not required.',
+  },
+  {
+    id: 'nurse-educator',
+    company: 'Fictional Community Hospital',
+    title: 'Clinical Nurse Educator, Medical-Surgical',
+    location: 'Columbus, US',
+    requiredFactIds: ['precept', 'falls', 'license'],
+    atsTerms: ['orientation', 'preceptor', 'patient safety', 'fall prevention', 'education'],
+    description: 'SYNTHETIC TEST JOB. Fictional Community Hospital seeks a clinical nurse educator for its medical-surgical units in Columbus. Design and run orientation for new graduate nurses, support preceptors, and lead unit patient-safety work such as fall prevention. Active RN license and BSN required; bedside med-surg experience preferred.',
+  },
+  {
+    id: 'instructional-data',
+    company: 'Fictional Unified School District',
+    title: 'Instructional Data Coordinator',
+    location: 'Chicago, US',
+    requiredFactIds: ['grade-tracker', 'teaching', 'explain'],
+    atsTerms: ['student data', 'teachers', 'dashboards', 'data literacy', 'Google Sheets'],
+    description: 'SYNTHETIC TEST JOB. Fictional Unified School District seeks an instructional data coordinator in Chicago to help teachers use student data: build grade and attendance trackers in Google Sheets, run data-literacy sessions for staff, and explain results to families. Classroom teaching experience strongly preferred.',
+  },
 ];
 
 // Field expectations are deliberately explicit. A scorer should never have to
@@ -936,6 +964,11 @@ export const scenarios = [
   { id: 'retail-resume', family: 'resume', persona: 'retail-lead', job: 'assistant-store-manager' },
   { id: 'admin-resume', family: 'resume', persona: 'public-admin', job: 'records-coordinator' },
   { id: 'director-resume', family: 'resume', persona: 'director', job: 'vp-development' },
+  // Tailoring from an approved standard written for the candidate's general target:
+  // the experience this job needs must be in the resume and lead it.
+  { id: 'retail-tailor', family: 'resume', persona: 'retail-lead', job: 'training-coordinator', withStandard: true },
+  { id: 'nurse-tailor', family: 'resume', persona: 'nurse', job: 'nurse-educator', withStandard: true },
+  { id: 'analyst-tailor', family: 'resume', persona: 'career-changer', job: 'instructional-data', withStandard: true },
   // Applications: each portal behavior is exercised by a different field.
   { id: 'mech-lever', family: 'application', persona: 'mech-grad', job: 'grad-mech', portal: 'lever-single' },
   { id: 'analyst-greenhouse', family: 'application', persona: 'career-changer', job: 'data-analyst', portal: 'greenhouse-two-step' },

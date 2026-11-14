@@ -626,3 +626,19 @@ test('profile effectiveness keeps every repetition instead of the last one', () 
   assert.equal(effect.downstream.delta.applicationCompletion, -0.25);
   assert.match(markdownReport({ summary, results: [] }), /50% pass/);
 });
+
+test('tailoring: the experience a job needs must be in the resume and lead it', async () => {
+  const { tailoringOf } = await import('../plainhand/evaluation/score.mjs');
+  const persona = personaById('retail-lead'), job = jobById('training-coordinator');
+  const fact = id => persona.facts.find(f => f.id === id).text;
+  const entries = ids => ({ resume: ids.map(id => ({ section: 'Experience', text: fact(id) })) });
+  // The standard's own order, written for a store-manager target: training comes third.
+  const untailored = tailoringOf(entries(['shifts', 'shrink', 'training', 'customers', 'schedule']), persona, job);
+  assert.equal(untailored.requiredInResume, 3);
+  assert.equal(untailored.leadShare, 0.33);
+  const tailored = tailoringOf(entries(['training', 'customers', 'schedule', 'shifts', 'shrink']), persona, job);
+  assert.equal(tailored.leadShare, 1);
+  // Relevant experience mentioned only in the cover letter does not count.
+  const dropped = tailoringOf({ ...entries(['training', 'shifts', 'shrink']), coverLetter: fact('customers') }, persona, job);
+  assert.deepEqual(dropped.missingFromResume, ['customers', 'schedule']);
+});

@@ -41,7 +41,20 @@ export function numberSupported(token, sourceTokens) {
   return !canonical.endsWith('%') && sourceTokens.has(canonical + '%');
 }
 
-export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false }) {
+// Tailoring: the facts this job needs must be in the resume itself (a cover letter
+// mention does not count) and must lead the resume's fact-bearing entries.
+export function tailoringOf(packet, persona, job) {
+  const entries = (packet?.resume || []).map(entry => String(entry.text || ''));
+  const factOf = text => persona.facts.find(fact => captures(fact.text, text));
+  const ranked = entries.map(factOf).filter(Boolean);
+  const requiredIds = new Set(job.requiredFactIds);
+  const inResume = job.requiredFactIds.filter(id => ranked.some(fact => fact.id === id));
+  const lead = ranked.slice(0, inResume.length);
+  const leadShare = inResume.length ? Math.round(lead.filter(fact => requiredIds.has(fact.id)).length / inResume.length * 100) / 100 : null;
+  return { requiredInResume: inResume.length, requiredTotal: job.requiredFactIds.length, missingFromResume: job.requiredFactIds.filter(id => !inResume.includes(id)), leadShare, order: ranked.map(fact => fact.id) };
+}
+
+export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false, expectTailoring = false }) {
   // The posting is an allowed source for numbers: a packet may quote "10+ years".
   const sourceTokens = sourceNumberTokens(numberCheckSource([...(sources || []), ...(job?.description ? [{ id: 'job', text: job.description }] : [])]));
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
@@ -64,7 +77,10 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const pdfValid = Boolean(pdf?.bytes?.length > 100 && pdf?.head === '%PDF-');
   const coverage = required.length ? Math.round(covered.length / required.length * 100) / 100 : null;
   const atsCoverage = job.atsTerms.length ? Math.round(atsCovered.length / job.atsTerms.length * 100) / 100 : null;
+  const tailoring = tailoringOf(packet, persona, job);
+  const tailored = tailoring.requiredInResume === tailoring.requiredTotal && tailoring.leadShare !== null && tailoring.leadShare >= 0.67;
   return {
+    tailoring,
     required: required.length,
     covered: covered.length,
     missingFacts: missing.map(fact => fact.id),
@@ -84,7 +100,7 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
     pdfValid,
     pdfBytes: pdf?.bytes?.length ?? null,
     pdfHead: pdf?.head ?? null,
-    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!persona.voice.firstPerson || firstPerson)),
+    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!expectTailoring || tailored) && (!persona.voice.firstPerson || firstPerson)),
   };
 }
 
@@ -294,7 +310,7 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
 }
 
 export function scoreScenario(result) {
-  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
+  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job), expectTailoring: Boolean(result.scenario.withStandard) }) : null;
   const application = result.application ? scoreApplication({ ...result.application, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const evaluation = result.evaluation ? scoreEvaluation({ ...result.evaluation, job: jobById(result.scenario.job) }) : null;
   const family = result.scenario.family;
