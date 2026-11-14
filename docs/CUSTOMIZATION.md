@@ -26,12 +26,14 @@ Also update the "Adaptive Framing" table to map YOUR specific projects to each a
 
 ## Portals (portals.yml)
 
-Copy from `templates/portals.example.yml` and customize:
+Copy from `templates/portals.example.yml` and customize. The template assumes no
+field; `templates/portals.presets/` holds ready-made examples (such as `ai-tech.yml`)
+to copy from.
 
-1. **title_filter.positive**: Keywords matching your target roles
-2. **title_filter.negative**: Tech stacks or domains to exclude
-3. **search_queries**: WebSearch queries for job boards (Ashby, Greenhouse, Lever)
-4. **tracked_companies**: Companies to check directly
+1. **title_filter.positive**: Keywords matching your target roles (empty lets every title through)
+2. **title_filter.negative**: Specialties, levels or domains to exclude
+3. **search_queries**: WebSearch queries for job boards and ATS sites
+4. **tracked_companies**: Employers to check directly: hospitals, schools, retailers, contractors, agencies or companies
 
 ## CV Template (templates/cv-template.html)
 

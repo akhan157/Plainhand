@@ -2,61 +2,63 @@
 # Copy this file to config/profile.yml and fill in your details.
 # This is the single source of truth for your personal data across all modes.
 
+# The example is a nurse so nothing here leans toward one field. Replace every
+# value with your own: any field, any career stage, any credential.
 candidate:
   full_name: "Jane Smith"
   email: "jane@example.com"
   phone: "+1-555-0123"
-  location: "San Francisco, CA"
+  location: "Columbus, OH"
   linkedin: "linkedin.com/in/janesmith"
-  portfolio_url: "https://janesmith.dev"
-  github: "github.com/janesmith"
-  twitter: "https://x.com/janesmith"
+  portfolio_url: ""          # Optional: portfolio, writing samples, work photos, lesson videos
+  github: ""                 # Optional: only if your field uses it
+  twitter: ""
 
 target_roles:
   # Your North Star roles — what you're optimizing for
   primary:
-    - "Senior AI Engineer"
-    - "Staff ML Engineer"
-  # Archetypes help the evaluation system score fit
+    - "Registered Nurse, Cardiac Step-Down"
+    - "Telemetry Nurse"
+  # Archetypes help the evaluation system score fit. Name them in your field's words.
   archetypes:
-    - name: "AI/ML Engineer"
-      level: "Senior/Staff"
+    - name: "Cardiac / Telemetry Nurse"
+      level: "Mid-level"
       fit: "primary"        # primary = dream role, secondary = good fit, adjacent = stretch
-    - name: "AI Product Manager"
-      level: "Senior"
+    - name: "Medical-Surgical Nurse"
+      level: "Mid-level"
       fit: "secondary"
-    - name: "Solutions Architect"
-      level: "Mid-Senior"
+    - name: "Clinical Educator"
+      level: "Entry"
       fit: "adjacent"
 
 narrative:
   # Your professional headline (1 line)
-  headline: "ML Engineer turned AI product builder"
-  # Your exit story — what makes you unique
-  exit_story: "Built and sold my SaaS after 5 years. Now focused on applied AI at scale."
-  # Your top 3-5 superpowers
+  headline: "Med-surg nurse moving into cardiac care"
+  # Your story — what makes you unique
+  exit_story: "Three years at the bedside on a 32-bed med-surg unit; telemetry patients are the part of the job I learn the most from."
+  # Your top 3-5 strengths
   superpowers:
-    - "End-to-end ML pipelines"
-    - "Fast prototyping (idea to prod in 2 weeks)"
-    - "Cross-functional communication"
-  # Proof points — projects, articles, case studies with measurable impact
+    - "Calm escalation of rhythm changes"
+    - "Precepting new graduate nurses"
+    - "Patient and family education"
+  # Proof points — results, projects, recognition, with something measurable when you have it
   proof_points:
-    - name: "Project Alpha"
-      url: "https://janesmith.dev/project-alpha"
-      hero_metric: "Reduced inference latency 40%"
-    - name: "Open Source Tool"
-      url: "https://github.com/janesmith/tool"
-      hero_metric: "2K+ GitHub stars"
-  # Optional: dashboard/demo URL with credentials
+    - name: "Unit fall-prevention huddle"
+      url: ""
+      hero_metric: "Patient falls dropped from 9 to 4 in a year"
+    - name: "New graduate precepting"
+      url: ""
+      hero_metric: "Four nurses through 12-week orientation"
+  # Optional: a portfolio or demo link with access details
   # dashboard:
-  #   url: "https://janesmith.dev/demo"
-  #   password: "demo-2026"
+  #   url: "https://example.com/portfolio"
+  #   password: ""
 
 compensation:
-  target_range: "$150K-200K"     # Your target total comp
+  target_range: "$38-45/hour"    # Your target pay: salary or hourly, as your field quotes it
   currency: "USD"
-  minimum: "$120K"               # Walk-away number
-  location_flexibility: "Remote preferred, 1 week/month on-site possible"
+  minimum: "$36/hour"            # Walk-away number
+  location_flexibility: "On-site; open to nights and every third weekend"
 
 location:
   country: "United States"
