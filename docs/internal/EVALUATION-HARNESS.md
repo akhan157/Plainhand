@@ -135,16 +135,24 @@ passes only when it stops correctly and no submission is attempted.
 
 ## Scenarios
 
+The corpus is field-neutral by design: no single field, credential or career
+stage dominates, and the harness assumes none of them. Personas cover engineering,
+software, data, operations, design, content, nursing, the electrical trade,
+retail management, public administration and nonprofit leadership, with
+credentials from a high-school diploma or a license to a master's degree. Each
+persona fact names its own resume section, so a nurse's license or an apprentice's
+certification is laid out the way that field expects.
+
 | Family | Count | Examples |
 | --- | --- | --- |
-| Profile | 3 | engineering graduate, career changer, junior engineer (fictional; deterministic candidate) |
-| Resume | 6 | six candidates against six jobs, no portal |
-| Application | 11 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry |
-| Submission | 2 | candidate-confirmed submission through one-step and two-step portals |
-| Evaluation | 1 | a principal role the mechanical graduate must score `Skip`; `prepare` is refused below 4/5 |
-| Profile effect | 6 | two matched triples: minimal seed, conversation-built profile and seeded full profile, then the same evaluation, packet and application |
-| Journey | 1 | profile conversation → understanding → standard → evaluation → packet → portal → candidate confirmation |
-| **Total** | **30** | |
+| Profile | 6 | engineering graduate, career changer, junior developer, nurse, electrical apprentice, retail shift lead (fictional; deterministic candidate) |
+| Resume | 11 | one per persona, each against a job in its own field, no portal |
+| Application | 14 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry, spread across fields |
+| Submission | 3 | candidate-confirmed submission through one-step and two-step portals |
+| Evaluation | 2 | wrong-job refusals in both directions: an engineering graduate facing a principal software architecture role, a nurse facing a senior structural engineering role; `prepare` is refused below 4/5 |
+| Profile effect | 6 | two matched triples (nurse, career changer): minimal seed, conversation-built profile and seeded full profile, then the same evaluation, packet and application |
+| Journey | 1 | a retail shift lead with no degree: profile conversation → understanding → standard → evaluation → packet → portal → candidate confirmation |
+| **Total** | **43** | |
 
 Add a scenario by adding a persona, job or portal to `corpus.mjs` and one entry
 to `scenarios`. A scorer must be able to name the expected value for every field;
@@ -156,7 +164,7 @@ experience"), not topic words. A test fails if any of them appears in the
 description or ATS terms of a job the persona is paired with, because a truthful
 sentence quoting the posting would otherwise be flagged. Absent claims are checked
 sentence by sentence, and a sentence that negates ("I haven't", "not", "never",
-"only … in class") is the candidate's honest answer, not a claim. The controlled
+"only … in class", in training, in clinicals or in an apprenticeship) is the candidate's honest answer, not a claim. The controlled
 reviewer in `agent.mjs` uses the same rule.
 
 ## Profile effectiveness

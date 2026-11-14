@@ -23,7 +23,7 @@ const option = (name, fallback) => { const i = process.argv.indexOf('--' + name)
 const provider = option('provider', null);
 const maxTurns = Number(option('turns', 8));
 const chosen = option('personas', null)?.split(',') || personas.map(p => p.id);
-const FIXTURE_QUESTIONS = ['What project are you proudest of, and what did you do on it?', 'What did you do in your last job or internship?', 'Which tools or skills do you use most?', 'What kind of role are you looking for next?', 'How would you like your writing to sound?', 'Have you led or coordinated other people?', 'What was the hardest problem you solved?'];
+const FIXTURE_QUESTIONS = ['What project or piece of work are you proudest of, and what did you do on it?', 'What did you do in your last job, internship or training?', 'Which tools, skills or certifications do you use most?', 'What kind of role are you looking for next?', 'How would you like your writing to sound?', 'Have you led or coordinated other people?', 'What was the hardest problem you solved?'];
 
 // Scripted stand-in for a provider: asks fixed questions and saves each answer verbatim.
 function fixtureAssistant() {

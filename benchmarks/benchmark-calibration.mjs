@@ -28,6 +28,9 @@ const provider = option('provider');
 const JOBS = {
   'mech-grad': { company: 'Fictional Robotics Co', title: 'Junior Mechanical Design Engineer', description: 'SYNTHETIC TEST JOB. Design and test mechanical assemblies for mobile robots. SolidWorks, FEA, prototyping and test planning. GD&T for production parts is a plus. Work with technicians to build and test prototypes.' },
   'career-changer': { company: 'Fictional Health Analytics', title: 'Data Analyst', description: 'SYNTHETIC TEST JOB. Build dashboards and reports in SQL and Tableau for operations teams. Explain findings to non-technical stakeholders. Python a plus. Two years of business analytics experience preferred.' },
+  nurse: { company: 'Fictional Heart Institute', title: 'Registered Nurse, Cardiac Step-Down', description: 'SYNTHETIC TEST JOB. Cardiac step-down unit. Monitor telemetry, educate patients and families before discharge, three 12-hour shifts. Active RN license and ACLS required; prior critical care work welcome but not required.' },
+  apprentice: { company: 'Fictional Electrical Contractors', title: 'Commercial Electrician Apprentice (Year 3+)', description: 'SYNTHETIC TEST JOB. Commercial tenant-improvement work. Bend and install EMT conduit, pull wire, read blueprints, follow lockout/tagout. Enrolled in a state-registered apprenticeship with an OSHA 30 card.' },
+  'retail-lead': { company: 'Fictional Market', title: 'Assistant Store Manager', description: 'SYNTHETIC TEST JOB. High-volume grocery store. Run shifts, build schedules, control inventory and shrink, train new team members, balance the cash office. Two years leading retail shifts; no degree required.' },
   'quiet-junior': { company: 'Fictional Transit Software', title: 'Junior Software Engineer', description: 'SYNTHETIC TEST JOB. TypeScript services and web apps for transit riders. Write tests, take part in code review, and join an on-call rotation after onboarding.' },
 };
 

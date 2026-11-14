@@ -1,7 +1,8 @@
 // Profile-building benchmark: a simulated candidate with hidden facts talks to the
 // assistant, and the run is scored on what reached the profile and how faithfully.
 // The candidate is deterministic (keyword matching, no model) so runs differ only
-// by the assistant. All personas are fictional.
+// by the assistant. All personas are fictional, and they span fields and
+// credentials: a degree is one kind of evidence, not an assumption.
 
 export const personas = [
   {
@@ -42,6 +43,49 @@ export const personas = [
       { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'team', 'environment', 'interested'], text: 'I want a team that does code review seriously, because that is how I learn fastest.', detail: 'On my app a stranger’s review on GitHub caught a race condition I had missed for months.' },
     ],
     absent: [{ id: 'production', keywords: ['production', 'on-call', 'scale', 'professional', 'industry', 'company'], text: 'I haven’t worked on a production system at a company yet.' }],
+  },
+  {
+    id: 'nurse',
+    profile: { name: 'Jamie Alvarez', location: 'Columbus, US', roles: 'Registered nurse, cardiac or step-down', graduation: 'B.S. Nursing, 2023',
+      resume: 'B.S. Nursing, Example University, 2023. Registered Nurse, Example Regional Hospital, medical-surgical unit, 2023 to 2026. BLS and ACLS.' },
+    facts: [
+      { id: 'falls', keywords: ['project', 'proud', 'improve', 'change', 'safety', 'result'], text: 'I led our unit’s fall-prevention huddle for a year, and patient falls dropped from 9 to 4 between 2024 and 2025.', detail: 'Most falls happened at shift change, so the huddle named high-risk patients out loud and we put bed alarms on every one of them.' },
+      { id: 'unit', keywords: ['job', 'work', 'shift', 'day', 'patients', 'role', 'current'], text: 'I care for five to six patients per shift on a 32-bed medical-surgical unit, and I monitor their cardiac telemetry.', detail: 'When a rhythm changes I compare it with the last strip, check the patient, and call rapid response if it is new and they have symptoms.' },
+      { id: 'precept', keywords: ['lead', 'led', 'leadership', 'mentor', 'train', 'teach', 'people'], text: 'I have precepted four new graduate nurses through their 12-week orientation.', detail: 'I give each new nurse one more patient every two weeks and we review every med pass together until week six.' },
+      { id: 'license', keywords: ['license', 'certification', 'certified', 'credentials', 'tools', 'skills', 'qualifications'], text: 'I hold an active Ohio RN license through 2027, plus BLS and ACLS.', detail: 'I renewed ACLS in March and I am studying for the progressive care certification next.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want to move to a cardiac step-down unit, where telemetry is the main part of the job.', detail: 'My telemetry patients are the ones I learn the most from.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like plain words and real examples, not hospital jargon.', detail: 'If I wouldn’t say it to a patient’s family, I don’t want it on my resume.' },
+    ],
+    absent: [{ id: 'icu', keywords: ['icu', 'critical care', 'intensive care', 'ccrn'], text: 'I haven’t worked in an ICU; my critical care exposure was one clinical rotation.' }],
+  },
+  {
+    id: 'apprentice',
+    profile: { name: 'Marcus Bell', location: 'Denver, US', roles: 'Commercial electrician apprentice',
+      resume: 'High school diploma, 2021. Electrical Apprentice, Example Electric Co, 2023 to 2026. OSHA 30.' },
+    facts: [
+      { id: 'panel', keywords: ['project', 'proud', 'biggest', 'built', 'install'], text: 'I helped install and label a 400-amp panel upgrade for a 30-unit apartment building, working under a licensed journeyman.', detail: 'I pulled and landed most of the branch circuits and made the panel schedule, and the inspector passed it on the first visit.' },
+      { id: 'daily', keywords: ['work', 'day', 'job', 'current', 'role', 'typical'], text: 'I bend and run EMT conduit and pull wire on commercial jobs, and I have logged 5,600 on-the-job hours.', detail: 'Most of my hours are tenant build-outs: offices and two restaurants, mostly 3/4-inch EMT with some MC cable.' },
+      { id: 'safety', keywords: ['lead', 'responsibility', 'trust', 'safety', 'team', 'people', 'crew'], text: 'I keep my crew’s lockout/tagout log, and our crew went 2 years without a recordable injury.', detail: 'The foreman handed me the log after I caught a breaker someone had left unlocked on a panel we were working.' },
+      { id: 'cert', keywords: ['certification', 'license', 'training', 'school', 'classroom', 'tools', 'skills', 'qualifications'], text: 'I have my OSHA 30 card and I’m in year 3 of a 4-year state-registered apprenticeship, with 576 classroom hours done.', detail: 'Classroom is two nights a week; this year is motors and controls.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want more commercial work so I am ready for the journeyman exam when I finish.', detail: 'Commercial jobs cover more of the code than houses do, and that is what the exam tests.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like to keep it short and just say what I did on the job.', detail: 'I want it to sound like me talking to a foreman.' },
+    ],
+    absent: [{ id: 'license', keywords: ['journeyman license', 'electrical license', 'licensed electrician'], text: 'I do not have my journeyman license yet; I can sit for the exam after year four.' }],
+  },
+  {
+    id: 'retail-lead',
+    profile: { name: 'Rosa Delgado', location: 'Phoenix, US', roles: 'Assistant store manager, retail operations',
+      resume: 'High school diploma, 2017. Shift Lead, Example Grocery, 2019 to 2026.' },
+    facts: [
+      { id: 'shrink', keywords: ['project', 'proud', 'improve', 'change', 'result', 'fixed'], text: 'I reorganized our receiving checklist, and inventory shrink fell from 2.1% to 1.4% over six months.', detail: 'Deliveries were being signed for without counting, so I cut the checklist to one page and had the closer count every pallet before signing.' },
+      { id: 'shift', keywords: ['job', 'work', 'day', 'current', 'role', 'responsible'], text: 'I run the evening shift for a team of 14 cashiers and stockers at a store that does about $90,000 in weekly sales.', detail: 'I set breaks, move people between registers and the floor when lines build, and close out the cash office at night.' },
+      { id: 'training', keywords: ['lead', 'led', 'leadership', 'train', 'teach', 'people', 'mentor', 'team'], text: 'I trained 20 new hires on the register and opening procedures in the last two years.', detail: 'Each new hire works their first three shifts with me, and I wrote them a one-page cheat sheet.' },
+      { id: 'customers', keywords: ['hard', 'challenge', 'difficult', 'problem', 'customer', 'conflict'], text: 'I handle customer complaints that get escalated past the register.', detail: 'Last month a customer was double-charged on a big order; I refunded it on the spot and called her the next day to confirm it posted.' },
+      { id: 'tools', keywords: ['tools', 'software', 'skills', 'systems', 'technical'], text: 'I build the weekly schedule for my shift in the store’s scheduling software and cover call-outs.', detail: 'I also use the handheld scanner system for ordering and price changes.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want to be an assistant store manager and learn the ordering and budget side.', detail: 'I already build my shift’s schedule; I want to see the whole week and the labor budget.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I want it friendly and straight to the point, the way I talk at work.', detail: 'Write it the way I would explain it to a new hire.' },
+    ],
+    absent: [{ id: 'hiring', keywords: ['hiring', 'firing', 'fired', 'terminate'], text: 'I haven’t made hiring or firing decisions; the store manager does that.' }],
   },
 ];
 
