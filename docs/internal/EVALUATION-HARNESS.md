@@ -147,12 +147,12 @@ certification is laid out the way that field expects.
 | --- | --- | --- |
 | Profile | 6 | engineering graduate, career changer, junior developer, nurse, electrical apprentice, retail shift lead (fictional; deterministic candidate) |
 | Resume | 11 | one per persona, each against a job in its own field, no portal |
-| Application | 14 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry, spread across fields |
+| Application | 16 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry, an iCIMS-style hospital form and a Taleo-style trade form (licenses, years in the field, shift, age), spread across fields |
 | Submission | 3 | candidate-confirmed submission through one-step and two-step portals |
 | Evaluation | 2 | wrong-job refusals in both directions: an engineering graduate facing a principal software architecture role, a nurse facing a senior structural engineering role; `prepare` is refused below 4/5 |
 | Profile effect | 6 | two matched triples (nurse, career changer): minimal seed, conversation-built profile and seeded full profile, then the same evaluation, packet and application |
 | Journey | 1 | a retail shift lead with no degree: profile conversation → understanding → standard → evaluation → packet → portal → candidate confirmation |
-| **Total** | **43** | |
+| **Total** | **45** | |
 
 Add a scenario by adding a persona, job or portal to `corpus.mjs` and one entry
 to `scenarios`. A scorer must be able to name the expected value for every field;

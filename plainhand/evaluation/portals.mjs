@@ -81,7 +81,9 @@ export function renderPortal({ scenario, step = 1 }) {
 
   const next = last
     ? '<button type="submit" disabled title="Submission is the candidate\'s action">Submit application</button>'
-    : `<button type="button" onclick="location.href='${stepUrl(base, step + 1)}'">Continue</button>`;
+    // window.location, not location: inside a form, an inline handler resolves a
+    // bare name to the form's own control first, and portals have a "location" field.
+    : `<button type="button" onclick="window.location.href='${stepUrl(base, step + 1)}'">Continue</button>`;
 
   return head + challenge + `<form id="application" onsubmit="return false">${controls(fields, portal)}${employerRow}${next}</form>${discardOnce}${conditional}</body></html>`;
 }

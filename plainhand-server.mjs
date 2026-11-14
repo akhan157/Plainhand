@@ -92,7 +92,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
   }
   async function formPlan(state, job, fields) {
     const plan = { id: job.id, fields, observation: browser.status ? await browser.status(job.id) : { state: 'ready' }, answers: suggestFormAnswers(fields, state.profile, job.packet, { bank: await new AnswerBank(workspace).load(), job }), approval: job.approvedHash };
-    const unanswered = fields.filter(f => !plan.answers[f.key] && f.type !== 'file' && !/sponsor|authoriz|eligible|gender|race|veteran|disabil|salary|compens|consent|agree|legal|citizen|relocat|privacy|country|ethnic/i.test(f.label));
+    const unanswered = fields.filter(f => !plan.answers[f.key] && f.type !== 'file' && !isSensitiveLabel(f.label));
     if (unanswered.length) {
       try {
         const context = await workspace.context(state);

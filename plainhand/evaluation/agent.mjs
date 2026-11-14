@@ -147,6 +147,18 @@ function formSuggestions(persona, job, fields, context) {
       if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: quoteEvidence(persona.educationEvidence, context) });
       continue;
     }
+    if (/licen[cs]e|certification/.test(label)) {
+      const fact = facts.find(f => f.id === persona.credentialFact);
+      if (fact) suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact, context) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
+      continue;
+    }
+    if (/years of experience/.test(label)) {
+      const option = field.options?.find(item => item.value === persona.experienceBand);
+      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.facts[0].text, context) || fallbackEvidence(context, persona) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
+      continue;
+    }
     if (/start|earliest/.test(label)) { questions.push({ key: field.key, question: 'What is your exact earliest start date?' }); continue; }
     if (/level|experience/.test(label)) {
       const option = field.options?.find(item => item.value === persona.level) || field.options?.find(item => /professional/i.test(item.label));

@@ -356,7 +356,14 @@ export const personas = [
     degree: 'bachelor-science',
     degreeLabel: 'Bachelor of Science',
     educationEvidence: 'Example University — Bachelor of Science in Nursing — 2023',
-    candidateAnswers: { authorization: 'yes', attest: true, salary: 'Open to discussion' },
+    // Hospital and trade portals ask for licenses and years in the field; both are
+    // settled by the sources, so the app owes them. Shift and age are the candidate's.
+    credentialFact: 'license',
+    experienceBand: '3-5',
+    // Shift availability is not in the sources; the app is right to ask.
+    shiftPreference: 'nights',
+    askable: ['shift'],
+    candidateAnswers: { authorization: 'yes', attest: true, salary: 'Open to discussion', age18: 'yes' },
     profile: {
       ...emptyProfile(),
       name: 'Jamie Alvarez',
@@ -412,7 +419,8 @@ export const personas = [
     degree: 'high-school',
     degreeLabel: 'High school diploma or GED',
     educationEvidence: 'Example High School — High School Diploma — 2021',
-    candidateAnswers: { authorization: 'yes', attest: true, salary: 'Open to discussion' },
+    credentialFact: 'cert',
+    candidateAnswers: { authorization: 'yes', attest: true, salary: 'Open to discussion', age18: 'yes' },
     profile: {
       ...emptyProfile(),
       name: 'Marcus Bell',
@@ -806,6 +814,27 @@ export const fields = {
   title0: { name: 'title0', label: 'Job title', type: 'text', required: true, section: 'Employment', recordIndex: 0, expect: { kind: 'record', index: 0, key: 'title' } },
   employer1: { name: 'employer1', label: 'Employer', type: 'text', required: true, section: 'Employment', recordIndex: 1, expect: { kind: 'record', index: 1, key: 'employer' } },
   title1: { name: 'title1', label: 'Job title', type: 'text', required: true, section: 'Employment', recordIndex: 1, expect: { kind: 'record', index: 1, key: 'title' } },
+  credential: { name: 'credential', label: 'List your professional licenses or certifications (type, issuing state or body, expiration).', type: 'textarea', required: true, expect: { kind: 'fact', idFrom: 'credentialFact' } },
+  experienceYears: { name: 'experienceYears', label: 'Years of experience in this field', type: 'select-one', required: true, expect: { kind: 'exact', valueFrom: 'experienceBand' }, options: [
+    { value: '', label: 'Choose' },
+    { value: 'under-1', label: 'Less than 1 year' },
+    { value: '1-2', label: '1 to 2 years' },
+    { value: '3-5', label: '3 to 5 years' },
+    { value: '6-10', label: '6 to 10 years' },
+    { value: '10-plus', label: 'More than 10 years' },
+  ] },
+  shift: { name: 'shift', label: 'Which shift are you available to work?', type: 'select-one', required: true, expect: { kind: 'exact', valueFrom: 'shiftPreference' }, options: [
+    { value: '', label: 'Choose' },
+    { value: 'days', label: 'Days' },
+    { value: 'evenings', label: 'Evenings' },
+    { value: 'nights', label: 'Nights' },
+    { value: 'rotating', label: 'Rotating' },
+  ] },
+  age18: { name: 'age18', label: 'Are you at least 18 years of age?', type: 'select-one', required: true, sensitive: true, expect: { kind: 'candidate', key: 'age18' }, options: [
+    { value: '', label: 'Choose' },
+    { value: 'yes', label: 'Yes' },
+    { value: 'no', label: 'No' },
+  ] },
   degreeRadio: { name: 'degree', label: 'Highest level of education', type: 'radio', required: true, expect: { kind: 'degree' }, options: [
     { value: 'high-school', label: 'High school diploma or GED' },
     { value: 'associate', label: 'Associate degree' },
@@ -872,6 +901,18 @@ export const portals = {
     steps: [[fields.name, fields.email, fields.resume, fields.degreeRadio, fields.achievement]],
     expect: { submit: true },
   },
+  // Hospital and trade employers mostly use iCIMS- and Taleo-style portals, which
+  // ask for licenses, years in the field, shift availability and age.
+  'icims-style': {
+    id: 'icims-style',
+    steps: [[fields.name, fields.email, fields.phone, fields.location, fields.resume, fields.experienceYears], [fields.credential, fields.achievement, fields.shift, fields.age18, fields.attest]],
+    expect: { submit: true },
+  },
+  'taleo-style': {
+    id: 'taleo-style',
+    steps: [[fields.name, fields.email, fields.phone, fields.resume], [fields.employer, fields.credential, fields.why, fields.authorization, fields.age18, fields.attest]],
+    expect: { submit: true },
+  },
   'discard-once': {
     id: 'discard-once',
     steps: [[fields.name, fields.email, fields.resume, fields.achievement]],
@@ -909,6 +950,8 @@ export const scenarios = [
   { id: 'ops-records', family: 'application', persona: 'ops-lead', job: 'ops-manager', portal: 'records' },
   { id: 'director-records', family: 'application', persona: 'director', job: 'vp-development', portal: 'records' },
   { id: 'apprentice-radio', family: 'application', persona: 'apprentice', job: 'electrician-apprentice', portal: 'native-radio' },
+  { id: 'nurse-icims', family: 'application', persona: 'nurse', job: 'rn-stepdown', portal: 'icims-style' },
+  { id: 'apprentice-taleo', family: 'application', persona: 'apprentice', job: 'electrician-apprentice', portal: 'taleo-style' },
   { id: 'swe-discard', family: 'application', persona: 'junior-swe', job: 'junior-swe', portal: 'discard-once' },
   { id: 'swe-submit', family: 'submission', persona: 'junior-swe', job: 'junior-swe', portal: 'lever-single' },
   { id: 'designer-submit', family: 'submission', persona: 'designer', job: 'product-designer', portal: 'greenhouse-two-step' },
@@ -1027,8 +1070,9 @@ export function expectedFor(field, persona, job) {
   if (spec.kind === 'candidate') return { kind: 'candidate', value: persona.candidateAnswers?.[spec.key] };
   if (spec.kind === 'blank' || spec.kind === 'unknown') return { kind: 'blank' };
   if (spec.kind === 'fact') {
-    const fact = persona.facts.find(f => f.id === spec.id);
-    return { kind: 'fact', text: fact?.text || '', id: spec.id };
+    const id = spec.idFrom ? persona[spec.idFrom] : spec.id;
+    const fact = persona.facts.find(f => f.id === id);
+    return { kind: 'fact', text: fact?.text || '', id };
   }
   if (spec.kind === 'jobFacts') return { kind: 'anyOf', texts: job.requiredFactIds.map(id => persona.facts.find(f => f.id === id)?.text).filter(Boolean) };
   if (spec.kind === 'anyFact') return { kind: 'anyOf', texts: persona.facts.map(f => f.text) };
