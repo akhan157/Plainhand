@@ -19,9 +19,9 @@ Para cada curso/cert que el candidato pregunte, evaluar 6 dimensiones:
 
 ## Prioridad
 
-Formación que mejore credibilidad en "production-grade AI":
-1. Evals y testing de LLMs
-2. Observability y monitoring
-3. Cost/reliability trade-offs
-4. AI governance y safety
-5. Enterprise AI architecture
+Formación que cierre los gaps que más se repiten en las evaluaciones del candidato (ver `patterns` y los gaps de los reports), en este orden:
+1. Licencias o certificaciones que las ofertas objetivo exigen
+2. Habilidades requeridas que faltan en varias ofertas
+3. Herramientas o métodos estándar del campo del candidato
+4. Credenciales que los recruiters de ese campo reconocen
+5. Proyectos o prácticas que produzcan evidencia demostrable

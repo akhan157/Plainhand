@@ -75,16 +75,17 @@ Block G assesses whether a posting is likely a real, active opening. It does NOT
 
 ## Archetype Detection
 
-Classify every offer into one of these types (or hybrid of 2):
+Classify every offer into one of the user's own target archetypes from `modes/_profile.md` (or a hybrid of 2). If `_profile.md` defines none, use these field-neutral role families, which apply to any industry (healthcare, education, trades, business, creative, public service, technology):
 
 | Archetype | Key signals in JD |
 |-----------|-------------------|
-| AI Platform / LLMOps | "observability", "evals", "pipelines", "monitoring", "reliability" |
-| Agentic / Automation | "agent", "HITL", "orchestration", "workflow", "multi-agent" |
-| Technical AI PM | "PRD", "roadmap", "discovery", "stakeholder", "product manager" |
-| AI Solutions Architect | "architecture", "enterprise", "integration", "design", "systems" |
-| AI Forward Deployed | "client-facing", "deploy", "prototype", "fast delivery", "field" |
-| AI Transformation | "change management", "adoption", "enablement", "transformation" |
+| Hands-on Practitioner | performing the core work of the field; required licenses, certifications, tools or equipment |
+| People & Service | "clients", "patients", "students", "customers", "members", "care", "support" |
+| Coordination & Operations | "coordinate", "schedule", "logistics", "process", "administration", "compliance" |
+| Analysis & Research | "analyze", "data", "reporting", "research", "evaluate", "audit" |
+| Creative & Communications | "content", "design", "campaign", "brand", "writing", "media" |
+| Technical & Engineering | "build", "design", "systems", "technical", "engineering", "software" |
+| Leadership & Management | "manage", "supervise", "lead a team", "budget", "strategy", "direct reports" |
 
 After detecting archetype, read `modes/_profile.md` for the user's specific framing and proof points for that archetype.
 

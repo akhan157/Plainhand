@@ -15,7 +15,7 @@ In this repo, resume generation uses this policy only:
 - No Core Competencies block
 - No bullet reordering
 - No new bullets
-- Trim only if needed to fit one page; cut non-engineering items first
+- Trim only if needed to fit one page; cut the items least relevant to the target role first
 
 ## Full pipeline
 
@@ -72,13 +72,14 @@ In this repo, resume generation uses this policy only:
 - No Professional Summary
 - No Core Competencies block
 - No new bullets
-- Only trim if needed to fit one page; cut non-engineering items first, never aerospace/rocketry/FSAE
+- Only trim if needed to fit one page; cut the items least relevant to the target role first, never items `modes/_profile.md` marks as must-keep
 
 ## Keyword injection strategy (ethical, truth-based)
 
 Examples of legitimate reformulation:
+- JD says "patient education" and CV says "explained discharge instructions to patients" → change to "patient education on discharge instructions"
+- JD says "data-driven decisions" and CV says "built weekly sales reports the manager used to set orders" → change to "built weekly sales reports that drove ordering decisions"
 - JD says "RAG pipelines" and CV says "LLM workflows with retrieval" → change to "RAG pipeline design and LLM orchestration workflows"
-- JD says "MLOps" and CV says "observability, evals, error handling" → change to "MLOps and observability: evals, error handling, cost monitoring"
 - JD says "stakeholder management" and CV says "collaborated with team" → change to "stakeholder management across engineering, operations, and business"
 
 **NEVER add skills that the candidate does not have. Only reword real experience using the exact JD vocabulary.**

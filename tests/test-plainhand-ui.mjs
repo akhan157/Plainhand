@@ -75,7 +75,7 @@ try {
   await page.evaluate(() => window.plainhandTheme.set('light'));
   await shot(page, '02-overview-demo.png');
   await page.evaluate(() => window.plainhandTheme.set('dark'));
-  await page.getByRole('button', { name: 'Mechanical Engineer, New Graduate', exact: true }).click();
+  await page.getByRole('button', { name: 'Patient Experience Coordinator', exact: true }).click();
   await page.getByRole('tab', { name: 'Packet', exact: true }).click();
   await page.getByRole('heading', { name: 'Resume preview', exact: true }).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Resume PDF' }).count(), 0, 'The sample workspace offers no real documents.');

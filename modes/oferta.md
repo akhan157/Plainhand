@@ -25,12 +25,14 @@ Table with:
 Read `cv.md`. Create a table with each JD requirement mapped to exact lines in the CV.
 
 **Adapted to the archetype:**
-- If FDE → prioritize delivery speed and client-facing proof points
-- If SA → prioritize system design and integrations
-- If PM → prioritize product discovery and metrics
-- If LLMOps → prioritize evals, observability, pipelines
-- If Agentic → prioritize multi-agent, HITL, orchestration
-- If Transformation → prioritize change management, adoption, scaling
+- Use the emphasis `modes/_profile.md` sets for that archetype when it has one
+- Hands-on Practitioner → prioritize licenses, certifications and direct practice of the core work
+- People & Service → prioritize the people served, volume, and outcomes for them
+- Coordination & Operations → prioritize reliability, scale of what was coordinated, process improvements
+- Analysis & Research → prioritize methods, tools, and decisions the analysis informed
+- Creative & Communications → prioritize portfolio pieces, audience, and measurable reach
+- Technical & Engineering → prioritize what was designed or built and how it was validated
+- Leadership & Management → prioritize team size, budget, and results delivered through others
 
 **Gaps** section with mitigation strategy for each. For each gap:
 1. Is it a hard blocker or a nice-to-have?
@@ -74,12 +76,13 @@ The **Reflection** column captures what was learned or what would be done differ
 **Story Bank:** If `interview-prep/story-bank.md` exists, check if any of these stories are already there. If not, append new ones. Over time this builds a reusable bank of 5-10 master stories that can be adapted to any interview question.
 
 **Selected and framed according to the archetype:**
-- FDE → emphasize delivery speed and client-facing
-- SA → emphasize architectural decisions
-- PM → emphasize discovery and trade-offs
-- LLMOps → emphasize metrics, evals, production hardening
-- Agentic → emphasize orchestration, error handling, HITL
-- Transformation → emphasize adoption, organizational change
+- Hands-on Practitioner → emphasize skill under real conditions and judgment calls
+- People & Service → emphasize empathy, difficult situations handled, outcomes for the people served
+- Coordination & Operations → emphasize follow-through, juggling priorities, fixing a broken process
+- Analysis & Research → emphasize the question, the method, and what changed because of it
+- Creative & Communications → emphasize the audience, the idea, and the response it got
+- Technical & Engineering → emphasize the problem, the trade-offs, and how it was tested
+- Leadership & Management → emphasize developing people, hard decisions, and team results
 
 Also include:
 - 1 recommended case study (which of their projects to present and how)

@@ -20,12 +20,12 @@ const FIELDS = [
   ['email', 'Email', 'you@example.com', { type: 'email', autocomplete: 'email' }],
   ['phone', 'Phone', '+1 …', { autocomplete: 'tel' }],
   ['location', 'Location', 'City, country · remote preferences', { required: true }],
-  ['roles', 'Roles you’re looking for', 'Mechanical engineer, manufacturing engineer…', { required: true, full: true }],
-  ['graduation', 'Education & graduation', 'B.S. Mechanical Engineering · May 2027', {}],
+  ['roles', 'Roles you’re looking for', 'Registered nurse, marketing coordinator, electrician…', { required: true, full: true }],
+  ['graduation', 'Education & graduation', 'B.A. Psychology · May 2027, or a license or certificate', {}],
   ['timezone', 'Time zone', 'America/New_York', {}],
   ['compensation', 'Compensation preferences', 'Range, currency, or still exploring', {}],
   ['eligibility', 'Work authorization', 'Your exact status, if you want to share it', {}],
-  ['links', 'Portfolio & professional links', 'LinkedIn, GitHub, portfolio…', { full: true }],
+  ['links', 'Portfolio & professional links', 'LinkedIn, portfolio, personal website…', { full: true }],
 ];
 const STORY = [
   ['story', 'The story your resume doesn’t tell', 'Projects you cared about, team contributions, obstacles, work outside school…', 'Real examples help your agent find the right story for each application.'],

@@ -316,8 +316,8 @@ Generation rules:
 | Team leadership | Q5 in `data/application-answers.md` |
 | Weakness | Q6 in `data/application-answers.md` |
 | 5-year goals | Q7 in `data/application-answers.md` |
-| Why engineering | Q8 in `data/application-answers.md` |
-| CAD/software experience | Q9 in `data/application-answers.md` |
+| Why this field | Q8 in `data/application-answers.md` |
+| Tools, software or certifications | Q9 in `data/application-answers.md` |
 | Multiple deadlines | Q10 in `data/application-answers.md` |
 | Relocation | Q11 in `data/application-answers.md` |
 | Salary | Q12 in `data/application-answers.md` |

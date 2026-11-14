@@ -29,7 +29,7 @@ The first round of most processes is a recruiter / HR screen, not a technical pa
 
 | Query | What to extract |
 |-------|-----------------|
-| `"{company} engineering blog"` and `"{company} {team} blog"` | Team's recent work, technical priorities, named challenges |
+| `"{company} {team} blog"`, `"{company} newsletter"` or `"{company} annual report"` | Team's recent work, priorities, named challenges |
 | `"{company}" news OR launch OR roadmap` (last 12 months) | Recent milestones, public bets, hiring drivers |
 | `"{company} {role} interview process"` (general) | Hiring-manager round structure, what they evaluate, candidate write-ups |
 
@@ -38,8 +38,8 @@ The first round of most processes is a recruiter / HR screen, not a technical pa
 | Query | What to extract |
 |-------|-----------------|
 | `"{company} {role} interview questions site:glassdoor.com"` | Actual questions asked, difficulty rating, experience rating, number of rounds, offer/reject ratio |
-| `"{company} {role} interview site:leetcode.com/discuss"` | Specific coding/technical problems, system design topics, round structure |
-| `"{company} interview process site:teamblind.com"` then manually filter retrieved threads to those describing technical rounds | Hiring bar, recent technical interview data points |
+| `"{company} {role} interview site:indeed.com"` | Questions asked, round structure, skills tests |
+| Field-specific sources: `site:leetcode.com/discuss` or `site:teamblind.com` for software roles, `site:allnurses.com` for nursing, `site:reddit.com/r/Teachers` for teaching, trade or professional association forums for other fields | Skills tests, demo lessons, case studies, practical or technical rounds, the hiring bar |
 
 If the company is small or obscure and yields few results, broaden: search for the role archetype at similar-stage companies, and note that intel is sparse. Do the recruiter-screen queries even when intel is sparse — comp/logistics data exists for almost every company.
 
@@ -72,14 +72,14 @@ Classify each round from Step 2 into exactly one audience. The audience drives w
 |---------------------|----------------------------------------------|-----------------------------------------------------------------|
 | `recruiter-screen`  | First call (15–30 min, recruiter / HR / TA)  | Fit gate: motivation, comp, location/visa, timeline             |
 | `hiring-manager`    | Manager / skip-level (30–45 min)             | Why this role, scope alignment, leadership signals              |
-| `peer-tech`         | IC technical (live coding, system design, take-home review) | Depth + collaboration on the actual stack                       |
+| `peer-tech`         | Peer skills round (live coding, case study, demo lesson, clinical scenario, portfolio review, practical or trade test) | Depth + collaboration on the actual work |
 | `panel-mixed`       | Onsite / loop with multiple interviewer types in one block  | Cross-cuts the above                                            |
 
 If `Conducted by` is unknown for a round, infer cautiously from duration, position, and any signals from the JD or job posting. Common patterns:
 
 - Round 1, short (15–30 min) → almost always `recruiter-screen`.
-- Round 2 — **do not default**. Many companies put a peer-led technical phone screen here, others put the hiring manager. Prefer `peer-tech` if the round is described as "technical screen" or has a coding/system-design component; prefer `hiring-manager` if it's described as a manager / skip-level / leadership conversation; otherwise mark as `panel-mixed [inferred]` and prep both packs.
-- Deep technical block (live coding, system design, take-home review) → `peer-tech`.
+- Round 2 — **do not default**. Many companies put a peer-led technical phone screen here, others put the hiring manager. Prefer `peer-tech` if the round is described as a technical or skills screen or includes a practical component (coding, case study, demo lesson, clinical scenario, portfolio review); prefer `hiring-manager` if it's described as a manager / skip-level / leadership conversation; otherwise mark as `panel-mixed [inferred]` and prep both packs.
+- Deep skills block (live coding, case study, demo lesson, clinical scenario, portfolio review, take-home or practical test) → `peer-tech`.
 - Onsite / loop with multiple back-to-back rounds → `panel-mixed`.
 
 Mark inferred audiences with `[inferred]` and keep going — sparse intel is normal early in research.
@@ -135,7 +135,7 @@ The recruiter is screening for fit, not testing skill. Wrong-foot answers (vague
 The HM is screening for motivation + scope fit. They've already trusted the recruiter's logistics gate; they care whether you'd own the work. Cover at minimum:
 
 - **"Why this role, why now?"** — connect candidate's last 1–2 roles + `_profile.md` narrative to the team's named challenge from Step 1.
-- **"What would your first 90 days look like here?"** — derived from JD scope + the team's recent work (engineering blog, public roadmap).
+- **"What would your first 90 days look like here?"** — derived from JD scope + the team's recent work (team blog, newsletter, public plans).
 - **Leadership / collaboration questions** — map to `interview-prep/story-bank.md`.
 - **Sharp questions to ask back** — 2–3 tied to a specific recent thing the team shipped or wrote about, not generic "what's the team like".
 
@@ -143,7 +143,7 @@ The HM is screening for motivation + scope fit. They've already trusted the recr
 
 This is where the original Technical / Role-Specific buckets live. Peers are evaluating depth and collaboration on the actual stack.
 
-- **Technical questions** (system design, coding, architecture, domain) — for each: the question, source, and what a strong answer looks like for this candidate specifically (reference CV proof points).
+- **Technical and skills questions** (whatever the field tests: coding or system design, clinical scenarios, lesson planning, case studies, portfolio critique, practical or safety knowledge) — for each: the question, source, and what a strong answer looks like for this candidate specifically (reference CV proof points).
 - **Role-specific questions** tied to the JD archetype — for each: the question, why they're likely asking it (which JD requirement it maps to), and the candidate's best angle.
 - **Reverse questions** — about on-call, code review culture, deployment cadence, what surprised them when they joined.
 
@@ -188,7 +188,7 @@ Prioritize by frequency and relevance to the role. Max 10 items.
 
 ## Step 7 — Company Signals (per audience)
 
-Things to say, do, and avoid — segmented by who's listening. The same fact can be a strength to a peer engineer and a yellow flag to a recruiter; framing matters.
+Things to say, do, and avoid — segmented by who's listening. The same fact can be a strength to a peer and a yellow flag to a recruiter; framing matters.
 
 ### To the recruiter / HR screen
 
