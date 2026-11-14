@@ -51,15 +51,21 @@ export function genericPhrases(text) {
   return GENERIC_PHRASES.filter(p => new RegExp(`(^|[^a-z])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(lowerText));
 }
 
+// A sentence about the employer or the role ("your 28-bed unit", "the position's
+// 12-hour shifts") may repeat the posting's own numbers; that is not a claim about
+// the candidate. A first-person sentence still needs candidate evidence.
+const ABOUT_EMPLOYER = /\byour\b|\bthe (?:role|position|posting|job|team|unit|department|store|program|organization|company)\b/i;
+const supportedByPosting = (text, n, jobText) => Boolean(jobText) && ABOUT_EMPLOYER.test(text) && numbersIn(jobText).includes(n);
+
 // Rule-based signals for one claim against its own evidence quotes and all source text.
-export function claimSignals(text, quotes, sourceText) {
+export function claimSignals(text, quotes, sourceText, jobText = '') {
   const evidence = quotes.join('\n');
   const signals = [];
   const sourceNumbers = new Set(numbersIn(sourceText));
   // A number near one in the claim's own evidence is rounding (stretched); otherwise invented.
   const evidenceNumbers = numbersIn(quotes.join('\n')).map(parseFloat).filter(Number.isFinite);
   for (const n of numbersIn(text)) {
-    if (sourceNumbers.has(n)) continue;
+    if (sourceNumbers.has(n) || supportedByPosting(text, n, jobText)) continue;
     const value = parseFloat(n), near = evidenceNumbers.find(e => e && Math.abs(value - e) / e <= 0.25);
     const stated = near !== undefined && HEDGE.test(roundingContext(text, n));
     signals.push(stated ? { rating: 'stretched', code: 'number-rounded-stated', detail: `${n} is stated as rounding the evidence's ${near}` } : near !== undefined ? { rating: 'stretched', code: 'number-rounded', detail: `${n} rounds the evidence's ${near} without saying so` } : { rating: 'unsupported', code: 'number-not-in-sources', detail: `${n} is not in any source` });
@@ -84,7 +90,7 @@ const claimsOf = packet => [
 
 // The reviewer's ratings are matched to claims by id ("resume:0", "answer:2") or exact text;
 // cover-letter ratings arrive as their own claims.
-export function gradePacket(packet, sources, modelRatings = [], line = null) {
+export function gradePacket(packet, sources, modelRatings = [], line = null, { jobText = '' } = {}) {
   const sourceText = sources.map(s => s.text).join('\n');
   const clip = value => typeof value === 'string' ? value.slice(0, 1000) : '';
   const rated = Array.isArray(modelRatings) ? modelRatings.slice(0, 200).filter(r => r && RATINGS.includes(r.rating)).map(r => ({ id: clip(r.id), claim: clip(r.claim), rating: r.rating, kind: KINDS.includes(r.kind) ? r.kind : 'other', reason: clip(r.reason), suggestion: clip(r.suggestion) })) : [];
@@ -93,12 +99,12 @@ export function gradePacket(packet, sources, modelRatings = [], line = null) {
   for (const r of rated) if (/^cover/i.test(String(r.id || '')) && typeof r.claim === 'string' && lower(packet.coverLetter).includes(lower(r.claim).trim()))
     claims.push({ id: `cover:${claims.filter(c => c.part === 'cover').length}`, part: 'cover', label: 'Cover letter', text: r.claim, quotes: [] });
   // Numbers in the cover letter are checked even when the reviewer rates nothing there.
-  for (const n of numbersIn(packet.coverLetter)) if (!numbersIn(sourceText).includes(n) && !claims.some(c => c.part === 'cover' && numbersIn(c.text).includes(n)))
+  for (const n of numbersIn(packet.coverLetter)) if (!numbersIn(sourceText).includes(n) && !supportedByPosting(sentenceWith(packet.coverLetter, n), n, jobText) && !claims.some(c => c.part === 'cover' && numbersIn(c.text).includes(n)))
     claims.push({ id: `cover:${claims.filter(c => c.part === 'cover').length}`, part: 'cover', label: 'Cover letter', text: sentenceWith(packet.coverLetter, n), quotes: [] });
 
   const results = claims.map(claim => {
     const model = fromModel(claim);
-    const signals = claimSignals(claim.text, claim.quotes, sourceText);
+    const signals = claimSignals(claim.text, claim.quotes, sourceText, jobText);
     // Inflation signals always count. Undersell signals count only without a model rating:
     // a skills list or a short answer may rightly leave a number out, which takes judgment.
     const candidates = [model?.rating || 'balanced', ...signals.filter(s => s.rating !== 'undersold' || !model).map(s => s.rating)];

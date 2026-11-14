@@ -294,7 +294,7 @@ export class Workflow {
           throw new Error('The factual review found issues. Review the findings in the application and add missing evidence before retrying.');
         }
         // How each claim compares with its evidence: undersold, balanced, stretched or unsupported.
-        job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state)), gradedAt: now(), line: Boolean(line) };
+        job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state), { jobText: job.description || '' }), gradedAt: now(), line: Boolean(line) };
         job.fromStandard = compareToStandard(packet, standard);
         job.humanizer = humanizer;
         job.packet = packet; job.packetJobHash = digest([job.url, job.company, job.title, job.description]);
