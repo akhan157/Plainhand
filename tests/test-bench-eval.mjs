@@ -642,3 +642,16 @@ test('tailoring: the experience a job needs must be in the resume and lead it', 
   const dropped = tailoringOf({ ...entries(['training', 'shifts', 'shrink']), coverLetter: fact('customers') }, persona, job);
   assert.deepEqual(dropped.missingFromResume, ['customers', 'schedule']);
 });
+
+test('tailoring: a fact split across two bullets still counts, at its main bullet', async () => {
+  const { tailoringOf } = await import('../plainhand/evaluation/score.mjs');
+  const persona = personaById('career-changer'), job = jobById('instructional-data');
+  const packet = { resume: [
+    { section: 'Experience', text: 'Taught algebra and statistics to 150 students a year.' },
+    { section: 'Experience', text: 'Built the department grade tracker in Google Sheets.' },
+    { section: 'Experience', text: 'I built a grade-tracking dashboard in Google Sheets and SQL that 12 teachers at my school used to spot students falling behind.' },
+  ] };
+  const result = tailoringOf(packet, persona, job);
+  assert.ok(!result.missingFromResume.includes('teaching'));
+  assert.equal(result.order[0], 'teaching');
+});

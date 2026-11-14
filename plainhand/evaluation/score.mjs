@@ -45,8 +45,15 @@ export function numberSupported(token, sourceTokens) {
 // mention does not count) and must lead the resume's fact-bearing entries.
 export function tailoringOf(packet, persona, job) {
   const entries = (packet?.resume || []).map(entry => String(entry.text || ''));
-  const factOf = text => persona.facts.find(fact => captures(fact.text, text));
-  const ranked = entries.map(factOf).filter(Boolean);
+  const all = entries.join('\n');
+  // A fact may be split across bullets ("Taught ... 150 students." / "Built the
+  // grade tracker."), so presence is judged on the whole resume and position is
+  // the bullet holding most of the fact's words.
+  const words = text => new Set((String(text).toLowerCase().match(/[a-z0-9%$&]+/g) || []).filter(w => w.length >= 4 || /\d/.test(w)));
+  const share = (fact, text) => { const need = words(fact.text), have = words(text); let n = 0; for (const w of need) if (have.has(w)) n++; return need.size ? n / need.size : 0; };
+  const present = persona.facts.filter(fact => captures(fact.text, all));
+  const position = fact => entries.reduce((best, text, index) => share(fact, text) > best.score ? { index, score: share(fact, text) } : best, { index: Infinity, score: 0 }).index;
+  const ranked = present.map(fact => ({ fact, at: position(fact) })).sort((a, b) => a.at - b.at).map(item => item.fact);
   const requiredIds = new Set(job.requiredFactIds);
   const inResume = job.requiredFactIds.filter(id => ranked.some(fact => fact.id === id));
   const lead = ranked.slice(0, inResume.length);
