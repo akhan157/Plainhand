@@ -519,9 +519,14 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
   const validScore = typeof evaluation?.score === 'number' && evaluation.score >= 0 && evaluation.score <= 5;
   const expectedRec = job?.expectRecommendation || 'Apply';
   const recCorrect = evaluation?.recommendation === expectedRec;
-  const scoreBandCorrect = expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
+  // A borderline job names its band explicitly; Apply and Skip keep their fixed bands.
+  const band = job?.scoreBand;
+  const scoreBandCorrect = band
+    ? typeof evaluation?.score === 'number' && evaluation.score >= band.min && evaluation.score <= band.max
+    : expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
   const evidenceValid = Array.isArray(evaluation?.matches) && evaluation.matches.length > 0 && evaluation.matches.every(match => hasEvidence(match, { sources: sources || [] }));
-  const guardCorrect = expectedRec === 'Skip' ? prepareRefusedWithoutOverride === true : true;
+  // Production refuses to prepare any role below 4/5 without a recorded reason.
+  const guardCorrect = expectedRec === 'Skip' || expectedRec === 'Investigate' ? prepareRefusedWithoutOverride === true : true;
   const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect);
   return {
     expectedRecommendation: expectedRec,

@@ -281,6 +281,23 @@ test('records portal renders both employment fieldsets before achievement and a 
   assert.equal(unguarded.pass, false);
 });
 
+test('a borderline job passes only Investigate inside its band, with the below-4 guard', () => {
+  const persona = personaById('junior-swe'), job = jobById('borderline-swe-job');
+  const sources = [{ id: 'cv', text: persona.profile.resume }];
+  const matches = [{ text: 'Documented caching work.', evidence: [{ sourceId: 'cv', quote: persona.facts[1].text }] }];
+  const score = (evaluation, refused = true) => scoreEvaluation({ evaluation: { matches, ...evaluation }, sources, job, prepareRefusedWithoutOverride: refused });
+  assert.equal(score({ score: 3.4, recommendation: 'Investigate' }).pass, true);
+  assert.equal(score({ score: 3.4, recommendation: 'Investigate' }, false).pass, false, 'below 4 must be guarded');
+  assert.equal(score({ score: 4.2, recommendation: 'Investigate' }).pass, false, 'above the band');
+  assert.equal(score({ score: 2.9, recommendation: 'Investigate' }).pass, false, 'below the band');
+  assert.equal(score({ score: 3.4, recommendation: 'Skip' }).pass, false, 'wrong recommendation');
+  assert.equal(score({ score: 4.6, recommendation: 'Apply' }).pass, false, 'confident Apply on partial evidence');
+  // Jobs without a band keep the fixed Apply/Skip bands.
+  const apply = jobById('fpa-analyst');
+  assert.equal(scoreEvaluation({ evaluation: { score: 3.9, recommendation: 'Apply', matches }, sources, job: apply }).scoreBandCorrect, false);
+  assert.equal(scoreEvaluation({ evaluation: { score: 4, recommendation: 'Apply', matches }, sources, job: apply }).scoreBandCorrect, true);
+});
+
 test('packet scoring detects unsupported numbers, absent claims and banned voice', () => {
   const scenario = scenarios.find(item => item.id === 'mech-resume');
   const persona = personaById(scenario.persona), job = jobById(scenario.job);

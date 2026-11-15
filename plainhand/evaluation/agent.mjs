@@ -212,6 +212,20 @@ export function controlledAgent({ scenario, persona, job }) {
         };
       }
       const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0];
+      // Partial evidence: the job needs a fact this persona does not have at all.
+      // Keyed on the fixture's own facts, never on the job's expected answer.
+      // Wiring only; the live tier measures whether a real model calls it borderline.
+      if (job.requiredFactIds.some(id => !persona.facts.some(f => f.id === id))) {
+        return {
+          score: 3.4,
+          recommendation: 'Investigate',
+          summary: `Part of what this ${job.title} role requires is not in the available profile.`,
+          matches: [{ text: fact ? `Documented ${job.atsTerms[0] || 'experience'} relevant to the role.` : 'Background documented in the available profile.', evidence: fact ? evidenceFor(persona, fact, data.context) : fallbackEvidence(data.context, persona) }],
+          gaps: ['A required part of the role is not documented in the available profile.'],
+          questions: [],
+          legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
+        };
+      }
       return {
         score: 4.6,
         recommendation: 'Apply',

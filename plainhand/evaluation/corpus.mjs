@@ -3,6 +3,7 @@
 // network destination. Ground truth lives beside each persona so a run can score
 // what the app built instead of asking a model whether it did well.
 import { emptyProfile } from '../store.mjs';
+import { holdoutPersonas, holdoutJobs, holdoutScenarios } from './corpus-holdout.mjs';
 
 export const personas = [
   {
@@ -741,6 +742,11 @@ export const jobs = [
   },
 ];
 
+// Held-out baseline fixtures live in their own file so the manifest can hash them.
+personas.push(...holdoutPersonas);
+for (const persona of holdoutPersonas) persona.seedProfile = seedProfileFor(persona);
+jobs.push(...holdoutJobs);
+
 // Field expectations are deliberately explicit. A scorer should never have to
 // guess whether a portal question was answerable from the candidate's sources.
 export const fields = {
@@ -935,6 +941,11 @@ export const scenarios = [
   // End to end, from first conversation to confirmed submission, for a research
   // scientist with a master's degree.
   { id: 'journey-sci', family: 'journey', persona: 'scientist', job: 'scientist-i', portal: 'lever-single' },
+  // STEM profile-effect pair, added at the baseline freeze (measurement design §8.2 B).
+  { id: 'profile-effect-sci-built', family: 'profile-effect', persona: 'scientist', job: 'scientist-i', portal: 'lever-single', profileMode: 'conversation', pairId: 'sci' },
+  { id: 'profile-effect-sci-seeded', family: 'profile-effect', persona: 'scientist', job: 'scientist-i', portal: 'lever-single', profileMode: 'seeded', pairId: 'sci' },
+  { id: 'profile-effect-sci-minimal', family: 'profile-effect', persona: 'scientist', job: 'scientist-i', portal: 'lever-single', profileMode: 'minimal', pairId: 'sci', expectFail: true },
+  ...holdoutScenarios,
 ];
 
 export const personaById = id => personas.find(p => p.id === id || p.aliases?.includes(id));
