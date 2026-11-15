@@ -235,7 +235,7 @@
       "test-plainhand-ui real Chromium: 1/1 pass, exit 0, 40.4s",
       "adversarial attribution probe 10/10 expected",
       "test:plainhand 47 files: 455 pass 0 fail at f366946 (+review edits, no source change)",
-      "benchmark-calibration rules: exact 22/37, missed inflation 12, false alarms 0 \u2014 identical at 5729bf6 and f366946 \u2014 VACUOUS for the attribution rule: the bench passes no jobText, so employerAttributed never runs (independent review finding)",
+      "benchmark-calibration rules: exact 22/37, missed inflation 12, false alarms 0 — identical at 5729bf6 and f366946 — VACUOUS for the attribution rule: the bench passes no jobText, so employerAttributed never runs (independent review finding)",
       "after review-driven revision: test:plainhand 457 pass 0 fail"
     ],
     "not_run": [
@@ -410,5 +410,42 @@
         "sha256": "4ff0312de9dfafca6c2fcb761214610c73726283797d2cf2ff1a35ff7a309ee6"
       }
     ]
+  },
+  "codex_pilot": {
+    "date": "2026-11-15",
+    "commit": "bc543d904843978c802cb245f28c345fa40e8fdb",
+    "dirty": true,
+    "note": "Pre-freeze pilot, not baseline evidence. Tree was dirty (fixture work in progress, not loaded by this scenario's modules at start is not guaranteed).",
+    "scenario": "profile-effect-fin-built",
+    "provider": "codex",
+    "providerVersion": "codex-cli 0.167.1",
+    "result": "PASS",
+    "calls": 13,
+    "profileConversationCalls": 8,
+    "inputTokens": 331228,
+    "outputTokens": 3692,
+    "cacheReadTokens": null,
+    "reasoningTokens": null,
+    "wallSeconds": 163.5,
+    "u14_observations": [
+      "Input:output tokens about 90:1; about 25k input tokens per call, so context size is the main cost lever.",
+      "Cached-input and reasoning tokens arrive null for Codex in the per-run summary; U14 needs them recorded."
+    ],
+    "evidence": "output/goal-review/pilot-codex-fin-built (git-ignored)"
+  },
+  "prefreeze_fixtures": {
+    "date": "2026-11-15",
+    "commit": "e016533aba2dfbd0532a931f6d791063a25d7062",
+    "added": [
+      "corpus-holdout.mjs: 3 held-out personas, 6 old-role scenarios, holdout-mismatch, holdout-journey-stem, borderline-swe, borderline-fin",
+      "profile-effect-sci built/seeded/minimal",
+      "scoreEvaluation scoreBand + Investigate guard"
+    ],
+    "leak_record": "fin-mismatch and journey-sci were run by the scorer lane, so they are not held out; replaced by holdout-mismatch and holdout-journey-stem. Held-out status applies to this baseline only; later lanes can read the committed fixtures.",
+    "controlled_gate": "56/59, 3 expected failures (*-minimal), 0 unexpected (output/goal-review/pre-freeze-controlled)",
+    "controlled_caveat": "Controlled old-role and borderline passes are wiring-only: the fixture agent orders required facts first and returns Investigate on a missing required fact. Only the live tier measures them.",
+    "fixture_fix": "Lab persona certification sentence lengthened; the fixture assistant ignores messages of 40 chars or fewer.",
+    "suite": "test:plainhand 528/528",
+    "independent_review": "pending (Pi DeepSeek Flash, max thinking)"
   }
 }

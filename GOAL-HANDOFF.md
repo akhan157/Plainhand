@@ -98,3 +98,16 @@ Owner note for later, now register row **U14**: measure what each application co
 subscription quota (calls, tokens, wall time) and lean the pipeline down so a user gets
 many applications per quota window, not one or two. The baseline must record usage per
 run so U14 has a starting figure.
+
+## Pre-freeze fixtures and Codex pilot — 2026-11-15
+
+- Codex pilot (pre-freeze, not baseline): `profile-effect-fin-built` passed; 13 calls,
+  331k input / 3.7k output tokens, 163 s. Input dominates, so context size is the U14
+  lever. Codex cached/reasoning tokens arrive null; U14 needs them.
+- `e016533`: held-out old-role fixtures, fresh replacements for the seen
+  `fin-mismatch`/`journey-sci`, borderline Investigate fixtures with a score band,
+  `profile-effect-sci` pair. Controlled gate 56/59, 0 unexpected; suite 528/528.
+  Controlled passes on the new rows are wiring-only.
+- Independent review of the tenure rule, score band and fixtures is running. Freeze
+  waits on it.
+- Judge for the live baseline must be non-OpenAI: default Claude subscription (~80 calls).
