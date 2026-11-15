@@ -254,7 +254,7 @@ export class Workflow {
             ({ draft, review, humanizer } = fallback); break;
           }
           const reviewed = review.passed && !review.issues.length;
-          if (attempt === 1 && fallback && !reviewed) { ({ draft, review, humanizer } = fallback); break; }
+          if (attempt === 1 && fallback && (!reviewed || masterCoverage(ownResume, draft.resume).covered < masterCoverage(ownResume, fallback.draft.resume).covered)) { ({ draft, review, humanizer } = fallback); break; }
           missing = attempt === 0 && !request ? masterCoverage(ownResume, draft.resume).missing : [];
           if (reviewed && !missing.length) break;
           if (reviewed) fallback = { draft, review, humanizer };

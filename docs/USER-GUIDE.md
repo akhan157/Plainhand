@@ -124,13 +124,14 @@ In the **Apply** tab of an approved application:
    yourself. Back in Plainhand, press **I submitted this application**.
 
 **Applying by hand.** When Plainhand can't fill a site (a LinkedIn or Indeed
-posting without the employer's link, a form it can't read, or the hosted
-website), the Apply tab shows the kit instead: a link to the application, your
+posting without the employer's link, a form it can't open or fill, or the
+hosted website), the Apply tab shows the kit instead: a link to the application, your
 approved resume and cover letter PDFs, and every prepared answer with a copy
 button. Press **Apply by hand instead** to see it any time. Apply on the site,
 then press **I submitted this application** so tracking and follow-ups carry
-on. With the Plainhand extension, click it on the application page to fill
-from the same approved answers.
+on. On the Plainhand website, the browser extension can fill the open
+application page from the same approved answers, including on LinkedIn and
+Indeed; you still make the final submit click.
 
 ## 8. After applying
 

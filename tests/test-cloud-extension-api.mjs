@@ -53,6 +53,15 @@ test('match by applyUrl for a role saved from a job board', async () => {
   assert.equal(matchJob(jobs, 'https://jobs.ashbyhq.com/acme/other'), null);
 });
 
+test('a LinkedIn or Indeed posting matches under the URLs those sites show it at', async () => {
+  const jobs = [{ id: 'li', url: 'https://www.linkedin.com/jobs/view/4012345678/' }, { id: 'in', url: 'https://www.indeed.com/viewjob?jk=1a2b3c4d5e6f7a8b' }];
+  assert.equal(matchJob(jobs, 'https://www.linkedin.com/jobs/search/?currentJobId=4012345678&keywords=analyst')?.id, 'li');
+  assert.equal(matchJob(jobs, 'https://www.linkedin.com/jobs/view/4012345678/apply/?openSDUIApplyFlow=true')?.id, 'li');
+  assert.equal(matchJob(jobs, 'https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4099999999'), null);
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/jobs?q=analyst&vjk=1a2b3c4d5e6f7a8b')?.id, 'in');
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/jobs?q=analyst&vjk=ffffffffffffffff'), null);
+});
+
 test('plan answers from the profile, packet and answer bank, leaves sensitive and unknown fields', async () => {
   const deps = await approvedWorkspace();
   const { status, json } = await callApi(deps, 'POST', '/api/extension/plan', { jobId: deps.approvedId, fields: FIELDS });

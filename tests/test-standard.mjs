@@ -8,12 +8,12 @@ import { digest } from '../plainhand/store.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
 import { compareToStandard, autoPrepareDecision, standardStatus } from '../plainhand/standard.mjs';
 
-async function harness(base = fixtureAgent) {
+async function harness(base = fixtureAgent, verify = null) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-standard-'));
   const inputs = [];
   const agent = async (id, instruction, data, options) => { inputs.push({ instruction, data }); return base(id, instruction, data, options); };
   const app = await createPlainhand({ root, providers: fixtureProviders, workflowOptions: { agent,
-    verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'This is an engineering role designing and testing hardware. '.repeat(10), checkedAt: new Date().toISOString(), reason: 'Fixture.' }),
+    verifier: async job => verify ? verify(job) : ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'This is an engineering role designing and testing hardware. '.repeat(10), checkedAt: new Date().toISOString(), reason: 'Fixture.' }),
     renderer: async (workspace, state, job) => { const pdf = `output/test-${job.id}.pdf`; await workspace.write(pdf, 'test-pdf'); return { pdf, pdfHash: digest(Buffer.from('test-pdf')), artifacts: [pdf] }; } } });
   const state = await app.workspace.load();
   await app.workspace.saveProfile({ ...state.profile, ...candidate }, state.revision);
@@ -163,5 +163,26 @@ test('a master resume that leaves out resume lines is redrafted once, and a fail
     assert.equal(std.review.passed, true, 'the reviewed first draft is kept when the redraft fails review');
     assert.equal(std.draft.resume.length, 1);
     assert.equal(std.coverage.missing.length, 1, 'the card still shows what is missing');
+  } finally { await h.close(); }
+});
+
+test('a LinkedIn posting without the employer link is evaluated, prepared, approved and confirmed by hand', async () => {
+  const { verifyJob } = await import('../plainhand/jobs.mjs');
+  const h = await harness(fixtureAgent, verifyJob);
+  try {
+    const description = 'Graduate engineer role designing and testing hardware with CAD and prototypes. '.repeat(6);
+    const jobId = (await h.ui('jobs.add', { company: 'Board Company', title: 'Graduate Engineer', url: 'https://www.linkedin.com/jobs/view/4012345678/', description })).result.id;
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    let job = (await h.app.workspace.load()).jobs.find(j => j.id === jobId);
+    assert.equal(job.verification.state, 'unverified', 'Plainhand never opens the board page');
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    await h.ui('packet.approve', { jobId });
+    await h.app.registry.run('jobs.confirmSubmitted', { jobId }, { actor: 'ui', confirmed: true });
+    job = (await h.app.workspace.load()).jobs.find(j => j.id === jobId);
+    assert.equal(job.status, 'Applied');
+    assert.equal(job.submissionSource, 'candidate-confirmed');
   } finally { await h.close(); }
 });

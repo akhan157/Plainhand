@@ -248,7 +248,7 @@ function ManualKit({ job, title }) {
     </ol>
     ${packet?.coverLetter ? html`<div class="qa"><h4>Cover letter text</h4><p class="muted-text">For sites that ask you to paste it.</p><${Button} class="small" icon="copy" onClick=${() => copyText(packet.coverLetter, 'Cover letter')}>Copy cover letter</${Button}></div>` : null}
     ${(packet?.answers || []).map((a, i) => html`<div class="qa" key=${i}><h4>${a.question}</h4><p>${a.answer}</p><${Button} class="small" icon="copy" onClick=${() => copyText(a.answer, 'Answer')}>Copy answer</${Button}></div>`)}
-    <p class="muted-text">Questions the packet doesn't cover, such as pay, work authorization or demographics, are yours to answer on the site. With the Plainhand extension installed, click it on the application page to fill from these same approved answers. You make the final submit click.</p>
+    <p class="muted-text">Questions the packet doesn't cover, such as pay, work authorization or demographics, are yours to answer on the site.${store.state.cloud ? ' With the Plainhand extension installed, click it on the application page, including LinkedIn and Indeed, to fill from these same approved answers.' : ''} You make the final submit click.</p>
   </${Section}>`;
 }
 
@@ -290,7 +290,8 @@ function ApplyTab({ job }) {
   const observation = plan?.observation;
   const setAnswer = (key, value) => setPlan({ ...plan, answers: { ...plan.answers, [key]: value } });
   const n = plan?.steps?.length || 0;
-  const act = (name, fn) => async () => { setRunning(name); try { await fn(); } finally { setRunning(null); } };
+  // When Plainhand can't open or fill the form, the manual kit takes over.
+  const act = (name, fn) => async () => { setRunning(name); try { await fn(); } catch (error) { setManual(true); throw error; } finally { setRunning(null); } };
   const blocked = name => !!running && running !== name;
   return html`
     <${QueueNav} job=${job} kind="apply" />
@@ -335,7 +336,7 @@ function ApplyTab({ job }) {
       ${checkpoint.result.validation?.length ? html`<${Notice} tone="danger">${checkpoint.result.validation.join(' ')}</${Notice}>` : null}
       <${ActionButton} class="primary" icon="external" onClick=${async () => { const r = await api('browser/handoff', { id: job.id }); clearPlan(); toast(r.message); refresh(); }}>Take over the browser</${ActionButton}>
     </${Section}>` : null}
-    ${manual || observation?.state === 'unsupported' ? html`<${ManualKit} job=${job} title="Apply by hand" />` : html`<div class="action-row"><${Button} class="ghost small" icon="file" onClick=${() => setManual(true)}>Apply by hand instead</${Button}></div>`}
+    ${manual ? html`<${ManualKit} job=${job} title="Apply by hand" />` : html`<div class="action-row"><${Button} class="ghost small" icon="file" onClick=${() => setManual(true)}>Apply by hand instead</${Button}></div>`}
     ${finish}`;
 }
 

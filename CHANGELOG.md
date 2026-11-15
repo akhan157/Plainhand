@@ -4,7 +4,8 @@
 
 - **Apply by hand anywhere.** A job from any site can be evaluated and
   prepared. Where Plainhand can't fill the form (a LinkedIn or Indeed posting
-  without the employer's link, a form it can't read, or the hosted website),
+  without the employer's link, a form it can't open or fill, or the hosted
+  website),
   the Apply tab shows a kit: the application link, your approved PDFs and each
   answer with a copy button. You apply and confirm; tracking carries on.
 - **Master resume.** The standard resume becomes a master resume: every role,

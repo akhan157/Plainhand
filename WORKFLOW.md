@@ -212,8 +212,8 @@ integrations. Final submission always remains manual.
   hand off to the candidate instead of clicking.
 - Manual kit (Plainhand app, `ManualKit` in `plainhand/web/ui/jobpanel.mjs`).
   A site Plainhand can't drive is never refused: a job-board posting without
-  the employer's link (`isBoardUrl`), a form the browser can't read
-  (`observation.state === 'unsupported'`) and the hosted website all show the
+  the employer's link (`isBoardUrl`), any failure to open or fill the form,
+  and the hosted website all show the
   approved packet as downloads and copyable answers. The candidate applies by
   hand and confirms with `jobs.confirmSubmitted`, so TRACK and FOLLOW UP carry
   on. It reads the approved packet only and writes nothing.
