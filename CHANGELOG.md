@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased: tracking workflow (board, people, deadlines, exports)
+
+- **A board for the whole search.** Applications has a Table / Board switch.
+  The board has one column per canonical tracker status, a count on each, and
+  the number of roles per stage in the card heading. Drag a card to another
+  stage to change it, or use the stage menu on the card. Dropping into Applied
+  only opens the same confirmation dialog as the table; nothing is recorded as
+  submitted until you say you submitted it. The board uses the statuses in
+  `templates/states.yml`, so the tracker contract is unchanged. Rows that exist
+  only in an existing `applications.md` appear in a read-only section under the
+  columns, filtered by the same search box; they never become cards.
+- **People in one place.** A People card lists every contact recorded on any
+  application with their role and email, newest first, each linked to its role.
+  Contacts are still added and removed on the application's Record tab; this is
+  a read-only roll-up, so there is one owner for the data.
+- **Deadlines in your own calendar.** **Deadlines to calendar** downloads a
+  standard `.ics` file (RFC 5545) with each application's next action and each
+  scheduled interview round as an all-day event. Completed rounds and closed
+  applications are left out. Import it into Google Calendar, Apple Calendar or
+  anything else; re-import after changes.
+- **Your table in a spreadsheet.** **Export CSV** downloads the same table the
+  page shows, UTF-8 with a byte-order mark for Excel, including rows that came
+  from an existing career-ops `applications.md`. Both downloads use the session
+  token in a request header, and are hidden in the sample workspace. Hosted
+  accounts get the same downloads from their own signed-in workspace.
+  Implementation: `plainhand/exports.mjs`, two read-only routes, and the
+  Applications page; tests are `tests/test-exports.mjs` plus the browser
+  workflow check.
+
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
 - **End-to-end evaluation harness.** `npm run benchmark:eval` runs fictional

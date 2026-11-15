@@ -232,6 +232,45 @@ has a **Follow-ups** section. Plainhand drafts the message; it never sends it.
   silent past the cadence (7 business days after applying, 3 after a response)
   with no next action and no check-in under way.
 
+## Board, people, and taking your data with you
+
+**Applications** carries the day-to-day tracking surface. Under the Tracker
+card, **Table** is the default and **Board** groups the same evaluated roles into
+one column per canonical status from `templates/states.yml` (Evaluated, Apply,
+Applied, Responded, Interview, Offer, Rejected, Discarded, SKIP), in pipeline
+order, each with its count. The card heading repeats the counts per stage.
+
+- **Moving a role:** drag its card to another column, or use the stage menu on
+  the card. Both run the same status change as the table's status picker.
+  Dropping into Applied opens the submission confirmation; nothing is recorded
+  as submitted until you confirm you submitted it yourself. Later stages scroll
+  sideways. Rows that exist only in an existing `applications.md` appear in a
+  read-only section under the columns, obeying the same search box as the table;
+  they never get a stage column, a card or a write.
+- **People:** a read-only roll-up of every contact recorded on any application
+  (name, role, email, and the role they belong to), newest first. Add and remove
+  contacts on the application's Record tab; the People card never writes.
+- **Deadlines to calendar:** downloads `plainhand-calendar.ics` (RFC 5545) with
+  one all-day event per application next action and per scheduled interview
+  round. Completed rounds and closed applications (Rejected, Discarded, SKIP)
+  are left out. Import it into any calendar app; download a fresh copy after
+  changes. It is a snapshot, not a subscription feed.
+- **Export CSV:** downloads `plainhand-applications.csv` — the same table, UTF-8
+  with a byte-order mark so Excel reads it correctly, columns Company, Role,
+  Status, Fit, Next action, Due, Updated, Posting URL, Report. Rows that exist
+  only in an existing career-ops `applications.md` are included, marked by their
+  tracker status.
+
+Both downloads send the session token in a request header rather than the URL,
+and both are hidden in the sample workspace. The routes are read-only:
+`GET /api/applications.csv` and `GET /api/calendar.ics`. They generate from the
+workspace on each request and write nothing. Hosted accounts get the same two
+downloads from their own workspace behind the signed-in session and its page
+token. Implementation:
+`plainhand/exports.mjs`; unit tests: `tests/test-exports.mjs`; the browser
+workflow test downloads both files and moves a card across stages, including the
+Applied confirmation gate.
+
 ## State, evidence, and recovery
 
 Personal data is owned by the user and excluded from Git:

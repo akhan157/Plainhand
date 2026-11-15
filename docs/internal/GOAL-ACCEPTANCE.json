@@ -14,9 +14,10 @@
     {
       "id": "U02",
       "requirement": "**Durable candidate memory.** Facts with provenance, contradictions and unknowns, preferences, voice and taste, several writing samples, strengths and constraints. Editable and deletable. Survives restart and a provider switch. Sharing controls. Approved corrections reused later. No invented identity",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Restart and provider-switch test on memory contents. Edit and delete tests with downstream effect. A planted contradiction is surfaced, not silently resolved. An approved correction changes a later packet. An excluded source leaves provider context and clears approvals",
-      "falsifier": "Memory differs after restart or provider switch. A deleted fact still appears in a packet. A contradiction is resolved without the candidate. A fact has no source. Identity detail appears that no source holds"
+      "falsifier": "Memory differs after restart or provider switch. A deleted fact still appears in a packet. A contradiction is resolved without the candidate. A fact has no source. Identity detail appears that no source holds",
+      "review_note": "P2 source review and direct import probe confirm five memory/settings keys are lost; durability, correction reuse and actual voice evidence remain open."
     },
     {
       "id": "U03",
@@ -49,9 +50,10 @@
     {
       "id": "U07",
       "requirement": "**Packet fidelity.** Truthful CV, resume, cover letter and answers. Reviewed packet. Real rendered PDF text, layout and ATS checks",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Independent claim check with validated source quotes. Planted unsupported claims are caught (negative controls). Real PDF text extraction, layout and ATS-parse checks against rendered files",
-      "falsifier": "A planted unsupported claim passes. A PDF drops or reorders text. The reviewed packet differs from what is attached. Claim numbers are matched without the source"
+      "falsifier": "A planted unsupported claim passes. A PDF drops or reorders text. The reviewed packet differs from what is attached. Claim numbers are matched without the source",
+      "review_note": "Synthetic scorer counterexamples accepted unsupported candidate numbers and headings; real PDF fidelity and independent factual acceptance remain open."
     },
     {
       "id": "U08",
@@ -70,9 +72,10 @@
     {
       "id": "U10",
       "requirement": "**Tracking and learning.** Tracker, contacts, calendar, imports and exports, follow-ups, outcome recommendations",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Round-trip import and export. Stage board, contact roll-up, calendar and CSV from the unmerged branches, re-tested. Follow-ups cite the submitted packet. Recommendations remain candidates until approved and show insufficient data",
-      "falsifier": "A follow-up is marked sent without the candidate. Insufficient data is shown as a rate. A recommendation changes configuration unapproved. An import corrupts the tracker"
+      "falsifier": "A follow-up is marked sent without the candidate. Insufficient data is shown as a rate. A recommendation changes configuration unapproved. An import corrupts the tracker",
+      "review_note": "Tracking increment integrated at 9ec623777e1c77157b975a1f92e07175babaa0f4; root export/cloud/local Chromium checks passed. U10 round-trip/follow-up/outcome acceptance still incomplete; hosted browser unverified."
     },
     {
       "id": "U11",
@@ -84,16 +87,18 @@
     {
       "id": "U12",
       "requirement": "**Release-quality product.** UI and CLI parity and reachability, fresh install, export and import, historical capability parity and status reconciliation, hosted optional, adjacent-work inventory",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Reachability matrix for each capability across its intended screen, conversation, CLI and MCP surfaces, with explicit tier restrictions and documented unsupported interfaces. Browser review in light, dark and mobile layouts, keyboard/focus checks, and readable field provenance; existing CLI workflows remain usable. Fresh clone `setup` then `start`. Workspace export and import into a new workspace. Each row of the VERIFICATION-MATRIX re-checked against current code and marked carried, re-run or retired. Inventory of interview prep, fit and discovery, email status suggestions, learning plan, listing what exists and its evidence",
-      "falsifier": "An intended consumer cannot reach a capability, an existing supported workflow regresses, or a candidate-only action becomes agent-callable. Required visual/browser evidence is missing. A fresh install needs undocumented steps. Import loses data. A historical PASS is carried over with no current evidence. Hosted is required for any row"
+      "falsifier": "An intended consumer cannot reach a capability, an existing supported workflow regresses, or a candidate-only action becomes agent-callable. Required visual/browser evidence is missing. A fresh install needs undocumented steps. Import loses data. A historical PASS is carried over with no current evidence. Hosted is required for any row",
+      "review_note": "P2 inventory independently reviewed; direct import key-loss probe confirms incomplete round-trip. Reachability, fresh install and current built UI evidence remain open."
     },
     {
       "id": "U13",
       "requirement": "**Evaluation harness and independent measurement.** Pre-registered, repeatable, independent of the builder",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "See \"Evaluation acceptance\" below",
-      "falsifier": "See below"
+      "falsifier": "See below",
+      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open."
     }
   ]
 }

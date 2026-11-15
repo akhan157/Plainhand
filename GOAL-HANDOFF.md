@@ -17,3 +17,24 @@ Routing: Go DeepSeek read-only review failed insufficient balance and gave no ve
 The owner settles older threads. Preserve unmerged branches/worktrees. No main merge, push, deploy, new paid service, submission or employer contact. No temporary runtime was started.
 
 Integrated scope/review commit: `e7024bbb794dbadf8f1aeefe1fa64b2a259bc666` (merge); reviewer amendments `298d6fd5b23eea639643f4c277f1776b6e05dbed`. These are scope-only commits, not integration of either application branch.
+
+## Current checkpoint — P2 review and diagnostic evidence, 2026-11-15
+
+This section supersedes the earlier current-state/routing/runtime paragraphs; scope history above is retained. Goal remains active on `goal/plainhand-personal-engine`; P2 author `b756eec9c564add3471bee8db574c916ef98769b` merged as `de26e0a808056f074ec2f2c80cc5e2cd4b6011b1`. Source inventory accepted with root corrections in REVIEW.md; no product acceptance. Register: PASS 0, in_progress 4 (U02/U07/U12/U13), not_run 9, blocked 0, FAIL 0. See EVIDENCE.json for raw diagnostic paths/hashes. Direct import drops five memory/settings keys. Scorer counterexamples expose posting-number laundering, omitted headings and metadata-only PDF validation. These findings require bounded fixes before the frozen live baseline; no benchmark thresholds were weakened.
+
+Tracking implementation author tip is now `e538b6aafbd8a260958086b160de7129983a241d` on `t3/tracking-integration-design`. Tracking source `867c329` merged inside that lane only at `99ebf25`; Gate 1 design `2618065`, root amendments `8e46372`, failure record `c0ef7b4`. The author reports exports/cloud/UI checks; root has not rerun or accepted them. Next: read child terminal result, review diff and evidence, rerun focused checks and inspect real screenshots; then integrate only if accepted. Continuation source `a46056f` remains unmerged, stopped for generic Indeed URL collision, omitted master heading hash and candidate-number posting exception. Separate Gate 1 design child is running; do not start implementation until tracking integration and fresh base confirmation.
+
+T3 child handles (all under the existing control thread; no new top-level thread):
+- P2 inventory, completed: `thread:delegated-task:command%3Amcp%3Abbbad7ca-821e-4755-9164-9d550390afee%3Adelegate-task%3A5974b1da-02c7-46c9-bbbd-df1db9749757`.
+- Tracking, completed implementation awaiting root review: `thread:delegated-task:command%3Amcp%3Abbbad7ca-821e-4755-9164-9d550390afee%3Adelegate-task%3Aeefd925a-de85-434c-b219-fc5890055b92`.
+- Continuation Gate 1: `thread:delegated-task:command%3Amcp%3Abbbad7ca-821e-4755-9164-9d550390afee%3Adelegate-task%3Af36cf601-87e0-4cf9-9177-d16818704a62`.
+
+Routing: Claude author runs hit API 429, no verdict; preserved partial edits. Explicit configured fallback is Pi `deepseek/deepseek-flash`, catalog DeepSeek V4.1 Flash, thinking max, existing metered account disclosed. Go remains confirmed insufficient balance. Root Codex independently reviews, different family. No silent switches or new service.
+
+Root-owned temporary Docker container `plainhand-goal-tracking-pg` is verified running, loopback port 32769, cached postgres:17-alpine, limited to 384MiB/2 CPUs. Reuse only its local test DB for the focused cloud test. Stop this exact container after root verification (`docker stop plainhand-goal-tracking-pg`); do not touch unrelated containers. No credential recorded here. Lane-created app/browser is reported closed; independently check evidence. No push/main merge/deploy/submission/contact. Missing real candidate files persist; fictional development proceeds.
+
+## Tracking integration checkpoint — 2026-11-15
+
+Current product source pin `9ec623777e1c77157b975a1f92e07175babaa0f4`: tracking increment accepted with root UID-injection correction `b385760846d5e66713d70269344d614fd58a484f`. Root reran merged-tree checks: 16 export/module/CSS, 18 hosted HTTP, local real Chromium workflow exit 0; viewed dark/light/mobile board. Evidence under `output/goal-review/tracking-root/shots/`, hashes in EVIDENCE.json. Hosted browser and full suites not run. U10 now in_progress; register PASS 0, in_progress 5, not_run 8, blocked 0, FAIL 0. Temporary `plainhand-goal-tracking-pg` stopped (docker stop exit 0); do not assume DB running or reuse old port without provisioning.
+
+Continuation Gate 1 design has arrived at `fa8fc61f3e17ff4273c41cc6968f0f921f69d174`; review before implementation. Measurement Gate 1 design dispatched from product pin `9ec6237` to child `thread:delegated-task:command%3Amcp%3Abbbad7ca-821e-4755-9164-9d550390afee%3Adelegate-task%3A12af779f-e025-43ea-b284-63a205891549`, Pi DeepSeek fallback, no implementation authorized yet. Next: approve/amend continuation design, reconcile onto fresh goal base, integrate only after review/tests. Then strengthen harness, freeze baseline and run it before measured product-gap improvements. Goal remains active, no broad PASS.

@@ -1,6 +1,6 @@
 {
   "checkpoint": "2026-11-15",
-  "kind": "scope_review_only",
+  "kind": "scope_review_and_p2_diagnostics",
   "base_sha": "fb396422d49e3f76f4fed5beb710397950ffa973",
   "author_tip": "93965287794589c9f05137ff34728e0b202dee97",
   "author": "claude-pool/claude-sonnet-5-5 high",
@@ -34,7 +34,7 @@
       0
     ],
     "product_tests": "not_run: documentation-only",
-    "product_branches_integrated": false,
+    "product_branches_integrated": "tracking only; continuation remains unmerged",
     "main_modified": false,
     "push": false,
     "external_evidence_directory": null,
@@ -42,9 +42,9 @@
   },
   "register_counts": {
     "PASS": 0,
-    "in_progress": 0,
+    "in_progress": 5,
     "blocked": 0,
-    "not_run": 13,
+    "not_run": 8,
     "FAIL": 0
   },
   "failed_attempt": {
@@ -55,5 +55,83 @@
   },
   "review_correction": "Documentation checker initially matched scope rows as acceptance rows; narrowed to U followed by two digits; original error was IndexError and created no register.",
   "scope_merge_sha": "e7024bbb794dbadf8f1aeefe1fa64b2a259bc666",
-  "review_amendment_sha": "298d6fd5b23eea639643f4c277f1776b6e05dbed"
+  "review_amendment_sha": "298d6fd5b23eea639643f4c277f1776b6e05dbed",
+  "p2": {
+    "author_tip": "b756eec9c564add3471bee8db574c916ef98769b",
+    "merge_sha": "de26e0a808056f074ec2f2c80cc5e2cd4b6011b1",
+    "disposition": "source inventory accepted with root corrections; no product PASS",
+    "reviewer": "gpt-6.1-sol medium",
+    "authors": [
+      "claude-pool/claude-sonnet-5-5 high (429 failure; partial draft preserved)",
+      "pi/deepseek/deepseek-flash thinking max (configured metered fallback)"
+    ]
+  },
+  "diagnostics": [
+    {
+      "path": "output/goal-review/scorer-counterexamples.json",
+      "sha256": "ecab16d35daddf33d7048f59d9440eaea95bf7f4fd95439010a42c27a8db26c6",
+      "target": "e4da45fa2d21ce1f5945ce11662a73afda03b53f",
+      "result": "posting-number false pass; numeric heading skipped; PDF metadata-only counterexample",
+      "scope": "direct synthetic scorePacket inputs; no model/browser/PDF render"
+    },
+    {
+      "path": "output/goal-review/import-key-loss.json",
+      "sha256": "6bd72f2100c387f8093b4d81d74b81ee8746745a48dd040626d5a59dca4e016c",
+      "target": "e4da45fa2d21ce1f5945ce11662a73afda03b53f",
+      "result": "five exported keys absent after direct importWorkspace",
+      "scope": "fictional temporary workspace removed after probe"
+    }
+  ],
+  "runtime": {
+    "container": "plainhand-goal-tracking-pg",
+    "state_verified": "stopped by root after merged-tree cloud/browser checks",
+    "loopback_port": 32769,
+    "owner": "root",
+    "cleanup": "stop exact container after tracking lane and root verification; do not touch other containers",
+    "cleanup_result": "docker stop plainhand-goal-tracking-pg exited 0; --rm container"
+  },
+  "tracking": {
+    "source": "867c32956a38788a3099b045b19be450fcd16a86",
+    "author": "e538b6aafbd8a260958086b160de7129983a241d",
+    "root_correction": "b385760846d5e66713d70269344d614fd58a484f",
+    "merge": "9ec623777e1c77157b975a1f92e07175babaa0f4",
+    "disposition": "accepted bounded tracking increment; U10 remains in_progress",
+    "commands": [
+      {
+        "command": "node --test --test-concurrency=2 tests/test-exports.mjs tests/test-web-modules.mjs tests/test-css.mjs",
+        "result": "16 pass, 0 fail, 0 skip"
+      },
+      {
+        "command": "PLAINHAND_TEST_DATABASE_URL=<dedicated-loopback-test-db> node --test --test-concurrency=2 tests/test-cloud-app.mjs",
+        "result": "18 pass, 0 fail, 0 skip"
+      },
+      {
+        "command": "TMPDIR=$PWD/output/goal-review/tracking-root/tmp PLAINHAND_UI_OUTPUT=$PWD/output/goal-review/tracking-root/shots node tests/test-plainhand-ui.mjs",
+        "result": "exit 0, browserErrors [], automatedSubmissions 0; synthetic agent and local fixture"
+      }
+    ],
+    "screenshots_inspected": [
+      {
+        "path": "output/goal-review/tracking-root/shots/06d-board.png",
+        "sha256": "6d28161420422f275b0fa8e64080d15c9d0f53e0b1e2f4da8dd5de4c41e65b91"
+      },
+      {
+        "path": "output/goal-review/tracking-root/shots/06d-board-legacy-light.png",
+        "sha256": "8d543313f7e446e1c29de71c393976b1a9e3cb8711b770b927af42544c8d3caa"
+      },
+      {
+        "path": "output/goal-review/tracking-root/shots/06e-board-legacy-mobile.png",
+        "sha256": "e98556ff7614475763d930e9c43572a5a4c022d8ba0dfd4f67948028356805a1"
+      },
+      {
+        "path": "output/goal-review/tracking-root/shots/workflow-proof.json",
+        "sha256": "2f3592c43e59fa3fd85566d9fbfd30cd23d5f3accc946b8110da891c4f67eeb8"
+      }
+    ],
+    "limitations": [
+      "Hosted browser not run; hosted download claims are HTTP-level only",
+      "Full test:plainhand and test:cloud suites not run",
+      "No live model quality or real employer submission claim"
+    ]
+  }
 }
