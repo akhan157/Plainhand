@@ -82,3 +82,7 @@ M2 correction revised after independent review (reject: intent-word exemption la
 ## Scorer integrated — 2026-11-15
 
 Scorer lane `c2c8323` merged (per-mention numeric grounding, headings, rendered-PDF evidence). Root added tenure-from-year-range support after judging the lane's one unexpected failure ("six years" vs "2020 to 2026") a scorer false positive. Merged tree: 539/539, controlled benchmark 44/46 with 0 unexpected. Next: baseline freeze per measurement §8 (held-out and borderline fixtures written by root or a separate author, manifest with hashes), then the live paired baseline once the owner chooses a provider/budget. M1 transfer lane still running.
+
+## M1 integrated — 2026-11-15
+
+M1 lane `1fdfcb7` merged: export/import carries samples, claim line, master draft (unapproved), format, settings (autonomy off), answer bank (held when unverifiable), corrections and the four user-layer source files; local import is atomic with marker recovery. Merged tree 548/548; root two-instance probe confirms the five-key loss is closed and no authority or secret transfers. Not run: hosted Postgres transfer tests. Small UI gap: held answers lack a needs-review badge. Next memory packets M3→M4→M5 follow the baseline freeze.

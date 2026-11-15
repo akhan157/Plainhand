@@ -262,3 +262,269 @@ browser or server left running. Only the files listed in §2 changed.
 This is an implementation report, not an acceptance record. The author did not
 review their own diff as a gate, did not mark any row `PASS`, and did not merge
 to the goal branch. Root review of `ffc115f` and of this file is the next gate.
+
+---
+
+# Lane result: durable-memory M1 — transfer preserves memory, never authority
+
+Status: **implemented on the lane, awaiting root review.** This is packet M1 of
+[ASSIGNMENT.md](ASSIGNMENT.md) §8 with the root decisions in [REVIEW.md](REVIEW.md)
+(source files included, approvals reset, autonomy disabled, no credential, connection
+check or remote secret). The author does not accept this work, does not edit the
+register, manifest, board, handoff, `EVIDENCE.json` or `REVIEW.md`, and has not
+merged, pushed or deployed.
+
+## 1. Pin, route, environment
+
+| Item | Value |
+|---|---|
+| Worktree | `/home/ak/.t3/worktrees/Plainhand/t3-547ceca5-2ef5e49e29ed75db` (cwd confirmed before edits) |
+| Branch | Started `t3/547ceca5`; renamed externally to `t3/durable-memory-m1-transfer` at the same HEAD (reflog `HEAD@{0}: Branch: renamed refs/heads/t3/547ceca5`), no content change by this lane |
+| Expected and actual dispatch HEAD | `5712e16b35c2bfa0ebb1a06cfcdc887c10b7ea9a` (matched; tree clean at start) |
+| Author | Pi `deepseek/deepseek-flash`, existing metered account; bounded implementation sub-agent, no delegation |
+| Reviewer | root, different model family; root reads the diff |
+| Host | `free -h` before the final full suite: 5.9 GiB available, swap heavily used. Runs capped at `--test-concurrency=2`; no install, container, browser or provider call |
+| Test dependencies | `node_modules` symlinked to `/home/ak/Plainhand/node_modules` (same `package.json`; ignored, untracked, not an install) |
+| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repo) |
+
+## 2. Exact commits
+
+| Step | Commit | What it is |
+|---|---|---|
+| Lane base | `5712e16b35c2bfa0ebb1a06cfcdc887c10b7ea9a` | dispatch pin |
+| Implementation | `dea586beb48da2ad135b348df7f0fab7f7a6c7cc` | `plainhand/workspace-import.mjs`, `plainhand-server.mjs`, `plainhand/cloud/{app,workspace-transfer}.mjs`, `plainhand/{answer-bank,corrections}.mjs`, the three test files, `package.json` |
+| Follow-up | `fc87c948b4d40f33e0dc66cf48cdc9f4b775ce78` | legacy export with no bank: keep the destination answers, held; matching falsifier |
+| This result | committed after the follow-up | `docs/internal/lanes/durable-memory/RESULT.md` only |
+
+No rebase, squash or force push of imported history. No push, main merge, tag,
+deploy, external contact or submission.
+
+## 3. Defect verified in source before fixing
+
+- `/api/export` spread whole state locally (`plainhand-server.mjs:195`) and on the
+  website (`cloud/app.mjs:302`). `importWorkspace` restored only a 12-key allow-list,
+  so `writingSamples`, `claimLine`, `standard`, `resumeFormat` and `settings` were
+  dropped, while every other state key was deleted.
+- `data/answer-bank.yml` and `data/plainhand/corrections.json` were outside the
+  transfer format in both directions, and the four bounded user-layer sources were
+  not carried, so a claim's quote and a reusable answer's quote could not be checked
+  against the imported workspace.
+- Local import put `connectionChecks` in its allow-list (hosted stripped it), and its
+  final `saveProfile` call set `state.understanding = null` after the import had
+  restored it.
+- Nothing reset the imported `standard`, so a carried approval hash could have arrived
+  as authority; autonomy only failed safe because `settings` was missing.
+
+## 4. What changed and the falsifier each fix closes
+
+**`plainhand/workspace-import.mjs`.** One shared export/import contract:
+
+- `exportWorkspace(workspace, extra)` is the allow-list both `/api/export` routes now
+  use: whole state minus `connectionChecks`, every job's `browserCheckpoint`, plus
+  `answerBank`, `corrections`, and a `files` map of the four bounded user-layer
+  sources (`modes/_profile.md`, `article-digest.md`, `interview-prep/story-bank.md`,
+  `data/resume-source.yml`, each up to 1 MiB). An oversize source is listed in
+  `filesOmitted` instead of being truncated.
+- `importWorkspace` rebuilds every imported value from a known shape instead of
+  copying: writing samples (10 × 8000 characters, id/title/date), claim line
+  (300 decisions, 30 statements), master resume draft (headline, 150 lines with
+  headings and evidence, cover letter, suggestions), format through `cleanFormat`,
+  and settings as exactly `{autonomy:{perDay,minScore}}` with `enabled:false`.
+  `approvedHash` and `approvedAt` are written as `null`; the draft is kept.
+- The understanding text is preserved with `approved:false`; the import no longer
+  calls `saveProfile`, so the old null-out cannot happen. Its `contextHash` is kept,
+  so `understanding.approve` still refuses until the summary is rebuilt against the
+  imported sources.
+- Job approvals reset, `browserCheckpoint` deleted, stages marked `needs-refresh`,
+  in-flight tasks interrupted, `connectionChecks` never imported, one import event
+  with counts only (`n roles, n packet approvals reset, n reusable answers held,
+  n sensitive answers dropped, n corrections held, n claims without their source`),
+  no content or secret in it.
+- Reusable answers: retained, with `status:'needs-review'` and not matched by
+  `AnswerBank.match` when any quote is absent from the imported factual sources or
+  the source id is not factual; a sensitive question is dropped and counted; entries
+  are deduplicated by normalized question. Corrections keep their status and
+  timestamps; an `approved` correction whose linked bank entry is held becomes
+  `needs-review` and is counted.
+- Older exports (no `files`, no `answerBank`, no `corrections`) leave the four source
+  files alone and keep the destination's bank and corrections, held against the
+  imported sources. New exports replace all three.
+- Atomicity: backups of every replaced file, a `prepared` marker, all file writes
+  before `workspace.json` (the state commit is last inside `mutate`), then
+  `state-committed`/`done` markers. Any failure restores the backups and removes the
+  marker; a crash leaves a marker that `recoverInterruptedImport` uses on the next
+  load (`prepared` restores backups, `state-committed` re-syncs the tracker). The
+  local server calls recovery at startup and before each import; hosted import stays
+  inside its existing `storage.exclusive` transaction.
+- A structured resume travels only with its mirror: an export that carries
+  `data/resume-source.yml` without resume text is refused, and a destination that
+  already has a structured resume refuses an export that does not carry one (local
+  `ImportError`, hosted `structured_resume_conflict`).
+
+**`plainhand/answer-bank.mjs`.** `AnswerBank.match` skips `needs-review` entries, so a
+held answer never fills a form field. `add` is unchanged, so a candidate re-saving an
+answer still re-validates it.
+
+**`plainhand/corrections.mjs`.** Exports `CORRECTIONS_FILE`, used by the transfer.
+
+**`plainhand-server.mjs`.** Export route uses `exportWorkspace`; startup runs
+`recoverInterruptedImport` before anything else reads the workspace; import route
+unchanged (same `ImportError` mapping to 400).
+
+**`plainhand/cloud/app.mjs`.** Hosted export route uses the same `exportWorkspace`.
+
+**`plainhand/cloud/workspace-transfer.mjs`.** `prepare` passes the same allow-list
+through its credential strip (also strips `approvedAt`), validates the new fields and
+the files map, no longer manufactures `connectionChecks`, and applies the
+structured-resume conflict only when the export does not carry the source. The
+preview warning names held reusable answers.
+
+**Tests.** New `tests/test-memory-transfer.mjs` (8 tests) and one new route-level test
+in `tests/test-workspace-import.mjs`; the file is in the `test:plainhand` list. The
+only change to an existing assertion is the hosted transfer test's
+`connectionChecks` check, now `undefined` (no key at all) instead of `{}` — stricter,
+because the key is no longer imported.
+
+## 5. Before/after evidence
+
+**Before, on dispatch HEAD `5712e16`** (the six product files and `package.json`
+restored from the pin, test files present; the export used in the probe is the
+documented version-1 shape, built from the workspace's own state, bank, corrections
+and four source files):
+
+```
+TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 \
+  tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
+ℹ tests 11   ℹ pass 2   ℹ fail 9
+```
+
+Failures are the intended ones, all in the new falsifiers: the rich round trip has no
+`answerBank`/`corrections`/`files` counts to restore and drops the five state keys;
+the export has no allow-list helper; the legacy-export case is matched by the bank
+without a quote check; the injected failure (corrections is never written) and the
+marker recovery cannot run; the structured resume does not travel; the route export
+has no `files`. The two existing import tests still pass on the pin. Log:
+`/home/ak/.cache/plainhand-eval-tmp/m1-before-final.txt`.
+
+**After `fc87c94`, same files:** `tests 11, pass 11, fail 0`.
+
+**Focused set** (13 files: transfer/import, answer bank, corrections, standard,
+actions, exports, brain controls, usage, agent engine, evidence sources, writing
+samples, claim line): **97 tests, 97 pass, 0 fail** (6.8 s).
+
+**Full `test:plainhand` list** (52 files, includes the new file): **473 tests, 473
+pass, 0 fail** (51.1 s). `git diff --check` exited 0; `node --check` passed on every
+changed `.mjs`. No assertion was relaxed to reach green.
+
+The falsifiers now asserted:
+
+| Falsifier | Assertion |
+|---|---|
+| A key missing or changed after export → import | samples, claim line, master draft, format, context prefs, understanding text, narrative/story-bank/proof-point files deep-equal or exact |
+| The standard arriving approved | `approvedHash`/`approvedAt` null, `standardStatus !== 'approved'`, `standardInput === null` |
+| Autonomy arriving enabled | `settings` exactly `{autonomy:{enabled:false,perDay:4,minScore:4.5}}`, `autonomyOf().enabled === false`, `autoPrepareDecision().prepare === false` |
+| A held answer matching | `AnswerBank.match` null for the held label, `suggestFormAnswers` omits it, `status:'needs-review'` stored |
+| A sensitive entry stored | not in the bank, counted in `sensitiveAnswersDropped` |
+| A credential, connection check or checkpoint present | `state.connectionChecks` undefined, no job `browserCheckpoint`, planted `sk-live-*` values absent from state and export |
+| A mixed state after an injected write failure | `workspace.json`, bank, CV, narrative and tracker byte-identical; marker gone; the next import completes |
+| A crash mid-import | `prepared` restores the backups and removes the marker; `state-committed` re-syncs the tracker and removes the marker |
+| A structured resume split from its mirror | both directions refused before any write |
+| A story-backed claim losing its source | the `stories` claim still passes `hasEvidence` after import; a legacy export counts it unresolved |
+
+## 6. Tests that actually ran, with counts
+
+| Command | Result |
+|---|---|
+| The two falsifier files (before, product at the pin) | **11 tests, 2 pass, 9 fail** |
+| The two falsifier files (after) | **11 tests, 11 pass, 0 fail** |
+| Focused 13-file set (after) | **97 tests, 97 pass, 0 fail** |
+| Full `test:plainhand` list, 52 files (after) | **473 tests, 473 pass, 0 fail** |
+
+All with `TMPDIR=/home/ak/.cache/plainhand-eval-tmp` and `--test-concurrency=2`,
+scripted providers only. Hosted `tests/test-cloud-*.mjs` were **not run**: no
+Postgres was available (`PLAINHAND_TEST_DATABASE_URL` unset, no listener on 5432)
+and no container was started. That tier, including the in-memory `TransferMemory`
+tests, remains root's gate.
+
+## 7. Consumer audit
+
+| Consumer | Effect of this change |
+|---|---|
+| `plainhand-server.mjs` `/api/state` | Reads `state.answerBank`, `standardStatus`, `autonomyOf`, `resumeFormat`, `state.standard`; all new values are well-shaped, and held entries simply appear in the list. `/api/providers` reads `state.connectionChecks?.[id]`, safe when absent. |
+| `plainhand-server.mjs` `/api/import`, `/api/import/preview` | Same entry points; `preview` now also reports `answerBank`, `corrections` and `files` counts. Import errors still map to 400. |
+| `plainhand-server.mjs` form plan (`suggestFormAnswers`) | Uses `AnswerBank.match`; a held entry cannot fill a field (asserted). |
+| `plainhand/cloud/extension-api.mjs` form plan | Same `suggestFormAnswers` + bank; held entries are skipped. |
+| `plainhand/cloud/app.mjs` `/api/export` and `stateFor` | Export uses the shared allow-list; `stateFor` already surfaces the imported keys and reads the connection check from its own file. |
+| `plainhand/cloud/workspace-transfer.mjs` preview/apply | Same allow-list and sanitizers through `importWorkspace`; the preview count fields are additive. |
+| `plainhand/web/ui/settings.mjs` | Reads `preview.approvalsReset/jobs/applied/conversation/sources` (unchanged), downloads the export JSON, shows the toast from `result.jobs`. It lists reusable answers including held ones without a badge (residual). |
+| `plainhand/workflow.mjs` rendering, `lineInput`, standard task | `state.resumeFormat`, `state.claimLine` and `state.standard` keep their shapes; the master draft is present but never approved, so `standardInput` is null until the candidate re-approves. |
+| `plainhand/standard.mjs` `autonomyOf` / `autoPrepareDecision` | `settings.autonomy.enabled` is always false after import (asserted). |
+| `plainhand/profile-strength.mjs`, `actions.mjs` profile card | `understanding` is present but unapproved → "needs-review"; `standardStatus` is `draft`/`stale`, never `approved`. |
+| `plainhand/answer-bank.mjs` `add`/`update`/`remove`, settings UI | Unchanged; a candidate re-saving a held answer revalidates and clears the hold through `add`. |
+| `plainhand/corrections.mjs` `approve` | Still re-validates through `AnswerBank.add`; a held imported correction can be approved again by the candidate. |
+| `plainhand/web/ui/demo.mjs` | Static demo state; unaffected. |
+| Export consumers (tests, `docs/internal/DESKTOP.md`) | The documented contract is the same `/api/export` JSON; it now includes `files`, `answerBank` and `corrections` and omits machine state. |
+
+## 8. Decisions, limits and residuals
+
+- **Export now omits `connectionChecks` and `browserCheckpoint`.** The design's I5
+  says transfer carries no connection check or checkpoint; import also refuses them
+  if an older export contains them. Packet approvals stay in the file but are reset
+  on import, because the PDFs are not part of an export and the UI explains that.
+- **Provider id.** A local import still carries the provider id as before; hosted
+  still resets it (unchanged, out of M1's scope). No credential travels either way.
+- **Master resume metadata.** `draft`, `coverage` and (when the view can read it)
+  `calibration` travel; `review`, `reviewAttempts`, `humanizer` are producer output
+  and are not imported. `contextHash` travels so status reads `stale` rather than
+  silently `draft` when the sources moved.
+- **Source-file cap.** A source over 1 MiB is omitted from the export and reported in
+  `filesOmitted` and the import event; the destination's copy is left in place and
+  claims that cite it are counted unresolved. This is the "reported, not truncated"
+  rule from the design.
+- **Legacy exports** keep the destination's bank/corrections (held against the
+  imported sources) and leave the four source files untouched; their claims may be
+  counted unresolved. New exports replace all of them.
+- **Held answers are visible but inert.** The settings UI has no "needs review" badge
+  for a held reusable answer; adding it is a UI change outside M1's file scope. The
+  matching gates (bank, form fill) are tested.
+- **Sanitizers are bounded, not lossless for hand-edited files.** A bank question over
+  500 characters, an answer over 5000, a sample over 8000, more than 150 master lines
+  or a malformed draft are dropped or held and counted; a production export never
+  exceeds these because the producers enforce them.
+- **Local atomicity has no cross-process lock.** Two simultaneous local imports could
+  interleave file writes; the UI imports one at a time, and `busy` plus the task check
+  cover the normal path. Hosted import keeps its transaction.
+- **No measurement.** M1 is a correctness packet; the scored output is expected to be
+  unchanged because no prompt, threshold, rubric or scenario was touched, but this was
+  not measured here. Real-model, browser UI, desktop and hosted tiers were not run.
+
+## 9. Commands that actually ran
+
+```bash
+# before evidence: product files restored from 5712e16, test files present
+TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
+
+# after
+TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
+TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs tests/test-standard.mjs tests/test-actions.mjs tests/test-exports.mjs tests/test-brain-controls.mjs tests/test-plainhand-usage.mjs tests/test-agent-engine.mjs tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-claim-line.mjs
+TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 $(node -e "console.log(require('./package.json').scripts['test:plainhand'].replace(/^node --test /,''))")
+git diff --check
+node --check plainhand/workspace-import.mjs plainhand/answer-bank.mjs plainhand/corrections.mjs plainhand-server.mjs plainhand/cloud/app.mjs plainhand/cloud/workspace-transfer.mjs tests/test-memory-transfer.mjs tests/test-workspace-import.mjs tests/test-cloud-workspace-transfer.mjs
+```
+
+## 10. Deliberately not done
+
+No M3, M4, M5 or M6 work; no edit to `plainhand/evaluation/**`,
+`plainhand/claim-calibration.mjs`, the master-resume semantics or the UI; no live
+provider, browser session, install, container, hosted or cloud write; no register,
+manifest, board, handoff, `GOAL-ACCEPTANCE.json`, `EVIDENCE.json`, `REVIEW.md` or
+`GOAL-HANDOFF.md` edit; no push, main merge, tag, deploy, contact or submission; no
+private data; no server, browser or watcher left running; no process killed that this
+lane did not start.
+
+## 11. No self-acceptance
+
+This is an implementation report, not an acceptance record. The author did not review
+their own diff as a gate, did not mark any row `PASS`, and did not merge to the goal
+branch. Root review of `dea586b`, `fc87c94` and this file is the next gate, followed
+by the hosted/Postgres tier the author could not run.

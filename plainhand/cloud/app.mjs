@@ -28,6 +28,7 @@ import { markStalePrep } from '../features/interview-prep.mjs';
 import { StorageError } from '../storage.mjs';
 import { newCodeVerifier } from './supabase-auth.mjs';
 import { importResume } from './resume-import.mjs';
+import { exportWorkspace } from '../workspace-import.mjs';
 import { readConnectionCheck } from './connection-check.mjs';
 import { handleWorkspaceTransfer } from './workspace-transfer.mjs';
 import { renderCloudPacket, verifyCloudJob } from './runtime.mjs';
@@ -298,7 +299,7 @@ export function createCloudApp(deps) {
       }
       if (p === '/api/providers') return json(res, 200, []);
       if (p === '/api/export') {
-        return json(res, 200, { ...(await workspace.load()), agentUsage: await workflow.usage.records(), exportedAt: isoNow() }, { 'Content-Disposition': 'attachment; filename="plainhand-workspace.json"' });
+        return json(res, 200, await exportWorkspace(workspace, { agentUsage: await workflow.usage.records(), exportedAt: isoNow() }), { 'Content-Disposition': 'attachment; filename="plainhand-workspace.json"' });
       }
       if (p === '/api/applications.csv') {
         const state = await workspace.load();

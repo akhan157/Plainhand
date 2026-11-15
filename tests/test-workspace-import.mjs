@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { createPlainhand } from '../plainhand-server.mjs';
 import { digest } from '../plainhand/store.mjs';
 import { candidate, fixtureAgent, fixtureProviders, scriptedAgent } from '../plainhand/test-fixtures.mjs';
+import { AnswerBank } from '../plainhand/answer-bank.mjs';
+import { Corrections } from '../plainhand/corrections.mjs';
 
 const workflowOptions = agent => ({ agent,
   verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'This is an engineering role designing and testing hardware. '.repeat(10), checkedAt: new Date().toISOString(), reason: 'Fixture.' }),
@@ -82,4 +84,74 @@ test('invalid exports and imports during work are refused without changing anyth
     const busy = await h.request('import', { data: { version: 1, profile: {} }, confirm: true });
     assert.match(busy.data.error, /Wait for the running/);
   } finally { await h.close(); }
+});
+
+// The export endpoint and the import endpoint together are the transfer the candidate
+// uses. Memory must survive; authority must not: no packet approval, no approved
+// standard, no approved understanding, no enabled autonomy, no connection check, no
+// checkpoint and no credential. A reusable answer whose quote did not travel is kept
+// but held, and a sensitive one is never stored.
+test('an export carries memory and source files; the import restores it without authority', async () => {
+  const a = await start(), b = await start();
+  try {
+    await a.app.workspace.write('modes/_profile.md', '# Candidate narrative\n\nI build lightweight hardware.\n');
+    await a.app.workspace.write('interview-prep/story-bank.md', 'STAR: I built a lightweight chassis for the test team and ran the load tests myself.\n');
+    let s = await a.app.workspace.load();
+    await a.app.workspace.saveProfile({ ...s.profile, ...candidate }, s.revision);
+    const cvQuote = 'Designed and tested a lightweight chassis for a Formula SAE team.';
+    await a.app.workspace.mutate(state => {
+      state.conversation.push({ role: 'user', text: 'I built a lightweight chassis for the test team and ran the load tests myself.', at: new Date().toISOString() });
+      state.writingSamples = [{ id: 'sample-1', title: 'Launch note', text: 'I shipped the chassis programme with the test team.', at: '2026-01-02T03:04:05.000Z' }];
+      state.claimLine = { statements: [{ text: 'Say "led" only when I owned it.', at: '2026-02-05T00:00:00.000Z' }], decisions: [] };
+      state.standard = { kind: 'master', draft: { headline: 'Mechanical engineering graduate', resume: [{ section: 'Projects', heading: null, text: 'Built a lightweight chassis.', evidence: [{ sourceId: 'stories', quote: 'I built a lightweight chassis for the test team and ran the load tests myself.' }] }], coverLetter: 'I build hardware.', suggestions: [] }, contextHash: 'exported-hash', createdAt: '2026-02-01T00:00:00.000Z', approvedHash: digest('standard'), approvedAt: '2026-02-02T00:00:00.000Z', coverage: { covered: 1, lines: 1, missing: [] } };
+      state.resumeFormat = { source: 'edited', page: 'a4', margins: { top: 0.5, right: 0.6, bottom: 0.5, left: 0.6 }, font: { family: 'serif', name: 'Georgia', size: 11, lineHeight: 1.4 }, name: { size: 22, align: 'left' }, contact: { separator: ' · ', align: 'left' }, headings: { case: 'upper', size: 11, rule: true }, sections: ['Projects'], entry: { datesRight: true, titleItalic: true }, bullet: '•', savedAt: '2026-02-04T00:00:00.000Z' };
+      state.settings = { autonomy: { enabled: true, perDay: 5, minScore: 4.2 } };
+      state.understanding = { result: { summary: 'A hands-on engineering graduate.', voice: 'Direct.', sampleAnswer: 'I built a chassis.', strengths: ['Testing'], questions: [], gaps: [] }, contextHash: 'exported-base', approved: true, createdAt: '2026-02-01T00:00:00.000Z' };
+      state.connectionChecks = { codex: { verified: true, note: 'sk-live-connection-check' } };
+      state.jobs.push({ id: 'job-1', company: 'Northwind', title: 'Hardware Engineer', url: 'https://jobs.example.invalid/northwind', createdAt: '2026-02-01T00:00:00.000Z', stage: 'approved', approvedHash: digest('packet'), browserCheckpoint: { packetHash: digest('packet'), note: 'sk-live-checkpoint', result: { filled: [], skipped: [] } }, packet: { headline: 'x', resume: [], answers: [], questions: [] }, evaluation: { score: 4.4, recommendation: 'Apply', matches: [] } });
+    });
+    await new AnswerBank(a.app.workspace).save([
+      { id: 'answer-valid', question: 'Describe a hands-on project', answer: 'I designed and tested a lightweight chassis.', evidence: [{ sourceId: 'cv', quote: cvQuote }], scope: 'global', reviewedAt: '2026-01-02', reviewBy: '2027-06-01' },
+      { id: 'answer-held', question: 'How do you handle travel?', answer: 'I plan travel around delivery dates.', evidence: [{ sourceId: 'cv', quote: 'I regularly travelled to supplier sites.' }], scope: 'global', reviewedAt: '2026-01-02', reviewBy: null },
+      { id: 'answer-sensitive', question: 'Are you authorized to work in the United States?', answer: 'Yes.', evidence: [{ sourceId: 'cv', quote: cvQuote }], scope: 'global', reviewedAt: '2026-01-02', reviewBy: null },
+    ]);
+    await new Corrections(a.app.workspace).save([{ id: 'correction-1', jobId: 'job-1', question: 'Describe a hands-on project', previous: null, answer: 'I designed and tested a lightweight chassis.', evidence: [{ sourceId: 'cv', quote: cvQuote }], scope: 'global', status: 'proposed', proposedAt: '2026-02-01T00:00:00.000Z' }]);
+
+    const exported = (await a.request('export')).data;
+    assert.deepEqual(Object.keys(exported.files).sort(), ['interview-prep/story-bank.md', 'modes/_profile.md']);
+    assert.equal(exported.answerBank.length, 3);
+    assert.equal(exported.corrections.length, 1);
+    assert.equal(exported.connectionChecks, undefined, 'a connection check is machine state');
+    assert.equal(exported.jobs[0].browserCheckpoint, undefined, 'a browser checkpoint never travels');
+    assert.equal(JSON.stringify(exported).includes('sk-live-connection-check'), false);
+    assert.equal(JSON.stringify(exported).includes('sk-live-checkpoint'), false);
+
+    const preview = (await b.request('import/preview', { data: exported })).data;
+    assert.deepEqual([preview.answerBank, preview.corrections], [3, 1]);
+    const result = (await b.request('import', { data: exported, confirm: true })).data;
+    assert.equal(result.jobs, 1);
+    assert.equal(result.approvalsReset, 1);
+    const restored = await b.app.workspace.load();
+    assert.deepEqual(restored.writingSamples, exported.writingSamples);
+    assert.deepEqual(restored.claimLine, exported.claimLine);
+    assert.deepEqual(restored.standard.draft, exported.standard.draft);
+    assert.equal(restored.standard.approvedHash, null);
+    assert.equal(restored.standard.approvedAt, null);
+    assert.deepEqual(restored.resumeFormat, exported.resumeFormat);
+    assert.deepEqual(restored.settings, { autonomy: { enabled: false, perDay: 5, minScore: 4.2 } });
+    assert.equal(restored.understanding.approved, false);
+    assert.equal(restored.understanding.result.summary, 'A hands-on engineering graduate.');
+    assert.equal(restored.jobs[0].approvedHash, null);
+    assert.equal(restored.connectionChecks, undefined);
+    assert.equal(await b.app.workspace.read('interview-prep/story-bank.md'), await a.app.workspace.read('interview-prep/story-bank.md'));
+    const bank = await new AnswerBank(b.app.workspace).load();
+    assert.deepEqual(bank.map(entry => [entry.id, entry.status || 'usable']), [['answer-valid', 'usable'], ['answer-held', 'needs-review']]);
+    assert.equal(AnswerBank.match(bank, { label: 'How do you handle travel?', asOf: '2026-11-15' }), null);
+    assert.equal(AnswerBank.match(bank, { label: 'Describe a hands-on project', asOf: '2026-11-15' }).answer, 'I designed and tested a lightweight chassis.');
+    assert.equal((await new Corrections(b.app.workspace).list()).length, 1);
+    const imported = restored.events.filter(event => /Workspace imported/i.test(event.text));
+    assert.equal(imported.length, 1);
+    assert.match(imported[0].text, /1 reusable answer held for review/);
+    assert.match(imported[0].text, /1 sensitive answer dropped/);
+  } finally { await a.close(); await b.close(); }
 });

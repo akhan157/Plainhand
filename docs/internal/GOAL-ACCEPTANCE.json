@@ -17,7 +17,7 @@
       "status": "in_progress",
       "evidence_required": "Restart and provider-switch test on memory contents. Edit and delete tests with downstream effect. A planted contradiction is surfaced, not silently resolved. An approved correction changes a later packet. An excluded source leaves provider context and clears approvals",
       "falsifier": "Memory differs after restart or provider switch. A deleted fact still appears in a packet. A contradiction is resolved without the candidate. A fact has no source. Identity detail appears that no source holds",
-      "review_note": "P2 source review and direct import probe confirm five memory/settings keys are lost; durability, correction reuse and actual voice evidence remain open."
+      "review_note": "M2 (factual-source gate) and M1 (lossless export/import with approval reset, autonomy off, held unverifiable answers, atomic recovery) integrated; root probes confirm restart/provider-switch persistence and the five-key import loss closed. Open: M3 story edit/delete, M4 approved-correction reuse in drafting, M5 contradictions, real-model contribution."
     },
     {
       "id": "U03",
@@ -93,7 +93,7 @@
       "status": "in_progress",
       "evidence_required": "Reachability matrix for each capability across its intended screen, conversation, CLI and MCP surfaces, with explicit tier restrictions and documented unsupported interfaces. Browser review in light, dark and mobile layouts, keyboard/focus checks, and readable field provenance; existing CLI workflows remain usable. Fresh clone `setup` then `start`. Workspace export and import into a new workspace. Each row of the VERIFICATION-MATRIX re-checked against current code and marked carried, re-run or retired. Inventory of interview prep, fit and discovery, email status suggestions, learning plan, listing what exists and its evidence",
       "falsifier": "An intended consumer cannot reach a capability, an existing supported workflow regresses, or a candidate-only action becomes agent-callable. Required visual/browser evidence is missing. A fresh install needs undocumented steps. Import loses data. A historical PASS is carried over with no current evidence. Hosted is required for any row",
-      "review_note": "P2 inventory independently reviewed; direct import key-loss probe confirms incomplete round-trip. Reachability, fresh install and current built UI evidence remain open."
+      "review_note": "P2 inventory independently reviewed; direct import key-loss probe confirms incomplete round-trip. Reachability, fresh install and current built UI evidence remain open. Local import now lossless and atomic (M1); hosted transfer tests not run (no DB)."
     },
     {
       "id": "U13",

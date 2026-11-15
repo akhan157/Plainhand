@@ -380,5 +380,35 @@
         "sha256": "7f3f892ab28d44c2486e1494ea5d204a53c0b0f42e192529ee1fe6a4d3b310bc"
       }
     ]
+  },
+  "memory_m1": {
+    "source_tip": "1fdfcb7878f77b6c10fc49de063863868dadd570",
+    "author": "Pi deepseek/deepseek-flash",
+    "root_reviewer": "Claude Opus 5.5",
+    "author_evidence": "falsifiers on pre-fix product 2/11 pass, after 11/11; full list 473/473",
+    "root_review": "no authority carried: standard/job approvals reset, autonomy enabled:false, connectionChecks/browserCheckpoint dropped; package.json conflict resolved as union",
+    "root_probe": "independent export->import on two real app instances: writingSamples, claimLine, standard draft (unapproved), resumeFormat, settings (autonomy off) all present; no connectionChecks; no secret-named export keys. Original five-key loss closed.",
+    "checks": [
+      "test:plainhand + cloud-extension-api: 548 pass 0 fail"
+    ],
+    "not_run": [
+      "hosted Postgres transfer tests",
+      "browser/UI (held answer lacks needs-review badge in settings UI)",
+      "real-model"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/m1-merge-test-plainhand.log",
+        "sha256": "8c2af60909a57869825a9ba28df90b9ee666cdf9a10f992441d8b0006b251201"
+      },
+      {
+        "path": "output/goal-review/probe-import-keys.mjs",
+        "sha256": "a41a6eace89b96e9de2a71a80abaa0c86e7778baf97ede44f4e50d9237d5d362"
+      },
+      {
+        "path": "output/goal-review/import-keys-after-m1.json",
+        "sha256": "4ff0312de9dfafca6c2fcb761214610c73726283797d2cf2ff1a35ff7a309ee6"
+      }
+    ]
   }
 }
