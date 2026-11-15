@@ -34,7 +34,7 @@
       "status": "not_run",
       "evidence_required": "Paired jobs with the same persona where the right selection differs. Held-out cases. Scored selection and order, plus an old-but-relevant role planted. Judge on relevance with quote validation",
       "falsifier": "An older role that matches the job is dropped. An irrelevant role leads. A pre-specified pair requiring different evidence produces the same selection despite the documented relevance difference. Selection is correct only because the job vocabulary was copied",
-      "review_note": "Per-job selection/order mechanism merged with continuation (f366946); no root-run paired or held-out evidence yet, so the row stays not_run. Baseline finding: tailoring keeps reverse-chronological order; old relevant role does not lead (2 of 6 held-out); judge structure ~3.4/5."
+      "review_note": "Per-job selection/order mechanism merged with continuation (f366946); no root-run paired or held-out evidence yet, so the row stays not_run. Baseline finding: tailoring keeps reverse-chronological order; old relevant role does not lead (2 of 6 held-out); judge structure ~3.4/5. Owner decision 2026-11-15 (how tailoring should work): from the field's master resume, keep only the experience relevant to the job and drop the rest; curate each kept role's lines to the role; order the kept roles newest first by default, or with the strongest match on top when the candidate chooses that (a per-candidate setting). Cover letter: a concise restatement of the strongest matches in the resume (owner to double-check this convention). Note: the frozen leadShare check encodes 'old relevant role leads'; under this decision it holds only when the newer roles are irrelevant and dropped, so scorer v2 must check order against the candidate's chosen setting."
     },
     {
       "id": "U05",
@@ -111,6 +111,14 @@
       "evidence_required": "Per-application calls, input/output/reasoning tokens and wall time recorded for every live run (baseline first). Quota consumed per application, given as a share of the provider's subscription window where it can be measured. A leaner pipeline compared with the frozen baseline on the same scenarios: equal or better quality scores, fewer calls or tokens",
       "falsifier": "Cost per application is not measured, or is estimated without run data. A cost cut lowers a quality or grounding score. A typical subscription window covers only one or two applications and no reduction is planned",
       "review_note": "Added 2026-11-15 at owner request. Owner chose Codex for the live baseline; the baseline must record usage so this row has a starting figure. Starting figure (baseline 00ce1bf): seeded application 5 calls/121k input tokens; conversation-built 11 calls/280k; journey 15 calls/374k. Codex-reported input ~25k tokens per call (includes CLI overhead; Plainhand share unmeasured). Cached/reasoning tokens dropped by the runner, not measured; model unrecorded."
+    },
+    {
+      "id": "U15",
+      "requirement": "**Updates keep the candidate's setup.** A candidate moves to each new Plainhand version without restarting: profile, master resume, stories, applications, settings and provider sign-ins carry over. The update path is simple on the candidate's side and a repeatable release workflow on ours",
+      "status": "not_run",
+      "evidence_required": "A real update from the previous release to the next on a populated install: every stored record and setting present and usable afterwards, with any data migration run automatically and reversible. The candidate-side steps written out and timed. The release steps on our side written down and run once end to end",
+      "falsifier": "Any profile, story, application, setting or sign-in is lost or needs re-entry after an update. An update needs manual file copying or a fresh setup. There is no written release procedure, or a migration cannot be rolled back",
+      "review_note": "Added 2026-11-15 at owner request. Deferred by the owner until the current work (tailoring, profile conversation, quota) is finished. Not started."
     }
   ]
 }

@@ -130,3 +130,16 @@ not lead with an old relevant role; (3) resume structure and (4) cover letters a
 weakest judged dimensions. Two scorer defects (PDF order false positive, zero-match
 Skip) need a different-family-authored scorer v2, re-freeze, and offline re-score (0 calls).
 Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
+
+## Owner decisions: tailoring order, cover letters, updates — 2026-11-15
+
+- **Tailoring.** The candidate keeps a master resume per field. For each job, Plainhand
+  keeps only the experience relevant to the posting and drops the rest (it stays in the
+  master). Each kept role's lines are curated to the job. Kept roles go newest first by
+  default; a candidate can instead put their strongest match on top. This is a
+  per-candidate setting. Recorded in U04.
+- **Cover letters.** The owner's convention: a concise restatement of the resume's
+  strongest matches. The owner asked for a double-check of that convention.
+- **Updates (deferred).** Candidates must move to each new version without losing their
+  setup, and the release workflow on our side must be simple and repeatable. New row
+  U15, to start after the current work.
