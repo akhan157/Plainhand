@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { createPlainhand } from '../plainhand-server.mjs';
 import { digest } from '../plainhand/store.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
-import { compareToStandard, autoPrepareDecision, standardStatus } from '../plainhand/standard.mjs';
+import { approveStandard, autoPrepareDecision, compareToStandard, standardInput, standardStatus } from '../plainhand/standard.mjs';
 
 async function harness(base = fixtureAgent, verify = null) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-standard-'));
@@ -184,5 +184,109 @@ test('a LinkedIn posting without the employer link is evaluated, prepared, appro
     job = (await h.app.workspace.load()).jobs.find(j => j.id === jobId);
     assert.equal(job.status, 'Applied');
     assert.equal(job.submissionSource, 'candidate-confirmed');
+  } finally { await h.close(); }
+});
+
+const headingDraft = () => ({
+  headline: 'Mechanical engineer',
+  resume: [
+    { section: 'Experience', heading: { org: 'Acme Robotics', title: 'Mechanical Engineer', location: 'Boston', dates: '2023 to 2026', team: 'Drive trains' }, text: 'Designed and tested drive trains.' },
+    { section: 'Education', heading: { org: 'Example University', title: 'B.S. Mechanical Engineering', location: '', dates: '2027' }, text: 'Graduated 2027.' },
+    { section: 'Skills', heading: null, text: 'SolidWorks and test planning.' },
+  ],
+  coverLetter: 'Dear {company}, I build tested hardware for {role}.',
+  suggestions: ['Add the brake rig work.'],
+});
+const masterState = draft => ({ standard: { kind: 'master', draft, contextHash: 'ctx-1', approvedHash: null, approvedAt: null }, settings: { autonomy: { enabled: true, perDay: 2, minScore: 4 } }, jobs: [] });
+const approveFixture = () => { const state = masterState(headingDraft()); approveStandard(state, '2026-11-15T00:00:00.000Z'); return state; };
+
+test('the master approval covers exactly the heading fields the drafter receives', () => {
+  const state = approveFixture();
+  assert.equal(standardStatus(state, 'ctx-1'), 'approved');
+  const sent = standardInput(state, 'ctx-1');
+  assert.deepEqual(sent.resume[0].heading, { org: 'Acme Robotics', title: 'Mechanical Engineer', location: 'Boston', dates: '2023 to 2026' }, 'one projection, fixed fields, the unconsumed team key dropped');
+  assert.equal('heading' in sent.resume[2], false);
+  // A heading object with a different key order is the same approval.
+  const reordered = masterState(headingDraft());
+  reordered.standard.draft.resume[0].heading = { dates: '2023 to 2026', location: 'Boston', title: 'Mechanical Engineer', org: 'Acme Robotics' };
+  approveStandard(reordered, '2026-11-15T00:00:00.000Z');
+  assert.equal(standardStatus(reordered, 'ctx-1'), 'approved');
+  // Non-consumed changes never ask the candidate to approve the same content again.
+  state.standard.draft.suggestions.push('And the welding course.');
+  state.standard.draft.resume[0].evidence = [{ sourceId: 'cv', quote: 'Designed and tested drive trains.' }];
+  state.standard.draft.resume[0].heading.team = 'Chassis';
+  state.standard.draft.coverage = { lines: 3, covered: 2, missing: [] };
+  assert.equal(standardStatus(state, 'ctx-1'), 'approved');
+  assert.equal('team' in standardInput(state, 'ctx-1').resume[0].heading, false);
+  // An all-empty heading is no heading: it changes neither the payload nor the approval.
+  state.standard.draft.resume[2].heading = { org: '', title: '', location: '', dates: '' };
+  assert.equal(standardStatus(state, 'ctx-1'), 'approved');
+  assert.equal('heading' in standardInput(state, 'ctx-1').resume[2], false);
+  // Every string leaf the drafter receives invalidates the approval when it changes.
+  const payload = standardInput(state, 'ctx-1');
+  const leaves = [['headline', s => { s.standard.draft.headline += ' II'; }], ['coverLetter', s => { s.standard.draft.coverLetter = 'Dear {company}, I lead.'; }]];
+  for (const [i, entry] of payload.resume.entries()) {
+    for (const [key, value] of Object.entries(entry)) {
+      if (typeof value === 'string') leaves.push([`resume[${i}].${key}`, s => { s.standard.draft.resume[i][key] = `${value} changed`; }]);
+      if (value && typeof value === 'object') for (const [field, text] of Object.entries(value)) leaves.push([`resume[${i}].heading.${field}`, s => { s.standard.draft.resume[i].heading[field] = `${text} changed`; }]);
+    }
+  }
+  leaves.push(['heading added', s => { s.standard.draft.resume[2].heading = { org: 'Example University', title: 'Coursework', location: '', dates: '2026' }; }]);
+  leaves.push(['heading removed', s => { delete s.standard.draft.resume[1].heading; }]);
+  for (const [label, mutate] of leaves) {
+    const probe = approveFixture();
+    mutate(probe);
+    assert.notEqual(standardStatus(probe, 'ctx-1'), 'approved', label);
+    assert.equal(standardInput(probe, 'ctx-1'), null, label);
+  }
+});
+
+test('a master with no headings keeps its old approval; one whose heading was never approved does not', () => {
+  const draft = { headline: 'Graduate', resume: [{ section: 'Projects', text: 'Designed and tested a chassis.' }], coverLetter: 'Dear {company}.' };
+  const legacy = digest([draft.headline, draft.resume.map(e => [e.section, e.text]), draft.coverLetter]);
+  const state = masterState(draft);
+  state.standard.approvedHash = legacy;
+  assert.equal(standardStatus(state, 'ctx-1'), 'approved', 'the consumed payload is unchanged, so the earlier approval still holds');
+  assert.equal('heading' in standardInput(state, 'ctx-1').resume[0], false);
+  const heading = { org: 'Example University', title: 'B.S. Mechanical Engineering', location: '', dates: '2027' };
+  const withHeading = masterState({ ...draft, resume: [{ ...draft.resume[0], heading }] });
+  withHeading.standard.approvedHash = digest([draft.headline, draft.resume.map(e => [e.section, e.text]), draft.coverLetter]);
+  assert.equal(standardStatus(withHeading, 'ctx-1'), 'draft', 'an earlier approval never covered the heading');
+  assert.equal(standardInput(withHeading, 'ctx-1'), null);
+  assert.equal(standardStatus(masterState({ ...draft, resume: [] }), 'ctx-1'), 'draft');
+});
+
+test('an edited heading is not used by a later application or by autonomy', async () => {
+  const agent = (id, instruction, data, options) => {
+    if (instruction.includes("Write the candidate's master resume")) {
+      const full = fixtureAgent(id, instruction, data, options);
+      full.resume[1].heading = { org: 'Example University', title: 'B.S. Mechanical Engineering', location: '', dates: '2027' };
+      return full;
+    }
+    return fixtureAgent(id, instruction, data, options);
+  };
+  const h = await harness(agent);
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    await h.ui('standard.approve', {});
+    let state = await h.app.workspace.load();
+    let contextHash = (await h.app.workspace.context(state)).hash;
+    assert.equal(standardStatus(state, contextHash), 'approved');
+    assert.deepEqual(standardInput(state, contextHash).resume[1].heading, { org: 'Example University', title: 'B.S. Mechanical Engineering', location: '', dates: '2027' });
+    await h.app.workspace.mutate(s => { s.standard.draft.resume[1].heading.title = 'M.S. Mechanical Engineering'; });
+    state = await h.app.workspace.load();
+    contextHash = (await h.app.workspace.context(state)).hash;
+    assert.equal(standardStatus(state, contextHash), 'draft');
+    assert.equal(standardInput(state, contextHash), null);
+    const jobId = await h.addJob();
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    state = await h.app.workspace.load();
+    assert.equal(autoPrepareDecision(state, state.jobs.find(j => j.id === jobId), (await h.app.workspace.context(state)).hash, '2026-11-15').prepare, false);
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    const prepareInput = h.inputs.filter(i => i.instruction.startsWith('Prepare a')).at(-1).data;
+    assert.equal(prepareInput.master, undefined, 'the unapproved heading never reaches the drafter');
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
   } finally { await h.close(); }
 });

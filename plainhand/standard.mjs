@@ -8,7 +8,24 @@ import { digest } from './store.mjs';
 export const STANDARD_JOB = { company: '{company}', title: '{role}', description: 'The candidate’s master resume and base cover letter, not for a specific job. {company} and {role} are slots filled per application.' };
 export const DEFAULT_AUTONOMY = { enabled: false, perDay: 3, minScore: 4 };
 
-const identity = draft => digest([draft.headline, draft.resume.map(e => [e.section, e.text]), draft.coverLetter]);
+// What the candidate approved is exactly what the drafter receives. A heading is
+// one projection: fixed fields, trimmed, and no other key can travel. The heading
+// slot is added to the identity only when one is present, so a master with no
+// headings keeps the approval it already had.
+const headingOf = heading => {
+  if (!heading || typeof heading !== 'object') return null;
+  const clean = { org: '', title: '', location: '', dates: '' };
+  for (const key of Object.keys(clean)) clean[key] = typeof heading[key] === 'string' ? heading[key].trim() : '';
+  return Object.values(clean).some(Boolean) ? clean : null;
+};
+const identity = draft => digest([
+draft.headline,
+draft.resume.map(entry => {
+const heading = headingOf(entry.heading);
+return heading ? [entry.section, heading, entry.text] : [entry.section, entry.text];
+}),
+draft.coverLetter,
+]);
 
 // none | draft | approved | stale (the profile changed since it was written, or it
 // is a curated standard resume from before the master resume existed)
@@ -26,8 +43,12 @@ export function standardInput(state, contextHash) {
   if (standardStatus(state, contextHash) !== 'approved') return null;
   const { headline, resume, coverLetter } = state.standard.draft;
   // Headings travel with each line so the agent knows which role a bullet belongs to
-  // and can choose and order roles for each job.
-  return { headline, resume: resume.map(({ section, heading, text }) => ({ section, ...(heading ? { heading } : {}), text })), coverLetter };
+  // and can choose and order roles for each job. They go through the same projection
+  // the approval hash uses, so nothing unapproved can reach the drafter.
+  return { headline, resume: resume.map(({ section, heading, text }) => {
+    const clean = headingOf(heading);
+    return { section, ...(clean ? { heading: clean } : {}), text };
+  }), coverLetter };
 }
 
 export function approveStandard(state, at) {

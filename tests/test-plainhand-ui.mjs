@@ -13,7 +13,15 @@ await mkdir(shots, { recursive: true });
 console.log(`Browser evidence: ${shots}`);
 const ats = fixtureApplicationBrowser({ gated: true });
 const app = await createPlainhand({ root, providers: fixtureProviders, browser: ats.application, workflowOptions: {
-  agent: (provider, instruction, data, options) => { options?.onUsage?.({ inputTokens: 120, outputTokens: 35, cacheReadTokens: 80, cacheWriteTokens: 0, reportedUsd: 0.001, models: ['synthetic-test-model'] }); return fixtureAgent(provider, instruction, data); },
+  agent: (provider, instruction, data, options) => {
+    options?.onUsage?.({ inputTokens: 120, outputTokens: 35, cacheReadTokens: 80, cacheWriteTokens: 0, reportedUsd: 0.001, models: ['synthetic-test-model'] });
+    const result = fixtureAgent(provider, instruction, data);
+    // One sourced role heading, as the master task returns it: the candidate must see it before approving.
+    if (instruction.includes("Write the candidate's master resume") && result.resume?.length > 1) {
+      result.resume = result.resume.map((entry, i) => i === 1 ? { ...entry, heading: { org: 'Example University', title: 'B.S. Mechanical Engineering', location: '', dates: '2027' } } : entry);
+    }
+    return result;
+  },
   verifier: async job => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'Graduate engineering design and testing role. '.repeat(15), checkedAt: new Date().toISOString(), reason: 'Synthetic test browser snapshot.' }),
   scanner: async () => [{ title: 'Graduate Engineer', company: 'Test Company', location: 'Boston', url: 'https://jobs.lever.co/test/123' }],
 } });
@@ -109,6 +117,25 @@ try {
   await strength.getByText(/1 of 1 summary approved/).waitFor();
   assert.ok(await strength.getByText(/in your words/).count(), 'Profile strength counts the candidate’s own statements.');
   await shot(page, '04-profile.png');
+  // The master resume shows every heading the drafter receives, before the candidate approves it.
+  const masterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  if (await masterStep.getAttribute('aria-expanded') !== 'true') await masterStep.click();
+  await page.getByRole('button', { name: 'Write my master resume' }).click();
+  await page.getByRole('button', { name: 'Approve my master resume' }).waitFor({ timeout: 30000 });
+  const master = page.locator('article[aria-label="Master resume"]');
+  await master.locator('.doc-role', { hasText: 'Example University' }).waitFor();
+  assert.match(await master.locator('.doc-role').first().innerText(), /Example University[\s\S]*B\.S\. Mechanical Engineering[\s\S]*2027/, 'the heading used by tailoring is visible before approval');
+  await page.evaluate(() => window.plainhandTheme.set('light'));
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  await shot(page, '04b-master-heading-light.png');
+  await page.evaluate(() => window.plainhandTheme.set('dark'));
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+  await shot(page, '04c-master-heading-dark.png');
+  await page.evaluate(() => window.plainhandTheme.set('light'));
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  await page.getByRole('button', { name: 'Approve my master resume' }).click();
+  await page.getByRole('status').filter({ hasText: 'Master resume approved' }).waitFor();
+  await page.getByRole('button', { name: 'Approve my master resume' }).waitFor({ state: 'detached' });
   await navLink(page, 'Jobs').click();
   await page.getByRole('button', { name: 'Add a company board', exact: true }).click();
   await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Test Company');
@@ -338,6 +365,13 @@ try {
   await page.getByRole('heading', { name: 'Profile & brain', exact: true }).waitFor();
   await shot(page, '08-mobile-profile.png');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  const mobileMasterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  if (await mobileMasterStep.getAttribute('aria-expanded') !== 'true') await mobileMasterStep.click();
+  const mobileMaster = page.locator('article[aria-label="Master resume"]');
+  await mobileMaster.locator('.doc-role', { hasText: 'Example University' }).waitFor();
+  await mobileMaster.scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'the approved master headings fit the phone viewport');
+  await shot(page, '08b-master-heading-mobile.png');
   await page.goto(base + '#applications');
   await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
   await page.getByRole('tab', { name: 'Board', exact: true }).click();
