@@ -86,3 +86,15 @@ Scorer lane `c2c8323` merged (per-mention numeric grounding, headings, rendered-
 ## M1 integrated — 2026-11-15
 
 M1 lane `1fdfcb7` merged: export/import carries samples, claim line, master draft (unapproved), format, settings (autonomy off), answer bank (held when unverifiable), corrections and the four user-layer source files; local import is atomic with marker recovery. Merged tree 548/548; root two-instance probe confirms the five-key loss is closed and no authority or secret transfers. Not run: hosted Postgres transfer tests. Small UI gap: held answers lack a needs-review badge. Next memory packets M3→M4→M5 follow the baseline freeze.
+
+## Owner decision: live baseline provider — 2026-11-15
+
+Owner chose **Codex** (ChatGPT subscription) for the live paired baseline, within the
+§8 cap of ≤ 900 calls. Codex CLI is logged in; quota is not yet confirmed by a preflight.
+The live run still waits on the baseline freeze (held-out and borderline fixtures,
+manifest with hashes). The judge must be a different family from Codex.
+
+Owner note for later, now register row **U14**: measure what each application costs in
+subscription quota (calls, tokens, wall time) and lean the pipeline down so a user gets
+many applications per quota window, not one or two. The baseline must record usage per
+run so U14 has a starting figure.

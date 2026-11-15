@@ -102,6 +102,14 @@
       "evidence_required": "See \"Evaluation acceptance\" below",
       "falsifier": "See below",
       "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open. Scorer validity fixes integrated (numeric laundering, headings, real PDF evidence); baseline not yet frozen; live budget awaits owner."
+    },
+    {
+      "id": "U14",
+      "requirement": "**Quota efficiency at volume.** A candidate on an ordinary subscription can prepare many applications per quota window, not one or two. Model calls, tokens and wall time per application are measured per provider and reduced without losing quality",
+      "status": "not_run",
+      "evidence_required": "Per-application calls, input/output/reasoning tokens and wall time recorded for every live run (baseline first). Quota consumed per application, given as a share of the provider's subscription window where it can be measured. A leaner pipeline compared with the frozen baseline on the same scenarios: equal or better quality scores, fewer calls or tokens",
+      "falsifier": "Cost per application is not measured, or is estimated without run data. A cost cut lowers a quality or grounding score. A typical subscription window covers only one or two applications and no reduction is planned",
+      "review_note": "Added 2026-11-15 at owner request. Owner chose Codex for the live baseline; the baseline must record usage so this row has a starting figure."
     }
   ]
 }
