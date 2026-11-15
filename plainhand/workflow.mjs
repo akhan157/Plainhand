@@ -12,7 +12,7 @@ import { integrityRecord, providerDescription } from './posting-integrity.mjs';
 import { logUnderstanding } from './profile-strength.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
-import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage } from './standard.mjs';
+import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized } from './humanize.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings } from './resume-format.mjs';
@@ -285,7 +285,8 @@ export class Workflow {
         const reviewAttempts = [];
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         for (let attempt = 0; attempt < 2; attempt++) {
-          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...(standard && !revising ? { master: standard } : {}),
+          // roleOrder is the candidate's own order for experience; on a revision their request wins over it.
+          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
             ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}) });
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');

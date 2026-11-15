@@ -19,7 +19,7 @@ import { candidateLine } from './plainhand/claim-line.mjs';
 import { presubmitCheck } from './plainhand/presubmit.mjs';
 import { deriveFormat, cleanFormat, DEFAULT_FORMAT, renderResumeHtml } from './plainhand/resume-format.mjs';
 import { isSensitiveLabel } from './plainhand/field-policy.mjs';
-import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
+import { standardStatus, autonomyOf, roleOrderOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { markStalePrep } from './plainhand/features/interview-prep.mjs';
@@ -167,6 +167,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
           resumeFormat: state.resumeFormat || null,
           standardStatus: standardStatus(state, context.hash),
           autonomy: autonomyOf(state),
+          roleOrder: roleOrderOf(state),
           featureAttention: registry.digest(state).attention.filter(item => !CORE_ATTENTION.includes(item.kind)),
           usage: await workflow.usage.summary(state), contextHash: context.hash, sourceManifest: context.sources.map(s => ({ id: s.id, characters: s.text.length })), tracker: await workspace.read('data/applications.md'), loginSessions: [...logins.values()], applicationSessions: [...appBrowserPlans.keys()], localCaptchaSolver: { installed: !!(browser.solver && await browser.solver.ready()), type: 'recaptcha-audio', feePerSolve: 0 }, remote: await remoteStatus(workspace) });
       }
@@ -395,6 +396,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/standard/approve') { await ui('standard.approve', {}); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/settings/autonomy') return json(res, 200, await ui('settings.autonomy', { enabled: input.enabled === true, ...(input.perDay != null ? { perDay: Number(input.perDay) } : {}), ...(input.minScore != null ? { minScore: Number(input.minScore) } : {}) }));
+      if (url.pathname === '/api/settings/role-order') return json(res, 200, await ui('settings.roleOrder', { order: input.order }));
 
       // Read-only remote view through the candidate's own Vercel account. The
       // dashboard snapshot is the only thing that leaves this computer; the

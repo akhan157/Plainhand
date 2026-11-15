@@ -143,15 +143,25 @@ ul{list-style:none;margin:1pt 0 2pt}li{padding-left:${f.bullet === 'none' ? 0 : 
 p.line{margin:1pt 0}.letter p{margin:0 0 9pt}`;
 }
 
+// The model may re-type a role's heading for its next line; case and spacing alone do
+// not make it a different role. Every field a heading carries is compared, so two
+// different roles never merge.
+const headingKey = heading => {
+  if (!heading || typeof heading !== 'object') return 'null';
+  const norm = value => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const fields = ['org', 'title', 'location', 'dates'].map(key => norm(heading[key]));
+  return fields.some(Boolean) ? JSON.stringify(fields) : 'null';
+};
+
 // Consecutive entries of a section under the same heading form one block.
 export function groupEntries(resume) {
   const sections = [];
   for (const entry of resume) {
     let section = sections.find(s => s.name === entry.section);
     if (!section) sections.push(section = { name: entry.section, blocks: [] });
-    const key = JSON.stringify(entry.heading || null), last = section.blocks.at(-1);
+    const key = headingKey(entry.heading), last = section.blocks.at(-1);
     if (last && last.key === key) last.lines.push(entry.text);
-    else section.blocks.push({ key, heading: entry.heading || null, lines: [entry.text] });
+    else section.blocks.push({ key, heading: key === 'null' ? null : entry.heading, lines: [entry.text] });
   }
   return sections;
 }
