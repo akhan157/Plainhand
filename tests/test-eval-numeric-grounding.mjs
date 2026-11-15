@@ -416,3 +416,26 @@ test('tenure derived from a sourced year range is supported only as a count of y
   assert.deepEqual(check('I have nine years of analytics experience.').unsupportedNumbers, ['9']);
   assert.deepEqual(check('I led six teams.').unsupportedNumbers, ['6']);
 });
+
+test('tenure: a career total sums roles without gaps; degree, publication and break ranges and "years ago" license nothing', async () => {
+  const { numericGrounding } = await import('../plainhand/evaluation/score.mjs');
+  const job = { company: 'Acme', title: 'Analyst', description: 'Analyst role.' };
+  const check = (text, source) => numericGrounding({ packet: { resume: [], answers: [], coverLetter: text }, persona: { profile: { name: 'Test' } }, job, sources: [{ id: 'cv', text: source }] }).unsupportedNumbers;
+  const career = ['Example Retail — Accountant — 2010 to 2014', 'Example Logistics — Systems Lead — 2014 to 2018', 'Career break — 2018 to 2019', 'Example Devices — FP&A Manager — 2019 to 2026'].join('\n');
+  assert.deepEqual(check('I have 15 years in finance.', career), []);
+  assert.deepEqual(check('I have 16 years in finance.', career), [], 'counting both ends');
+  assert.deepEqual(check('I have 17 years in finance.', career), ['17'], 'the break is not counted');
+  assert.deepEqual(check('I led the finance transformation for 6 years.', 'Publications — 2014 to 2020'), ['6']);
+  assert.deepEqual(check('I worked in research for 4 years.', 'Example University — Bachelor of Science — 2010 to 2014'), ['4']);
+  assert.deepEqual(check('Two years ago I migrated the general ledger.', 'Career break — 2018 to 2020\nExample Co — Analyst — 2020 to 2026'), ['2']);
+  assert.deepEqual(check('I support a 6-year-old internal tool.', 'Example Co — Analyst — 2020 to 2026'), ['6']);
+});
+
+test('tenure: a degree on the same line as a job excludes only its own sentence', async () => {
+  const { numericGrounding } = await import('../plainhand/evaluation/score.mjs');
+  const job = { company: 'Acme', title: 'Analyst', description: 'Analyst role.' };
+  const source = 'Example University — Bachelor of Arts, Mathematics — 2015 to 2019. Example High School — Mathematics Teacher — 2020 to 2026.';
+  const check = text => numericGrounding({ packet: { resume: [], answers: [], coverLetter: text }, persona: { profile: { name: 'Test' } }, job, sources: [{ id: 'profile', text: source }] }).unsupportedNumbers;
+  assert.deepEqual(check('I taught mathematics for six years.'), []);
+  assert.deepEqual(check('I studied for 4 years.'), ['4']);
+});

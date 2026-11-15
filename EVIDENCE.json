@@ -446,6 +446,22 @@
     "controlled_caveat": "Controlled old-role and borderline passes are wiring-only: the fixture agent orders required facts first and returns Investigate on a missing required fact. Only the live tier measures them.",
     "fixture_fix": "Lab persona certification sentence lengthened; the fixture assistant ignores messages of 40 chars or fewer.",
     "suite": "test:plainhand 528/528",
-    "independent_review": "pending (Pi DeepSeek Flash, max thinking)"
+    "independent_review": {
+      "reviewer": "Pi DeepSeek V4.1 Flash, max thinking",
+      "verdict": "accept-with-fixes",
+      "reviewed": "e016533",
+      "findings": "B1 borderline-swe label not unique (junior posting); B2 production Apply->Investigate rewrite hid the model label; M1 old-role retention unmeasured; M2 summed tenure failed; M3 tenure laundering via degree/publication/break ranges and 'years ago'; M4 held-out tailoring gated on undeclared Apply; M5 borderline-fin Skip defensible; M6 seen controls unrecorded; minors on band/label consistency, rounding, typo ids",
+      "report": "output/review-prefreeze/REPORT.md in the review worktree (git-ignored)"
+    },
+    "fixes": {
+      "production": "workflow.mjs stores modelRecommendation before the below-4 rewrite (additive)",
+      "scorer": "recCorrect grades modelRecommendation; band<->Investigate consistency; tenure merges ranges, skips degree/publication/certification/break sentences, rejects 'N years ago'; retainFactIds; evaluationGate:false for held-out tailoring rows; held-out tag in report",
+      "fixtures": "borderline jobs rewritten (no junior framing, core match plus one required gap), band max 3.9 (one-decimal rounding), fin headline 15 years, one retained old-role fact per recent-role job, seen-control comment",
+      "mutation": "3 new scorer tests fail on e016533 score.mjs and pass after",
+      "after_fix_regressions_caught": "line-level tenure filter dropped a seeded job line (fixed per sentence); retaining every old-role bullet was too strict (one fact per role)",
+      "controlled_gate": "56/59, 3 expected (*-minimal), 0 unexpected (output/goal-review/pre-freeze-controlled-3)",
+      "suite": "test:plainhand 532/532",
+      "re_review": "pending"
+    }
   }
 }

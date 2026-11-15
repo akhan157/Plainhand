@@ -292,6 +292,14 @@ test('a borderline job passes only Investigate inside its band, with the below-4
   assert.equal(score({ score: 2.9, recommendation: 'Investigate' }).pass, false, 'below the band');
   assert.equal(score({ score: 3.4, recommendation: 'Skip' }).pass, false, 'wrong recommendation');
   assert.equal(score({ score: 4.6, recommendation: 'Apply' }).pass, false, 'confident Apply on partial evidence');
+  // Production rewrites a below-4 Apply to Investigate; the model's own label is graded.
+  assert.equal(score({ score: 3.4, recommendation: 'Investigate', modelRecommendation: 'Apply' }).pass, false, 'a coerced Apply');
+  assert.equal(score({ score: 3.4, recommendation: 'Investigate', modelRecommendation: 'Investigate' }).pass, true);
+  // A band without its Investigate label, or Investigate without a band, never passes.
+  const unlabeled = { ...job, expectRecommendation: undefined };
+  assert.equal(scoreEvaluation({ evaluation: { score: 3.5, recommendation: 'Apply', matches }, sources, job: unlabeled, prepareRefusedWithoutOverride: true }).pass, false);
+  const unbanded = { ...job, scoreBand: undefined };
+  assert.equal(scoreEvaluation({ evaluation: { score: 3.5, recommendation: 'Investigate', matches }, sources, job: unbanded, prepareRefusedWithoutOverride: true }).pass, false);
   // Jobs without a band keep the fixed Apply/Skip bands.
   const apply = jobById('fpa-analyst');
   assert.equal(scoreEvaluation({ evaluation: { score: 3.9, recommendation: 'Apply', matches }, sources, job: apply }).scoreBandCorrect, false);
@@ -709,4 +717,26 @@ test('tailoring: a fact split across two bullets still counts, at its main bulle
   const result = tailoringOf(packet, persona, job);
   assert.ok(!result.missingFromResume.includes('teaching'));
   assert.equal(result.order[0], 'teaching');
+});
+
+test('corpus: a required fact a persona lacks appears only on a declared borderline job', () => {
+  for (const scenario of scenarios) {
+    const persona = personaById(scenario.persona), job = jobById(scenario.job);
+    const missing = job.requiredFactIds.filter(id => !persona.facts.some(fact => fact.id === id));
+    if (missing.length) assert.equal(job.expectRecommendation, 'Investigate', `${scenario.id} names unknown facts ${missing}`);
+    if (job.scoreBand || job.expectRecommendation === 'Investigate') assert.ok(job.scoreBand && job.expectRecommendation === 'Investigate', `${job.id} band and label must come together`);
+    for (const id of job.retainFactIds || []) assert.ok(persona.facts.some(fact => fact.id === id), `${job.id} retains unknown fact ${id}`);
+  }
+});
+
+test('held-out tailoring: dropping the older relevant role fails a recent-role job', () => {
+  const persona = personaById('holdout-sre-platform'), job = jobById('holdout-job-tech-ml');
+  const sources = [{ id: 'profile', text: JSON.stringify(persona.profile) }, { id: 'cv', text: persona.profile.resume }];
+  const entry = id => ({ section: 'Experience', text: persona.facts.find(fact => fact.id === id).text });
+  const packet = keep => ({ resume: ['serving', 'gpu', 'cert', ...keep].map(entry), answers: [], coverLetter: 'I built the serving platform.' });
+  const full = scorePacket({ packet: packet(['oncall']), persona, job, sources });
+  const dropped = scorePacket({ packet: packet([]), persona, job, sources });
+  assert.equal(full.retention.ok, true);
+  assert.equal(dropped.retention.ok, false);
+  assert.deepEqual(dropped.retention.present, []);
 });

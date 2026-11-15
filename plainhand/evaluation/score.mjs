@@ -188,17 +188,36 @@ function visibleNumberUnits(packet, persona) {
 
 // Tenure a source states as a year range: "2020 to 2026" supports "six years" (or
 // one more, counting both ends). Only a mention followed by "years" uses it, so a
-// range never licenses an unrelated count ("six teams").
+// range never licenses an unrelated count ("six teams"). A career total may cover
+// several roles, so the merged length of all ranges counts too, without the gaps.
+// Degree, publication, certification and break lines have the same shape as tenure
+// and never license years of work. Known residual: a range supports "N years" of
+// any field, not only the role it belongs to.
 const YEAR_RANGE = /\b((?:19|20)\d{2})\s*(?:to|through|until|-|\u2013|\u2014)\s*((?:19|20)\d{2})\b/gi;
+const NOT_EMPLOYMENT = /\b(?:publications?|published|papers?|degree|bachelor|master|phd|doctorate|education|university|college|certif\w*|licen[cs]e|career break|break|sabbatical|family care|took a year)\b/i;
 export function tenureYears(sourceText) {
-  const spans = new Set();
-  for (const match of String(sourceText || '').matchAll(YEAR_RANGE)) {
-    const span = Number(match[2]) - Number(match[1]);
-    if (span > 0 && span < 60) { spans.add(String(span)); spans.add(String(span + 1)); }
+  const spans = new Set(), ranges = [];
+  const add = span => { if (span > 0 && span < 60) { spans.add(String(span)); spans.add(String(span + 1)); } };
+  // Per line and sentence: a seeded profile can put a degree and a job on one line.
+  for (const line of String(sourceText || '').split(/\n|(?<=\.)\s+/)) {
+    if (NOT_EMPLOYMENT.test(line)) continue;
+    for (const match of line.matchAll(YEAR_RANGE)) {
+      const start = Number(match[1]), end = Number(match[2]);
+      add(end - start);
+      if (end > start && end - start < 60) ranges.push([start, end]);
+    }
   }
+  ranges.sort((a, b) => a[0] - b[0]);
+  let total = 0, cursor = null;
+  for (const [start, end] of ranges) {
+    if (cursor && start <= cursor[1]) cursor[1] = Math.max(cursor[1], end);
+    else { if (cursor) total += cursor[1] - cursor[0]; cursor = [start, end]; }
+  }
+  if (cursor) total += cursor[1] - cursor[0];
+  if (ranges.length > 1) add(total);
   return spans;
 }
-const isTenureMention = (scan, mention) => /^\s*\+?\s*(?:full\s+)?years?\b/i.test(scan.slice(mention.index + mention.token.length));
+const isTenureMention = (scan, mention) => /^\s*\+?\s*(?:full\s+)?years?\b(?!\s*(?:ago|earlier|prior|later|from now|hence)\b)/i.test(scan.slice(mention.index + mention.token.length));
 
 // Structured per-mention verdicts plus the compatibility fields scorePacket keeps.
 export function numericGrounding({ packet, persona, job, sources }) {
@@ -301,8 +320,14 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const atsCoverage = job.atsTerms.length ? Math.round(atsCovered.length / job.atsTerms.length * 100) / 100 : null;
   const tailoring = tailoringOf(packet, persona, job);
   const tailored = tailoring.requiredInResume === tailoring.requiredTotal && tailoring.leadShare !== null && tailoring.leadShare >= 0.67;
+  // A job that needs the recent role first still needs the older relevant role kept.
+  const resumeText = (packet?.resume || []).map(entry => String(entry.text || '')).join('\n');
+  const retainIds = job.retainFactIds || [];
+  const retainedIds = retainIds.filter(id => { const fact = persona.facts.find(item => item.id === id); return Boolean(fact) && captures(fact.text, resumeText); });
+  const retentionOk = retainedIds.length === retainIds.length;
   return {
     tailoring,
+    retention: { required: retainIds, present: retainedIds, ok: retentionOk },
     required: required.length,
     covered: covered.length,
     missingFacts: missing.map(fact => fact.id),
@@ -331,7 +356,7 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
     pdfEvidence: pdfEvidenceSummary(pdf?.evidence),
     pdfBytes: pdf?.bytes?.length ?? null,
     pdfHead: pdf?.head ?? null,
-    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!expectTailoring || tailored) && (!persona.voice.firstPerson || firstPerson) && numeric.numberChecks.every(check => check.supported) && numeric.numericUncertainty.length === 0),
+    pass: Boolean(coverage !== null && coverage >= 0.66 && retentionOk && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!expectTailoring || tailored) && (!persona.voice.firstPerson || firstPerson) && numeric.numberChecks.every(check => check.supported) && numeric.numericUncertainty.length === 0),
   };
 }
 
@@ -518,7 +543,8 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
 export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithoutOverride }) {
   const validScore = typeof evaluation?.score === 'number' && evaluation.score >= 0 && evaluation.score <= 5;
   const expectedRec = job?.expectRecommendation || 'Apply';
-  const recCorrect = evaluation?.recommendation === expectedRec;
+  // Grade the model's own label, not the app's below-4 rewrite of Apply to Investigate.
+  const recCorrect = (evaluation?.modelRecommendation ?? evaluation?.recommendation) === expectedRec;
   // A borderline job names its band explicitly; Apply and Skip keep their fixed bands.
   const band = job?.scoreBand;
   const scoreBandCorrect = band
@@ -527,7 +553,9 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
   const evidenceValid = Array.isArray(evaluation?.matches) && evaluation.matches.length > 0 && evaluation.matches.every(match => hasEvidence(match, { sources: sources || [] }));
   // Production refuses to prepare any role below 4/5 without a recorded reason.
   const guardCorrect = expectedRec === 'Skip' || expectedRec === 'Investigate' ? prepareRefusedWithoutOverride === true : true;
-  const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect);
+  // A band must come with its expected label, and Investigate must come with a band.
+  const bandConsistent = Boolean(band) === (expectedRec === 'Investigate');
+  const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect && bandConsistent);
   return {
     expectedRecommendation: expectedRec,
     score: evaluation?.score ?? null,
@@ -555,7 +583,8 @@ export function scoreScenario(result) {
   else if (family === 'journey') pass = Boolean(result.profile?.pass && result.understandingApproved && result.standardApproved && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
   else if (family === 'profile-effect') pass = Boolean((!result.profile || result.profile.pass) && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
   else if (family === 'profile') pass = result.profile?.pass === true;
-  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass));
+  // Held-out tailoring rows declare no recommendation: their evaluation is reported, not gating.
+  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass || result.scenario.evaluationGate === false));
   else if (result.scenario.portal) {
     // A portal scenario is only scored once the application stage actually ran;
     // a packet that passed before a later crash is not an application result.
@@ -780,7 +809,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
     if (result.application) parts.push(`form ${result.application.completionRate === null ? 'n/a' : Math.round(result.application.completionRate * 100) + '%'}`, `app-filled ${result.application.appFilledRate == null ? 'n/a' : Math.round(result.application.appFilledRate * 100) + '%'}`, `stop ${result.application.stop}`);
     if (result.profile) parts.push(`capture ${Math.round((result.profile.captureRate || 0) * 100)}%`);
     if (result.application?.submission.expected) parts.push(result.application.submission.accepted ? 'submitted' : 'submit-failed');
-    return `| ${result.scenario.id} | ${result.pass ? 'PASS' : result.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
+    return `| ${result.scenario.id}${result.scenario.holdout ? ' (held out)' : ''} | ${result.pass ? 'PASS' : result.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
   };
   const failures = results.filter(result => !result.pass).map(result => {
     const reasons = [];

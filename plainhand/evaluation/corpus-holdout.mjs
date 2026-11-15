@@ -7,8 +7,12 @@
 // recent role, a certification and a career gap or stage change. The same persona
 // faces two jobs: one that needs the old role first and one that needs the recent
 // role first. Tailoring requires the job's facts in the resume and leading it; the
-// recent-role jobs carry an old-role ATS term so dropping the old role costs ATS
-// coverage (retention is not otherwise scored).
+// recent-role jobs name one old-role fact in retainFactIds, so a resume that drops
+// the old role fails. The evaluation is reported, not gating (evaluationGate).
+//
+// fin-mismatch and journey-sci were run by the scorer lane before this freeze, so
+// they are seen. They stay in the controlled gate as regression checks; the
+// holdout-mismatch and holdout-journey-stem rows below are the unseen versions.
 import { emptyProfile } from '../store.mjs';
 
 const banned = ['passionate', 'leverage', 'cutting-edge', 'synergy', 'robust'];
@@ -73,7 +77,7 @@ export const holdoutPersonas = [
       resume: [
         contact('Maren Cole', 'maren@example.invalid', '+1 303 555 0141', 'Denver, US'),
         '',
-        'Finance manager with 13 years in accounting, finance systems and FP&A.',
+        'Finance manager with 15 years in accounting, finance systems and FP&A.',
         '',
         'Experience',
         'Example Health Devices — FP&A Manager — 2019 to 2026',
@@ -258,6 +262,7 @@ export const holdoutJobs = [
     location: 'Denver, US',
     requiredFactIds: ['forecast', 'team', 'cert'],
     atsTerms: ['rolling forecast', 'planning', 'analysts', 'CPA', 'NetSuite'],
+    retainFactIds: ['erp'],
     description: 'SYNTHETIC TEST JOB. Fictional Medical Imaging seeks an FP&A manager in Denver. Own the rolling forecast for a product division, run the quarterly planning calendar, and manage a small team of analysts. CPA preferred; NetSuite familiarity is a plus.',
   },
   {
@@ -276,6 +281,7 @@ export const holdoutJobs = [
     location: 'Cambridge, US',
     requiredFactIds: ['team', 'audits', 'uptime'],
     atsTerms: ['lab operations', 'technicians', 'quality audits', 'maintenance', 'LIMS'],
+    retainFactIds: ['automation'],
     description: 'SYNTHETIC TEST JOB. Fictional Cell Sciences seeks a lab operations manager in Cambridge. Lead a team of lab technicians, prepare for external quality audits, and own instrument maintenance and uptime. Experience with a LIMS is helpful.',
   },
   {
@@ -294,9 +300,10 @@ export const holdoutJobs = [
     location: 'Seattle, US',
     requiredFactIds: ['serving', 'gpu', 'cert'],
     atsTerms: ['model-serving', 'Kubernetes', 'GPU', 'CKA', 'on-call'],
+    retainFactIds: ['oncall'],
     description: 'SYNTHETIC TEST JOB. Fictional Vision Labs seeks an ML platform engineer in Seattle. Build model serving on Kubernetes, improve GPU scheduling for training jobs, and share the platform on-call. A Kubernetes certification is valued.',
   },
-  // Replaces the seen hard-blocked control (fin-mismatch): far outside the persona's field.
+  // Unseen hard-blocked control (fin-mismatch is seen): far outside the persona's field.
   {
     id: 'holdout-job-mismatch',
     company: 'Fictional Mutual Insurance',
@@ -312,13 +319,13 @@ export const holdoutJobs = [
   {
     id: 'borderline-swe-job',
     company: 'Fictional Logistics Cloud',
-    title: 'Platform Engineer I',
+    title: 'Software Engineer, Platform Services',
     location: 'Austin, US',
     requiredFactIds: ['cache', 'tests', 'containers'],
     atsTerms: ['TypeScript', 'caching', 'testing', 'Docker', 'Terraform'],
     expectRecommendation: 'Investigate',
-    scoreBand: { min: 3.0, max: 3.99 },
-    description: 'SYNTHETIC TEST JOB. Fictional Logistics Cloud seeks a platform engineer I in Austin. Build internal services in TypeScript with caching and good tests, package them with Docker, and manage cloud resources with Terraform. Two years running containerized services in a company setting is required.',
+    scoreBand: { min: 3.0, max: 3.9 },
+    description: 'SYNTHETIC TEST JOB. Fictional Logistics Cloud seeks a software engineer for its platform services team in Austin. Build internal services in TypeScript with caching and good tests. Hands-on experience packaging and running services with Docker is required, and Terraform is a plus.',
   },
   {
     id: 'borderline-fin-job',
@@ -328,20 +335,20 @@ export const holdoutJobs = [
     requiredFactIds: ['automation', 'model', 'erp-config'],
     atsTerms: ['Power Query', 'Excel', 'ERP configuration', 'SAP', 'reporting'],
     expectRecommendation: 'Investigate',
-    scoreBand: { min: 3.0, max: 3.99 },
-    description: 'SYNTHETIC TEST JOB. Fictional Home Products seeks a finance systems analyst in Boston. Configure and support the SAP ERP finance modules, automate reporting with Power Query and Excel, and support forecast models. Two years configuring an ERP finance module is required.',
+    scoreBand: { min: 3.0, max: 3.9 },
+    description: 'SYNTHETIC TEST JOB. Fictional Home Products seeks a finance systems analyst in Boston. Automate monthly reporting with Power Query and Excel, maintain forecast models, and help configure the SAP finance module. Experience configuring an ERP finance module is required.',
   },
 ];
 
 export const holdoutScenarios = [
   // §8.2 C: same persona, a job that needs the old role first and one that needs the recent role first.
-  { id: 'holdout-oldrole-fin-systems', family: 'resume', persona: 'holdout-fin-controller', job: 'holdout-job-fin-systems', withStandard: true, holdout: true },
-  { id: 'holdout-oldrole-fin-forecast', family: 'resume', persona: 'holdout-fin-controller', job: 'holdout-job-fin-forecast', withStandard: true, holdout: true },
-  { id: 'holdout-oldrole-stem-automation', family: 'resume', persona: 'holdout-lab-manager', job: 'holdout-job-stem-automation', withStandard: true, holdout: true },
-  { id: 'holdout-oldrole-stem-ops', family: 'resume', persona: 'holdout-lab-manager', job: 'holdout-job-stem-ops', withStandard: true, holdout: true },
-  { id: 'holdout-oldrole-tech-reliability', family: 'resume', persona: 'holdout-sre-platform', job: 'holdout-job-tech-reliability', withStandard: true, holdout: true },
-  { id: 'holdout-oldrole-tech-ml', family: 'resume', persona: 'holdout-sre-platform', job: 'holdout-job-tech-ml', withStandard: true, holdout: true },
-  // Fresh replacements for the seen fin-mismatch and journey-sci controls.
+  { id: 'holdout-oldrole-fin-systems', family: 'resume', persona: 'holdout-fin-controller', job: 'holdout-job-fin-systems', withStandard: true, holdout: true, evaluationGate: false },
+  { id: 'holdout-oldrole-fin-forecast', family: 'resume', persona: 'holdout-fin-controller', job: 'holdout-job-fin-forecast', withStandard: true, holdout: true, evaluationGate: false },
+  { id: 'holdout-oldrole-stem-automation', family: 'resume', persona: 'holdout-lab-manager', job: 'holdout-job-stem-automation', withStandard: true, holdout: true, evaluationGate: false },
+  { id: 'holdout-oldrole-stem-ops', family: 'resume', persona: 'holdout-lab-manager', job: 'holdout-job-stem-ops', withStandard: true, holdout: true, evaluationGate: false },
+  { id: 'holdout-oldrole-tech-reliability', family: 'resume', persona: 'holdout-sre-platform', job: 'holdout-job-tech-reliability', withStandard: true, holdout: true, evaluationGate: false },
+  { id: 'holdout-oldrole-tech-ml', family: 'resume', persona: 'holdout-sre-platform', job: 'holdout-job-tech-ml', withStandard: true, holdout: true, evaluationGate: false },
+  // Unseen versions of the seen fin-mismatch and journey-sci controls.
   { id: 'holdout-mismatch', family: 'evaluation', persona: 'holdout-sre-platform', job: 'holdout-job-mismatch', holdout: true },
   { id: 'holdout-journey-stem', family: 'journey', persona: 'holdout-lab-manager', job: 'holdout-job-stem-ops', portal: 'lever-single', holdout: true },
   // §8.2 D borderline decisions.

@@ -206,6 +206,8 @@ export class Workflow {
         list(result.matches, 'matches');
         if (result.matches.some(m => !hasEvidence(m, context) || !cleanEntry(m.text))) throw new Error('An evaluation claim lacks valid source evidence. Retry after checking your profile.');
         result.score = Math.round(result.score * 10) / 10;
+        // The stored label is app policy; keep the model's own label for measurement.
+        result.modelRecommendation = result.recommendation;
         if (result.score < 4 && result.recommendation === 'Apply') result.recommendation = 'Investigate';
         job.evaluation = result; job.stage = 'evaluated'; job.status = job.status || 'Evaluated'; job.contextHash = context.hash;
         job.reportPath = `reports/hl-${job.id.slice(0, 8)}-${slug(job.company)}-${now().slice(0, 10)}.md`;
