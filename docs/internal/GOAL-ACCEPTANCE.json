@@ -58,9 +58,10 @@
     {
       "id": "U08",
       "requirement": "**Application and site paths.** Greenhouse, Lever and Ashby measured separately; Workday best effort with handoff; LinkedIn and Indeed save, prepare and manual kit; unsupported sites never block preparation. Form fill ends in a user review with provenance for each field. Never submits",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Real-browser DOM readback and upload-hash check per supported ATS on local realistic forms and owned portals. Manual-kit run on an unsupported site with tracking intact. False-ready, sensitive-field and unauthorized-submission detectors with planted failures. Access tier recorded per run: local fixture, offline capture, or real-site read-only",
-      "falsifier": "A field is filled without recorded provenance. A sensitive field is auto-filled. A submit control is clicked. Ready is reported while the DOM disagrees. An unsupported site blocks packet creation. A fixture result is cited as real-site support"
+      "falsifier": "A field is filled without recorded provenance. A sensitive field is auto-filled. A submit control is clicked. Ready is reported while the DOM disagrees. An unsupported site blocks packet creation. A fixture result is cited as real-site support",
+      "review_note": "Three controlled portal shapes exercised at 8012a83, DOM upload hashes/readback matched and no sensitive fills. All shapes share synthetic Lever host; separate ATS host paths, manual kit and real-site tiers remain unverified."
     },
     {
       "id": "U09",

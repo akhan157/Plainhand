@@ -42,9 +42,9 @@
   },
   "register_counts": {
     "PASS": 0,
-    "in_progress": 5,
+    "in_progress": 6,
     "blocked": 0,
-    "not_run": 8,
+    "not_run": 7,
     "FAIL": 0
   },
   "failed_attempt": {
@@ -132,6 +132,36 @@
       "Hosted browser not run; hosted download claims are HTTP-level only",
       "Full test:plainhand and test:cloud suites not run",
       "No live model quality or real employer submission claim"
+    ]
+  },
+  "controlled_wiring": {
+    "target": "8012a8315145f4162b843ae9dbb65096ef8eb85c",
+    "command": "node benchmarks/benchmark-eval.mjs --scenarios mech-lever,analyst-greenhouse,swe-ashby --concurrency 1 --out output/goal-review/controlled-wiring-8012a83",
+    "result": "exit 0; 3/3 controlled scenarios; 15 synthetic calls; 45837ms; matching DOM uploads; no sensitive fills, false-ready or readback mismatches",
+    "judge_probe": "loadEvidence + benchmark-judge main with injected negative-control judge: 6 calls, 36 invalid source quotes downgraded, 18 rubric excerpts flagged; calibration-template 21 null ratings",
+    "limitations": [
+      "All three portal shapes use synthetic Lever host; not separate ATS host evidence",
+      "No live model, independent semantic verdict, human rating or calibration",
+      "PDFs rendered by workflow then temporary workspaces removed; no retained standalone PDF visual/text fidelity evidence",
+      "Existing scorer false-pass defects remain; controlled scores do not close product rows"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/results.json",
+        "sha256": "c4a4a91f417f66661f7c63ec723485821bd41568814bc7285694ee709453dcc7"
+      },
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/wiring-proof.json",
+        "sha256": "c248d1822058e1ef3179601fb5488be0e0cd2b197aedac50d23116f7d78720f5"
+      },
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/judge.json",
+        "sha256": "7ba36bd02e924fba42beaee1157eb1949122de750e0b673839eee26d09b77597"
+      },
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/human-ratings.template.json",
+        "sha256": "082f191f2c6ab94336a32aceb3b1c94cb889a756cf1506507dbc7cee7301117e"
+      }
     ]
   }
 }
