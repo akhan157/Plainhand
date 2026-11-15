@@ -119,6 +119,18 @@ test('a bare CR in calendar text cannot start a new property line', () => {
   assert.match(unfolded, /SUMMARY:Acme\\nATTENDEE:mailto:evil@example\.invalid\\,cc Dana/);
 });
 
+test('imported job and interview ids cannot inject calendar properties', () => {
+  const state = { jobs: [job({ id: 'job\r\nATTENDEE:evil', record: {
+    nextAction: { text: 'Review', due: '2026-11-20' },
+    interviews: [{ id: 'round\rATTENDEE:other', status: 'scheduled', date: '2026-11-21', stage: 'First' }],
+  } })] };
+  const ics = calendarIcs(state).replace(/\r\n /g, '');
+  assert.equal(ics.split('\r\n').filter(line => line.startsWith('UID:')).length, 2);
+  assert.ok(!ics.split('\r\n').some(line => line.startsWith('ATTENDEE:')));
+  for (const line of ics.split('\r\n')) assert.doesNotMatch(line, /[\r\n]/);
+  assert.match(ics, /UID:job\\nATTENDEE:evil-round\\nATTENDEE:other@plainhand/);
+});
+
 test('the shared tracker rule keeps only rows that are not also app jobs', () => {
   const tracker = [
     '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |',

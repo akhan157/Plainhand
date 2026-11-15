@@ -121,7 +121,7 @@ export function calendarIcs(state, { now = new Date() } = {}) {
   for (const event of calendarEvents(state)) {
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${event.uid}`,
+      `UID:${escapeText(event.uid)}`,
       `DTSTAMP:${dtstamp}`,
       `DTSTART;VALUE=DATE:${day(event.date)}`,
       `DTEND;VALUE=DATE:${nextDay(event.date)}`,
