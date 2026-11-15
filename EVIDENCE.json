@@ -480,5 +480,47 @@
       "gate": "56/59, 0 unexpected (pre-freeze-controlled-4)",
       "suite": "533/533"
     }
+  },
+  "baseline_live": {
+    "date": "2026-11-15",
+    "commit": "00ce1bfbffa4ec0edec6045f0caf3b0b5333384f",
+    "dirty": false,
+    "manifestCheck": "passed",
+    "provider": "codex (codex-cli 0.167.1)",
+    "judge": {
+      "packets": 20,
+      "unsupported": 0,
+      "supported": 409,
+      "partial": 8,
+      "overall": "4.03 paired, 4.0 smoke",
+      "weakest": "structure ~3.4-3.5, cover ~3.6-3.7"
+    },
+    "calls": {
+      "paired": 189,
+      "smoke": 75,
+      "judge": 80,
+      "total": 344,
+      "cap": 900
+    },
+    "tokens": {
+      "paired": {
+        "input": 4657173,
+        "output": 67804
+      },
+      "smoke": {
+        "input": 1843081,
+        "output": 59408
+      }
+    },
+    "deterministic": {
+      "paired": "11/27 (9 expected, 7 unexpected)",
+      "smoke": "5/11"
+    },
+    "findings": "docs/internal/baseline/BASELINE-RESULTS.md",
+    "measurement_defects": [
+      "PDF order probe false positive on repeated wording",
+      "honest zero-match Skip fails evidenceValid"
+    ],
+    "evidence": "output/baseline-00ce1bf (git-ignored)"
   }
 }

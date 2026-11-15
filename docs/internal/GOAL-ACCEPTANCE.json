@@ -9,7 +9,8 @@
       "requirement": "**Low-friction onboarding.** A new candidate reaches a reviewed master record and a first prepared packet by conversation and import, with few interventions",
       "status": "not_run",
       "evidence_required": "Fresh install on a clean machine, fictional persona, run end to end. Counts of user turns, repeated questions, manual edits and rescues. Time and calls. Variance across repeats",
-      "falsifier": "A required step needs a hand-edited file. The same settled fact is unnecessarily requested again; an explicit candidate-only confirmation is not a redundant factual question. Onboarding assumes a field, degree or career stage. Interventions are not measured"
+      "falsifier": "A required step needs a hand-edited file. The same settled fact is unnecessarily requested again; an explicit candidate-only confirmation is not a redundant factual question. Onboarding assumes a field, degree or career stage. Interventions are not measured",
+      "review_note": " Baseline finding: live profile conversation stops after two stories (coverage of all facts 0.33-0.6); conversation-built runs pass 2/9 vs seeded 9/9."
     },
     {
       "id": "U02",
@@ -33,7 +34,7 @@
       "status": "not_run",
       "evidence_required": "Paired jobs with the same persona where the right selection differs. Held-out cases. Scored selection and order, plus an old-but-relevant role planted. Judge on relevance with quote validation",
       "falsifier": "An older role that matches the job is dropped. An irrelevant role leads. A pre-specified pair requiring different evidence produces the same selection despite the documented relevance difference. Selection is correct only because the job vocabulary was copied",
-      "review_note": "Per-job selection/order mechanism merged with continuation (f366946); no root-run paired or held-out evidence yet, so the row stays not_run."
+      "review_note": "Per-job selection/order mechanism merged with continuation (f366946); no root-run paired or held-out evidence yet, so the row stays not_run. Baseline finding: tailoring keeps reverse-chronological order; old relevant role does not lead (2 of 6 held-out); judge structure ~3.4/5."
     },
     {
       "id": "U05",
@@ -101,15 +102,15 @@
       "status": "in_progress",
       "evidence_required": "See \"Evaluation acceptance\" below",
       "falsifier": "See below",
-      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open. Scorer validity fixes integrated (numeric laundering, headings, real PDF evidence); baseline not yet frozen; live budget awaits owner. Baseline frozen 2026-11-15 (docs/internal/baseline/BASELINE-MANIFEST.json): 59 scenarios incl. held-out old-role, borderline and STEM pair; two independent reviews applied. Live Codex run and Claude judge pending; judge uncalibrated."
+      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open. Scorer validity fixes integrated (numeric laundering, headings, real PDF evidence); baseline not yet frozen; live budget awaits owner. Baseline frozen 2026-11-15 (docs/internal/baseline/BASELINE-MANIFEST.json): 59 scenarios incl. held-out old-role, borderline and STEM pair; two independent reviews applied. Live Codex run and Claude judge pending; judge uncalibrated. Live baseline run at 00ce1bf (Codex, Claude judge uncalibrated): 344/900 calls; results docs/internal/baseline/BASELINE-RESULTS.md. Two scorer defects found by the run (PDF order false positive on repeated wording; honest zero-match Skip fails)."
     },
     {
       "id": "U14",
       "requirement": "**Quota efficiency at volume.** A candidate on an ordinary subscription can prepare many applications per quota window, not one or two. Model calls, tokens and wall time per application are measured per provider and reduced without losing quality",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Per-application calls, input/output/reasoning tokens and wall time recorded for every live run (baseline first). Quota consumed per application, given as a share of the provider's subscription window where it can be measured. A leaner pipeline compared with the frozen baseline on the same scenarios: equal or better quality scores, fewer calls or tokens",
       "falsifier": "Cost per application is not measured, or is estimated without run data. A cost cut lowers a quality or grounding score. A typical subscription window covers only one or two applications and no reduction is planned",
-      "review_note": "Added 2026-11-15 at owner request. Owner chose Codex for the live baseline; the baseline must record usage so this row has a starting figure."
+      "review_note": "Added 2026-11-15 at owner request. Owner chose Codex for the live baseline; the baseline must record usage so this row has a starting figure. Starting figure (baseline 00ce1bf): seeded application 5 calls/121k input tokens; conversation-built 11 calls/280k; journey 15 calls/374k. Input dominates (~25k tokens per call). Codex cached/reasoning tokens null."
     }
   ]
 }
