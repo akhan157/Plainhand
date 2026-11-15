@@ -139,7 +139,7 @@ test('evaluate requires a job; revise without one revises the standard; unknown 
   assert.match((await runner.start('evaluate', {})).error, /Say which role/);
   const revise = await runner.start('revise', { request: 'make it shorter' });
   assert.equal(revise.status, 'failed');
-  assert.match(revise.error, /Write your standard application before asking for changes/);
+  assert.match(revise.error, /Write your master resume before asking for changes/);
   const standard = await runner.start('standard');
   assert.equal(standard.status, 'step');
   assert.equal(standard.step.purpose, 'standard');

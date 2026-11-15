@@ -2,6 +2,12 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Master resume.** The standard resume becomes a master resume: every role,
+  result, credential and skill your sources support, with no length limit.
+  Each application picks the lines that fit the job and leads with the most
+  relevant. Plainhand checks the master against your own resume, lists any
+  lines it missed, and redrafts once to add them. An older standard resume is
+  marked out of date until you write the master once.
 - **End-to-end evaluation harness.** `npm run benchmark:eval` runs fictional
   candidates through profile building, resume preparation, portal filling and a
   candidate-confirmed submission to an owned loopback sandbox, then scores fact

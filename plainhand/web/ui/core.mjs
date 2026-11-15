@@ -216,7 +216,7 @@ export async function queueTask(kind, jobId = null, input = {}) {
   toast('Queued. Your agent’s progress appears here and in Activity.');
   await refresh();
 }
-export const TASK_TITLES = { interview: 'Build candidate understanding', evaluate: 'Evaluate opportunity', prepare: 'Prepare application', discover: 'Discover opportunities', 'campaign-scan': 'Scan campaigns', standard: 'Write your standard application', revise: 'Revise application' };
+export const TASK_TITLES = { interview: 'Build candidate understanding', evaluate: 'Evaluate opportunity', prepare: 'Prepare application', discover: 'Discover opportunities', 'campaign-scan': 'Scan campaigns', standard: 'Write your master resume', revise: 'Revise application' };
 // Known progress messages from plainhand/workflow.mjs, in order, so a task card
 // can show where it is. Unknown messages fall back to an indeterminate bar.
 const TASK_STEPS = {

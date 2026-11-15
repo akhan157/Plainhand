@@ -129,6 +129,17 @@ integrations. Final submission always remains manual.
 - Mode: `pdf` (or `latex`)
 - **Every application gets its own tailored resume.** The general resume
   (`output/Resume-latest.pdf`) is the tailoring SOURCE, never the upload.
+- Master resume (Plainhand app, `plainhand/standard.mjs`), stored as
+  `state.standard` with `kind: 'master'`. Producer: the `standard` task
+  (`tasks.standard`), which writes every role, accomplishment, credential and
+  skill the sources support, checks it against the candidate's own resume
+  (`masterCoverage`, saved as `standard.coverage`) and redrafts once with the
+  missing lines. The candidate approves it (`standard.approve`). Consumer: the
+  prepare task, which receives it as `INPUT.master` and selects and orders
+  lines for the job; `job.fromStandard` records how many master lines were
+  used. A record without `kind: 'master'` (the earlier curated "standard
+  application") reads as stale until rewritten. The names still say
+  "standard" so saved workspaces and agent contracts keep working.
 - Contract: `docs/artifact-contract.md` defines exact naming, metadata,
   freshness, and apply-resolution behavior for all per-job artifacts
 - Contract enforcement now treats malformed metadata values as blockers too,

@@ -145,28 +145,31 @@ function Strength() {
   </${Card}>`;
 }
 
-// The standard application (plainhand/standard.mjs): approved once, the base of every application.
+// The master resume (plainhand/standard.mjs): approved once; every application selects from it.
 function RequestBox({ id, label, placeholder, onSubmit, disabled }) {
   const [draft, setDraft, clear] = useDraft(id, '');
   async function submit(event) { event.preventDefault(); const text = (draft || '').trim(); if (!text) return; await onSubmit(text); clear(); }
   return html`<form class="request-box" onSubmit=${submit}><${Field} form=${id} name="request" label=${label} value=${draft || ''} onInput=${setDraft} placeholder=${placeholder} disabled=${disabled} /><${Button} type="submit" icon="edit" disabled=${disabled || !(draft || '').trim()}>Ask for this change</${Button}></form>`;
 }
-const STANDARD_PILL = { approved: ['success', 'Your standard'], draft: ['warn', 'Awaiting your review'], stale: ['danger', 'Out of date'] };
+const STANDARD_PILL = { approved: ['success', 'Approved'], draft: ['warn', 'Awaiting your review'], stale: ['danger', 'Out of date'] };
 function Standard() {
   const state = store.state;
   const s = state.standard, status = state.standardStatus || 'none';
   const writing = runningTask('standard'), blocked = (!state.provider && !state.cloud) || !state.profile.resume || !!writing;
   const pill = STANDARD_PILL[status];
-  return html`<${Card} title="Your standard application" icon="file" id="standard-title" subtitle="One resume and cover letter you approve once. Every application starts from it and changes only what the role calls for." actions=${pill ? html`<${Pill} tone=${pill[0]}>${pill[1]}</${Pill}>` : null}>
-    ${!s ? html`<p class="muted-text">After your profile has a few stories, write your standard. You review it like any application; nothing is used until you approve it.</p>
-        <${ActionButton} class="primary wide" icon="file" disabled=${blocked} onClick=${() => queueTask('standard')}>Write my standard application</${ActionButton}>` : html`
-      ${status === 'stale' ? html`<${Notice} tone="danger" title="Your profile changed">Rewrite your standard so it reflects what you've added.</${Notice}>` : null}
-      <article class="document" aria-label="Standard resume"><h4 class="doc-name">${s.draft.headline}</h4>
+  return html`<${Card} title="Your master resume" icon="file" id="standard-title" subtitle="Everything you have done, in wording you approve once. It is never sent as it is: each application picks and orders what fits that job." actions=${pill ? html`<${Pill} tone=${pill[0]}>${pill[1]}</${Pill}>` : null}>
+    ${!s ? html`<p class="muted-text">After your profile has your resume and a few stories, write your master resume. You review it like any application; nothing is used until you approve it.</p>
+        <${ActionButton} class="primary wide" icon="file" disabled=${blocked} onClick=${() => queueTask('standard')}>Write my master resume</${ActionButton}>` : html`
+      ${status === 'stale' ? (s.kind === 'master'
+        ? html`<${Notice} tone="danger" title="Your profile changed">Rewrite your master resume so it reflects what you've added.</${Notice}>`
+        : html`<${Notice} tone="danger" title="Write your master resume">Plainhand now keeps a master resume with everything you have done, and picks from it for each job. Rewrite this once to replace your old standard resume.</${Notice}>`) : null}
+      ${s.coverage?.missing?.length ? html`<${Notice} tone="warn" title=${`Covers ${s.coverage.covered} of ${s.coverage.lines} lines from your resume`}>These lines from your resume aren't in it yet. Ask for them below, or rewrite it.<ul>${s.coverage.missing.map((line, i) => html`<li key=${i}>${line}</li>`)}</ul></${Notice}>` : null}
+      <article class="document" aria-label="Master resume"><h4 class="doc-name">${s.draft.headline}</h4>
         ${s.draft.resume.map((entry, i) => html`${i === 0 || s.draft.resume[i - 1].section !== entry.section ? html`<h5>${entry.section}</h5>` : null}<p key=${i}>${entry.text}</p>`)}</article>
-      <details class="trace"><summary><${Icon} name="file" />Standard cover letter</summary><article class="document letter" aria-label="Standard cover letter"><p>${s.draft.coverLetter}</p></article></details>
+      <details class="trace"><summary><${Icon} name="file" />Base cover letter</summary><article class="document letter" aria-label="Base cover letter"><p>${s.draft.coverLetter}</p></article></details>
       ${s.calibration ? html`<p class="muted-text">${s.calibration.counts.balanced} of ${s.calibration.total} claims match your evidence${s.calibration.counts.stretched + s.calibration.counts.unsupported ? ` · ${s.calibration.counts.stretched + s.calibration.counts.unsupported} stronger than it` : ''}${s.calibration.counts.undersold ? ` · ${s.calibration.counts.undersold} undersold` : ''}.</p>` : null}
-      ${status === 'draft' && !store.demo ? html`<${ActionButton} class="primary wide" icon="check" onClick=${async () => { await api('standard/approve', {}); toast('This is now your standard. New applications start from it.'); refresh(); }}>Use this as my standard</${ActionButton}>` : null}
-      ${store.demo ? null : html`<${RequestBox} id="standard-request" label="Change your standard" placeholder="Lead with the chassis project; keep the letter under 200 words" disabled=${blocked} onSubmit=${text => queueTask('standard', null, { request: text })} />
+      ${status === 'draft' && !store.demo ? html`<${ActionButton} class="primary wide" icon="check" onClick=${async () => { await api('standard/approve', {}); toast('Master resume approved. New applications pick from it.'); refresh(); }}>Approve my master resume</${ActionButton}>` : null}
+      ${store.demo ? null : html`<${RequestBox} id="standard-request" label="Change your master resume" placeholder="Add the audit automation project; keep the letter under 200 words" disabled=${blocked} onSubmit=${text => queueTask('standard', null, { request: text })} />
         <${ActionButton} class="ghost wide" icon="refresh" disabled=${blocked} onClick=${() => queueTask('standard')}>Rewrite from scratch</${ActionButton}>`}`}
   </${Card}>`;
 }
@@ -268,7 +271,7 @@ function profileSteps(state) {
     { key: 'story', title: 'Tell your story', why: 'Talk about projects and jobs you’re proud of, and paste a few things you’ve written. Plainhand keeps your words exactly.', done: statements >= 3, progress: statements ? `${statements} so far · 3 or more works well` : '', locked: !basics ? 'Do step 1 first.' : !state.provider && 'Connect your AI account first (Connections).',
       body: () => html`<${Interview} /><${Samples} />` },
     { key: 'understanding', title: 'Check how Plainhand sees you', why: 'Plainhand sums up your strengths and voice. Approve it only if it’s right.', done: !!state.understanding?.approved, locked: statements < 1 && 'Tell your story first (step 3).', body: () => html`<${Understanding} />` },
-    { key: 'standard', title: 'Approve your standard application', why: 'One resume and cover letter that every application starts from.', done: state.standardStatus === 'approved', locked: !state.understanding?.approved && 'Approve how Plainhand sees you first (step 4).', body: () => html`<${Standard} />` },
+    { key: 'standard', title: 'Approve your master resume', why: 'Everything you have done, in wording you approve. Each application picks what fits the job from it.', done: state.standardStatus === 'approved', locked: !state.understanding?.approved && 'Approve how Plainhand sees you first (step 4).', body: () => html`<${Standard} />` },
   ];
 }
 function Steps() {

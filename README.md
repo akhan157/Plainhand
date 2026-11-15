@@ -26,8 +26,8 @@ A job-application assistant that runs on your computer with your own AI account.
 Plainhand is a job-application assistant that runs on your own computer and uses
 your own AI subscription (Claude, ChatGPT or Gemini/Antigravity). You talk to
 it about your experience; it builds a profile of you in your own words, writes
-a standard resume and cover letter you approve once, tailors them for each
-role, fills application forms on employer sites, and lists anything it
+a master resume of everything you've done that you approve once, picks from
+it for each role, fills application forms on employer sites, and lists anything it
 couldn't answer. **You review and submit every application yourself.**
 
 ## Quick start
@@ -69,7 +69,7 @@ is in [docs/INSTALL.md](docs/INSTALL.md).
   renders every resume and cover letter in it. Every line it writes goes
   through a humanizer pass ([blader/humanizer](https://github.com/blader/humanizer))
   that removes AI writing patterns without changing a fact or number.
-- **Less tedium.** One standard application, tailored per role; "make it
+- **Less tedium.** One master resume, selected and ordered per role; "make it
   shorter" or "lead with the pump project" revises it; queues let you review
   and send several in a row.
 - **Forms filled, gaps flagged.** On Greenhouse, Lever, Ashby and
@@ -136,7 +136,7 @@ checkout. Step-by-step help for each operating system is in
 2. **Profile & brain:** paste your resume, then talk to Plainhand about a
    project or job you're proud of. Add two or three things you've written.
    Review "How your agent sees you" and approve it if it's right.
-3. **Your standard application:** have Plainhand write it, read it, ask for
+3. **Your master resume:** have Plainhand write it, read it, ask for
    changes, and approve it.
 4. **Jobs:** paste a job link (company career pages, Greenhouse, Lever,
    Ashby, Workday… or a LinkedIn/Indeed posting plus the employer's

@@ -39,7 +39,7 @@ on its own and finished ones fold away:
    said it. Three or more statements complete the step.
 4. **Check how Plainhand sees you:** Plainhand sums up your strengths and voice.
    Approve it only if it's right; otherwise keep talking and rebuild it.
-5. **Approve your standard application:** see section 4.
+5. **Approve your master resume:** see section 4.
 
 After you start talking, **Keep improving** shows profile strength and where
 you draw the line.
@@ -54,13 +54,18 @@ your bullet style, and shows a preview. Adjust anything that's off and press
 Only the format is kept, not your resume's text. Use a text PDF exported from
 Word or Google Docs, not a scan.
 
-## 4. Approve your standard application
+## 4. Approve your master resume
 
-**Your standard application** is one resume and one cover letter (with
-{company} and {role} slots) that every application starts from. Have Plainhand
-write it, read it, ask for changes in plain words ("lead with the chassis
-project", "keep the letter under 200 words"), and press **Use this as my
-standard**. If your profile changes later, it tells you to rewrite it.
+**Your master resume** holds everything you have done: every role, result,
+credential and skill your sources support, in wording you approve. It has no
+length limit because it is never sent as it is. Each application picks the
+lines that fit that job and puts the most relevant first. A base cover letter
+(with {company} and {role} slots) comes with it.
+
+Have Plainhand write it, then read it. If it missed lines from your resume, the
+card lists them. Ask for changes in plain words ("add the audit automation
+project", "keep the letter under 200 words") and press **Approve my master
+resume**. If your profile changes later, it tells you to rewrite it.
 
 ## 5. Find and evaluate roles
 
@@ -76,8 +81,8 @@ boards on a schedule while Plainhand is open and surface new roles.
 
 ## 6. Prepare and review an application
 
-Choose a role and **Prepare application**. Plainhand tailors your standard for
-the role, has a separate reviewer check every claim against your sources, and
+Choose a role and **Prepare application**. Plainhand picks and orders lines from
+your master resume for the role, has a separate reviewer check every claim against your sources, and
 renders PDFs. In the **Packet** tab:
 
 - **How strongly this describes you** grades each claim: *undersold* (you can

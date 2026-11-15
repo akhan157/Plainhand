@@ -86,7 +86,7 @@ function standardFor(persona, context) {
   entries.push({ section: 'Education', heading: null, text: persona.educationEvidence, evidence: quoteEvidence(persona.educationEvidence, context) || fallbackEvidence(context, persona) });
   return {
     headline: persona.profile.roles,
-    resume: entries.slice(0, 8),
+    resume: entries,
     coverLetter: `I am a ${persona.profile.roles.split(',')[0]}.${persona.profile.story ? ' ' + persona.profile.story : ''}`,
     suggestions: [],
   };

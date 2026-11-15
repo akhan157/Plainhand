@@ -320,7 +320,7 @@ function AutonomyCard() {
       <label class="checkbox"><input type="radio" name="autonomy" checked=${!a.enabled} disabled=${store.demo} onChange=${() => save({ enabled: false })} /><span><strong>Ask me per application</strong> · it prepares a role when you choose it.</span></label>
       <label class="checkbox"><input type="radio" name="autonomy" checked=${a.enabled} disabled=${store.demo || !ready} onChange=${() => save({ enabled: true })} /><span><strong>Prepare strong matches on its own</strong> · roles scoring ${a.minScore}/5 or more with an Apply recommendation, up to ${a.perDay} a day, from your approved standard.</span></label>
     </div>
-    ${!ready ? html`<p class="muted-text">Approve your standard application on your profile first.</p>` : a.enabled ? html`<div class="field appearance"><label for="autonomy-per-day">Up to this many a day</label><select id="autonomy-per-day" value=${String(a.perDay)} disabled=${store.demo} onChange=${e => save({ perDay: Number(e.currentTarget.value) })}>${[1, 2, 3, 5, 10].map(n => html`<option value=${String(n)}>${n}</option>`)}</select></div>` : null}
+    ${!ready ? html`<p class="muted-text">Approve your master resume on your profile first.</p>` : a.enabled ? html`<div class="field appearance"><label for="autonomy-per-day">Up to this many a day</label><select id="autonomy-per-day" value=${String(a.perDay)} disabled=${store.demo} onChange=${e => save({ perDay: Number(e.currentTarget.value) })}>${[1, 2, 3, 5, 10].map(n => html`<option value=${String(n)}>${n}</option>`)}</select></div>` : null}
   </${Card}>`;
 }
 
