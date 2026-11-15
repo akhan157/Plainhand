@@ -145,7 +145,8 @@ forwards tool calls to the running Plainhand server:
 
 ```js
 {
-  profile: { name, roles, ready: boolean, missing: string[], understanding: 'none' | 'needs-review' | 'approved' },
+  profile: { name, roles, ready: boolean, missing: string[], understanding: 'none' | 'needs-review' | 'approved',
+             interview: { covered, total, complete: boolean, uncovered: string[] } },
   provider: 'claude' | 'codex' | 'antigravity' | null,
   counts: { jobs, selected, prepared, applied },
   jobs: [{ id, company, title, location, stage, status, score, recommendation, selected,
@@ -193,6 +194,14 @@ Turn rules as implemented (`plainhand/agent.mjs`):
 - One turn at a time (`busy` otherwise); `POST /api/agent/clear` wipes history.
 - Reads run immediately; rejected actions (unknown, invalid input) are fed
   back to the model so it can correct itself or explain.
+- `profile.interview` is computed from the candidate's own statements and the
+  profile fields they confirmed (`plainhand/profile-coverage.mjs`): the areas
+  an onboarding conversation still has to ask about. While any area is
+  uncovered the engine refuses a volunteered `tasks.interview` with an error
+  the model sees, so the turn continues with the next question instead of
+  offering to rebuild the summary. An explicit request from the candidate
+  (`understanding`, `summary`, `rebuild`, "I'm done", "that's everything")
+  and a fully covered profile are both allowed.
 - Writes become one proposal; a task is proposed alone; writes win over a task
   in the same reply. Candidate-only actions are never run or proposed: the
   engine emits `agent.panel` instead.

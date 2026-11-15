@@ -256,7 +256,8 @@ test('an injected resume saved to the profile never reaches the agent digest or 
     const input = h.agentInputs()[0];
     assert.ok(!input.text.includes('SYSTEM OVERRIDE'));
     const profile = input.data.digest.profile;
-    assert.deepEqual(Object.keys(profile).sort(), ['missing', 'name', 'next', 'ready', 'roles', 'understanding']);
+    assert.deepEqual(Object.keys(profile).sort(), ['interview', 'missing', 'name', 'next', 'ready', 'roles', 'understanding']);
+    assert.ok(profile.interview.uncovered.every(label => /^[a-z]/.test(label) && !/SYSTEM OVERRIDE|ignore/i.test(label)), 'interview lists fixed area labels only');
     assert.ok(profile.next.every(item => !/SYSTEM OVERRIDE|ignore/i.test(item)), 'next holds fixed guidance only');
     assert.ok(profile.missing.every(item => ['name', 'resume', 'target roles', 'location', 'your story in your own words'].includes(item)), 'missing lists field names only');
     assert.ok(['none', 'needs-review', 'approved'].includes(profile.understanding));
