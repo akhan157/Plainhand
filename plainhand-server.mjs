@@ -23,7 +23,7 @@ import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { markStalePrep } from './plainhand/features/interview-prep.mjs';
-import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
+import { importWorkspace, preview as previewImport, exportWorkspace, recoverInterruptedImport } from './plainhand/workspace-import.mjs';
 import { applicationsCsv, calendarIcs } from './plainhand/exports.mjs';
 import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
@@ -60,6 +60,9 @@ const FORMAT_SAMPLE = {
 
 export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, browser, providers = inspectProviders, features = FEATURES, startFeatures = true, chatgptOptions = {} } = {}) {
   const workspace = new Workspace(root);
+  // An import that crashed before its state commit is rolled back (or finished) before
+  // anything reads this workspace.
+  await recoverInterruptedImport(workspace);
   browser ||= new ApplicationBrowser({ storage: workspace, launch: configuredBrowserLaunch() });
   // Sign in with ChatGPT: tokens live encrypted in this workspace; executeAgent runs the
   // 'chatgpt' provider through this agent.
@@ -192,7 +195,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       if (req.method === 'GET' && url.pathname === '/api/export') {
         res.setHeader('Content-Disposition', 'attachment; filename="plainhand-workspace.json"');
         const conversation = await agent.history({ limit: 500 });
-        return json(res, 200, { ...(await workspace.load()), agentUsage: await workflow.usage.records(), agentConversation: conversation.messages, agentProposals: await agent.proposals(), exportedAt: now() });
+        return json(res, 200, await exportWorkspace(workspace, { agentUsage: await workflow.usage.records(), agentConversation: conversation.messages, agentProposals: await agent.proposals(), exportedAt: now() }));
       }
       if (req.method === 'GET' && url.pathname === '/api/applications.csv') {
         const state = await workspace.load();

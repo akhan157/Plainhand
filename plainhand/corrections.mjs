@@ -1,7 +1,8 @@
 import { AnswerBank, evidenceProblem } from './answer-bank.mjs';
 import { isSensitiveLabel } from './field-policy.mjs';
 
-const FILE = 'data/plainhand/corrections.json';
+export const CORRECTIONS_FILE = 'data/plainhand/corrections.json';
+const FILE = CORRECTIONS_FILE;
 
 // A candidate correction is only a proposal. Nothing reaches the reusable
 // answer bank until approve() is called explicitly.

@@ -82,6 +82,9 @@ export class AnswerBank {
     for (const entry of answers || []) {
       if (normalize(entry.question) !== question) continue;
       if (!entry.answer || typeof entry.answer !== 'string') continue;
+      // An imported answer whose quote is not in the current sources is held for the
+      // candidate's review and never fills an application field.
+      if (entry.status === 'needs-review') continue;
       if (entry.reviewBy && String(entry.reviewBy) < today) continue;
       if (!validEvidence(entry.evidence)) continue;
       if (entry.scope && entry.scope !== 'global') {

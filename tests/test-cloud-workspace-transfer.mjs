@@ -29,7 +29,7 @@ test('preview is non-destructive; confirmed replacement backs up and resets mach
   assert.equal((await h.apply(data, p, { confirm: false })).body.code, 'confirmation_required');
   const r = await h.apply(data, p); assert.equal(r.status, 200); assert.equal(r.body.approvalsReset, 1);
   const state = await h.workspace.load();
-  assert.equal(state.profile.name, candidate.name); assert.equal(state.provider, null); assert.deepEqual(state.connectionChecks, {});
+  assert.equal(state.profile.name, candidate.name); assert.equal(state.provider, null); assert.equal(state.connectionChecks, undefined, 'a connection check is machine state and never imports');
   assert.equal(state.jobs[0].approvedHash, null); assert.equal(state.jobs[0].browserCheckpoint, undefined);
   assert.equal(state.jobs[0].stage, 'needs-refresh'); assert.equal(state.tasks[0].status, 'interrupted');
   assert.equal(await h.workspace.read('data/plainhand/agent-proposals.json'), '[]');
