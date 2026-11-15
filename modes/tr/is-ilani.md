@@ -13,7 +13,7 @@ Aday bir ilan yapıştırdığında (metin veya URL) HER ZAMAN 7 bloğun tamamı
 
 Şu alanları içeren bir tablo oluştur:
 - Tespit edilen arketip
-- Alan (sektör / uzmanlık; ör. sağlık, eğitim, teknik meslekler, perakende, finans, yazılım)
+- Alan (sektör / uzmanlık; ör. banka, yazılım şirketi, üretim şirketi, biyoteknoloji laboratuvarı, danışmanlık firması)
 - İşlev (uygulama / hizmet / koordinasyon / danışmanlık / yönetim / geliştirme)
 - Kıdem seviyesi (junior / mid / senior / staff)
 - Çalışma şekli (tam uzaktan / hibrit / ofis)

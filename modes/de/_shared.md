@@ -28,12 +28,12 @@
 
 Die Skill behandelt ALLE Zielrollen mit gleicher Sorgfalt. Keine ist primär oder sekundär — jede ist ein Erfolg, sofern Vergütung und Entwicklungsperspektive stimmen.
 
-Zuerst die eigenen Zielarchetypen des Nutzers aus `modes/_profile.md` verwenden. Sind dort keine definiert, gelten diese berufsfeldneutralen Rollenfamilien, die in jeder Branche passen (Gesundheitswesen, Bildung, Handwerk, Wirtschaft, Kreativberufe, öffentlicher Dienst, Technik):
+Zuerst die eigenen Zielarchetypen des Nutzers aus `modes/_profile.md` verwenden. Sind dort keine definiert, gelten diese berufsfeldneutralen Rollenfamilien, die in allen professionellen Berufsfeldern passen (Finanzen, Technologie, Ingenieurwesen, Wissenschaft, Wirtschaft, Design):
 
 | Archetyp | Thematische Achsen | Was gekauft wird |
 |----------|--------------------|------------------|
 | **Praktiker:in im Fach (Hands-on Practitioner)** | Kernarbeit des Berufs; Lizenzen, Zertifizierungen, Werkzeuge, Geräte | Jemand, der die Arbeit vom ersten Tag an gut macht |
-| **Menschen & Service (People & Service)** | Kunden, Patienten, Schüler, Mitglieder, Betreuung, Support | Jemand, der sich gut um die betreuten Menschen kümmert |
+| **Menschen & Service (People & Service)** | Kunden, Mandanten, Accounts, Stakeholder, Beratung, Support, Kundenbeziehung | Jemand, der sich gut um die betreuten Menschen kümmert |
 | **Koordination & Betrieb (Coordination & Operations)** | Koordination, Terminplanung, Logistik, Prozesse, Verwaltung, Compliance | Jemand, dem nichts durchrutscht |
 | **Analyse & Forschung (Analysis & Research)** | Analyse, Daten, Reporting, Forschung, Evaluation, Audit | Jemand, dessen Erkenntnisse Entscheidungen leiten |
 | **Kreation & Kommunikation (Creative & Communications)** | Content, Design, Kampagnen, Marke, Texte, Medien | Jemand, der ein Publikum erreicht |
@@ -41,10 +41,10 @@ Zuerst die eigenen Zielarchetypen des Nutzers aus `modes/_profile.md` verwenden.
 | **Führung & Management (Leadership & Management)** | Führen, Beaufsichtigen, Teamleitung, Budget, Strategie, direkte Mitarbeitende | Jemand, der Ergebnisse durch andere erreicht |
 
 <!-- [ANPASSEN] Ersetze die Archetypen oben durch deine Zielrollen, in jedem Berufsfeld. Beispiele:
-     - Pflegefachkraft / Stationskoordination
+     - FP&A-Analyst:in / Controller:in
      - Marketing-Koordination / Content-Spezialist:in
-     - Grundschullehrkraft / pädagogische Assistenz
-     - Elektriker-Azubi / Haustechniker:in
+     - Business-Analyst:in / Operations-Analyst:in
+     - Research Scientist / wissenschaftliche:r Mitarbeiter:in
      - Finanzanalyst:in / Buchhaltung
      - Softwareentwickler:in / Datenanalyst:in
      etc. -->
@@ -56,7 +56,7 @@ Zuerst die eigenen Zielarchetypen des Nutzers aus `modes/_profile.md` verwenden.
 | Wenn die Rolle ist... | Beim Kandidaten betonen... | Quellen für Proof Points |
 |-----------------------|----------------------------|--------------------------|
 | Hands-on Practitioner | Lizenzen, Zertifizierungen, direkte Praxis in der Kernarbeit | cv.md + article-digest.md |
-| People & Service | Betreute Menschen, Fallzahlen/Volumen, Ergebnisse für diese Menschen | cv.md + article-digest.md |
+| People & Service | Betreute Menschen, Volumen, Ergebnisse für diese Menschen | cv.md + article-digest.md |
 | Coordination & Operations | Zuverlässigkeit, Umfang des Koordinierten, Prozessverbesserungen | cv.md + article-digest.md |
 | Analysis & Research | Methoden, Werkzeuge, Entscheidungen, die die Analyse geprägt hat | article-digest.md + cv.md |
 | Creative & Communications | Portfolio-Arbeiten, Zielgruppe, messbare Reichweite | article-digest.md + cv.md |
@@ -68,8 +68,8 @@ Zuerst die eigenen Zielarchetypen des Nutzers aus `modes/_profile.md` verwenden.
 ### Exit-Narrativ (in ALLEN Framings nutzen)
 
 <!-- [ANPASSEN] Ersetze durch dein eigenes Narrativ. Beispiele:
-     - "Fünf Jahre Pflege auf der Intensivstation. Jetzt Wechsel in die Stationskoordination."
-     - "Filialleitung im Einzelhandel während einer starken Expansionsphase. Suche jetzt die nächste Herausforderung."
+     - "Fünf Jahre als Finanzanalyst:in bei einer Bank. Jetzt Wechsel ins FP&A eines Softwareunternehmens."
+     - "Operations-Analyst:in während einer starken Expansionsphase. Suche jetzt die nächste Herausforderung."
      - "Wechsel von Beratung zu Produktentwicklung. Suche Rollen mit hoher Verantwortung."
      Wird gelesen aus config/profile.yml → narrative.exit_story -->
 
@@ -83,13 +83,13 @@ Verwende das Exit-Narrativ aus `config/profile.yml`, um ALLE Inhalte zu rahmen:
 
 <!-- [ANPASSEN] Was ist deine Kernstärke? Was kannst du, was andere nicht können? -->
 
-Das Profil um **[deine Kernstärke, in der Sprache deines Berufsfelds, z. B. „die Pflegekraft, nach der Familien namentlich fragen“ oder „die Koordinatorin, der nichts durchrutscht“]** herum framen und das Framing an jede Rolle anpassen.
+Das Profil um **[deine Kernstärke, in der Sprache deines Berufsfelds, z. B. „die Analystin, deren Modell alle vertrauen“ oder „der Ingenieur, der ausliefert und dann misst“]** herum framen und das Framing an jede Rolle anpassen.
 
 Das Framing ändert sich, die Wahrheit bleibt dieselbe. Reale Proof Points machen das glaubwürdig.
 
 ### Portfolio als Proof Point (bei wertvollen Bewerbungen einsetzen)
 
-<!-- [ANPASSEN] Wenn du ein Portfolio, Textproben, ein Unterrichtsvideo, eine Projektseite oder andere öffentliche Arbeit hast, hier konfigurieren.
+<!-- [ANPASSEN] Wenn du ein Portfolio, Textproben, ein Vortragsvideo, eine Projektseite oder andere öffentliche Arbeit hast, hier konfigurieren.
      Beispiel:
      dashboard:
        url: "https://deineseite.example/portfolio"

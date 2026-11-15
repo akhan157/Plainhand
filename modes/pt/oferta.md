@@ -13,7 +13,7 @@ Classificar a vaga em um dos arquétipos (primeiro os do candidato em `modes/_pr
 
 Tabela com:
 - Arquétipo detectado
-- Domain (setor / especialidade, ex.: saúde, educação, ofícios técnicos, finanças, software)
+- Domain (setor / especialidade, ex.: banco, empresa de software, indústria, laboratório de biotecnologia, consultoria)
 - Função (executar/atender/coordenar/assessorar/gerir/construir)
 - Senioridade
 - Remoto (full/híbrido/presencial)

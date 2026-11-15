@@ -28,12 +28,12 @@
 
 Le skill traite TOUS les roles cibles avec le meme soin. Aucun n'est primaire ou secondaire -- chacun est un succes si la remuneration et les perspectives d'evolution sont au rendez-vous.
 
-Utiliser d'abord les archetypes cibles du candidat definis dans `modes/_profile.md`. S'il n'en definit aucun, utiliser ces familles de roles, valables dans tous les secteurs (sante, education, metiers manuels, entreprise, metiers creatifs, service public, technologie) :
+Utiliser d'abord les archetypes cibles du candidat definis dans `modes/_profile.md`. S'il n'en definit aucun, utiliser ces familles de roles, valables dans tous les domaines professionnels (finance, technologie, ingenierie, sciences, entreprise, design) :
 
 | Archetype | Axes thematiques | Ce que l'entreprise achete |
 |-----------|------------------|----------------------------|
 | **Praticien du metier (Hands-on Practitioner)** | Coeur du metier ; diplomes, habilitations, certifications, outils, equipements | Quelqu'un qui fait bien le travail des le premier jour |
-| **Relation & Service (People & Service)** | Clients, patients, eleves, usagers, adherents, accompagnement, support | Quelqu'un qui prend soin des personnes servies |
+| **Relation & Service (People & Service)** | Clients, comptes, parties prenantes, conseil, support, relation client | Quelqu'un qui prend soin des personnes servies |
 | **Coordination & Operations (Coordination & Operations)** | Coordination, planning, logistique, processus, administration, conformite | Quelqu'un a qui rien n'echappe |
 | **Analyse & Recherche (Analysis & Research)** | Analyse, donnees, reporting, recherche, evaluation, audit | Quelqu'un dont les conclusions guident les decisions |
 | **Creation & Communication (Creative & Communications)** | Contenu, design, campagnes, marque, redaction, medias | Quelqu'un qui touche un public |
@@ -41,10 +41,10 @@ Utiliser d'abord les archetypes cibles du candidat definis dans `modes/_profile.
 | **Direction & Management (Leadership & Management)** | Manager, encadrer, diriger une equipe, budget, strategie, collaborateurs directs | Quelqu'un qui obtient des resultats a travers les autres |
 
 <!-- [PERSONNALISER] Remplace les archetypes ci-dessus par tes roles cibles, dans n'importe quel domaine. Exemples :
-     - Infirmier(e) / Coordinateur(trice) de soins
+     - Analyste FP&A / Controleur(se) de gestion
      - Charge(e) de marketing / Specialiste contenu
-     - Professeur(e) des ecoles / AESH
-     - Apprenti(e) electricien / Technicien(ne) de maintenance
+     - Business analyst / Analyste des operations
+     - Chercheur(se) / Ingenieur(e) de recherche
      - Analyste financier / Comptable
      - Developpeur(se) / Data analyst
      etc. -->
@@ -68,8 +68,8 @@ Utiliser d'abord les archetypes cibles du candidat definis dans `modes/_profile.
 ### Narratif de transition (a utiliser dans TOUS les framings)
 
 <!-- [PERSONNALISER] Remplace par ton propre narratif. Exemples :
-     - "Cinq ans d'infirmerie en reanimation. Desormais en transition vers la coordination de soins."
-     - "Responsable de magasin pendant une forte phase d'expansion. En quete du prochain defi."
+     - "Cinq ans comme analyste financier en banque. Desormais en transition vers le FP&A chez un editeur de logiciels."
+     - "Analyste des operations pendant une forte phase d'expansion. En quete du prochain defi."
      - "Transition du conseil vers le produit. Recherche de roles a forte responsabilite."
      Lu depuis config/profile.yml -> narrative.exit_story -->
 
@@ -83,13 +83,13 @@ Utiliser le narratif de transition depuis `config/profile.yml` pour cadrer TOUS 
 
 <!-- [PERSONNALISER] Quelle est ta force signature ? Que fais-tu que les autres ne font pas ? -->
 
-Cadrer le profil autour de **[ta force signature, dans les mots de ton metier, ex. "l'infirmiere que les familles demandent par son nom" ou "la coordinatrice a qui rien n'echappe"]**, en adaptant le framing a chaque role.
+Cadrer le profil autour de **[ta force signature, dans les mots de ton metier, ex. "l'analyste dont le modele fait reference pour tous" ou "l'ingenieur qui livre, puis mesure"]**, en adaptant le framing a chaque role.
 
 Le framing change, la verite reste la meme. Les proof points reels rendent ca credible.
 
 ### Portfolio comme proof point (utiliser dans les candidatures a fort enjeu)
 
-<!-- [PERSONNALISER] Si tu as un portfolio, des exemples de redaction, une video de cours, un site de projet ou tout travail public, configure-le ici.
+<!-- [PERSONNALISER] Si tu as un portfolio, des exemples de redaction, une video de conference, un site de projet ou tout travail public, configure-le ici.
      Exemple :
      dashboard:
        url: "https://tonsite.example/portfolio"

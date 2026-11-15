@@ -46,12 +46,12 @@ A avaliação usa 6 blocos (A-F) com uma nota global de 1-5:
 
 O skill trata TODAS as vagas-alvo com o mesmo cuidado. Nenhuma é primária ou secundária — qualquer uma é uma vitória, desde que a remuneração e a perspectiva de crescimento estejam adequadas.
 
-Use primeiro os arquétipos-alvo do próprio candidato definidos em `modes/_profile.md`. Se ele não definir nenhum, use estas famílias de função, válidas em qualquer setor (saúde, educação, ofícios técnicos, negócios, área criativa, serviço público, tecnologia):
+Use primeiro os arquétipos-alvo do próprio candidato definidos em `modes/_profile.md`. Se ele não definir nenhum, use estas famílias de função, válidas nas diferentes áreas profissionais (finanças, tecnologia, engenharia, ciência, negócios, design):
 
 | Arquétipo | Eixos temáticos | O que estão comprando |
 |-----------|-----------------|----------------------|
 | **Profissional da prática (Hands-on Practitioner)** | Trabalho central da profissão; registros, licenças, certificações, ferramentas, equipamentos | Alguém que faça bem o trabalho desde o primeiro dia |
-| **Pessoas & Atendimento (People & Service)** | Clientes, pacientes, alunos, usuários, associados, cuidado, suporte | Alguém que cuide bem das pessoas atendidas |
+| **Pessoas & Atendimento (People & Service)** | Clientes, contas, stakeholders, consultoria, suporte, relacionamento | Alguém que cuide bem das pessoas atendidas |
 | **Coordenação & Operações (Coordination & Operations)** | Coordenar, agendar, logística, processos, administração, compliance | Alguém que não deixa nada escapar |
 | **Análise & Pesquisa (Analysis & Research)** | Analisar, dados, relatórios, pesquisa, avaliação, auditoria | Alguém cujas conclusões orientam decisões |
 | **Criação & Comunicação (Creative & Communications)** | Conteúdo, design, campanhas, marca, redação, mídia | Alguém que chegue ao público |
@@ -59,10 +59,10 @@ Use primeiro os arquétipos-alvo do próprio candidato definidos em `modes/_prof
 | **Liderança & Gestão (Leadership & Management)** | Gerir, supervisionar, liderar equipe, orçamento, estratégia, subordinados diretos | Alguém que entregue resultados por meio de outras pessoas |
 
 <!-- [PERSONALIZAR] Substitua os arquétipos acima pelas suas vagas-alvo, em qualquer área. Exemplos:
-     - Enfermeiro(a) / Coordenador(a) de enfermagem
+     - Analista de FP&A / Analista de controladoria
      - Analista de marketing / Especialista de conteúdo
-     - Professor(a) do ensino fundamental / Auxiliar de classe
-     - Aprendiz de eletricista / Técnico(a) de manutenção
+     - Analista de negócios / Analista de operações
+     - Pesquisador(a) / Assistente de pesquisa
      - Analista financeiro / Contador(a)
      - Desenvolvedor(a) de software / Analista de dados
      etc. -->
@@ -86,8 +86,8 @@ Use primeiro os arquétipos-alvo do próprio candidato definidos em `modes/_prof
 ### Narrativa de Transição (usar em TODOS os framings)
 
 <!-- [PERSONALIZAR] Substitua pela sua própria narrativa. Exemplos:
-     - "Cinco anos como enfermeira de UTI. Agora em transição para a coordenação de enfermagem."
-     - "Gerente de loja no varejo durante uma fase de forte expansão. Buscando o próximo desafio."
+     - "Cinco anos como analista financeira em banco. Agora em transição para FP&A em uma empresa de software."
+     - "Analista de operações durante uma fase de forte expansão. Buscando o próximo desafio."
      - "Transição de consultoria para produto. Buscando vagas com alta responsabilidade."
      Lido de config/profile.yml -> narrative.exit_story -->
 
@@ -101,13 +101,13 @@ Use a narrativa de transição de `config/profile.yml` para enquadrar TODO o con
 
 <!-- [PERSONALIZAR] Qual é o seu diferencial? O que você faz que os outros não fazem? -->
 
-Enquadrar o perfil em torno de **[seu diferencial, nas palavras da sua área, ex.: "a enfermeira que as famílias pedem pelo nome" ou "a coordenadora que não deixa nada escapar"]**, adaptando o framing a cada vaga.
+Enquadrar o perfil em torno de **[seu diferencial, nas palavras da sua área, ex.: "a analista em cujo modelo todo mundo confia" ou "o engenheiro que entrega e depois mede"]**, adaptando o framing a cada vaga.
 
 O framing muda, a verdade é a mesma. Proof points reais tornam isso crível.
 
 ### Portfolio como Proof Point (usar em candidaturas de alto valor)
 
-<!-- [PERSONALIZAR] Se você tem um portfólio, amostras de texto, um vídeo de aula, um site de projeto ou qualquer trabalho público, configure aqui.
+<!-- [PERSONALIZAR] Se você tem um portfólio, amostras de texto, a gravação de uma palestra, um site de projeto ou qualquer trabalho público, configure aqui.
      Exemplo:
      dashboard:
        url: "https://seusite.example/portfolio"

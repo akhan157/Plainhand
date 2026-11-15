@@ -76,12 +76,12 @@ Blok G, ilanın gerçek ve aktif bir açık pozisyon olup olmadığını değerl
 
 Sistem tüm hedef rollere eşit özenle yaklaşır. Maaş ve gelişim fırsatı uygunsa her biri başarıdır.
 
-Önce kullanıcının `modes/_profile.md` dosyasında tanımladığı kendi hedef arketiplerini kullan. Orada hiçbiri tanımlı değilse, her sektöre (sağlık, eğitim, zanaat ve teknik meslekler, iş dünyası, yaratıcı alanlar, kamu hizmeti, teknoloji) uyan şu rol ailelerini kullan:
+Önce kullanıcının `modes/_profile.md` dosyasında tanımladığı kendi hedef arketiplerini kullan. Orada hiçbiri tanımlı değilse, profesyonel alanların geneline (finans, teknoloji, mühendislik, bilim, iş dünyası, tasarım) uyan şu rol ailelerini kullan:
 
 | Arketip | Odak alanları | İşverenin aradığı |
 |---------|--------------|-------------------|
 | **Sahadaki uygulayıcı (Hands-on Practitioner)** | Mesleğin asıl işi; gerekli lisanslar, sertifikalar, araçlar, ekipman | İşi ilk günden iyi yapan biri |
-| **İnsan ve hizmet (People & Service)** | Müşteriler, hastalar, öğrenciler, danışanlar, üyeler, bakım, destek | Hizmet ettiği insanlarla gerçekten ilgilenen biri |
+| **İnsan ve hizmet (People & Service)** | Müşteriler, kurumsal müşteriler, müşteri hesapları, paydaşlar, danışmanlık, destek, ilişki yönetimi | Hizmet ettiği insanlarla gerçekten ilgilenen biri |
 | **Koordinasyon ve operasyon (Coordination & Operations)** | Koordinasyon, planlama, lojistik, süreçler, idari işler, mevzuata uyum | Hiçbir şeyi gözden kaçırmayan biri |
 | **Analiz ve araştırma (Analysis & Research)** | Analiz, veri, raporlama, araştırma, değerlendirme, denetim | Vardığı sonuçlar kararlara yön veren biri |
 | **Yaratıcılık ve iletişim (Creative & Communications)** | İçerik, tasarım, kampanya, marka, metin yazarlığı, medya | Bir kitleye ulaşabilen biri |
@@ -96,7 +96,7 @@ Her ilanı kullanıcının `modes/_profile.md` dosyasındaki kendi hedef arketip
 | Arketip | İlanda öne çıkan sinyaller |
 |---------|---------------------------|
 | Hands-on Practitioner | mesleğin asıl işini yapmak; gerekli lisanslar, sertifikalar, araçlar veya ekipman |
-| People & Service | "müşteri", "hasta", "öğrenci", "danışan", "üye", "bakım", "destek" |
+| People & Service | "müşteri", "kurumsal müşteri", "müşteri hesabı", "paydaş", "danışmanlık", "destek", "ilişki yönetimi" |
 | Coordination & Operations | "koordinasyon", "planlama", "lojistik", "süreç", "idari", "mevzuata uyum" |
 | Analysis & Research | "analiz", "veri", "raporlama", "araştırma", "değerlendirme", "denetim" |
 | Creative & Communications | "içerik", "tasarım", "kampanya", "marka", "metin", "medya" |
@@ -132,14 +132,14 @@ Arketipi tespit ettikten sonra kullanıcıya özgü çerçeveleme ve kanıt nokt
 ### Temel Güç
 
 
-Profili **[adayın kendi alanının diliyle imza gücü; ör. "ailelerin adıyla istediği hemşire" ya da "hiçbir şeyi gözden kaçırmayan koordinatör"]** etrafında çerçevele ve her role göre uyarla.
+Profili **[adayın kendi alanının diliyle imza gücü; ör. "modeline herkesin güvendiği analist" ya da "ürünü yayına alıp ardından ölçen mühendis"]** etrafında çerçevele ve her role göre uyarla.
 
 Çerçeve değişir, gerçek aynı kalır. Gerçek kanıt noktaları bunu inandırıcı kılar.
 
 ### Portfolyo / Demo
 
 
-Adayın bir portfolyosu ya da herkese açık bir iş örneği (yazı örnekleri, ders videosu, proje sitesi, canlı demo vb.) varsa (`profile.yml`'ye bak), ilgili başvurularda paylaş.
+Adayın bir portfolyosu ya da herkese açık bir iş örneği (yazı örnekleri, konuşma kaydı, proje sitesi, canlı demo vb.) varsa (`profile.yml`'ye bak), ilgili başvurularda paylaş.
 
 ### Ücret Araştırması
 

@@ -13,7 +13,7 @@ Die Stellenanzeige einem der Archetypen zuordnen (zuerst die eigenen aus `modes/
 
 Tabelle mit:
 - Erkannter Archetyp
-- Domain (Branche / Fachgebiet, z. B. Gesundheitswesen, Bildung, Handwerk, Finanzen, Software)
+- Domain (Branche / Fachgebiet, z. B. Bank, Softwareunternehmen, Industrieunternehmen, Biotech-Labor, Beratung)
 - Funktion (Ausführen / Betreuen / Koordinieren / Beraten / Leiten / Aufbauen)
 - Seniorität
 - Remote (Vollremote / Hybrid / Vor Ort)

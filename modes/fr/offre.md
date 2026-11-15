@@ -13,7 +13,7 @@ Classer l'offre dans l'un des archetypes (d'abord ceux du candidat dans `modes/_
 
 Tableau avec :
 - Archetype detecte
-- Domaine (secteur / specialite, ex. sante, education, metiers manuels, finance, logiciel)
+- Domaine (secteur / specialite, ex. banque, editeur de logiciels, industriel, laboratoire de biotech, cabinet de conseil)
 - Fonction (Execution / Accompagnement / Coordination / Conseil / Management / Construction)
 - Seniorite
 - Remote (Full remote / Hybride / Sur site)
