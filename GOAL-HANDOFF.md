@@ -68,3 +68,7 @@ Running, all Pi `deepseek/deepseek-flash` thinking max (non-Claude, reviewer is 
 - Memory M2 evidence-source gate: `thread:delegated-task:command%3Amcp%3Acc0a461f-824f-4b5a-b0eb-1da2c9746ff1%3Adelegate-task%3Ae2225f70-0dbe-4942-a01f-b8f8522e21d3`. M1 follows M2.
 - Independent read-only review of root calibration correction: `thread:delegated-task:command%3Amcp%3Acc0a461f-824f-4b5a-b0eb-1da2c9746ff1%3Adelegate-task%3Aff0fb3b5-2b88-4ae8-b8f8-ab11d11c1778`.
 File ownership disjoint; score.mjs reads hasEvidence, which M2 tightens — check at integration. Owner decision pending: provider/budget for the live paired baseline (≤900 calls).
+
+## Calibration correction revised after independent review — 2026-11-15
+
+Independent DeepSeek review rejected root's first ownership-after rule: it flagged 9 honest employer-interest sentences, let a sentence-final number absorb the next sentence, and missed 5 leaks. The bench evidence was vacuous (the calibration bench passes no posting). Revised per the reviewer's validated patch, plus: the after-clause ends at the next number, so `$2,000 ... the 25 engineers I led` flags only 25. 14 new assertions; `test:plainhand` 457/457. Remaining leak: appositive `a team I built`. U07 stays in_progress.

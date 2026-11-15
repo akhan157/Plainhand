@@ -157,3 +157,33 @@ test('a posting number followed by a first-person owner in the same clause is th
   assert.equal(flagged('Your 25 engineers would gain from my reporting.'), false);
   assert.equal(flagged('I would love to support your 12-person team.'), false);
 });
+
+test('interest and intent after an employer number are not ownership; ownership is', () => {
+  const job = 'Our 25 engineers, a team of 12, a 15-week onboarding, a 12-month plan and a $2,000 budget.';
+  const flagged = text => claimSignals(text, [], source, job).some(s => s.code === 'number-not-in-sources');
+  for (const text of [
+    'Your 25 engineers is exactly the team I want to lead.',
+    'Your 25 engineers and I would work well together.',
+    'Your 25 engineers I met at the career fair were impressive.',
+    'Your 15-week onboarding is the ramp I need.',
+    'Your team of 12 (i.e. three squads) is impressive.',
+    'Your team of 25: I would be honoured to join.',
+    'Your team of 25, I noticed, is growing fast.',
+    'Your 25-person team appeals to me.',
+    'The role’s 12-month plan matters to me.',
+  ]) assert.equal(flagged(text), false, text);
+  for (const text of [
+    'Your 25 engineers, whom I managed, shipped weekly.',
+    'The team of 12 is my current team.',
+    'The team of 12 grew under my leadership.',
+    'The team of 12 reports to me today.',
+  ]) assert.equal(flagged(text), true, text);
+});
+
+test('a sentence-final employer number does not take ownership from the next sentence', () => {
+  const job = 'A team of 25 engineers.';
+  const grade = answer => gradePacket({ resume: [], answers: [{ question: 'Team', answer }], coverLetter: '' }, [{ id: 'cv', text: 'I manage 14 engineers.' }], [], null, { jobText: job });
+  assert.equal(grade('Your team of 25. I have led bigger teams.').counts.unsupported, 0);
+  const cover = gradePacket({ resume: [], answers: [], coverLetter: 'Your $2,000 training budget covers the 25 engineers I led.' }, [{ id: 'cv', text: 'I manage 14 engineers.' }], [], null, { jobText: 'A $2,000 training budget and 25 engineers.' });
+  assert.deepEqual(cover.claims.filter(c => c.rating === 'unsupported').map(c => c.signals), [['number-not-in-sources']], 'only 25 is the candidate claim; $2,000 stays exempt');
+});

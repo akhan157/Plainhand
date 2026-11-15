@@ -55,7 +55,7 @@
       "status": "in_progress",
       "evidence_required": "Independent claim check with validated source quotes. Planted unsupported claims are caught (negative controls). Real PDF text extraction, layout and ATS-parse checks against rendered files",
       "falsifier": "A planted unsupported claim passes. A PDF drops or reorders text. The reviewed packet differs from what is attached. Claim numbers are matched without the source",
-      "review_note": "Production calibration now attributes each posting number per occurrence (continuation fix plus a root narrowing of the first-person leak; residual leaks remain for \"whom I managed\" and \"is my current team\", root fix not independently reviewed). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open; scorer design b6c0b56 accepted with amendments."
+      "review_note": "Production calibration attributes each posting number per occurrence (continuation fix plus root ownership-after rule revised per independent DeepSeek review: interest/intent is not ownership, clause ends at the next number). Residual: appositive leak (\"a team I built\"). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open."
     },
     {
       "id": "U08",

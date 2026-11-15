@@ -58,3 +58,12 @@ the continuation integration. The author confirms that SHA before editing.
 No threshold weakened, no assertion removed, no magic-byte pass, mutation check
 recorded, controls observed failing before the fix, no self-acceptance, no edits to
 the register, manifest, board or handoff.
+
+## Update after independent review of the root correction
+
+Production now flags `Your 25 engineers, whom I managed, shipped weekly.` and
+`The team of 12 is my current team.` (no longer residuals), and exempts the
+interest/intent sentences (`... appeals to me.`, `... the team I want to lead.`,
+`(i.e. three squads)`). Remaining production leak: appositive
+`Your 25 engineers, a team I built from scratch, ship weekly.`. The scorer should
+flag it. The one-directional binding is unchanged.

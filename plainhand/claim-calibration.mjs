@@ -83,15 +83,30 @@ function clauseBefore(text, index) {
   for (const match of text.matchAll(CLAUSE_BOUNDARY)) { if (match.index < index) start = match.index + 1; else break; }
   return text.slice(start, index);
 }
-function clauseAfter(text, index) {
-  const rest = text.slice(index);
-  const boundary = [...rest.matchAll(CLAUSE_BOUNDARY)].find(match => match.index > 0);
-  return boundary ? rest.slice(0, boundary.index) : rest;
+// The clause after the number, starting after its digits and ending at the next number, so a terminator right after
+// it ends the clause. A comma before a relative clause ("25 engineers, whom I
+// managed") does not end it. A fresh regex keeps the shared one's state untouched.
+function clauseAfter(text, index, length = 0) {
+  // Ownership words belong to the nearest number, so the clause also ends at the next one.
+  let rest = text.slice(index + length);
+  const next = rest.search(/\$?\d/);
+  if (next >= 0) rest = rest.slice(0, next);
+  for (const match of rest.matchAll(new RegExp(CLAUSE_BOUNDARY.source, 'g'))) {
+    if (match.index === 0) return '';
+    if (rest[match.index] === ',' && /^\s*(?:whom|who|which|whose|that)\b/i.test(rest.slice(match.index + 1))) continue;
+    return rest.slice(0, match.index);
+  }
+  return rest;
 }
-// A first-person subject, or a reporting/ownership object, after the number makes it
-// the candidate's: "The team of 12 reports to me", "the 25 engineers I led". A plain
-// object ("suit me", "help me lead") does not, and is left to the frame before it.
-const CANDIDATE_AFTER = /\b(?:i|we)\b|\b(?:to|under|by)\s+(?:me|us)\b/i;
+// Ownership after the number makes it the candidate's: "the 25 engineers I managed",
+// "reports to me", "grew under my leadership", "is my current team". Interest or
+// intent is not ownership: "appeals to me", "the team I want to lead", "i.e.".
+const OWNERSHIP_VERB = '(?:led|lead|manag(?:e|ed|ing)|built|build|ran|run|own(?:ed)?|oversaw|oversee|direct(?:ed)?|head(?:ed)?|grew|grow(?:ing)?|scal(?:ed)?|hir(?:ed)?|mentor(?:ed)?|supervis(?:ed)?|coach(?:ed)?|inherit(?:ed)?|launch(?:ed)?)';
+const CANDIDATE_AFTER = new RegExp(
+  `\\b(?:i|we)\\s+(?:['’]?(?:ve|d|m|ll)\\s+)?(?:have\\s+|had\\s+)?${OWNERSHIP_VERB}\\b`
+  + '|\\b(?:report(?:s|ed|ing)?|answer(?:s|ed|ing)?|work(?:s|ed|ing)?|belong(?:s|ed)?)\\s+(?:to|for|under|into)\\s+(?:me|us|my|our)\\b'
+  + '|\\b(?:under|by)\\s+(?:me|us|my\\s+(?:leadership|direction|management|guidance|supervision|charge))\\b'
+  + '|\\b(?:is|are|was|were)\\s+(?:my|our)\\b(?:\\s+\\w+){0,2}\\s+(?:team|org|organization|department|group|reports?|people|staff)\\b', 'i');
 function lastEmployerRef(tail) {
   let last = null;
   for (const match of tail.matchAll(EMPLOYER_REF)) last = match;
@@ -118,7 +133,7 @@ function employerAttributed(text, occurrence, postingNumbers) {
   if (!ref) return false;
   const between = tail.slice(ref.index + ref[0].length);
   if ((between.match(/[A-Za-z0-9'\u2019.-]+/g) || []).length > 3) return false;
-  if (CANDIDATE_AFTER.test(clauseAfter(text, occurrence.index))) return false;
+  if (CANDIDATE_AFTER.test(clauseAfter(text, occurrence.index, occurrence.raw.length))) return false;
   return employerFactFrame(tail) || intentFrame(tail);
 }
 

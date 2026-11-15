@@ -235,7 +235,8 @@
       "test-plainhand-ui real Chromium: 1/1 pass, exit 0, 40.4s",
       "adversarial attribution probe 10/10 expected",
       "test:plainhand 47 files: 455 pass 0 fail at f366946 (+review edits, no source change)",
-      "benchmark-calibration rules: exact 22/37, missed inflation 12, false alarms 0 \u2014 identical at 5729bf6 and f366946"
+      "benchmark-calibration rules: exact 22/37, missed inflation 12, false alarms 0 \u2014 identical at 5729bf6 and f366946 \u2014 VACUOUS for the attribution rule: the bench passes no jobText, so employerAttributed never runs (independent review finding)",
+      "after review-driven revision: test:plainhand 457 pass 0 fail"
     ],
     "not_run": [
       "full npm test",
@@ -291,11 +292,25 @@
       {
         "path": "output/goal-review/f366946-bench-calibration.log",
         "sha256": "592b7d92548ab6bdc0ea4065b74d1072e47b2554b17b3d5433f1f7bfe3189d1b"
+      },
+      {
+        "path": "output/goal-review/calib-fix2-test-plainhand.log",
+        "sha256": "e2556a0ad6990cf5e22feae8917051cacfe62388eb5af9b6945bdf065eb5246d"
       }
     ],
     "residual_leaks": [
-      "Your 25 engineers, whom I managed, shipped weekly.",
-      "The team of 12 is my current team."
-    ]
+      "Your 25 engineers, a team I built from scratch, ship weekly. (non-relativizer appositive; needs ordered ownership frames, deferred)"
+    ],
+    "independent_review": {
+      "reviewer": "Pi deepseek/deepseek-flash, read-only, thread node ...ff0fb3b5",
+      "verdict": "reject (revise)",
+      "findings": [
+        "9 employer-interest sentences newly flagged (bare I/we, i.e., \"appeals to me\")",
+        "after-clause started at first digit so a sentence-final number absorbed the next sentence",
+        "5 leaks incl. \"whom I managed\", \"is my current team\", \"under my leadership\"",
+        "$2,000 test lost meaning (two signals, count assertion stayed green)",
+        "bench evidence vacuous"
+      ]
+    }
   }
 }
