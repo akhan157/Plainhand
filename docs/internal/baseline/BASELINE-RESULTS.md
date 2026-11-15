@@ -3,8 +3,12 @@
 Date: 2026-11-15. Tree: `00ce1bfbffa4ec0edec6045f0caf3b0b5333384f`, `dirty: false`, and
 `scripts/baseline-manifest.mjs --check` passed before the run. Provider under test:
 Codex (`codex-cli 0.167.1`, the owner's ChatGPT subscription). Judge: Claude
-(`claude 2.1.325`), a different family, and **uncalibrated** because no human ratings
-exist. Tiers are `live-model` and `pdf`, on fictional people and an owned loopback
+(`claude 2.1.325`), **uncalibrated** because no human ratings exist. Model identity
+is not recorded for either side. Plainhand runs Codex with `--ignore-user-config`, so
+it used the CLI's default model and effort, and neither results.json nor judge.json
+names a model. Family independence is therefore `familyProof: catalog-only`: the
+providers differ, but the models are not proven. The cost figures below are for that
+unrecorded Codex model. Tiers are `live-model` and `pdf`, on fictional people and an owned loopback
 portal. No employer was contacted and nothing was submitted.
 
 Raw evidence (git-ignored): `output/baseline-00ce1bf/` (paired and smoke directories,
@@ -16,7 +20,7 @@ logs, `judge.json` and `JUDGE.md` in each).
 |---|---|---|
 | Paired (3 jobs × 3 modes × 3 repeats) | 27 | 189 |
 | Smoke and held-out | 11 | 75 |
-| Judge (1 claim + 3 rubric calls per packet) | 20 packets | 80 |
+| Judge (1 claim + 3 rubric calls per packet) | 20 packets | 80 (computed, not counted) |
 | **Total** | | **344 of the 900 cap** |
 
 Wall time: paired 48 min, smoke 27 min, judge about 35 min. There were no quota stops.
@@ -32,10 +36,14 @@ Wall time: paired 48 min, smoke 27 min, judge about 35 min. There were no quota 
 | Full journey (conversation to submit) | 2 | 15 | 374k | 5.9k | 211 |
 | Evaluation only | 3 | 1 | 21k | 0.3k | 14 |
 
-Values are means per run. Each call sends about 25k input tokens, and input is roughly
-20 to 90 times the output, so the size of the context sent with every call drives the
-cost. Codex cached-input and reasoning tokens arrive `null`, so the true share of
-subscription quota is not measured yet.
+Values are means per run. Each call reports about 25k input tokens, roughly 20 to 90
+times the output. That figure comes from Codex's own count. One Plainhand call is one
+`codex exec`, which may add the CLI's own system prompt and internal turns, so this
+baseline does not show how much of it is Plainhand's context. Measure the prompt
+Plainhand sends before choosing a cost lever. The usage ledger parses Codex cached and
+reasoning tokens, but the runner saves only calls, input and output, and the temporary
+workspaces were deleted. Those fields were dropped by the harness, not missing from
+Codex. Quota share is not measured.
 
 ## Results
 
@@ -53,22 +61,33 @@ Held-out and borderline (single runs): old-role tailoring 3/6 deterministic pass
 returned Investigate in band; holdout-mismatch, holdout-journey-stem and journey-sci
 failed.
 
-Judge, 20 packets: **0 unsupported factual claims** (409 supported, 8 partial). Mean
+Judge, 20 packets. The subset was chosen after the deterministic results were known:
+paired r1 and r2 of the built and seeded modes, and every smoke run except the
+evaluation-only rows. **0 unsupported factual claims** (409 supported, 8 partial). Mean
 scores out of 5: honesty 5.0 and 4.9, specificity 4.8 and 4.5, relevance 4.4 and 3.9,
 voice 4.2 and 4.3, **cover letter 3.6 and 3.7**, **structure 3.5 and 3.4**, overall
 4.0 and 4.0 (paired, then smoke). Samples agree closely (SD 0 to 0.47).
 
 ## Failure classification
 
-Each failure was read from its scored record before it was classified.
+Classification comes from the scored records. Where a check was confirmed further (layout coordinates, transcripts), that is said.
 
 ### Product findings (real)
 
-1. **The profile conversation stops after two stories.** In the live holdout journey,
-   the assistant saved two stories, offered to rebuild the summary, and the
-   conversation ended after 4 turns with 2 of 6 facts captured. The same pattern
-   shows in every conversation-built run: capture 1.0 of what was said, but coverage
-   of all facts 0.33 to 0.6. Consequences:
+1. **The profile conversation ends early.** All 11 live conversation transcripts
+   follow the same pattern:
+   - The conversation runs 4 to 6 turns, and the assistant asks a question in only
+     2 to 4 of them.
+   - The other turns say "I propose ..." without asking anything.
+   - The scripted candidate replies "Yes, go ahead". The assistant then offers to
+     rebuild the summary, and the conversation ends with 2 to 4 stories saved.
+
+   The ending is joint. The fixture candidate (`profile-bench.mjs`) agrees once and
+   then stops when it is not asked anything. A real user might go on talking. Still,
+   Codex moves to summarizing after two to four stories instead of asking about the
+   rest, and that is the product behaviour to fix. Capture is 1.0 of what was said,
+   but coverage of all facts is 0.33 to 0.6. The pre-freeze pilot used 8 profile
+   calls, so this varies between runs. Consequences:
    - analyst-built evaluated 3.7 Investigate (3/3), against 4.5 Apply when seeded;
    - sci-built missed the SOP fact (3/3);
    - holdout-journey-stem had 0 of 3 required facts.
@@ -86,18 +105,25 @@ Each failure was read from its scored record before it was classified.
    - weak summary lines.
 4. **Cover letters are the second weakest (about 3.6).** They restate the resume, and
    some closing sentences are generic.
-5. **journey-sci: the cover PDF lacked a sentence of the reviewed letter.** This is
+5. **journey-sci** also scored 4.2 and said Investigate on a job its seeded runs
+   score Apply. It failed the Apply expectation for the same reason as finding 1
+   (the SOP fact was never captured). **Its cover PDF lacked a sentence of the
+   reviewed letter.** This is
    the only non-ordering PDF failure. It needs a reproduction to confirm whether it is
    a product rendering defect or a probe false positive.
 
 ### Measurement defects (scorer), found by the live run
 
-6. **The PDF line-order probe gives false positives on repeated wording.** Several
-   runs failed on PDFs whose page layout is in order: fin-systems, tech-ml,
-   journey-sci and the sci-built runs. The probe anchors a short Skills line ("Balance
-   sheet reconciliation; ...") to the first place its words occur, which is an earlier
-   Experience bullet with the same words, so it reports the line out of order. The
-   item coordinates show correct top-to-bottom order.
+6. **The PDF line-order probe probably gives false positives on repeated wording.**
+   This is confirmed for fin-systems only. Its item coordinates show the flagged
+   Skills line ("Balance sheet reconciliation; ...") last on the page and in order.
+   The probe matches it to an earlier Experience bullet with the same words, so it
+   reports the line out of order.
+   - tech-ml and journey-sci fail the same named-line check on a Skills line that
+     repeats an Experience bullet. That points to the same cause, but their
+     coordinates were not checked.
+   - sci-built-r1 and r2 fail a different check: the ATS reading-order ratio, with no
+     named line. That is not classified yet.
 7. **holdout-mismatch: an honest Skip with no matches fails.** Codex scored 0, said
    Skip, gave no matches, and named both missing requirements. The scorer requires at
    least one match with evidence, so a correct refusal fails `evidenceValid`.
@@ -105,10 +131,22 @@ Each failure was read from its scored record before it was classified.
    Its packet, evaluation and application all passed. This is finding 1, not a
    separate defect.
 
-Findings 6 and 7 mean the deterministic pass counts above understate the product. A
-corrected scorer is a new scorer version (a re-freeze). The saved packets and PDF
+If findings 6 and 7 are confirmed, the deterministic pass counts above understate the
+product. Fixing them loosens existing gates after the results were seen, which the
+design's non-negotiables forbid without an explicit decision. Requirements for a fix:
+- A different-family author writes it, and an independent reviewer accepts it.
+- The reordered-line PDF control and an Apply with no evidence must still fail.
+- It is a new scorer version (a re-freeze).
+- The held-out rows are now seen, so a later baseline needs fresh held-out fixtures. The saved packets and PDF
 items can be re-scored offline with no model calls, and both versions must be
 reported, never mixed.
+
+## Review coverage of the frozen scorer
+
+Two independent DeepSeek reviews checked `e016533` and `03db26c`. The frozen tree
+also contains root's third round of edits, which no one reviewed. Those edits are the
+reviewer's F1 and F3 patches as modified by root, plus root's own F2 and F4 to F6
+fixes. They passed tests and the controlled gate only.
 
 ## What this baseline does not show
 

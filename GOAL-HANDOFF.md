@@ -125,8 +125,8 @@ Next: live Codex paired (27 runs) and smoke (11 runs), then Claude judge (~80 ca
 
 Frozen `00ce1bf`, Codex under test, Claude judge (uncalibrated). 344 of 900 calls.
 Results and failure classification: `docs/internal/baseline/BASELINE-RESULTS.md`.
-Top product gaps: (1) profile conversation stops after two stories; (2) tailoring does
+Top product gaps: (1) profile assistant moves to summarizing after 2-4 stories; (2) tailoring does
 not lead with an old relevant role; (3) resume structure and (4) cover letters are the
 weakest judged dimensions. Two scorer defects (PDF order false positive, zero-match
-Skip) need a scorer v2 re-freeze and an offline re-score of saved evidence (0 calls).
+Skip) need a different-family-authored scorer v2, re-freeze, and offline re-score (0 calls).
 Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).

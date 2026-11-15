@@ -429,7 +429,7 @@
     "wallSeconds": 163.5,
     "u14_observations": [
       "Input:output tokens about 90:1; about 25k input tokens per call, so context size is the main cost lever.",
-      "Cached-input and reasoning tokens arrive null for Codex in the per-run summary; U14 needs them recorded."
+      "Cached-input and reasoning tokens are parsed by the usage ledger but dropped by the runner summary; not measured."
     ],
     "evidence": "output/goal-review/pilot-codex-fin-built (git-ignored)"
   },
@@ -493,12 +493,13 @@
       "supported": 409,
       "partial": 8,
       "overall": "4.03 paired, 4.0 smoke",
-      "weakest": "structure ~3.4-3.5, cover ~3.6-3.7"
+      "weakest": "structure ~3.4-3.5, cover ~3.6-3.7",
+      "subset": "chosen after deterministic results were known"
     },
     "calls": {
       "paired": 189,
       "smoke": 75,
-      "judge": 80,
+      "judge": "80 (computed: 20 packets x 4)",
       "total": 344,
       "cap": 900
     },
@@ -521,6 +522,9 @@
       "PDF order probe false positive on repeated wording",
       "honest zero-match Skip fails evidenceValid"
     ],
-    "evidence": "output/baseline-00ce1bf (git-ignored)"
+    "evidence": "output/baseline-00ce1bf (git-ignored)",
+    "modelIdentity": "not recorded; Codex ran with --ignore-user-config (CLI default model/effort); familyProof catalog-only",
+    "cachedReasoningTokens": "parsed by usage.mjs but dropped by the runner summary; workspaces deleted; not measured",
+    "review_gap": "root's third-round scorer edits (03db26c..00ce1bf) were not independently reviewed"
   }
 }
