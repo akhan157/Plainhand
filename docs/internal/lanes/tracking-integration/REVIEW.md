@@ -13,3 +13,7 @@ Design author: Claude Sonnet 5.5 high; reviewer: root Codex gpt-6.1-sol medium. 
 - Fixed host-specific paths in the assignment; records use repo-relative references and SHAs.
 
 Independent root probes: original export unit tests 8/8 pass, but a bare-CR cell emits a raw record boundary. Shared UI exposes cloud buttons while hosted GET handler has no routes. Legacy Board omits rows it counts in its subtitle. No fresh product pass is inferred from the 8 tests.
+
+## Author route recovery
+
+Claude Sonnet implementation run failed on its provider rate limit after merging tracking at `99ebf25` and leaving partial `exports.mjs` and new `web/ui/tracker-rows.mjs` edits. Root inspected HEAD/status/diff; do not re-merge or discard them. Go DeepSeek was already unavailable (insufficient balance). Per configured routing, implementation resumes on the same lane with Pi `deepseek/deepseek-flash`, catalog label DeepSeek V4.1 Flash, thinking max, using the existing metered fallback. New-provider author must read this assignment and partial state before continuing. Root Codex remains the independent cross-family reviewer. Failed Claude run produced no acceptance verdict.
