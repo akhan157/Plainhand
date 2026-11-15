@@ -212,6 +212,53 @@ try {
   const followUp = page.locator('.followups li', { hasText: 'Send a thank-you note to the recruiter' });
   await followUp.locator(`time[datetime="${dueDate}"]`).waitFor();
   assert.match(await followUp.innerText(), /Send a thank-you note to the recruiter · due/);
+  const people = page.locator('.people li', { hasText: 'Dana Lee' });
+  assert.equal(await people.count(), 1, 'Every recorded contact appears once on the People card.');
+  assert.match(await people.innerText(), /Technical recruiter/);
+  assert.match(await people.innerText(), /Test Company/);
+  const csvDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
+  const csvFile = await csvDownload;
+  assert.equal(csvFile.suggestedFilename(), 'plainhand-applications.csv');
+  const csvText = await readFile(await csvFile.path(), 'utf8');
+  assert.ok(csvText.startsWith('\uFEFF'), 'The CSV keeps its byte-order mark for Excel.');
+  assert.match(csvText, /Company,Role,Status,Fit,Next action,Due,Updated,Posting URL,Report/);
+  assert.match(csvText, /Test Company,Graduate Engineer,Applied,4\.\d,Send a thank-you note to the recruiter/);
+  const icsDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Deadlines to calendar', exact: true }).click();
+  const icsFile = await icsDownload;
+  assert.equal(icsFile.suggestedFilename(), 'plainhand-calendar.ics');
+  const icsText = await readFile(await icsFile.path(), 'utf8');
+  assert.match(icsText, /^BEGIN:VCALENDAR\r\n/);
+  assert.match(icsText, new RegExp(`DTSTART;VALUE=DATE:${dueDate.replace(/-/g, '')}`));
+  assert.match(icsText, /SUMMARY:Send a thank-you note to the recruiter/);
+  assert.doesNotMatch(icsText, /Recruiter screen/, 'a completed interview round is not a deadline');
+  await page.getByRole('tab', { name: 'Board', exact: true }).click();
+  const column = name => page.locator('.board-column').filter({ has: page.getByRole('heading', { name, exact: true }) });
+  const appliedColumn = column('Applied');
+  await appliedColumn.locator('.board-card', { hasText: 'Graduate Engineer' }).waitFor();
+  assert.equal(await column('Interview').locator('.board-card').count(), 0);
+  await shot(page, '06d-board.png');
+  // Chromium's pointer-driven drag does not carry the dragstart data transfer
+  // reliably, so dispatch the same events the pointer produces, with a real
+  // DataTransfer, and let the app's own handlers do the work.
+  const dragTo = async (card, target) => {
+    const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+    await card.dispatchEvent('dragstart', { dataTransfer });
+    await target.dispatchEvent('dragover', { dataTransfer });
+    await target.dispatchEvent('drop', { dataTransfer });
+    await card.dispatchEvent('dragend', { dataTransfer });
+  };
+  await dragTo(appliedColumn.locator('.board-card', { hasText: 'Graduate Engineer' }), column('Interview'));
+  await page.getByRole('status').filter({ hasText: 'Moved to Interview.' }).waitFor();
+  await column('Interview').locator('.board-card', { hasText: 'Graduate Engineer' }).waitFor();
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Interview', 'Dragging a card writes the stage.');
+  await dragTo(column('Interview').locator('.board-card', { hasText: 'Graduate Engineer' }), appliedColumn);
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor();
+  await page.getByRole('button', { name: 'Not yet' }).click();
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor({ state: 'detached' });
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Interview', 'Dropping into Applied only asks; it changes nothing until you confirm.');
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await navLink(page, 'AI usage').click();
   await page.getByRole('heading', { name: 'Recorded usage', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'By application', exact: true }).waitFor();
