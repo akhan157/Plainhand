@@ -349,5 +349,36 @@
       "verdict": "reject",
       "finding": "Sentence-level intent-word exemption laundered 9/12 planted historical identity claims (e.g. \"I can confirm I was Director at Northwind in 2019\"); tests never crossed the exemption boundary."
     }
+  },
+  "scorer_integration": {
+    "source_tip": "c2c8323af966e1d1697e1b383d3368b701e5bb4e",
+    "author": "Pi deepseek/deepseek-flash",
+    "root_reviewer": "Claude Opus 5.5",
+    "author_evidence": "numeric suite on pre-fix score.mjs 2/40 pass; mutation (pooled posting tokens) 20/40 fail; real Chromium render pdfjs+poppler passed; 101 bytes + %PDF- no longer passes",
+    "root_review": "pass expression only stricter (magic-byte predicate removed, numeric checks added); only removed test line is the fake PDF input; package.json conflict resolved as union",
+    "root_correction": "Author left profile-effect-analyst-built failing on \"six years\" vs sourced \"2020 to 2026\". Root judged it a scorer false positive: tenure derived from a sourced year range now supports N or N+1 only when followed by \"years\"; \"nine years\" and \"six teams\" still unsupported. Not independently reviewed.",
+    "checks": [
+      "test:plainhand + cloud-extension-api: 539 pass 0 fail",
+      "controlled benchmark --concurrency 2: 44/46, 2 expected failures, 0 unexpected"
+    ],
+    "not_run": [
+      "live models",
+      "judge",
+      "hosted"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/scorer-merge-test-plainhand.log",
+        "sha256": "75fb6c2a85ba5276c38377127f67701165b1cca3098097b59072686e66bb5478"
+      },
+      {
+        "path": "output/goal-review/scorer-merge-controlled.log",
+        "sha256": "fea6e52969e2633d259dbefe420cb7b7cb460adc7e26ce556ea2fe52fa37de4d"
+      },
+      {
+        "path": "output/goal-review/scorer-merge-controlled-SUMMARY.md",
+        "sha256": "7f3f892ab28d44c2486e1494ea5d204a53c0b0f42e192529ee1fe6a4d3b310bc"
+      }
+    ]
   }
 }

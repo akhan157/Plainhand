@@ -13,6 +13,14 @@ import { assertProviderUsable, runEvaluation, exitCodeFor, runMetadata, candidat
 const pdf = Buffer.from('%PDF-1.4\n' + 'evaluation fixture '.repeat(20));
 const sha = createHash('sha256').update(pdf).digest('hex');
 const file = { name: 'resume.pdf', base64: pdf.toString('base64'), sha256: sha };
+// Structured rendered-PDF evidence, as plainhand/evaluation/pdf-evidence.mjs records
+// it. A header and a byte count are not evidence (tests/test-pdf-evidence.mjs owns
+// the extraction checks); packet fixtures only need a passed evidence object.
+const PASSED_EVIDENCE = { state: 'passed', pageCount: 1, checks: [
+  { id: 'parse', status: 'pass' }, { id: 'text-layer', status: 'pass' }, { id: 'garbled', status: 'pass' },
+  { id: 'contact', status: 'pass' }, { id: 'resume-coverage', status: 'pass' }, { id: 'reading-order', status: 'pass' },
+  { id: 'layout', status: 'pass' }, { id: 'ats', status: 'pass' }, { id: 'cover', status: 'skipped' },
+] };
 
 function validPayload(scenario) {
   const persona = personaById(scenario.persona), job = jobById(scenario.job), portal = portalById(scenario.portal);
@@ -385,7 +393,7 @@ function passingPacket(personaId, jobId) {
     sources: [{ id: 'profile', text: JSON.stringify(persona.profile) }, { id: 'cv', text: persona.profile.resume }],
     review: { passed: true, issues: [] },
     calibration: null,
-    pdf: { bytes: pdf, head: '%PDF-' },
+    pdf: { bytes: pdf, sha, head: '%PDF-', evidence: PASSED_EVIDENCE },
   };
 }
 
@@ -484,6 +492,36 @@ test('the final DOM must still hold what was submitted for app-owed fields', () 
   const changed = scoreApplication({ ...two, readback: { ...lastPage, degree: { value: 'mba', file: '', type: 'select-one' } } });
   assert.deepEqual(changed.readbackMismatches, ['degree']);
   assert.equal(changed.pass, false);
+});
+
+test('a PDF is evidence only when a rendered parse passed; the header alone never passes', () => {
+  const base = passingPacket('mech-grad', 'grad-mech');
+  const persona = personaById('mech-grad'), job = jobById('grad-mech');
+  const scoreWith = pdfInput => scorePacket({ ...base, persona, job, pdf: pdfInput });
+  // The pre-fix predicate: 101 arbitrary bytes plus a caller-supplied %PDF- header.
+  const magic = scoreWith({ bytes: Buffer.alloc(101, 0x20), head: '%PDF-' });
+  assert.equal(magic.pdfValid, false);
+  assert.equal(magic.pdfState, 'absent');
+  assert.equal(magic.pass, false);
+  // A structured parse that failed a required check is not a pass either.
+  for (const state of ['issues', 'unavailable', 'error']) {
+    const failed = scoreWith({ bytes: pdf, head: '%PDF-', evidence: { state, checks: [{ id: 'resume-coverage', status: 'fail' }, { id: 'parse', status: 'fail' }] } });
+    assert.equal(failed.pdfValid, false, state);
+    assert.equal(failed.pdfState, state);
+    assert.equal(failed.pass, false, state);
+  }
+  // A caller-declared "passed" state with a failing or missing required check is not a pass.
+  const partial = scoreWith({ bytes: pdf, head: '%PDF-', evidence: { state: 'passed', checks: [{ id: 'parse', status: 'pass' }, { id: 'resume-coverage', status: 'fail' }] } });
+  assert.equal(partial.pdfValid, false);
+  const missingChecks = scoreWith({ bytes: pdf, head: '%PDF-', evidence: { state: 'passed', checks: [{ id: 'parse', status: 'pass' }] } });
+  assert.equal(missingChecks.pdfValid, false);
+  // The real evidence object passes and the provenance fields stay for the record.
+  const passed = scoreWith({ bytes: pdf, sha, head: '%PDF-', evidence: PASSED_EVIDENCE });
+  assert.equal(passed.pdfValid, true);
+  assert.equal(passed.pdfState, 'passed');
+  assert.equal(passed.pdfBytes, pdf.length);
+  assert.equal(passed.pdfHead, '%PDF-');
+  assert.equal(passed.pass, true);
 });
 
 test('packet numbers must match a whole source token; the posting is a source', () => {

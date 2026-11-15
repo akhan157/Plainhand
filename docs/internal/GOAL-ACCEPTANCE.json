@@ -55,7 +55,7 @@
       "status": "in_progress",
       "evidence_required": "Independent claim check with validated source quotes. Planted unsupported claims are caught (negative controls). Real PDF text extraction, layout and ATS-parse checks against rendered files",
       "falsifier": "A planted unsupported claim passes. A PDF drops or reorders text. The reviewed packet differs from what is attached. Claim numbers are matched without the source",
-      "review_note": "Production calibration attributes each posting number per occurrence (continuation fix plus root ownership-after rule revised per independent DeepSeek review: interest/intent is not ownership, clause ends at the next number). Residual: appositive leak (\"a team I built\"). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open."
+      "review_note": "Production calibration attributes each posting number per occurrence (continuation fix plus root ownership-after rule revised per independent DeepSeek review: interest/intent is not ownership, clause ends at the next number). Residual: appositive leak (\"a team I built\"). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open. Scorer now grounds numbers per mention (posting never pooled), scans headings, and requires real rendered-PDF text/geometry evidence (pdfjs+Poppler); magic-byte pass removed. Controlled 44/46, 0 unexpected. No live or human-calibrated evidence."
     },
     {
       "id": "U08",
@@ -101,7 +101,7 @@
       "status": "in_progress",
       "evidence_required": "See \"Evaluation acceptance\" below",
       "falsifier": "See below",
-      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open."
+      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open. Scorer validity fixes integrated (numeric laundering, headings, real PDF evidence); baseline not yet frozen; live budget awaits owner."
     }
   ]
 }

@@ -82,7 +82,9 @@ export function coverLetterClaims(text, candidateName = '') {
   });
 }
 
-const headingText = heading => [heading?.title, heading?.org, heading?.location, heading?.dates].map(item => String(item ?? '').trim()).filter(Boolean).join(', ');
+// The visible heading line (title, employer, location, dates), shared with the numeric
+// scorer so both read the same packet surface.
+export const headingText = heading => [heading?.title, heading?.org, heading?.location, heading?.dates].map(item => String(item ?? '').trim()).filter(Boolean).join(', ');
 
 // Every piece of packet text a reader sees, in reading order. Excerpts and packet
 // quotes from the judge are verified against this.
