@@ -462,6 +462,23 @@
       "controlled_gate": "56/59, 3 expected (*-minimal), 0 unexpected (output/goal-review/pre-freeze-controlled-3)",
       "suite": "test:plainhand 532/532",
       "re_review": "pending"
+    },
+    "re_review": {
+      "reviewer": "Pi DeepSeek V4.1 Flash, max thinking",
+      "reviewed": "03db26c",
+      "verdict": "accept-with-fixes",
+      "findings": "F1 blocker: abbreviated degree split and Projects ranges laundered the career total; F2 stem-ops retained a fact the posting never names; F3 evaluationGate bypass unbound; F4 'before that' read as tenure; F5 'master' title excluded; F6 report hid model label",
+      "verified_ok": "B2 end to end through the real workflow, no production consumer of modelRecommendation; bandConsistent; retention mechanism; merged totals; posting ranges",
+      "applied": "all six; F1 and F3 patches are the reviewer's own (simulated by the reviewer before proposing)",
+      "residuals": [
+        "a range supports N years of any field, not only its role",
+        "recency ('the past 6 years') not modeled",
+        "a project line outside a Projects heading joins the total",
+        "borderline 3.0 floor: a careful model may score borderline-swe 2.5-2.9 Skip; live-only risk",
+        "controlled passes on held-out and borderline rows are wiring-only"
+      ],
+      "gate": "56/59, 0 unexpected (pre-freeze-controlled-4)",
+      "suite": "533/533"
     }
   }
 }

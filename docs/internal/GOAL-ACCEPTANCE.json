@@ -101,7 +101,7 @@
       "status": "in_progress",
       "evidence_required": "See \"Evaluation acceptance\" below",
       "falsifier": "See below",
-      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open. Scorer validity fixes integrated (numeric laundering, headings, real PDF evidence); baseline not yet frozen; live budget awaits owner."
+      "review_note": "Measurement audit has reproducible false-pass counterexamples. No frozen design or live baseline yet; independent judging and human calibration remain open. Scorer validity fixes integrated (numeric laundering, headings, real PDF evidence); baseline not yet frozen; live budget awaits owner. Baseline frozen 2026-11-15 (docs/internal/baseline/BASELINE-MANIFEST.json): 59 scenarios incl. held-out old-role, borderline and STEM pair; two independent reviews applied. Live Codex run and Claude judge pending; judge uncalibrated."
     },
     {
       "id": "U14",

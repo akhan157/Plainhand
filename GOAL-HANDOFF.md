@@ -111,3 +111,12 @@ run so U14 has a starting figure.
 - Independent review of the tenure rule, score band and fixtures is running. Freeze
   waits on it.
 - Judge for the live baseline must be non-OpenAI: default Claude subscription (~80 calls).
+
+## Baseline frozen — 2026-11-15
+
+`docs/internal/baseline/BASELINE-MANIFEST.json` is the frozen manifest; the commit that
+adds it is the baseline SHA. 59 scenarios, 20 hashed files, judge prompt hashes.
+`node scripts/baseline-manifest.mjs --check` must pass before any baseline run; any
+change to a hashed file requires a re-freeze. Two independent DeepSeek reviews
+(e016533, 03db26c) applied; residuals in EVIDENCE.prefreeze_fixtures.re_review.
+Next: live Codex paired (27 runs) and smoke (11 runs), then Claude judge (~80 calls).

@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "note": "Frozen baseline manifest. The baseline SHA is the commit containing this file. Any change to a hashed file invalidates the baseline and requires a re-freeze.",
+  "design": {
+    "commit": "b6c0b562732b45455e4709e5e390fe00d2a4874d",
+    "review": "docs/internal/lanes/measurement-design/REVIEW.md"
+  },
+  "files": {
+    "docs/internal/lanes/measurement-design/ASSIGNMENT.md": "66bec864c1193cb58c21672b3563759d45ff97f859b68e1f5ec769285d217fc8",
+    "docs/internal/lanes/measurement-design/REVIEW.md": "224a5be1414a3d6a7b5d33e1f5b42dd9eae0d7dab5e1c3dd5750822c2d2fd9da",
+    "plainhand/evaluation/corpus.mjs": "ed218cdace2bb8c401f37a07e4d55cb15c66d05a4ec4ce7d13d2ad15d033d81e",
+    "plainhand/evaluation/corpus-holdout.mjs": "ac9a751ef1de26edeacb0c7e04fb05cc077c4b57f25b35a66a0e9f71e7f6dfab",
+    "plainhand/evaluation/score.mjs": "327838a4b32fed407d43c37462d129566b8cd8c5119f8af2269a81e8ce76eaa9",
+    "plainhand/evaluation/agent.mjs": "65b76221129afc075adb3ae98220b593782d82c965826426e10a024227b904e3",
+    "plainhand/evaluation/runner.mjs": "3889f3b16e83e9829dd552d193b19979c488cd352e79f52986b279f96cd23540",
+    "plainhand/evaluation/claims.mjs": "de3f9ad0aff708f2c947f0407ed4de315e1e71e973ef311d0cab31fda16b093a",
+    "plainhand/evaluation/judge.mjs": "face16249419325db7dafbf33b9a8212bcd3b99f1f1db5231c27bdf5eb2fd5a2",
+    "plainhand/evaluation/pdf-evidence.mjs": "e91c866cbc4b40420334b2fdaa1f7b47e52d2bc4aa93513d1277c2aab2452ba1",
+    "plainhand/evaluation/portals.mjs": "1725edce95aa50d81547d7ab87bc1db4feea2d429df9dadb98d93da8b5ffe384",
+    "plainhand/evaluation/sandbox.mjs": "6ec20b6a820fe1e5d6c92db9eb19d1ab2f69b90eb222d05172a418fafc84d2b5",
+    "plainhand/evaluation/browser.mjs": "18a304b1fab68e48e3a34c0eb3534c1284cd1c3d8ec9fceee6f67e54d38abc2c",
+    "plainhand/benchmarks/profile-bench.mjs": "13313ad91b326065626e26aa30d2f69d7736c351f5085aef04b3fe31c03e3ab2",
+    "plainhand/agents.mjs": "51e0215d1d1d992997e6f268fa8f88594a94627a0899e0fec5571ebafaea6180",
+    "plainhand/workflow.mjs": "fe3240f12b55f29ad6242b2ffe454f3cfc1af1c86b09d18e80d9f21048b07182",
+    "plainhand/claim-calibration.mjs": "3611666d8eed1b7b3f9847e6805b7e5068c026b2b86e052c0d2d169945c2f0e8",
+    "plainhand/store.mjs": "92acfba2afed463cb4f68eac61423be589a46d5c4386d5a9cfae63cac3d69d37",
+    "benchmarks/benchmark-eval.mjs": "3e521cadf89a7673512533e1bff85f6bba24f0861011eabbd5388515f4ed5c38",
+    "benchmarks/benchmark-judge.mjs": "d7fc0268f00da80b98d0df07d27d7ca987225763618fe81f29929c460376ed2d"
+  },
+  "scenarios": {
+    "count": 59,
+    "idsSha256": "98ae89d6a7e433464a3bfff45c74d1d863ecdb59729b1112901dea0edac3c07d",
+    "ids": [
+      "profile-mech-grad",
+      "profile-career-changer",
+      "profile-quiet-junior",
+      "profile-fin-analyst",
+      "profile-accountant",
+      "profile-scientist",
+      "mech-resume",
+      "analyst-resume",
+      "swe-resume",
+      "ops-resume",
+      "designer-resume",
+      "content-resume",
+      "fin-resume",
+      "acct-resume",
+      "sci-resume",
+      "mgr-resume",
+      "sci-tailor",
+      "fin-tailor",
+      "analyst-tailor",
+      "mech-lever",
+      "analyst-greenhouse",
+      "swe-ashby",
+      "ops-sensitive",
+      "designer-conditional",
+      "content-unknown",
+      "fin-challenge",
+      "analyst-login",
+      "sci-greenhouse",
+      "ops-records",
+      "mgr-records",
+      "acct-radio",
+      "fin-icims",
+      "acct-taleo",
+      "swe-discard",
+      "swe-submit",
+      "designer-submit",
+      "acct-submit",
+      "mech-mismatch",
+      "fin-mismatch",
+      "profile-effect-fin-built",
+      "profile-effect-fin-seeded",
+      "profile-effect-fin-minimal",
+      "profile-effect-analyst-built",
+      "profile-effect-analyst-seeded",
+      "profile-effect-analyst-minimal",
+      "journey-sci",
+      "profile-effect-sci-built",
+      "profile-effect-sci-seeded",
+      "profile-effect-sci-minimal",
+      "holdout-oldrole-fin-systems",
+      "holdout-oldrole-fin-forecast",
+      "holdout-oldrole-stem-automation",
+      "holdout-oldrole-stem-ops",
+      "holdout-oldrole-tech-reliability",
+      "holdout-oldrole-tech-ml",
+      "holdout-mismatch",
+      "holdout-journey-stem",
+      "borderline-swe",
+      "borderline-fin"
+    ],
+    "expectedFailures": [
+      "profile-effect-fin-minimal",
+      "profile-effect-analyst-minimal",
+      "profile-effect-sci-minimal"
+    ],
+    "heldOut": [
+      "holdout-oldrole-fin-systems",
+      "holdout-oldrole-fin-forecast",
+      "holdout-oldrole-stem-automation",
+      "holdout-oldrole-stem-ops",
+      "holdout-oldrole-tech-reliability",
+      "holdout-oldrole-tech-ml",
+      "holdout-mismatch",
+      "holdout-journey-stem",
+      "borderline-swe",
+      "borderline-fin"
+    ],
+    "seenControls": {
+      "ids": [
+        "fin-mismatch",
+        "journey-sci"
+      ],
+      "reason": "Run by the scorer lane before the freeze; kept as controlled regression checks, not held out. Unseen versions: holdout-mismatch, holdout-journey-stem."
+    },
+    "wiringOnlyInControlled": [
+      "holdout-oldrole-fin-systems",
+      "holdout-oldrole-fin-forecast",
+      "holdout-oldrole-stem-automation",
+      "holdout-oldrole-stem-ops",
+      "holdout-oldrole-tech-reliability",
+      "holdout-oldrole-tech-ml",
+      "holdout-mismatch",
+      "holdout-journey-stem",
+      "borderline-swe",
+      "borderline-fin"
+    ]
+  },
+  "controlledGate": {
+    "command": "node benchmarks/benchmark-eval.mjs --concurrency 2",
+    "expect": "0 unexpected failures; expected-failure set exactly scenarios.expectedFailures",
+    "tier": "fixture"
+  },
+  "live": {
+    "provider": "codex",
+    "cli": "codex-cli 0.167.1",
+    "ownerDecision": "2026-11-15",
+    "paired": {
+      "scenarios": [
+        "profile-effect-fin-built",
+        "profile-effect-fin-seeded",
+        "profile-effect-fin-minimal",
+        "profile-effect-analyst-built",
+        "profile-effect-analyst-seeded",
+        "profile-effect-analyst-minimal",
+        "profile-effect-sci-built",
+        "profile-effect-sci-seeded",
+        "profile-effect-sci-minimal"
+      ],
+      "repeat": 3,
+      "command": "node benchmarks/benchmark-eval.mjs --provider codex --scenarios profile-effect-fin-built,profile-effect-fin-seeded,profile-effect-fin-minimal,profile-effect-analyst-built,profile-effect-analyst-seeded,profile-effect-analyst-minimal,profile-effect-sci-built,profile-effect-sci-seeded,profile-effect-sci-minimal --repeat 3 --concurrency 1 --agent-timeout 900"
+    },
+    "smoke": {
+      "scenarios": [
+        "holdout-oldrole-fin-systems",
+        "holdout-oldrole-fin-forecast",
+        "holdout-oldrole-stem-automation",
+        "holdout-oldrole-stem-ops",
+        "holdout-oldrole-tech-reliability",
+        "holdout-oldrole-tech-ml",
+        "holdout-mismatch",
+        "holdout-journey-stem",
+        "borderline-swe",
+        "borderline-fin",
+        "journey-sci"
+      ],
+      "repeat": 1,
+      "command": "node benchmarks/benchmark-eval.mjs --provider codex --scenarios holdout-oldrole-fin-systems,holdout-oldrole-fin-forecast,holdout-oldrole-stem-automation,holdout-oldrole-stem-ops,holdout-oldrole-tech-reliability,holdout-oldrole-tech-ml,holdout-mismatch,holdout-journey-stem,borderline-swe,borderline-fin,journey-sci --concurrency 1 --agent-timeout 900"
+    },
+    "pilot": "Pre-freeze: profile-effect-fin-built took 13 calls, 331k input and 3.7k output tokens, 163 s (EVIDENCE.codex_pilot)."
+  },
+  "judge": {
+    "provider": "claude",
+    "cli": "claude 2.1.325 (Claude Code)",
+    "familyDiffersFromProviderUnderTest": true,
+    "actualModel": "recorded at run time from the CLI result; null means familyProof catalog-only",
+    "samples": {
+      "claims": 1,
+      "rubric": 3
+    },
+    "promptSha256": {
+      "CLAIMS_INSTRUCTION": "c5aa66c5a50ce10c9389bebd8920c4605948af65f6289bf53906a51f7795ea64",
+      "RUBRIC_INSTRUCTION": "630921aa115c1552abd43a9f22c7b626aa86be902888d4947cc248e253375010",
+      "RUBRIC": "037dc448e81e9c1dee4d285865480518c17290224ad2469228491f883c0a7a92"
+    },
+    "calibration": "uncalibrated: no human ratings exist"
+  },
+  "budgets": {
+    "modelCalls": 900,
+    "wallClockMinutes": 480,
+    "callTimeoutSeconds": 900,
+    "onCap": "blocked: budget, not a pass",
+    "onQuota": "blocked: provider-quota; partial evidence kept; no aggregate reported"
+  },
+  "thresholds": {
+    "existing": "unchanged: factCoverage >= 0.66, leadShare >= 0.67, Apply >= 4, Skip <= maxScore (default 3.9), zero absent claims/unsupported numbers/banned words, review/calibration and first-person gates",
+    "new": "Investigate within job.scoreBand with the below-4 prepare guard; recent-role jobs keep their retainFactIds",
+    "proposed": "design §8.8, not approved; diagnostic only"
+  },
+  "usage": "Every live run records calls, input/output tokens and wall time per scenario (U14 starting figure). Codex cached and reasoning tokens currently arrive null."
+}
