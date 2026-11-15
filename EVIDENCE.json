@@ -1,0 +1,56 @@
+{
+  "checkpoint": "2026-11-15",
+  "kind": "scope_review_only",
+  "base_sha": "fb396422d49e3f76f4fed5beb710397950ffa973",
+  "author_tip": "93965287794589c9f05137ff34728e0b202dee97",
+  "author": "claude-pool/claude-sonnet-5-5 high",
+  "reviewer": "gpt-6.1-sol medium",
+  "commands": [
+    "node lib/doctor.mjs --json",
+    "node lib/update-system.mjs check",
+    "git status --short --branch",
+    "git branch -avv",
+    "git worktree list --porcelain",
+    "git log main..t3/competitor-workflow-improvements-1",
+    "git diff --stat main...t3/competitor-workflow-improvements-1",
+    "git diff --stat main...t3/competitor-workflow-improvements",
+    "git merge-base main t3/competitor-workflow-improvements-1",
+    "git merge-base main t3/competitor-workflow-improvements",
+    "git merge-base --is-ancestor t3/app-benchmark-testing-harness main",
+    "git merge-base --is-ancestor t3/eval-harness-lane1-corpus main",
+    "git merge-base --is-ancestor t3/eval-harness-lane2-upgrade main",
+    "git diff --check"
+  ],
+  "results": {
+    "doctor_missing": [
+      "cv.md",
+      "config/profile.yml",
+      "portals.yml"
+    ],
+    "update_check": "fork",
+    "three_eval_ancestor_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "product_tests": "not_run: documentation-only",
+    "product_branches_integrated": false,
+    "main_modified": false,
+    "push": false,
+    "external_evidence_directory": null
+  },
+  "register_counts": {
+    "PASS": 0,
+    "in_progress": 0,
+    "blocked": 0,
+    "not_run": 13,
+    "FAIL": 0
+  },
+  "failed_attempt": {
+    "provider": "opencode",
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "role": "read-only review",
+    "result": "Insufficient balance; no verdict"
+  },
+  "review_correction": "Documentation checker initially matched scope rows as acceptance rows; narrowed to U followed by two digits; original error was IndexError and created no register."
+}
