@@ -55,6 +55,19 @@ test('rejected corrections never reach the answer bank', async () => {
   } finally { await h.close(); }
 });
 
+test('a correction cannot cite voice or the agent summary, including when an old entry is approved', async () => {
+  const h = await fixture();
+  try {
+    await assert.rejects(() => h.corrections.propose({ jobId: 'job-1', question: 'Why this role?', answer: 'Because.', evidence: [{ sourceId: 'writing-samples', quote: 'Hi team, quick update: the upright passed the load test this morning.' }] }), /not a writing sample/);
+    await assert.rejects(() => h.corrections.propose({ jobId: 'job-1', question: 'Why this role?', answer: 'Because.', evidence: [{ sourceId: 'reviewed-understanding', quote: 'The candidate has designed and tested hardware.' }] }), /not the reviewed understanding/);
+    assert.equal((await h.corrections.list()).length, 0);
+    // A proposal saved before this gate still cannot become reusable evidence.
+    await h.corrections.save([{ id: 'legacy', jobId: 'job-1', question: 'Why this role?', answer: 'Because.', evidence: [{ sourceId: 'writing-samples', quote: 'Hi team, quick update: the upright passed the load test this morning.' }], scope: 'global', status: 'proposed', proposedAt: new Date().toISOString() }]);
+    await assert.rejects(() => h.corrections.approve('legacy'), /not a writing sample/);
+    assert.equal((await new AnswerBank(h.workspace).load()).length, 0);
+  } finally { await h.close(); }
+});
+
 test('sensitive answers and unsupported claims are refused', async () => {
   const h = await fixture();
   try {
