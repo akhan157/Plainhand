@@ -233,7 +233,9 @@
     "checks": [
       "focused 7 files: 91 pass 0 fail (cloud-extension-api, standard, claim-calibration, claim-line, plainhand, field-policy, exports)",
       "test-plainhand-ui real Chromium: 1/1 pass, exit 0, 40.4s",
-      "adversarial attribution probe 10/10 expected"
+      "adversarial attribution probe 10/10 expected",
+      "test:plainhand 47 files: 455 pass 0 fail at f366946 (+review edits, no source change)",
+      "benchmark-calibration rules: exact 22/37, missed inflation 12, false alarms 0 \u2014 identical at 5729bf6 and f366946"
     ],
     "not_run": [
       "full npm test",
@@ -281,7 +283,19 @@
       {
         "path": "output/goal-review/probe-attribution.json",
         "sha256": "ecbf04cabdbabcede865100962e9de933186688dbf560ff5e13c27648bb4201d"
+      },
+      {
+        "path": "output/goal-review/f366946-test-plainhand.log",
+        "sha256": "83820043350abe95c79f62c1bebf21a377fe0a7e348c85d4568319cddf545c48"
+      },
+      {
+        "path": "output/goal-review/f366946-bench-calibration.log",
+        "sha256": "592b7d92548ab6bdc0ea4065b74d1072e47b2554b17b3d5433f1f7bfe3189d1b"
       }
+    ],
+    "residual_leaks": [
+      "Your 25 engineers, whom I managed, shipped weekly.",
+      "The team of 12 is my current team."
     ]
   }
 }
