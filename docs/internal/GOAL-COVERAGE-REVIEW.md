@@ -1,11 +1,11 @@
 # Goal coverage review
 
-**Status:** proposed review map. Not accepted, not self-approved. Written 2026-11-14.
+**Status:** author coverage map retained; root independently accepted scope with amendments on 2026-11-15. Product rows remain open. See `REVIEW.md`.
 **Purpose:** show where each owner need and recovered decision lands in [UNIFIED-GOAL.md](UNIFIED-GOAL.md), what evidence is missing, and what disposition the reviewer is asked to consider. Dispositions below are **proposals for the reviewer and owner**. The author makes no approval.
 
 ## Authoring route
 
-- The scope-document task was first routed to a Go DeepSeek author. That attempt failed with insufficient balance and produced **no verdict and no output**; nothing from it was used.
+- A read-only coverage review was first routed to Go DeepSeek. That attempt failed with insufficient balance and produced **no verdict and no output**; nothing from it was used.
 - The author was then escalated to the subscription-backed `claude-pool` / `claude-sonnet-5-5` at effort high.
 - Independent review is assigned to root Codex `gpt-6.1-sol`, per the task brief. The author is a Claude-family model, so a Codex review is a cross-family check. The author does not review or accept its own text.
 
@@ -36,7 +36,7 @@
 | Independent judge family; quote validation; calibration against 20–30 human packets; uncalibrated report without them | U13; external check 1 | No human ratings exist | Open external check. Reports say "uncalibrated" until then |
 | Real PDF checks, real-browser DOM readback and upload hash, false-ready, sensitive and unauthorized-submit detectors, access tier | U07, U08, U13 | Harness has several of these (DOM hash, readback, false-ready) per the harness doc; not re-run | Keep `in_progress`; tier labelling is new |
 | Measure interventions, repeated questions, rescue burden, success, time, calls, usage, variance; never reward volume | U01, U06, U13 | Rescue burden and calls exist in the harness; repeated-question and intervention counts do not | Keep `in_progress` |
-| No invented numerical targets; thresholds pre-registered and approved; release acceptance open | U13; external check 5 | No thresholds frozen | Open until owner approves |
+| No invented numerical targets; thresholds pre-registered and approved; release acceptance open | U13; external check 5 | No thresholds frozen | Root freezes technical criteria; owner input only for material tradeoffs |
 | Historical claims need reconciliation, not blind carry-over | UNIFIED-GOAL status table; U12 | Not done | P2 |
 | Commercial write acceptance, user voice validation, human ratings are external; local substitutes first | UNIFIED-GOAL external checks | All three external | Remain open. A substitute is never described as equivalent |
 | Provider quotas are an operational blocker, not product failure | U13 | None | Record quota stops as blockers |
@@ -63,10 +63,8 @@ Historical evidence is kept. Only the forward-looking assumption changes.
 5. No host-specific absolute path or user data appears.
 6. The two competitor branches are described as siblings with a five-file overlap, and the SHAs match `git`.
 
-## Open points for the owner
+## Root disposition, 2026-11-15
 
-- Which unmerged competitor branch merges first, and whether the tracking exports (`867c329`) are wanted at all.
-- Which LinkedIn and Indeed baseline counts as "existing behavior": V1-GOAL (no automation of those pages; find and save, apply on the employer's site) or the unmerged `a46056f` (board postings matched in the extension, manual kit when filling fails). The author did not decide this.
-- Whether the 20–30 human ratings are possible, and by whom.
-- Who may approve the pre-registered thresholds.
-- Which older threads are settled after this review.
+The scope covers the owner request and recovered decisions after the amendments in `REVIEW.md`. Tracking/export work is included for source review, then the continuation; neither is automatically accepted. The latest delegated manual-kit/user-invoked-extension scope supersedes the older blanket wording without authorizing unattended LinkedIn/Indeed automation. Technical threshold design belongs to the control plane. Human ratings and actual user voice validation remain external and cannot be replaced by synthetic claims.
+
+The owner chooses which older threads to settle. Settling conversation threads is safe for continuity after this committed handoff; deleting unmerged branches or worktrees is not part of this checkpoint.

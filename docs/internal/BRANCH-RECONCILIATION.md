@@ -90,3 +90,7 @@ Nothing here settles, archives or deletes a thread.
 5. **No onboarded real-candidate data.** The owner brief says the main working checkout lacks `cv.md`, `config/profile.yml` and `portals.yml`; the author did not run `doctor` to confirm.
 6. **No review of `PRODUCT-BUILDOUT-GOAL` and VERIFICATION-MATRIX claims against current code.** They are to be reconciled in P2.
 7. `port/ai-job-search` has no worktree; its state was read through refs only.
+
+## Root verification, 2026-11-15
+
+Root read the redesign transcript through position 648, continuation through 205, and benchmark through 1556 using `t3_thread_read`. The redesign-to-continuation relationship is transcript-verified, not merely inferred. `a46056f` is the continuation branch tip; `867c329` is its sibling tracking branch. Root independently confirmed both merge bases equal `fb396422d49e3f76f4fed5beb710397950ffa973`, all three eval lane tips are ancestors of main, and both unmerged diff inventories. The author scope-doc branch finished at `93965287794589c9f05137ff34728e0b202dee97` (two commits, not one). The table above is the pre-integration recovery snapshot. Root integration order is tracking source review first, then continuation source review; no main merge or push is authorized.
