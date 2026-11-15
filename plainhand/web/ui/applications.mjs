@@ -5,6 +5,7 @@ import { ActionButton, Button, Card, PageHeading, Empty, Notice, Pill, Score, St
 import { StatusSelect } from './jobpanel.mjs';
 import { matches } from './jobs.mjs';
 import { Inbox } from './inbox.mjs';
+import { legacyTrackerRows, legacyMatches } from './tracker-rows.mjs';
 
 export function FollowUps() {
   const state = store.state;
@@ -45,11 +46,6 @@ export function People() {
   </${Card}>`;
 }
 
-function legacyRows(state) {
-  return state.tracker?.split('\n').filter(l => /^\|\s*\d+\s*\|/.test(l)).map(l => l.split('|').map(s => s.trim()))
-    .filter(c => !state.jobs.some(j => j.company.toLowerCase() === c[3]?.toLowerCase() && j.title.toLowerCase() === c[4]?.toLowerCase())) || [];
-}
-
 // The stage columns are the canonical tracker statuses, in pipeline order.
 const COLUMN = status => status === 'SKIP' ? 'Skip' : status;
 
@@ -65,7 +61,7 @@ async function moveTo(job, status) {
 // A job always carries a canonical status; an imported or half-built one may not.
 const stageOf = job => STATUSES.includes(job.status) ? job.status : 'Evaluated';
 
-function Board({ jobs }) {
+function Board({ jobs, legacy }) {
   const [dragging, setDragging] = useState(null);
   const [over, setOver] = useState(null);
   return html`<div class="board" role="list" aria-label="Applications by stage">
@@ -91,7 +87,12 @@ function Board({ jobs }) {
         </div>
       </section>`;
     })}
-  </div>`;
+  </div>
+  ${legacy.length ? html`<section class="board-legacy" aria-labelledby="board-legacy-title">
+    <h3 id="board-legacy-title">From your existing tracker <span class="board-count">${legacy.length}</span></h3>
+    <p class="board-hint">Rows in applications.md that are not app jobs. They are read-only here; change them in that file.</p>
+    <ul class="plain-list">${legacy.map((row, index) => html`<li key=${'board-legacy-' + index}><strong>${row[4]}</strong> <span class="muted-inline">${row[3]}${row[5] ? ' · fit ' + row[5] : ''}${row[6] ? ' · ' + row[6] : ''}</span> <${Pill}>Existing tracker</${Pill}></li>`)}</ul>
+  </section>` : null}`;
 }
 
 function Queues() {
@@ -111,7 +112,7 @@ export function ApplicationsPage() {
   const [query, setQuery] = useState('');
   const [view, setView] = useState('list');
   const jobs = state.jobs.filter(j => j.evaluation && matches(j, query));
-  const legacy = legacyRows(state);
+  const legacy = legacyTrackerRows(state).filter(row => legacyMatches(row, query));
   const byStage = STATUSES.map(status => [status, jobs.filter(j => stageOf(j) === status).length]).filter(([, count]) => count);
   return html`
     <${PageHeading} title="Applications" subtitle="Every application in one clear picture: status, follow-ups and what happens next."
@@ -125,7 +126,7 @@ export function ApplicationsPage() {
     <${Card} title="Tracker" icon="briefcase" id="tracker-title" subtitle=${`${jobs.length} evaluated ${jobs.length === 1 ? 'role' : 'roles'}${byStage.length ? ' · ' + byStage.map(([status, count]) => `${count} ${COLUMN(status)}`).join(' · ') : ''}${legacy.length ? ` · ${legacy.length} from your existing tracker` : ''}`}
       actions=${html`<div class="search"><${Icon} name="search" /><label class="visually-hidden" for="app-search">Search applications</label><input id="app-search" type="search" placeholder="Search applications" value=${query} onInput=${e => setQuery(e.currentTarget.value)} /></div>`}>
       ${jobs.length || legacy.length ? html`<${Tabs} tabs=${[['list', 'Table'], ['board', 'Board']]} value=${view} onChange=${setView} label="Tracker view" />
-        ${view === 'board' ? html`<p class="board-hint">Drag a card to another stage, or use the stage menu on the card. Later stages are further right.</p><${Board} jobs=${jobs} />` : html`<div class="table-wrap"><table class="tracker">
+        ${view === 'board' ? html`<p class="board-hint">Drag a card to another stage, or use the stage menu on the card. Later stages are further right.</p><${Board} jobs=${jobs} legacy=${legacy} />` : html`<div class="table-wrap"><table class="tracker">
         <thead><tr><th scope="col">Role & company</th><th scope="col">Fit</th><th scope="col">Status</th><th scope="col">Next step</th></tr></thead>
         <tbody>${jobs.map(j => html`<tr key=${j.id} class=${store.focus?.id === j.id ? 'focused' : ''}>
           <td data-label="Role"><button type="button" class="job-title" onClick=${() => openJob(j.id, SUBMIT(j) ? 'record' : j.packet ? 'packet' : 'fit')}>${j.title}</button><span class="sub">${j.company}</span><span class="row-pill"><${StagePill} job=${j} /></span></td>

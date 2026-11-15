@@ -1,6 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applicationsCsv, calendarIcs, calendarEvents, CSV_COLUMNS } from '../plainhand/exports.mjs';
+import { applicationsCsv, calendarIcs, calendarEvents, CSV_COLUMNS, legacyTrackerRows, legacyMatches } from '../plainhand/exports.mjs';
+
+// RFC 4180 records, where a record ends at CRLF, LF or a bare CR *outside* quotes.
+// A cell that leaked a raw line break therefore splits into more records, which is
+// exactly the failure this parser is here to catch.
+function records(text) {
+  const rows = [];
+  let row = [], field = '', quoted = false;
+  const source = text.replace(/^\uFEFF/, '');
+  for (let i = 0; i < source.length;) {
+    const char = source[i];
+    if (quoted) {
+      if (char === '"') {
+        if (source[i + 1] === '"') { field += '"'; i += 2; continue; }
+        quoted = false; i += 1; continue;
+      }
+      field += char; i += 1; continue;
+    }
+    if (char === '"') { quoted = true; i += 1; continue; }
+    if (char === ',') { row.push(field); field = ''; i += 1; continue; }
+    if (char === '\r' || char === '\n') {
+      row.push(field); field = ''; rows.push(row); row = [];
+      i += char === '\r' && source[i + 1] === '\n' ? 2 : 1;
+      continue;
+    }
+    field += char; i += 1;
+  }
+  row.push(field); rows.push(row);
+  return rows.filter(cells => !(cells.length === 1 && cells[0] === ''));
+}
 
 const job = (overrides = {}) => ({
   id: 'job-1', company: 'Northstar Robotics', title: 'Mechanical Engineer', status: 'Applied',
@@ -47,6 +76,63 @@ test('rows that only exist in applications.md are exported too', () => {
   const csv = applicationsCsv({ jobs: [], tracker });
   const row = csv.replace('\uFEFF', '').split('\r\n')[1];
   assert.match(row, /^Arcwell Energy,Manufacturing Engineer,Evaluated,3\.8\/5,/);
+});
+
+test('a bare CR is normalized before quoting and cannot start a new record', () => {
+  const csv = applicationsCsv({ jobs: [job({ company: 'Safe\r=1+1' })], tracker: '' });
+  const rows = records(csv);
+  assert.equal(rows.length, 2, 'one header and one record: a bare CR must not split the row');
+  assert.equal(rows[1].length, CSV_COLUMNS.length);
+  assert.equal(rows[1][0], 'Safe =1+1');
+  for (const cells of rows) for (const value of cells) assert.doesNotMatch(value, /[\r\n\u0085\u2028\u2029]/);
+});
+
+test('every line-break form, formula and separator character stays inside one parsed cell', () => {
+  const cases = [
+    { company: 'CRLF\r\nBreak', title: 'Comma, "quote"' },
+    { company: '\r=1+1', title: ' =1+1' },
+    { company: '\tPlain tab text', title: '=SUM(1+1)' },
+    { company: 'Bare\rCR', title: 'Line\nLF' },
+  ];
+  const csv = applicationsCsv({ jobs: cases.map((overrides, index) => job({ id: 'job-' + index, ...overrides })), tracker: '' });
+  const rows = records(csv);
+  assert.equal(rows.length, 1 + cases.length, 'no cell may create a record boundary');
+  for (const cells of rows) assert.equal(cells.length, CSV_COLUMNS.length);
+  const [, crlf, leadingFormula, tab, breaks] = rows;
+  assert.equal(crlf[0], 'CRLF Break');
+  assert.equal(crlf[1], 'Comma, "quote"');
+  assert.equal(leadingFormula[0], "' =1+1", 'a formula after a removed CR is still neutralised');
+  assert.equal(leadingFormula[1], "' =1+1", 'whitespace before a formula is neutralised too');
+  assert.equal(tab[0], "'\tPlain tab text", 'the original tab guard still prefixes tab-prefixed text');
+  assert.equal(tab[1], "'=SUM(1+1)");
+  assert.equal(breaks[0], 'Bare CR');
+  assert.equal(breaks[1], 'Line LF');
+  for (const cells of rows) for (const value of cells) assert.doesNotMatch(value, /^\s*[=+\-@]/);
+});
+
+test('a bare CR in calendar text cannot start a new property line', () => {
+  const event = job({ record: { nextAction: { text: 'Acme\rATTENDEE:mailto:evil@example.invalid,cc Dana', due: '2026-11-20' }, interviews: [] } });
+  const ics = calendarIcs({ jobs: [event] }, { now: new Date('2026-11-13T12:00:00Z') });
+  for (const line of ics.split('\r\n')) assert.doesNotMatch(line, /[\r\n\u0085\u2028\u2029]/);
+  assert.ok(!ics.split('\r\n').some(line => line.startsWith('ATTENDEE')));
+  const unfolded = ics.replace(/\r\n /g, '');
+  assert.match(unfolded, /SUMMARY:Acme\\nATTENDEE:mailto:evil@example\.invalid\\,cc Dana/);
+});
+
+test('the shared tracker rule keeps only rows that are not also app jobs', () => {
+  const tracker = [
+    '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |',
+    '| 1 | 2026-09-01 | Northstar Robotics | Mechanical Engineer | 4.2/5 | Applied | — | — | same job, different case below |',
+    '| 2 | 2026-09-02 | northstar robotics | mechanical engineer | 4.2/5 | Applied | — | — | duplicate of an app job |',
+    '| 3 | 2026-09-03 | Arcwell Energy | Manufacturing Engineer | 3.8/5 | Evaluated | — | — | legacy row |',
+  ].join('\n');
+  const rows = legacyTrackerRows({ jobs: [job()], tracker });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0][3], 'Arcwell Energy');
+  assert.equal(rows[0][4], 'Manufacturing Engineer');
+  assert.equal(legacyMatches(rows[0], 'arcwell'), true);
+  assert.equal(legacyMatches(rows[0], 'MANUFACTURING'), true);
+  assert.equal(legacyMatches(rows[0], 'northstar'), false, 'search covers the legacy role and company only');
 });
 
 test('the calendar holds next actions and scheduled rounds only', () => {

@@ -7,27 +7,29 @@
 // scheduled interview round. Closed applications are left out of the calendar
 // because their dates are no longer things to keep.
 
+import { legacyTrackerRows, legacyMatches } from './web/ui/tracker-rows.mjs';
+
 export const CSV_COLUMNS = ['Company', 'Role', 'Status', 'Fit', 'Next action', 'Due', 'Updated', 'Posting URL', 'Report'];
 export const CLOSED = new Set(['Rejected', 'Discarded', 'SKIP']);
 
 // Tracker rows from an existing career-ops `applications.md` that are not also
-// app jobs. Same columns the Applications page reads: company is the fourth
-// cell, role the fifth (the row starts and ends with an empty cell).
-export function legacyTrackerRows(state) {
-  const rows = String(state?.tracker || '').split('\n').filter(line => /^\|\s*\d+\s*\|/.test(line));
-  return rows.map(line => line.split('|').map(cell => cell.trim())).filter(cells => {
-    const company = String(cells[3] || '').toLowerCase(), role = String(cells[4] || '').toLowerCase();
-    return !(state?.jobs || []).some(job => String(job.company || '').toLowerCase() === company && String(job.title || '').toLowerCase() === role);
-  });
-}
+// app jobs. The Applications page reads them by the same rule.
+export { legacyTrackerRows, legacyMatches };
+
+// Every form of line break (CRLF, LF, a bare CR, NEL, LS, PS) becomes one space,
+// so no cell can carry a record boundary or hide a formula after one.
+const LINE_BREAKS = /\r\n|[\r\n\u0085\u2028\u2029]/g;
 
 // A spreadsheet treats a cell that starts with = + - @ as a formula. Company
 // names and posting text are not written by the candidate, so neutralise those
-// with a leading apostrophe rather than exporting a live formula.
+// with a leading apostrophe rather than exporting a live formula. Two guards,
+// both kept: a leading tab or CR is neutralised whatever follows, and so is a
+// formula that follows other leading whitespace.
+const FORMULA_START = /^[=+\-@\t\r]|^\s*[=+\-@]/;
 const cell = value => {
-  let text = String(value ?? '').replace(/\r?\n/g, ' ');
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  let text = String(value ?? '').replace(LINE_BREAKS, ' ');
+  if (FORMULA_START.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
 // A UTF-8 byte-order mark so Excel reads the file as UTF-8 rather than guessing.
@@ -49,7 +51,7 @@ const escapeText = value => String(value ?? '')
   .replace(/\\/g, '\\\\')
   .replace(/;/g, '\\;')
   .replace(/,/g, '\\,')
-  .replace(/\r?\n/g, '\\n');
+  .replace(LINE_BREAKS, '\\n');
 
 // Content lines are limited to 75 octets; a continuation starts with one space.
 // Split on character boundaries so a multi-byte character is never cut.

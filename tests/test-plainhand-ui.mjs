@@ -208,6 +208,11 @@ try {
   await shot(page, '06c-application-record.png');
   assert.match(await readFile(path.join(root, 'data/applications.md'), 'utf8'), new RegExp(`next: Send a thank-you note to the recruiter by ${dueDate}`));
   assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Applied', 'Recording an interview does not change the status.');
+  // A row that only exists in applications.md: no matching app job, and the app
+  // must never turn it into one, offer a stage, or write it back.
+  const trackerPath = path.join(root, 'data/applications.md');
+  const legacyLine = '| 42 | 2026-10-01 | Arcwell Energy | Manufacturing Engineer | 3.8/5 | Evaluated | — | — | legacy row |';
+  await writeFile(trackerPath, (await readFile(trackerPath, 'utf8')).trimEnd() + '\n' + legacyLine + '\n');
   await page.getByRole('button', { name: 'Close panel' }).click();
   const followUp = page.locator('.followups li', { hasText: 'Send a thank-you note to the recruiter' });
   await followUp.locator(`time[datetime="${dueDate}"]`).waitFor();
@@ -224,6 +229,7 @@ try {
   assert.ok(csvText.startsWith('\uFEFF'), 'The CSV keeps its byte-order mark for Excel.');
   assert.match(csvText, /Company,Role,Status,Fit,Next action,Due,Updated,Posting URL,Report/);
   assert.match(csvText, /Test Company,Graduate Engineer,Applied,4\.\d,Send a thank-you note to the recruiter/);
+  assert.match(csvText, /Arcwell Energy,Manufacturing Engineer/, 'a tracker-only row is exported');
   const icsDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Deadlines to calendar', exact: true }).click();
   const icsFile = await icsDownload;
@@ -233,12 +239,49 @@ try {
   assert.match(icsText, new RegExp(`DTSTART;VALUE=DATE:${dueDate.replace(/-/g, '')}`));
   assert.match(icsText, /SUMMARY:Send a thank-you note to the recruiter/);
   assert.doesNotMatch(icsText, /Recruiter screen/, 'a completed interview round is not a deadline');
+  // The tracker row was written after this page loaded its state, so re-read it
+  // before checking the views. The download above already read the file fresh.
+  await page.reload();
+  await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
   await page.getByRole('tab', { name: 'Board', exact: true }).click();
   const column = name => page.locator('.board-column').filter({ has: page.getByRole('heading', { name, exact: true }) });
   const appliedColumn = column('Applied');
   await appliedColumn.locator('.board-card', { hasText: 'Graduate Engineer' }).waitFor();
   assert.equal(await column('Interview').locator('.board-card').count(), 0);
   await shot(page, '06d-board.png');
+  const trackerCard = page.locator('section.card').filter({ has: page.locator('#tracker-title') });
+  const trackerSubtitle = trackerCard.locator('.card-title p');
+  const legacySection = page.locator('section.board-legacy');
+  await legacySection.waitFor();
+  assert.match(await trackerSubtitle.innerText(), /1 from your existing tracker/);
+  assert.match(await legacySection.innerText(), /Arcwell Energy/);
+  assert.match(await legacySection.innerText(), /Manufacturing Engineer/);
+  assert.match(await legacySection.innerText(), /Existing tracker/);
+  assert.equal(await legacySection.locator('select, button, a, [draggable="true"]').count(), 0, 'tracker-only rows are read-only in the board');
+  assert.deepEqual(await page.locator('.board-column-head h3').allTextContents(), ['Evaluated', 'Apply', 'Applied', 'Responded', 'Interview', 'Offer', 'Rejected', 'Discarded', 'Skip'], 'the board keeps the canonical states only');
+  const columnCounts = (await page.locator('.board-column .board-count').allInnerTexts()).reduce((sum, value) => sum + Number(value), 0);
+  assert.equal(columnCounts, 1, 'a tracker-only row never joins a stage column');
+  await page.evaluate(() => window.plainhandTheme.set('light'));
+  await shot(page, '06d-board-legacy-light.png');
+  await page.evaluate(() => window.plainhandTheme.set('dark'));
+  const search = page.locator('#app-search');
+  await search.fill('arcwell');
+  await legacySection.waitFor();
+  assert.equal(await page.locator('.board-card').count(), 0, 'search filters the app jobs');
+  assert.match(await trackerSubtitle.innerText(), /0 evaluated roles/);
+  assert.match(await trackerSubtitle.innerText(), /1 from your existing tracker/);
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 1, 'the table applies the same search rule to tracker-only rows');
+  assert.match(await page.locator('table.tracker tbody tr').innerText(), /Arcwell Energy/);
+  await search.fill('');
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 2);
+  await search.fill('zzzz-no-such-role');
+  await page.getByText('Your search is taking shape.').waitFor();
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 0);
+  assert.equal((await trackerSubtitle.innerText()).trim(), '0 evaluated roles', 'the count matches what is on screen');
+  await search.fill('');
+  await page.getByRole('tab', { name: 'Board', exact: true }).click();
+  await legacySection.waitFor();
   // Chromium's pointer-driven drag does not carry the dragstart data transfer
   // reliably, so dispatch the same events the pointer produces, with a real
   // DataTransfer, and let the app's own handlers do the work.
@@ -258,6 +301,18 @@ try {
   await page.getByRole('button', { name: 'Not yet' }).click();
   await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor({ state: 'detached' });
   assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Interview', 'Dropping into Applied only asks; it changes nothing until you confirm.');
+  // The same card's stage menu is the keyboard path into Applied.
+  const stageSelect = page.getByRole('combobox', { name: 'Status for Test Company Graduate Engineer', exact: true });
+  await stageSelect.selectOption('Apply');
+  await page.getByRole('status').filter({ hasText: 'Tracker updated.' }).waitFor();
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Apply', 'the stage menu writes a non-Applied stage');
+  await stageSelect.focus();
+  await page.keyboard.press('ArrowDown'); // Apply -> Applied
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor();
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Apply', 'the keyboard path into Applied changes nothing until confirmation');
+  await page.getByRole('button', { name: 'Not yet' }).click();
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor({ state: 'detached' });
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Apply', 'declining the keyboard confirmation keeps the recorded stage');
   await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await navLink(page, 'AI usage').click();
   await page.getByRole('heading', { name: 'Recorded usage', exact: true }).waitFor();
@@ -276,6 +331,16 @@ try {
   await page.getByRole('heading', { name: 'Profile & brain', exact: true }).waitFor();
   await shot(page, '08-mobile-profile.png');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.goto(base + '#applications');
+  await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'Board', exact: true }).click();
+  const mobileLegacy = page.locator('section.board-legacy');
+  await mobileLegacy.waitFor();
+  assert.match(await mobileLegacy.innerText(), /Arcwell Energy/);
+  assert.ok((await mobileLegacy.boundingBox()).width <= 390, 'the read-only tracker section fits the phone viewport');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'the stage columns scroll inside the board on mobile');
+  await shot(page, '06e-board-legacy-mobile.png');
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await page.goto(base + '#applications');
   await page.getByRole('button', { name: 'Graduate Engineer', exact: true }).click();
   await page.getByRole('dialog', { name: 'Graduate Engineer at Test Company' }).getByRole('tab', { name: 'Record', exact: true }).click();

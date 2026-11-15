@@ -34,6 +34,7 @@ import { renderCloudPacket, verifyCloudJob } from './runtime.mjs';
 import { publicPage } from './public-pages.mjs';
 import { reportServerError } from './diagnostics.mjs';
 import { setupCoverage } from '../web/ui/connect-data.mjs';
+import { applicationsCsv, calendarIcs } from '../exports.mjs';
 
 const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web');
 const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png' };
@@ -298,6 +299,13 @@ export function createCloudApp(deps) {
       if (p === '/api/providers') return json(res, 200, []);
       if (p === '/api/export') {
         return json(res, 200, { ...(await workspace.load()), agentUsage: await workflow.usage.records(), exportedAt: isoNow() }, { 'Content-Disposition': 'attachment; filename="plainhand-workspace.json"' });
+      }
+      if (p === '/api/applications.csv') {
+        const state = await workspace.load();
+        return send(res, 200, applicationsCsv({ ...state, tracker: await workspace.read('data/applications.md') }), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-applications.csv"', 'Cache-Control': 'no-store' });
+      }
+      if (p === '/api/calendar.ics') {
+        return send(res, 200, calendarIcs(await workspace.load()), { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-calendar.ics"', 'Cache-Control': 'no-store' });
       }
       if (p === '/api/artifact') {
         const requested = url.searchParams.get('path');

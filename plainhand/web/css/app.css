@@ -1028,6 +1028,11 @@ tbody tr:last-child th[scope="row"] { border-bottom: 0; }
 .board-card-stage select { width: 100%; }
 .board-hint { margin: 0 0 var(--sp-2); color: var(--text-3); font-size: var(--fs-xs); }
 .board-empty { margin: 0; padding: var(--sp-4) var(--sp-2); text-align: center; color: var(--text-3); font-size: var(--fs-xs); }
+.board-legacy { display: grid; gap: var(--sp-2); margin-top: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+.board-legacy h3 { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-sm); }
+.board-legacy .board-hint { margin: 0; }
+.board-legacy .plain-list { margin: 0; }
+.board-legacy li { color: var(--text-2); font-size: var(--fs-sm); }
 .people { list-style: none; padding: 0; margin: 0; display: grid; }
 .people li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
 .people li:last-child { border-bottom: 0; }

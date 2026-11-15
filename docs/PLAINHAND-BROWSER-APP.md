@@ -244,7 +244,9 @@ order, each with its count. The card heading repeats the counts per stage.
   the card. Both run the same status change as the table's status picker.
   Dropping into Applied opens the submission confirmation; nothing is recorded
   as submitted until you confirm you submitted it yourself. Later stages scroll
-  sideways.
+  sideways. Rows that exist only in an existing `applications.md` appear in a
+  read-only section under the columns, obeying the same search box as the table;
+  they never get a stage column, a card or a write.
 - **People:** a read-only roll-up of every contact recorded on any application
   (name, role, email, and the role they belong to), newest first. Add and remove
   contacts on the application's Record tab; the People card never writes.
@@ -262,7 +264,9 @@ order, each with its count. The card heading repeats the counts per stage.
 Both downloads send the session token in a request header rather than the URL,
 and both are hidden in the sample workspace. The routes are read-only:
 `GET /api/applications.csv` and `GET /api/calendar.ics`. They generate from the
-workspace on each request and write nothing. Implementation:
+workspace on each request and write nothing. Hosted accounts get the same two
+downloads from their own workspace behind the signed-in session and its page
+token. Implementation:
 `plainhand/exports.mjs`; unit tests: `tests/test-exports.mjs`; the browser
 workflow test downloads both files and moves a card across stages, including the
 Applied confirmation gate.
