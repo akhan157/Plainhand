@@ -44,44 +44,50 @@ A avaliação usa 6 blocos (A-F) com uma nota global de 1-5:
 
 ## North Star -- Vagas-Alvo
 
-O skill trata TODAS as vagas-alvo com o mesmo cuidado. Nenhuma é primária ou secundária — qualquer uma é uma vitória, desde que a remuneração e a perspectiva de crescimento estejam adequadas:
+O skill trata TODAS as vagas-alvo com o mesmo cuidado. Nenhuma é primária ou secundária — qualquer uma é uma vitória, desde que a remuneração e a perspectiva de crescimento estejam adequadas.
+
+Use primeiro os arquétipos-alvo do próprio candidato definidos em `modes/_profile.md`. Se ele não definir nenhum, use estas famílias de função, válidas nas diferentes áreas profissionais (finanças, tecnologia, engenharia, ciência, negócios, design):
 
 | Arquétipo | Eixos temáticos | O que estão comprando |
 |-----------|-----------------|----------------------|
-| **AI Platform / LLMOps Engineer** | Avaliação, Observability, Confiabilidade, Pipelines | Alguém que coloca IA em produção com métricas |
-| **Agentic Workflows / Automation** | HITL, Tooling, Orquestração, Multi-Agent | Alguém que constrói sistemas de agentes confiáveis |
-| **Technical AI Product Manager** | GenAI/Agents, PRDs, Discovery, Delivery | Alguém que traduz negócios em produtos de IA |
-| **AI Solutions Architect** | Hiperautomação, Enterprise, Integrações | Alguém que projeta arquiteturas de IA de ponta a ponta |
-| **AI Forward Deployed Engineer** | Cliente-próximo, entrega rápida, Prototipagem | Alguém que implanta soluções de IA rapidamente no cliente |
-| **AI Transformation Lead** | Gestão de mudança, Adoção, Enablement organizacional | Alguém que lidera transformação de IA em organizações |
+| **Profissional da prática (Hands-on Practitioner)** | Trabalho central da profissão; registros, licenças, certificações, ferramentas, equipamentos | Alguém que faça bem o trabalho desde o primeiro dia |
+| **Pessoas & Atendimento (People & Service)** | Clientes, contas, stakeholders, consultoria, suporte, relacionamento | Alguém que cuide bem das pessoas atendidas |
+| **Coordenação & Operações (Coordination & Operations)** | Coordenar, agendar, logística, processos, administração, compliance | Alguém que não deixa nada escapar |
+| **Análise & Pesquisa (Analysis & Research)** | Analisar, dados, relatórios, pesquisa, avaliação, auditoria | Alguém cujas conclusões orientam decisões |
+| **Criação & Comunicação (Creative & Communications)** | Conteúdo, design, campanhas, marca, redação, mídia | Alguém que chegue ao público |
+| **Técnica & Engenharia (Technical & Engineering)** | Construir, projetar, sistemas, técnica, engenharia, software | Alguém que construa coisas que funcionam |
+| **Liderança & Gestão (Leadership & Management)** | Gerir, supervisionar, liderar equipe, orçamento, estratégia, subordinados diretos | Alguém que entregue resultados por meio de outras pessoas |
 
-<!-- [PERSONALIZAR] Adapte os arquétipos acima para suas vagas-alvo.
-     Exemplo para engenharia backend:
-     - Senior Backend Engineer
-     - Staff Platform Engineer
-     - Engineering Manager
+<!-- [PERSONALIZAR] Substitua os arquétipos acima pelas suas vagas-alvo, em qualquer área. Exemplos:
+     - Analista de FP&A / Analista de controladoria
+     - Analista de marketing / Especialista de conteúdo
+     - Analista de negócios / Analista de operações
+     - Pesquisador(a) / Assistente de pesquisa
+     - Analista financeiro / Contador(a)
+     - Desenvolvedor(a) de software / Analista de dados
      etc. -->
 
 ### Framing Adaptativo por Arquétipo
 
-> **Métricas concretas: ler de `cv.md` e `article-digest.md` no momento da avaliação. NUNCA fazer hardcode aqui.**
+> **Métricas concretas: ler de `cv.md` e `article-digest.md` no momento da avaliação. NUNCA fazer hardcode aqui.** Se `modes/_profile.md` define o que enfatizar por arquétipo, ele prevalece.
 
 | Se a vaga é... | Enfatizar no candidato... | Fontes de Proof Points |
 |----------------|--------------------------|------------------------|
-| Platform / LLMOps | Experiência em produção, Observability, Evals, Closed-Loop | article-digest.md + cv.md |
-| Agentic / Automation | Orquestração multi-agent, HITL, Confiabilidade, Custos | article-digest.md + cv.md |
-| Technical AI PM | Product Discovery, PRDs, Métricas, Gestão de stakeholders | cv.md + article-digest.md |
-| Solutions Architect | Design de sistemas, Integrações, Enterprise-ready | article-digest.md + cv.md |
-| Forward Deployed Engineer | Entrega rápida, próximo do cliente, Protótipo a produção | cv.md + article-digest.md |
-| AI Transformation Lead | Gestão de mudança, Enablement de equipe, Adoção | cv.md + article-digest.md |
+| Hands-on Practitioner | Registros, licenças, certificações, prática direta do trabalho central | cv.md + article-digest.md |
+| People & Service | Pessoas atendidas, volume, resultados para elas | cv.md + article-digest.md |
+| Coordination & Operations | Confiabilidade, escala do que foi coordenado, melhorias de processo | cv.md + article-digest.md |
+| Analysis & Research | Métodos, ferramentas, decisões que a análise orientou | article-digest.md + cv.md |
+| Creative & Communications | Peças de portfólio, público, alcance mensurável | article-digest.md + cv.md |
+| Technical & Engineering | O que foi projetado ou construído e como foi validado | article-digest.md + cv.md |
+| Leadership & Management | Tamanho da equipe, orçamento, resultados entregues por meio de outros | cv.md + article-digest.md |
 
-<!-- [PERSONALIZAR] Mapeie seus projetos/artigos concretos para os arquétipos acima -->
+<!-- [PERSONALIZAR] Mapeie suas experiências/projetos concretos para os arquétipos acima -->
 
 ### Narrativa de Transição (usar em TODOS os framings)
 
 <!-- [PERSONALIZAR] Substitua pela sua própria narrativa. Exemplos:
-     - "Construí e vendi minha própria SaaS em 5 anos. Agora foco total em IA aplicada no Enterprise."
-     - "Lead de engenharia em uma Series-B durante crescimento 10x. Buscando o próximo desafio."
+     - "Cinco anos como analista financeira em banco. Agora em transição para FP&A em uma empresa de software."
+     - "Analista de operações durante uma fase de forte expansão. Buscando o próximo desafio."
      - "Transição de consultoria para produto. Buscando vagas com alta responsabilidade."
      Lido de config/profile.yml -> narrative.exit_story -->
 
@@ -93,25 +99,22 @@ Use a narrativa de transição de `config/profile.yml` para enquadrar TODO o con
 
 ### Vantagem Transversal
 
-Enquadrar o perfil como **"Builder técnico com prática comprovada"**, adaptando o framing à vaga:
-- Para PM: "Builder que reduz incerteza com protótipos e depois leva à produção com disciplina"
-- Para FDE: "Builder que entrega desde o dia 1 com observability e métricas"
-- Para SA: "Builder que projeta sistemas end-to-end com experiência real de integração"
-- Para LLMOps: "Builder que coloca IA em produção com sistemas de qualidade closed-loop"
+<!-- [PERSONALIZAR] Qual é o seu diferencial? O que você faz que os outros não fazem? -->
 
-Posicionar "Builder" como sinal profissional — não como "hobbyista". Proof points reais tornam isso crível.
+Enquadrar o perfil em torno de **[seu diferencial, nas palavras da sua área, ex.: "a analista em cujo modelo todo mundo confia" ou "o engenheiro que entrega e depois mede"]**, adaptando o framing a cada vaga.
+
+O framing muda, a verdade é a mesma. Proof points reais tornam isso crível.
 
 ### Portfolio como Proof Point (usar em candidaturas de alto valor)
 
-<!-- [PERSONALIZAR] Se você tem uma demo ao vivo, dashboard ou projeto público, configure aqui.
+<!-- [PERSONALIZAR] Se você tem um portfólio, amostras de texto, a gravação de uma palestra, um site de projeto ou qualquer trabalho público, configure aqui.
      Exemplo:
      dashboard:
-       url: "https://seudominio.dev/demo"
-       password: "demo-2026"
-       when_to_share: "LLMOps, AI-Platform, vagas de Observability"
+       url: "https://seusite.example/portfolio"
+       when_to_share: "Vagas de marketing e conteúdo"
      Lido de config/profile.yml -> narrative.proof_points e narrative.dashboard -->
 
-Quando o candidato tem uma demo ao vivo / dashboard (verificar `profile.yml`), oferecer acesso em candidaturas relevantes.
+Quando o candidato tem um portfólio ou uma amostra de trabalho pública (verificar `profile.yml`), oferecê-lo em candidaturas relevantes.
 
 ### Inteligência de Remuneração (Comp Intelligence)
 
@@ -200,7 +203,7 @@ Em vagas e negociações brasileiras, existem termos e práticas que não aparec
 5. Registrar no tracker após cada avaliação
 6. Gerar conteúdo na língua da descrição da vaga (PT-BR padrão)
 7. Ser direto e prático — sem enrolação
-8. Ao gerar texto em português (PDF summaries, bullets, mensagens LinkedIn, histórias STAR): português tech natural, não tradução literal. Frases curtas, verbos de ação, evitar voz passiva. Termos técnicos (stack, pipeline, deployment, embedding) não precisam ser traduzidos
+8. Ao gerar texto em português (PDF summaries, bullets, mensagens LinkedIn, histórias STAR): português natural, no vocabulário da área da vaga, não tradução literal. Frases curtas, verbos de ação, evitar voz passiva. Termos já consagrados no setor (ex.: onboarding, compliance, pipeline) não precisam ser traduzidos
 8b. **URLs de case studies no PDF Professional Summary:** Se o PDF menciona case studies ou demos, as URLs DEVEM aparecer já no primeiro parágrafo (Professional Summary). Recrutadores frequentemente só leem o resumo. Todos os URLs no HTML com `white-space: nowrap`
 9. **Entradas no tracker como TSV** — NUNCA editar `applications.md` diretamente para novos registros. Escrever TSV em `batch/tracker-additions/`, `merge-tracker.mjs` cuida do merge
 10. **Incluir `**URL:**` em todo header de report** — entre Score e PDF

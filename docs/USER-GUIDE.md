@@ -39,7 +39,7 @@ on its own and finished ones fold away:
    said it. Three or more statements complete the step.
 4. **Check how Plainhand sees you:** Plainhand sums up your strengths and voice.
    Approve it only if it's right; otherwise keep talking and rebuild it.
-5. **Approve your standard application:** see section 4.
+5. **Approve your master resume:** see section 4.
 
 After you start talking, **Keep improving** shows profile strength and where
 you draw the line.
@@ -54,21 +54,28 @@ your bullet style, and shows a preview. Adjust anything that's off and press
 Only the format is kept, not your resume's text. Use a text PDF exported from
 Word or Google Docs, not a scan.
 
-## 4. Approve your standard application
+## 4. Approve your master resume
 
-**Your standard application** is one resume and one cover letter (with
-{company} and {role} slots) that every application starts from. Have Plainhand
-write it, read it, ask for changes in plain words ("lead with the chassis
-project", "keep the letter under 200 words"), and press **Use this as my
-standard**. If your profile changes later, it tells you to rewrite it.
+**Your master resume** holds everything you have done: every role, result,
+credential and skill your sources support, in wording you approve. It has no
+length limit because it is never sent as it is. Each application picks the
+lines that fit that job and puts the most relevant first. A base cover letter
+(with {company} and {role} slots) comes with it.
+
+Have Plainhand write it, then read it. If it missed lines from your resume, the
+card lists them. Ask for changes in plain words ("add the audit automation
+project", "keep the letter under 200 words") and press **Approve my master
+resume**. If your profile changes later, it tells you to rewrite it.
 
 ## 5. Find and evaluate roles
 
 On **Jobs**, add a role by its link. Company career pages and Greenhouse,
 Lever, Ashby, Workday, Workable, SmartRecruiters and similar sites all work.
 From **LinkedIn, Indeed or another job board**, paste the description too:
-Plainhand doesn't open those sites. When you apply, give it the employer's own
-application link (most postings have one).
+Plainhand doesn't open those sites. A job from any site can be evaluated and
+prepared. When you apply, either give it the employer's own application link
+(most postings have one) so Plainhand can fill that form, or apply on the board
+yourself with the kit described in section 7.
 
 **Evaluate** checks the posting is live and scores your fit (out of 5) with
 the evidence for each match and the gaps. **Campaigns** can check company
@@ -76,8 +83,8 @@ boards on a schedule while Plainhand is open and surface new roles.
 
 ## 6. Prepare and review an application
 
-Choose a role and **Prepare application**. Plainhand tailors your standard for
-the role, has a separate reviewer check every claim against your sources, and
+Choose a role and **Prepare application**. Plainhand picks and orders lines from
+your master resume for the role, has a separate reviewer check every claim against your sources, and
 renders PDFs. In the **Packet** tab:
 
 - **How strongly this describes you** grades each claim: *undersold* (you can
@@ -115,6 +122,16 @@ In the **Apply** tab of an approved application:
    (you approve them under **Workspace**).
 5. **Take over the browser**, check everything on the page, and submit it
    yourself. Back in Plainhand, press **I submitted this application**.
+
+**Applying by hand.** When Plainhand can't fill a site (a LinkedIn or Indeed
+posting without the employer's link, a form it can't open or fill, or the
+hosted website), the Apply tab shows the kit instead: a link to the application, your
+approved resume and cover letter PDFs, and every prepared answer with a copy
+button. Press **Apply by hand instead** to see it any time. Apply on the site,
+then press **I submitted this application** so tracking and follow-ups carry
+on. On the Plainhand website, the browser extension can fill the open
+application page from the same approved answers, including on LinkedIn and
+Indeed; you still make the final submit click.
 
 ## 8. After applying
 

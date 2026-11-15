@@ -35,18 +35,16 @@ function fallbackEvidence(context, persona) {
     const quote = String(source.text).split(/\n/).map(line => line.trim()).find(line => line.length >= 8 && line.length <= 300);
     if (quote) return [{ sourceId: source.id, quote }];
   }
-  return [{ sourceId: 'cv', quote: persona.degreeEvidence }];
+  return [{ sourceId: 'cv', quote: persona.educationEvidence }];
 }
 
 function evidenceFor(persona, fact, context) {
   return quoteEvidence(fact.text, context) || fallbackEvidence(context, persona);
 }
 
-function factSection(fact) {
-  if (['tools', 'sql'].includes(fact.id)) return 'Skills';
-  if (['fsae', 'app', 'dashboard', 'design-system', 'editorial', 'scheduling'].includes(fact.id)) return 'Projects';
-  return 'Experience';
-}
+// Each persona fact names its own resume section (Skills, Projects, Licenses &
+// Certifications ...); anything unnamed is Experience. No field is assumed.
+const factSection = fact => fact.section || 'Experience';
 
 function resumeEntries(persona, job, context, facts) {
   const required = job.requiredFactIds.map(id => facts.find(f => f.id === id)).filter(Boolean);
@@ -54,7 +52,7 @@ function resumeEntries(persona, job, context, facts) {
   const chosen = [...required, ...rest].slice(0, 5);
   return chosen.map(fact => ({
     section: factSection(fact),
-    heading: fact.id === 'pumps' || fact.id === 'ta' ? { org: persona.employer, title: persona.title, location: persona.profile.location.split(',')[0], dates: persona.dates } : null,
+    heading: fact.atEmployer ? { org: persona.employer, title: persona.title, location: persona.profile.location.split(',')[0], dates: persona.dates } : null,
     text: fact.text,
     evidence: evidenceFor(persona, fact, context),
   }));
@@ -63,7 +61,7 @@ function resumeEntries(persona, job, context, facts) {
 function packetFor(persona, job, context) {
   const facts = availableFacts(persona, context);
   const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0] || null;
-  const educationEvidence = quoteEvidence(persona.degreeEvidence, context) || fallbackEvidence(context, persona);
+  const educationEvidence = quoteEvidence(persona.educationEvidence, context) || fallbackEvidence(context, persona);
   return {
     headline: `${persona.profile.roles.split(',')[0]} for ${job.title}`,
     resume: [
@@ -71,12 +69,12 @@ function packetFor(persona, job, context) {
       {
         section: 'Education',
         heading: null,
-        text: persona.degreeEvidence,
+        text: persona.educationEvidence,
         evidence: educationEvidence,
       },
     ],
     coverLetter: `I am applying for the ${job.title} role at ${job.company}.${persona.profile.story ? ' ' + persona.profile.story : ''}${fact ? ' ' + fact.text : ''}`,
-    answers: fact ? [{ question: 'Describe a relevant project.', answer: fact.text, evidence: evidenceFor(persona, fact, context) }] : [],
+    answers: fact ? [{ question: 'Describe a relevant accomplishment.', answer: fact.text, evidence: evidenceFor(persona, fact, context) }] : [],
     questions: [],
     suggestions: [],
   };
@@ -85,10 +83,10 @@ function packetFor(persona, job, context) {
 function standardFor(persona, context) {
   const facts = availableFacts(persona, context);
   const entries = facts.map(fact => ({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) }));
-  entries.push({ section: 'Education', heading: null, text: persona.degreeEvidence, evidence: quoteEvidence(persona.degreeEvidence, context) || fallbackEvidence(context, persona) });
+  entries.push({ section: 'Education', heading: null, text: persona.educationEvidence, evidence: quoteEvidence(persona.educationEvidence, context) || fallbackEvidence(context, persona) });
   return {
     headline: persona.profile.roles,
-    resume: entries.slice(0, 8),
+    resume: entries,
     coverLetter: `I am a ${persona.profile.roles.split(',')[0]}.${persona.profile.story ? ' ' + persona.profile.story : ''}`,
     suggestions: [],
   };
@@ -145,18 +143,30 @@ function formSuggestions(persona, job, fields, context) {
         continue;
       }
     }
-    if (/degree/.test(label)) {
-      if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: quoteEvidence(persona.degreeEvidence, context) });
+    if (/degree|education/.test(label)) {
+      if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: quoteEvidence(persona.educationEvidence, context) });
+      continue;
+    }
+    if (/licen[cs]e|certification/.test(label)) {
+      const fact = facts.find(f => f.id === persona.credentialFact);
+      if (fact) suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact, context) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
+      continue;
+    }
+    if (/years of experience/.test(label)) {
+      const option = field.options?.find(item => item.value === persona.experienceBand);
+      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.facts[0].text, context) || fallbackEvidence(context, persona) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
       continue;
     }
     if (/start|earliest/.test(label)) { questions.push({ key: field.key, question: 'What is your exact earliest start date?' }); continue; }
     if (/level|experience/.test(label)) {
       const option = field.options?.find(item => item.value === persona.level) || field.options?.find(item => /professional/i.test(item.label));
-      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.degreeEvidence, context) });
+      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.educationEvidence, context) });
       continue;
     }
     if (/employer|company/.test(label)) {
-      suggestions.push({ key: field.key, answer: persona.employer, evidence: quoteEvidence(persona.degreeEvidence, context) });
+      suggestions.push({ key: field.key, answer: persona.employer, evidence: quoteEvidence(persona.educationEvidence, context) });
       continue;
     }
     if (/project|achievement|describe|relevant|why|motivat/.test(label)) {
@@ -224,9 +234,9 @@ export function controlledAgent({ scenario, persona, job }) {
 }
 
 const PROFILE_QUESTIONS = [
-  'What project are you proudest of, and what did you do on it?',
-  'What did you do in your last job or internship?',
-  'Which tools or skills do you use most?',
+  'What project or piece of work are you proudest of, and what did you do on it?',
+  'What did you do in your last job, internship or training?',
+  'Which tools, skills or certifications do you use most?',
   'What kind of role are you looking for next?',
   'How would you like your writing to sound?',
   'Have you led or coordinated other people?',

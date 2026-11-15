@@ -22,16 +22,18 @@
     {
       "id": "U03",
       "requirement": "**Master completeness.** The master record is complete and canonical. The master resume is derived from it, inspectable, with no length limit, and lists what it missed",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Multi-role, multi-stage fictional personas with older roles, certifications and a career gap. Check each source role, result and credential appears in the master or is listed as missing. Tailoring leaves the master byte-identical",
-      "falsifier": "A source role, result or credential is silently absent. The master adds an unsupported line. Tailoring changes the master. The old standard resume is treated as current without a flag"
+      "falsifier": "A source role, result or credential is silently absent. The master adds an unsupported line. Tailoring changes the master. The old standard resume is treated as current without a flag",
+      "review_note": "Continuation integrated: master resume replaces standard; heading now part of approval identity and visible. Lexical masterCoverage and 150-entry cap remain measured gaps; no multi-role persona run."
     },
     {
       "id": "U04",
       "requirement": "**Per-job relevance and order.** Each tailored resume selects and orders for the job and keeps older relevant roles",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Paired jobs with the same persona where the right selection differs. Held-out cases. Scored selection and order, plus an old-but-relevant role planted. Judge on relevance with quote validation",
-      "falsifier": "An older role that matches the job is dropped. An irrelevant role leads. A pre-specified pair requiring different evidence produces the same selection despite the documented relevance difference. Selection is correct only because the job vocabulary was copied"
+      "falsifier": "An older role that matches the job is dropped. An irrelevant role leads. A pre-specified pair requiring different evidence produces the same selection despite the documented relevance difference. Selection is correct only because the job vocabulary was copied",
+      "review_note": "Continuation integrated: per-job selection/order of master entries. No paired/held-out scored run yet."
     },
     {
       "id": "U05",
@@ -53,7 +55,7 @@
       "status": "in_progress",
       "evidence_required": "Independent claim check with validated source quotes. Planted unsupported claims are caught (negative controls). Real PDF text extraction, layout and ATS-parse checks against rendered files",
       "falsifier": "A planted unsupported claim passes. A PDF drops or reorders text. The reviewed packet differs from what is attached. Claim numbers are matched without the source",
-      "review_note": "Synthetic scorer counterexamples accepted unsupported candidate numbers and headings; real PDF fidelity and independent factual acceptance remain open."
+      "review_note": "Production calibration now attributes each posting number per occurrence (continuation fix plus root first-person-after leak fix, 10/10 adversarial probe). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open; scorer design b6c0b56 accepted with amendments."
     },
     {
       "id": "U08",

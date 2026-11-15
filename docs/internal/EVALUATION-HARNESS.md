@@ -135,16 +135,25 @@ passes only when it stops correctly and no submission is attempted.
 
 ## Scenarios
 
+The corpus covers the audience in `PRODUCT-DEFINITION.md` and no other:
+finance and accounting, software and data, engineering, research science, and
+adjacent business, design and content roles, from a new graduate to an
+engineering manager, with and without licenses (CPA, CFA progress). No single
+field dominates, and the harness assumes no field, degree or career stage. Each
+persona fact names its own resume section, so a CPA license or a publications
+list is laid out the way that field expects.
+
 | Family | Count | Examples |
 | --- | --- | --- |
-| Profile | 3 | engineering graduate, career changer, junior engineer (fictional; deterministic candidate) |
-| Resume | 6 | six candidates against six jobs, no portal |
-| Application | 11 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry |
-| Submission | 2 | candidate-confirmed submission through one-step and two-step portals |
-| Evaluation | 1 | a principal role the mechanical graduate must score `Skip`; `prepare` is refused below 4/5 |
-| Profile effect | 6 | two matched triples: minimal seed, conversation-built profile and seeded full profile, then the same evaluation, packet and application |
-| Journey | 1 | profile conversation → understanding → standard → evaluation → packet → portal → candidate confirmation |
-| **Total** | **30** | |
+| Profile | 6 | engineering graduate, career changer, junior developer, financial analyst, accountant, research scientist (fictional; deterministic candidate) |
+| Resume | 10 | one per persona, each against a job in its own field, no portal |
+| Tailoring | 3 | the master record is approved first, then a job that needs a different part of the candidate's experience; that experience must be in the resume and lead it |
+| Application | 15 | single-step, two-step, conditional, sensitive-heavy, unknown fact, CAPTCHA, sign-in wall, repeating records, native radio, discard-and-retry, and iCIMS- and Taleo-style large-employer forms (certifications, years in the field, age), spread across fields |
+| Submission | 3 | candidate-confirmed submission through one-step and two-step portals |
+| Evaluation | 2 | wrong-job refusals in both directions: an engineering graduate facing a principal software architecture role, a financial analyst facing a senior structural engineering role; `prepare` is refused below 4/5 |
+| Profile effect | 6 | two matched triples (financial analyst, career changer): minimal seed, conversation-built profile and seeded full profile, then the same evaluation, packet and application |
+| Journey | 1 | a research scientist: profile conversation → understanding → master record → evaluation → packet → portal → candidate confirmation |
+| **Total** | **46** | |
 
 Add a scenario by adding a persona, job or portal to `corpus.mjs` and one entry
 to `scenarios`. A scorer must be able to name the expected value for every field;
@@ -156,7 +165,7 @@ experience"), not topic words. A test fails if any of them appears in the
 description or ATS terms of a job the persona is paired with, because a truthful
 sentence quoting the posting would otherwise be flagged. Absent claims are checked
 sentence by sentence, and a sentence that negates ("I haven't", "not", "never",
-"only … in class") is the candidate's honest answer, not a claim. The controlled
+"only … in class" or in training) is the candidate's honest answer, not a claim. The controlled
 reviewer in `agent.mjs` uses the same rule.
 
 ## Profile effectiveness

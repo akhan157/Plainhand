@@ -1,7 +1,8 @@
 // Profile-building benchmark: a simulated candidate with hidden facts talks to the
 // assistant, and the run is scored on what reached the profile and how faithfully.
 // The candidate is deterministic (keyword matching, no model) so runs differ only
-// by the assistant. All personas are fictional.
+// by the assistant. All personas are fictional and span finance, accounting,
+// technology, engineering and science, with and without professional licenses.
 
 export const personas = [
   {
@@ -42,6 +43,48 @@ export const personas = [
       { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'team', 'environment', 'interested'], text: 'I want a team that does code review seriously, because that is how I learn fastest.', detail: 'On my app a stranger’s review on GitHub caught a race condition I had missed for months.' },
     ],
     absent: [{ id: 'production', keywords: ['production', 'on-call', 'scale', 'professional', 'industry', 'company'], text: 'I haven’t worked on a production system at a company yet.' }],
+  },
+  {
+    id: 'fin-analyst',
+    profile: { name: 'Priya Raman', location: 'Boston, US', roles: 'Senior financial analyst, FP&A', graduation: 'B.S. Finance, 2023',
+      resume: 'B.S. Finance, Example University, 2023. Financial Analyst, Example Manufacturing Corp, 2023 to 2026. Passed CFA Level I.' },
+    facts: [
+      { id: 'automation', keywords: ['project', 'proud', 'improve', 'change', 'built', 'result'], text: 'I rebuilt the monthly reporting pack in Power Query, which cut its preparation from 3 days to 1.', detail: 'The old pack was 14 linked workbooks pasted by hand; I replaced them with one model that pulls straight from the ledger export.' },
+      { id: 'model', keywords: ['job', 'work', 'day', 'current', 'role', 'responsible'], text: 'I built and maintain the three-statement forecast model for a $240 million business unit in Excel.', detail: 'It reforecasts monthly from drivers such as units, price and headcount, so the business can see what a volume change does to cash.' },
+      { id: 'mentor', keywords: ['lead', 'led', 'leadership', 'mentor', 'train', 'teach', 'people'], text: 'I trained two new analysts on the forecast model and wrote its user guide.', detail: 'Each of them rebuilt one schedule from scratch with me before touching the live model.' },
+      { id: 'cert', keywords: ['certification', 'license', 'credentials', 'tools', 'skills', 'software', 'qualifications'], text: 'I passed CFA Level I in 2024 and I’m registered for Level II; I work in Excel and SQL every day.', detail: 'I use SQL to pull actuals from the data warehouse instead of waiting for exports.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want a senior FP&A role where I own the forecast for a product line and work directly with the business.', detail: 'The part I like most is explaining a variance to someone who runs the operation and seeing them change a plan.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like it precise and plain, with the number and what it changed.', detail: 'If a sentence has no number or decision in it, I would rather cut it.' },
+    ],
+    absent: [{ id: 'deals', keywords: ['m&a', 'deals', 'transactions', 'investment banking'], text: 'I haven’t worked on M&A deals; my modeling is all internal planning.' }],
+  },
+  {
+    id: 'accountant',
+    profile: { name: 'Dana Whitfield', location: 'Denver, US', roles: 'Senior accountant',
+      resume: 'B.S. Accounting, Example State University, 2022. Staff Accountant, Example Logistics Group, 2022 to 2026. CPA, Colorado.' },
+    facts: [
+      { id: 'close', keywords: ['project', 'proud', 'improve', 'change', 'result', 'biggest'], text: 'I own the month-end close for four entities and cut the close from 9 business days to 6.', detail: 'Most of the delay was intercompany entries booked late, so I moved them to a day-2 checklist and automated the eliminations.' },
+      { id: 'recs', keywords: ['work', 'day', 'job', 'current', 'role', 'typical'], text: 'I prepare 45 balance sheet reconciliations each month and cleared a backlog of 120 aged reconciling items.', detail: 'Some of those items were over a year old; I traced each one to a source document and wrote off only what the controller approved.' },
+      { id: 'audit', keywords: ['lead', 'responsibility', 'trust', 'audit', 'team', 'people'], text: 'I am the main contact for our external auditors and prepared the audit schedules for the last two annual audits.', detail: 'Last year the auditors had no adjusting entries on the accounts I prepared.' },
+      { id: 'cert', keywords: ['certification', 'license', 'cpa', 'credentials', 'tools', 'skills', 'software', 'qualifications'], text: 'I have an active Colorado CPA license since 2025, and I work in NetSuite and Excel.', detail: 'I studied for the exam at night over 14 months and passed all four sections on the first attempt.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want a senior accountant role where I review other people’s work and improve the close.', detail: 'I already review the junior accountant’s reconciliations informally and I want that to be my job.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like to keep it short and exact, and say what I own.', detail: 'I want it to read like a clean workpaper: what, how much, and who signed off.' },
+    ],
+    absent: [{ id: 'sec', keywords: ['sec', '10-k', '10-q', 'public company', 'sox'], text: 'I haven’t done SEC reporting; my company is privately held.' }],
+  },
+  {
+    id: 'scientist',
+    profile: { name: 'Lena Fischer', location: 'San Diego, US', roles: 'Scientist, cell therapy research',
+      resume: 'M.S. Molecular Biology, Example University, 2021. Research Associate II, Example Biotherapeutics, 2021 to 2026.' },
+    facts: [
+      { id: 'assay', keywords: ['project', 'proud', 'improve', 'change', 'result', 'developed'], text: 'I developed a cell-based potency assay that cut turnaround from 5 days to 2 and is now used across three programs.', detail: 'The old assay needed a 72-hour co-culture; I switched to a reporter line with a luminescence readout and validated it against the old one on 40 samples.' },
+      { id: 'screens', keywords: ['job', 'work', 'day', 'current', 'role', 'experiments'], text: 'I ran CRISPR knockout screens in primary T cells and analyzed the sequencing data in R.', detail: 'The screens covered about 2,000 guides; two of the hits became targets the team is still working on.' },
+      { id: 'sops', keywords: ['lead', 'led', 'leadership', 'train', 'teach', 'people', 'mentor', 'team'], text: 'I wrote 6 SOPs for our flow cytometry workflows and trained 4 new research associates on them.', detail: 'Each new associate runs the panel beside me twice before I sign off on their gating.' },
+      { id: 'pipeline', keywords: ['tools', 'software', 'skills', 'data', 'technical', 'code'], text: 'I built an R pipeline that processes plate-reader data for 30 plates a week and flags failed controls.', detail: 'Before that, each plate was analyzed by hand in a spreadsheet, about 20 minutes a plate.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want a scientist role where I design the experiments, not only run them.', detail: 'On the potency assay I proposed the design myself, and that is the work I want more of.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like it clear and careful: the method, then the result.', detail: 'I would rather understate a result than have someone ask for data I do not have.' },
+    ],
+    absent: [{ id: 'gmp', keywords: ['gmp', 'manufacturing', 'clinical production'], text: 'I haven’t worked in a GMP environment; all my work is research-stage.' }],
   },
 ];
 

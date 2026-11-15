@@ -626,3 +626,32 @@ test('profile effectiveness keeps every repetition instead of the last one', () 
   assert.equal(effect.downstream.delta.applicationCompletion, -0.25);
   assert.match(markdownReport({ summary, results: [] }), /50% pass/);
 });
+
+test('tailoring: the experience a job needs must be in the resume and lead it', async () => {
+  const { tailoringOf } = await import('../plainhand/evaluation/score.mjs');
+  const persona = personaById('fin-analyst'), job = jobById('finance-systems');
+  const fact = id => persona.facts.find(f => f.id === id).text;
+  const entries = ids => ({ resume: ids.map(id => ({ section: 'Experience', text: fact(id) })) });
+  // The master record's own order, written for a senior FP&A target.
+  const untailored = tailoringOf(entries(['model', 'variance', 'cert', 'automation', 'mentor']), persona, job);
+  assert.equal(untailored.requiredInResume, 3);
+  assert.equal(untailored.leadShare, 0.33);
+  const tailored = tailoringOf(entries(['automation', 'mentor', 'model', 'variance', 'cert']), persona, job);
+  assert.equal(tailored.leadShare, 1);
+  // Relevant experience mentioned only in the cover letter does not count.
+  const dropped = tailoringOf({ ...entries(['automation', 'variance', 'cert']), coverLetter: fact('mentor') }, persona, job);
+  assert.deepEqual(dropped.missingFromResume, ['mentor', 'model']);
+});
+
+test('tailoring: a fact split across two bullets still counts, at its main bullet', async () => {
+  const { tailoringOf } = await import('../plainhand/evaluation/score.mjs');
+  const persona = personaById('career-changer'), job = jobById('instructional-data');
+  const packet = { resume: [
+    { section: 'Experience', text: 'Taught algebra and statistics to 150 students a year.' },
+    { section: 'Experience', text: 'Built the department grade tracker in Google Sheets.' },
+    { section: 'Experience', text: 'I built a grade-tracking dashboard in Google Sheets and SQL that 12 teachers at my school used to spot students falling behind.' },
+  ] };
+  const result = tailoringOf(packet, persona, job);
+  assert.ok(!result.missingFromResume.includes('teaching'));
+  assert.equal(result.order[0], 'teaching');
+});

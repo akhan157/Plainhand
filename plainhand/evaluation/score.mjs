@@ -41,7 +41,27 @@ export function numberSupported(token, sourceTokens) {
   return !canonical.endsWith('%') && sourceTokens.has(canonical + '%');
 }
 
-export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false }) {
+// Tailoring: the facts this job needs must be in the resume itself (a cover letter
+// mention does not count) and must lead the resume's fact-bearing entries.
+export function tailoringOf(packet, persona, job) {
+  const entries = (packet?.resume || []).map(entry => String(entry.text || ''));
+  const all = entries.join('\n');
+  // A fact may be split across bullets ("Taught ... 150 students." / "Built the
+  // grade tracker."), so presence is judged on the whole resume and position is
+  // the bullet holding most of the fact's words.
+  const words = text => new Set((String(text).toLowerCase().match(/[a-z0-9%$&]+/g) || []).filter(w => w.length >= 4 || /\d/.test(w)));
+  const share = (fact, text) => { const need = words(fact.text), have = words(text); let n = 0; for (const w of need) if (have.has(w)) n++; return need.size ? n / need.size : 0; };
+  const present = persona.facts.filter(fact => captures(fact.text, all));
+  const position = fact => entries.reduce((best, text, index) => share(fact, text) > best.score ? { index, score: share(fact, text) } : best, { index: Infinity, score: 0 }).index;
+  const ranked = present.map(fact => ({ fact, at: position(fact) })).sort((a, b) => a.at - b.at).map(item => item.fact);
+  const requiredIds = new Set(job.requiredFactIds);
+  const inResume = job.requiredFactIds.filter(id => ranked.some(fact => fact.id === id));
+  const lead = ranked.slice(0, inResume.length);
+  const leadShare = inResume.length ? Math.round(lead.filter(fact => requiredIds.has(fact.id)).length / inResume.length * 100) / 100 : null;
+  return { requiredInResume: inResume.length, requiredTotal: job.requiredFactIds.length, missingFromResume: job.requiredFactIds.filter(id => !inResume.includes(id)), leadShare, order: ranked.map(fact => fact.id) };
+}
+
+export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false, expectTailoring = false }) {
   // The posting is an allowed source for numbers: a packet may quote "10+ years".
   const sourceTokens = sourceNumberTokens(numberCheckSource([...(sources || []), ...(job?.description ? [{ id: 'job', text: job.description }] : [])]));
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
@@ -64,7 +84,10 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const pdfValid = Boolean(pdf?.bytes?.length > 100 && pdf?.head === '%PDF-');
   const coverage = required.length ? Math.round(covered.length / required.length * 100) / 100 : null;
   const atsCoverage = job.atsTerms.length ? Math.round(atsCovered.length / job.atsTerms.length * 100) / 100 : null;
+  const tailoring = tailoringOf(packet, persona, job);
+  const tailored = tailoring.requiredInResume === tailoring.requiredTotal && tailoring.leadShare !== null && tailoring.leadShare >= 0.67;
   return {
+    tailoring,
     required: required.length,
     covered: covered.length,
     missingFacts: missing.map(fact => fact.id),
@@ -84,7 +107,7 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
     pdfValid,
     pdfBytes: pdf?.bytes?.length ?? null,
     pdfHead: pdf?.head ?? null,
-    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!persona.voice.firstPerson || firstPerson)),
+    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!expectTailoring || tailored) && (!persona.voice.firstPerson || firstPerson)),
   };
 }
 
@@ -294,7 +317,7 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
 }
 
 export function scoreScenario(result) {
-  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
+  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job), expectTailoring: Boolean(result.scenario.withStandard) }) : null;
   const application = result.application ? scoreApplication({ ...result.application, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const evaluation = result.evaluation ? scoreEvaluation({ ...result.evaluation, job: jobById(result.scenario.job) }) : null;
   const family = result.scenario.family;

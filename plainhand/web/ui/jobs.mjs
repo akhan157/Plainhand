@@ -53,7 +53,7 @@ export function JobsPage() {
       ${state.sources.length ? html`<ul class="source-list">${state.sources.map(s => html`<li key=${s.id} class="source-chip"><span class="source-name">${s.name}</span><a href=${safeLink(s.url)} target="_blank" rel="noreferrer">${hostOf(s.url)}<${Icon} name="external" /></a><${IconButton} icon="close" label=${`Remove ${s.name} source`} onClick=${async () => { try { await api('sources/remove', { id: s.id }); toast('Source removed.'); refresh(); } catch (e) { toast(e.message, true); } }} /></li>`)}</ul>`
         : html`<p class="muted-text">No sources yet. Add the companies you would like to work for.</p>`}
       <form class="scan-form" onSubmit=${e => e.preventDefault()}>
-        <${Field} form="scan" name="filter" label="Role keywords" placeholder="Engineer, graduate, intern…" value=${scan.filter} onInput=${v => setScan({ ...scan, filter: v })} />
+        <${Field} form="scan" name="filter" label="Role keywords" placeholder="Analyst, engineer, scientist, intern…" value=${scan.filter} onInput=${v => setScan({ ...scan, filter: v })} />
         <${Field} form="scan" name="scanLocation" label="Location contains" placeholder="Boston, remote…" value=${scan.location} onInput=${v => setScan({ ...scan, location: v })} />
         <${ActionButton} type="submit" class="primary" icon="refresh" disabled=${!state.sources.length || !!discovering} onClick=${() => queueTask('discover', null, { filter: scan.filter, location: scan.location })}>Check sources</${ActionButton}>
       </form>
@@ -77,7 +77,7 @@ export function AddJobDialog() {
   return html`<${Dialog} title="Add a job" description="Save the original link. Your agent helps you work out the fit." onClose=${closeDialog}>
     <form class="form-grid" onSubmit=${e => submit(e).catch(error => toast(error.message, true))}>
       <${Field} form="job" name="company" label="Company" placeholder="Company name" required value=${job.company} onInput=${set('company')} />
-      <${Field} form="job" name="title" label="Role" placeholder="Graduate Mechanical Engineer" required value=${job.title} onInput=${set('title')} />
+      <${Field} form="job" name="title" label="Role" placeholder="Financial Analyst" required value=${job.title} onInput=${set('title')} />
       <${Field} form="job" name="url" label="Job posting URL" type="url" placeholder="https://…" required full value=${job.url} onInput=${set('url')} />
       <${Field} form="job" name="location" label="Location" placeholder="City, country or remote" full value=${job.location} onInput=${set('location')} />
       <${Field} form="job" name="description" label="Job description" area full placeholder="Paste the full description when the posting is behind a sign-in or a script-only page." value=${job.description} onInput=${set('description')} />

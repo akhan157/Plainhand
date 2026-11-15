@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { approvedWorkspace, callApi, WHY_QUESTION, WHY_ANSWER, RESUME_BYTES, COVER_BYTES } from './extension-fixture.mjs';
-import { handleExtensionApi, matchJob } from '../plainhand/cloud/extension-api.mjs';
+import { handleExtensionApi, matchJob, postingKeys } from '../plainhand/cloud/extension-api.mjs';
 
 const FIELDS = [
   { key: '0:co0', label: 'First Name', type: 'text', required: true },
@@ -51,6 +51,86 @@ test('match by applyUrl for a role saved from a job board', async () => {
   const jobs = [{ id: 'a', url: 'https://www.linkedin.com/jobs/view/123', applyUrl: 'https://jobs.ashbyhq.com/acme/1b2c3d4e-0000-1111-2222-333344445555' }];
   assert.equal(matchJob(jobs, 'https://jobs.ashbyhq.com/acme/1b2c3d4e-0000-1111-2222-333344445555/application')?.id, 'a');
   assert.equal(matchJob(jobs, 'https://jobs.ashbyhq.com/acme/other'), null);
+});
+
+test('a LinkedIn or Indeed posting matches under the URLs those sites show it at', async () => {
+  const jobs = [{ id: 'li', url: 'https://www.linkedin.com/jobs/view/4012345678/' }, { id: 'in', url: 'https://www.indeed.com/viewjob?jk=1a2b3c4d5e6f7a8b' }];
+  assert.equal(matchJob(jobs, 'https://www.linkedin.com/jobs/search/?currentJobId=4012345678&keywords=analyst')?.id, 'li');
+  assert.equal(matchJob(jobs, 'https://www.linkedin.com/jobs/view/4012345678/apply/?openSDUIApplyFlow=true')?.id, 'li');
+  assert.equal(matchJob(jobs, 'https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4099999999'), null);
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/jobs?q=analyst&vjk=1a2b3c4d5e6f7a8b')?.id, 'in');
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/jobs?q=analyst&vjk=ffffffffffffffff'), null);
+});
+
+test('a board posting is identified by its id, never by its list path', () => {
+  const jobs = [
+    { id: 'job-a', url: 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa' },
+    { id: 'job-b', url: 'https://www.indeed.com/viewjob?jk=bbbbbbbbbbbbbbbb' },
+  ];
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa')?.id, 'job-a');
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/viewjob?jk=bbbbbbbbbbbbbbbb')?.id, 'job-b', 'the second role is not the first one');
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/viewjob?jk=cccccccccccccccc'), null, 'an unsaved posting is not a saved role');
+  assert.equal(matchJob([jobs[0]], 'https://www.indeed.com/viewjob?jk=bbbbbbbbbbbbbbbb'), null);
+  // The same posting under the other URL shapes Indeed shows it at.
+  assert.equal(matchJob([jobs[0]], 'https://www.indeed.com/jobs?q=analyst&vjk=aaaaaaaaaaaaaaaa')?.id, 'job-a');
+  assert.equal(matchJob([jobs[0]], 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa&from=serp')?.id, 'job-a');
+});
+
+test('LinkedIn pages need the posting id; a list or search page alone matches nothing', () => {
+  const saved = [{ id: 'li', url: 'https://www.linkedin.com/jobs/view/4012345678/' }];
+  assert.equal(matchJob(saved, 'https://www.linkedin.com/jobs/search/?currentJobId=4012345678&keywords=analyst')?.id, 'li');
+  assert.equal(matchJob(saved, 'https://www.linkedin.com/jobs/collections/recommended/?currentJobId=4012345678')?.id, 'li');
+  assert.equal(matchJob(saved, 'https://www.linkedin.com/jobs/search/?currentJobId=4099999999'), null);
+  assert.equal(matchJob(saved, 'https://www.linkedin.com/jobs/search/?keywords=analyst'), null);
+  const savedFromSearch = [{ id: 'saved-search-page', url: 'https://www.linkedin.com/jobs/search/?currentJobId=4012345678' }];
+  assert.equal(matchJob(savedFromSearch, 'https://www.linkedin.com/jobs/search/?currentJobId=4099999999'), null);
+  assert.equal(matchJob(savedFromSearch, 'https://www.linkedin.com/jobs/search/?keywords=analyst'), null);
+});
+
+test('contradictory ids and id-less board pages fail closed', () => {
+  const jobs = [{ id: 'in', url: 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa' }];
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa&vjk=bbbbbbbbbbbbbbbb'), null, 'two different ids are not one posting');
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/jobs?q=analyst'), null, 'no id, no match');
+  const list = [{ id: 'list', url: 'https://www.indeed.com/jobs?q=analyst' }];
+  assert.equal(matchJob(list, 'https://www.indeed.com/jobs?q=analyst'), null, 'an identical list address is still not a posting');
+  assert.deepEqual(postingKeys('https://www.indeed.com/jobs?q=analyst').keys, []);
+  assert.deepEqual(postingKeys('https://www.linkedin.com/jobs/search/?keywords=analyst').keys, []);
+});
+
+test('posting keys carry one host-scoped posting id', () => {
+  assert.deepEqual(postingKeys('https://www.indeed.com/viewjob?jk=AAAAAAAAAAAAAAAA').keys, ['indeed.com:aaaaaaaaaaaaaaaa']);
+  assert.deepEqual(postingKeys('https://uk.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa').keys, ['uk.indeed.com:aaaaaaaaaaaaaaaa']);
+  assert.deepEqual(postingKeys('https://www.linkedin.com/jobs/view/senior-analyst-4012345678').keys, ['linkedin.com:4012345678']);
+  assert.deepEqual(postingKeys('https://www.glassdoor.com/Job/x?jobListingId=1234567&utm_source=x').keys, ['glassdoor.com:1234567']);
+  for (const url of ['https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa', 'https://www.linkedin.com/jobs/search/?currentJobId=4012345678']) {
+    const { keys } = postingKeys(url);
+    assert.equal(keys.length, 1, url);
+    assert.match(keys[0], /^[a-z0-9.-]+:[a-z0-9_-]+$/);
+  }
+});
+
+test('two saved roles matching one page are ambiguous, not a guess', () => {
+  const jobs = [
+    { id: 'a', url: 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa', approvedHash: 'forged' },
+    { id: 'b', url: 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa' },
+  ];
+  assert.equal(matchJob(jobs, 'https://www.indeed.com/viewjob?jk=aaaaaaaaaaaaaaaa'), null);
+});
+
+test('saving a board role twice is a duplicate; another posting is a new role', async () => {
+  const deps = await approvedWorkspace();
+  const posting = { company: 'Gamma Ltd', title: 'Financial Analyst', url: 'https://www.indeed.com/viewjob?jk=1212121212121212', description: 'Forecast and variance analysis in Excel.' };
+  const first = await callApi(deps, 'POST', '/api/extension/save-job', posting);
+  assert.equal(first.status, 201, JSON.stringify(first.json));
+  assert.equal(first.json.saved, true);
+  const again = await callApi(deps, 'POST', '/api/extension/save-job', { ...posting, url: 'https://www.indeed.com/viewjob?jk=1212121212121212&from=serp' });
+  assert.equal(again.status, 200, JSON.stringify(again.json));
+  assert.equal(again.json.saved, false, 'the same posting with tracking parameters is not saved twice');
+  assert.equal(again.json.jobId, first.json.jobId);
+  const other = await callApi(deps, 'POST', '/api/extension/save-job', { ...posting, company: 'Delta Ltd', title: 'Accountant', url: 'https://www.indeed.com/viewjob?jk=3434343434343434' });
+  assert.equal(other.status, 201, JSON.stringify(other.json));
+  assert.equal(other.json.saved, true, 'a different posting on the same board path is a new role');
+  assert.notEqual(other.json.jobId, first.json.jobId);
 });
 
 test('plan answers from the profile, packet and answer bank, leaves sensitive and unknown fields', async () => {

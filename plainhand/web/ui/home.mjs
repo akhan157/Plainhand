@@ -114,7 +114,7 @@ function SetupSteps({ state }) {
     { done: !!state.provider, n: '1', title: 'Connect your AI account', text: 'Claude, ChatGPT or Antigravity: the subscription you already have.', action: () => navigate('connections'), label: 'Connect' },
     { done: !!(state.profile.name && state.profile.resume), n: '2', title: 'Add your basics and resume', text: 'Upload or paste your resume; add your own resume PDF to keep its format.', action: () => navigate('profile'), label: 'Open profile' },
     { done: statements >= 3, n: '3', title: 'Tell your story', text: 'Talk about projects and jobs you’re proud of. Plainhand keeps your words.', action: () => navigate('profile'), label: 'Start talking' },
-    { done: state.standardStatus === 'approved', n: '4', title: 'Approve your standard application', text: 'One resume and cover letter every application starts from.', action: () => navigate('profile'), label: 'Open profile' },
+    { done: state.standardStatus === 'approved', n: '4', title: 'Approve your master resume', text: 'Everything you have done, in wording you approve. Each application picks from it.', action: () => navigate('profile'), label: 'Open profile' },
     { done: state.jobs.length > 0, n: '5', title: 'Add a role you like', text: 'Paste a job link, or follow a company’s job board.', action: () => openDialog({ type: 'add-job' }), label: 'Add a job' },
   ];
   const done = steps.filter(s => s.done).length;

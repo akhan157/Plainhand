@@ -225,5 +225,63 @@
       }
     ],
     "finding": "Answer bank is not a Workspace.context source (sourceIds profile/cv/interview/writing-samples); approved corrections persist but are not shown to be reused in later drafting. Durable-memory design b9652fc recommends keeping bank out of context and using exact-label reuse; root decision pending."
+  },
+  "continuation_integration": {
+    "source_tip": "5729bf65b5eb6dc714a7950063056355789ca7ca",
+    "root_reviewer": "Claude Opus 5.5 (author Pi DeepSeek)",
+    "root_correction": "claim-calibration: first-person subject or to/under/by me|us after a posting number in the same clause makes it a candidate claim (leak: \"The team of 12 reports to me today.\")",
+    "checks": [
+      "focused 7 files: 91 pass 0 fail (cloud-extension-api, standard, claim-calibration, claim-line, plainhand, field-policy, exports)",
+      "test-plainhand-ui real Chromium: 1/1 pass, exit 0, 40.4s",
+      "adversarial attribution probe 10/10 expected"
+    ],
+    "not_run": [
+      "full npm test",
+      "Postgres test:cloud",
+      "live providers",
+      "benchmark"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/continuation-root/shots/04b-master-heading-light.png",
+        "sha256": "b23a789638c79f94e46dc7fc63055612b166261e86e4c5377d7f934ff93e80eb"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/04c-master-heading-dark.png",
+        "sha256": "2e90018b9f8e6ad6242cb404dd295eef950d281ccd02ef259212f0203cc5fe78"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/08b-master-heading-mobile.png",
+        "sha256": "4fe059c2b613b5e59c0d29515c54ad000eda8aac57300d615bcd4a4ebc4c554c"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/12-filled-employer-fixture.png",
+        "sha256": "fbd57b9c3b511ded418343c8b34b068d7293f0caa921050ccffbc5451158652d"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/13b-manual-kit.png",
+        "sha256": "86e4d5daad73b73225d73c7b8e1f635d0379d69149c7c67795c77740a6ce44c3"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/workflow-proof.json",
+        "sha256": "73be9861a0a69596d79075aa859f9bff8781cdcf169654a68f18b193eb8af485"
+      },
+      {
+        "path": "output/goal-review/continuation-merge-focused.log",
+        "sha256": "af6e0a7bc453a485c2993a1960529325989e332e5cd9f8413bf393cada468f48"
+      },
+      {
+        "path": "output/goal-review/continuation-merge-ui.log",
+        "sha256": "0709e6310b2cf619218ae7c5fbca2514d055831a235d381e5a7de1c84b422541"
+      },
+      {
+        "path": "output/goal-review/probe-attribution.mjs",
+        "sha256": "465b046860e18f4dee4c8f0c9e0bf0453b1ce3f264ed84de37c3d2abe87f1eeb"
+      },
+      {
+        "path": "output/goal-review/probe-attribution.json",
+        "sha256": "ecbf04cabdbabcede865100962e9de933186688dbf560ff5e13c27648bb4201d"
+      }
+    ]
   }
 }

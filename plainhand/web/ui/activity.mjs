@@ -26,7 +26,7 @@ const number = value => typeof value === 'number' ? value.toLocaleString() : 'Un
 const metric = value => number(value?.value);
 const duration = value => typeof value === 'number' ? `${(value / 1000).toFixed(1)}s` : 'Unavailable';
 const tokens = entry => `${metric(entry.inputTokens)} in / ${metric(entry.outputTokens)} out`;
-const purpose = value => ({ 'connection-test': 'Connection check', interview: 'Candidate understanding', evaluate: 'Job evaluation', prepare: 'Application drafting', review: 'Factual review', humanize: 'Humanizer pass', standard: 'Standard application', revise: 'Revision', 'form-answers': 'Form answers', navigation: 'Browser navigation' })[value] || value;
+const purpose = value => ({ 'connection-test': 'Connection check', interview: 'Candidate understanding', evaluate: 'Job evaluation', prepare: 'Application drafting', review: 'Factual review', humanize: 'Humanizer pass', standard: 'Master resume', revise: 'Revision', 'form-answers': 'Form answers', navigation: 'Browser navigation' })[value] || value;
 
 export function UsagePage() {
   const u = store.state.usage, t = u?.totals;

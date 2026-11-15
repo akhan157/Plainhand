@@ -220,6 +220,14 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       }
     }
     if (profileMode !== 'conversation') seededStrength = profileStrength(await app.workspace.load());
+    // Tailoring from the approved standard: the public flow. The standard is
+    // written for the candidate's general target, then applied to a job that
+    // needs different experience first.
+    if (scenario.withStandard) {
+      await runTask(app, base, 'standard');
+      await post(base, app.token, 'standard/approve', {});
+      standardApproved = Boolean((await app.workspace.load()).standard?.approvedAt);
+    }
 
     const { id } = await post(base, app.token, 'jobs', { company: jobSpec.company, title: jobSpec.title, url: `https://jobs.lever.co/synthetic/${scenario.id}`, description: jobSpec.description, location: jobSpec.location });
     await runTask(app, base, 'evaluate', id);

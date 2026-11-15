@@ -8,7 +8,7 @@ Use `modes/pt/` se pelo menos uma das condições abaixo for verdadeira:
 
 - Você se candidata principalmente a **vagas em português** (Gupy, Greenhouse BR, LinkedIn BR, Vagas.com.br, Catho, InfoJobs)
 - Sua **língua do currículo** é português ou você alterna entre PT-BR e EN conforme a vaga
-- Você precisa de respostas e cartas de apresentação em **português tech natural**, não traduzido por máquina
+- Você precisa de respostas e cartas de apresentação em **português natural, no vocabulário da sua área**, não traduzido por máquina
 - Você precisa lidar com **especificidades do mercado brasileiro**: CLT vs PJ, 13º salário, FGTS, PLR, vale-refeição, plano de saúde, aviso prévio, período de experiência
 
 Se a maioria das suas vagas é em inglês, fique com os modos padrão em `modes/`. Os modos em inglês funcionam automaticamente quando Claude detecta uma vaga em português — mas não conhecem as particularidades do mercado brasileiro no mesmo nível de detalhe.
@@ -60,14 +60,14 @@ Se a comunidade adotar os modos em português, mais modos serão traduzidos em P
 
 ## O que continua em inglês?
 
-Propositalmente não traduzido, porque é vocabulário padrão de tech:
+Propositalmente não traduzido, porque é vocabulário padrão da ferramenta:
 
 - `cv.md`, `pipeline`, `tracker`, `report`, `score`, `archetype`, `proof point`
 - Nomes de tools (`Playwright`, `WebSearch`, `WebFetch`, `Read`, `Write`, `Edit`, `Bash`)
 - Valores de status no tracker (`Evaluated`, `Applied`, `Interview`, `Offer`, `Rejected`)
 - Code snippets, caminhos de arquivo, comandos
 
-Os modos usam português tech brasileiro, como se fala em times de engenharia reais em São Paulo, Florianópolis ou Belo Horizonte: texto corrido em português, termos técnicos em inglês onde são de uso comum. Nada de traduzir "pipeline" para "tubulação" ou "cv.md" para "curriculo.md".
+Os modos usam português brasileiro, como se fala no dia a dia de trabalho em São Paulo, Florianópolis ou Belo Horizonte: texto corrido em português, termos em inglês só onde são de uso comum no setor. Nada de traduzir "pipeline" para "tubulação" ou "cv.md" para "curriculo.md".
 
 ## Vocabulário de Referência
 
