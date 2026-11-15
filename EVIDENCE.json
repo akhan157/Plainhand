@@ -318,10 +318,11 @@
     "author": "Pi deepseek/deepseek-flash",
     "root_reviewer": "Claude Opus 5.5",
     "root_finding": "Identity gate rejected any answer with an unsourced year, so availability answers (\"I can start in June 2026\") failed hasEvidence and aborted the whole prepare; \"hope to join ... at Northwind\" read as an employer claim.",
-    "root_correction": "Future years and intent/availability sentences are exempt; planted historical identity (Director at Northwind, 2019 to 2021; worked at Northwind in 2020) still fails. New test added.",
+    "root_correction": "Replaced with reviewer-validated rule: no word list; years before the current year must be sourced; dated title/employer frames checked through the current year. Tests now assert hasEvidence on laundering negatives and current-year availability positives.",
     "checks": [
       "gate + calibration files 31/31",
-      "test:plainhand + cloud-extension-api: 485 pass 0 fail"
+      "test:plainhand + cloud-extension-api: 485 pass 0 fail",
+      "after revision: test:plainhand + cloud-extension-api 485 pass 0 fail"
     ],
     "not_run": [
       "browser/UI",
@@ -331,14 +332,22 @@
     "residuals": [
       "undated title/employer claims left to reviewer",
       "candidate-answer bank provenance until M4",
-      "intent-word exemption is lexical: \"I can confirm I was Director at Northwind in 2019\" would be exempt",
-      "root correction not independently reviewed"
+      "a bare current-year date with no role frame (\"parental leave in 2026\") is not checked",
+      "existing false positives: salary-history years, \"since 2020\", career-start years not in sources"
     ],
     "artifacts": [
       {
         "path": "output/goal-review/m2-merge-test-plainhand.log",
         "sha256": "073fbfa2de76c9d89af8aa957e6269626e0c54d13c2f76194da7a16b0c26e641"
+      },
+      {
+        "path": "output/goal-review/m2-fix2-test-plainhand.log",
+        "sha256": "a0a70a26bc388e11e8eefd7ac6d9e69c3a692d51bce1f985279d41966602890d"
       }
-    ]
+    ],
+    "independent_review": {
+      "verdict": "reject",
+      "finding": "Sentence-level intent-word exemption laundered 9/12 planted historical identity claims (e.g. \"I can confirm I was Director at Northwind in 2019\"); tests never crossed the exemption boundary."
+    }
   }
 }

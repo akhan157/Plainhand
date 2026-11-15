@@ -76,3 +76,5 @@ Independent DeepSeek review rejected root's first ownership-after rule: it flagg
 ## M2 integrated — 2026-11-15
 
 M2 lane `112beff` (writing samples and the reviewed summary cannot ground a claim; identity negative control on answers) merged after root review. Root correction: the author's year check failed any availability answer and aborted prepare; future years and intent/availability sentences are now exempt, planted historical identity still fails. `test:plainhand` + extension API 485/485. Residual: the intent exemption is lexical (can be phrased around); root correction not independently reviewed. Next memory packet: M1 (lossless transfer with approval reset), pin to this merge.
+
+M2 correction revised after independent review (reject: intent-word exemption laundered 9/12 planted histories). Now no word list; pre-current years must be sourced; dated role frames checked through the current year. 485/485. Residual false positives (salary-history years, "since 2020" unsourced) are reviewer territory; recorded in EVIDENCE.json.

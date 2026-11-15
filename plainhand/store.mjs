@@ -185,7 +185,6 @@ const ORG_AT = /\b[Aa]t\s+(?:the\s+)?((?:[A-Z][\w'’&.-]*)(?:\s+(?:[A-Z][\w'’
 const WORKED_AT = /\b(?:worked|served|employed)\s+at\s+(?:the\s+)?((?:[A-Z][\w'’&.-]*)(?:\s+(?:[A-Z][\w'’&.-]*|of|and|&)){0,4})/g;
 const NAME_INTRO = /\b(?:[Mm]y name is|[Ii] go by|[Cc]all me)\s+([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,2})/g;
 const YEAR = /(?<![$\d])\b(?:19|20)\d{2}\b(?![%\d])/g;
-const INTENT_OR_AVAILABILITY = /\b(?:can|could|will|would|hope|hoping|plan|planning|intend|available|availability|start|starting|join|joining|looking forward|eager|excited|keen|want|wish)\b/i;
 const ORG_STOPWORDS = new Set(['of', 'and', 'the', 'for', 'at', 'in', '&']);
 const claimWords = value => String(value || '').toLowerCase().match(/[a-z0-9]+/g) || [];
 // Seniority words are compared on a short stem so "manager" matches "managed" and
@@ -210,16 +209,18 @@ export function identityProblem(text, sources) {
   if (!claim.trim()) return null;
   const { words, stems } = sourceVocabulary(sources);
   const problems = [];
-  // Only history is identity. A future year, or a sentence about availability or
-  // intent ("I can start in June 2026", "hope to join the team at Acme in 2027"),
-  // answers the employer's question rather than stating where the candidate was.
+  // Only history is identity. A year before this one must be in the sources; this
+  // year or later need not be ("I can start in June 2026", "June 2026 works for me").
+  // No word list: wording around a historical claim cannot exempt it.
   const thisYear = new Date().getFullYear();
-  const sentences = claim.split(/(?<=[.!?])\s+|\n+/).filter(Boolean).filter(sentence => !INTENT_OR_AVAILABILITY.test(sentence));
-  const historical = sentence => (sentence.match(YEAR) || []).filter(year => Number(year) <= thisYear);
-  const missingYears = [...new Set(sentences.flatMap(historical))].filter(year => !words.has(year));
+  const sentences = claim.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
+  const years = sentence => sentence.match(YEAR) || [];
+  const missingYears = [...new Set(sentences.flatMap(years))].filter(year => Number(year) < thisYear && !words.has(year));
   if (missingYears.length) problems.push(`date ${missingYears.join(', ')}`);
   for (const sentence of sentences) {
-    if (!historical(sentence).length) continue;
+    // A dated role or employer frame is identity, including one dated this year
+    // ("Director at Northwind, 2026"); a future-dated one is an ambition.
+    if (!years(sentence).some(year => Number(year) <= thisYear)) continue;
     const checkOrg = (match, withTitle) => {
       if (withTitle) {
         const titles = [...sentence.slice(0, match.index).matchAll(SENIORITY)].map(item => item[0]);

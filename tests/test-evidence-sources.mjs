@@ -103,15 +103,14 @@ test('preparing a packet with an unsourced identity answer fails evidence; a cv-
   } finally { await accepted.close(); }
 });
 
-test('availability and intent answers are not identity claims; history still is', async () => {
-  const { claimEvidenceProblem } = await import('../plainhand/store.mjs');
+test('availability answers pass; wording cannot launder a historical identity claim', async () => {
+  const { hasEvidence } = await import('../plainhand/store.mjs');
   const sources = [{ id: 'cv', text: 'Financial Analyst, Example Bank, 2022 to 2025. Built SQL reports for monthly finance reviews.' }];
   const evidence = [{ sourceId: 'cv', quote: 'Built SQL reports for monthly finance reviews.' }];
-  const problem = answer => claimEvidenceProblem({ answer, evidence }, { sources });
-  const next = new Date().getFullYear() + 1;
-  for (const answer of [`I can start in June ${next}.`, 'I would love to grow with the team at Northwind next year.', `I am available from ${next} onward.`, `I hope to be a manager at Northwind by ${next + 3}.`])
-    assert.equal(problem(answer), null, answer);
-  assert.match(problem('Director at Northwind, 2019 to 2021.'), /2019/);
-  assert.match(problem('I worked at Northwind in 2020.'), /northwind/i);
-  assert.equal(problem('I built SQL reports for monthly finance reviews at Example Bank from 2022 to 2025.'), null);
+  const valid = answer => hasEvidence({ answer, evidence }, { sources });
+  const year = new Date().getFullYear();
+  for (const answer of [`I can start in June ${year}.`, `June ${year} works for me.`, `I am available from ${year + 1} onward.`, `I hope to be a manager at Northwind by ${year + 3}.`, 'I built SQL reports for monthly finance reviews at Example Bank from 2022 to 2025.'])
+    assert.equal(valid(answer), true, answer);
+  for (const answer of ['Director at Northwind, 2019 to 2021.', 'I worked at Northwind in 2020.', 'I can confirm I was Director at Northwind in 2019.', 'I would note I worked at Northwind from 2018 to 2020.', 'Available immediately; previously VP at Northwind 2017-2019.', 'Start date: 2020-06-01.', `Director at Northwind, ${year}.`])
+    assert.equal(valid(answer), false, answer);
 });
