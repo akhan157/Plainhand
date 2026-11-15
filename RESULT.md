@@ -26,7 +26,7 @@
 ## Findings the reviewer should confirm
 
 1. The eval lanes `c7cd29c` and `2bb6f68` and the testing branch `e351344` are all reachable from `main`. They need no merge.
-2. `t3/competitor-workflow-improvements` (1 commit) and `-1` (14 commits) are **siblings** from `fb39642`, not a stack. They overlap in `CHANGELOG.md`, `package.json`, `plainhand-server.mjs`, `plainhand/web/ui/core.mjs` and `tests/test-plainhand-ui.mjs`. The task text called `-1` a continuation; the thread is a continuation, the branches are not stacked.
+2. `t3/competitor-workflow-improvements` (1 commit) and `-1` (14 commits) are **siblings** from `fb39642`, not a stack. They overlap in `CHANGELOG.md`, `package.json`, `plainhand-server.mjs`, `plainhand/web/ui/core.mjs` and `tests/test-plainhand-ui.mjs`; a read-only `git merge-tree` shows one content conflict, in `package.json`. The task text called `-1` a continuation; the thread is a continuation, the branches are not stacked.
 3. The goal branch `goal/plainhand-personal-engine` equals `main`.
 4. The audience decision file exists only on the continuation branch.
 
@@ -34,7 +34,10 @@
 
 - No product tests, builds, browsers or live providers.
 - No fresh verification of any inherited test claim.
-- No merge dry-run for the overlapping files.
+- The compact scope split (local docs and branch recovery vs external human rating and site authorization) was not reported before edits; it is reported in the final response instead.
+- No `git fetch`; `origin/*` refs are the local remote-tracking copies.
+- `doctor` was not run; the missing-onboarding-files statement comes from the owner brief.
+- No merge build or test; only a text-level `git merge-tree` of the two competitor branches.
 - No source review beyond a text search; no review of whether main's corpus is field-neutral beyond that search.
 - No change to app source, historical docs, registers, manifest, board, handoff, user data or `main`.
 - No push, no merge to main, no deploy, no subagent.
@@ -47,4 +50,5 @@
 - The U13 row sits after U12 to keep U01–U12 as product rows. Root may renumber.
 - Counts of "ahead / main ahead" reflect the state at 2026-11-14 and change if `main` moves.
 - Packet order P1–P9 is a proposal; P3's merge decision belongs to root or the owner.
-- Date follows the product-definition decision (2026-11-14); the session context also showed 2026-11-13.
+- `WORKFLOW.md` exists and was read; nothing in it conflicts with the master-record decision, which supersedes its statement that the general resume is the tailoring source. `SESSION_NOTES.md` does not exist in this checkout.
+- Remote-only branches were checked: `origin/release/1.1` and `origin/security/codeql-fixes` are reachable from main; two dependabot branches (`hono`, `hono/node-server`) are unmerged and were not examined beyond ancestry.

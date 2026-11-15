@@ -1,7 +1,7 @@
 # Branch and thread reconciliation
 
 **Status:** recovery record, proposed. Not accepted. Written 2026-11-14.
-**Verified at:** `main` = `origin/main` = `fb396422d49e3f76f4fed5beb710397950ffa973`. Goal branch `goal/plainhand-personal-engine` points at the same commit, so it has no work of its own yet.
+**Verified at:** `main` = `origin/main` = `fb396422d49e3f76f4fed5beb710397950ffa973`. `origin/main` is the local remote-tracking ref; no `git fetch` was run, so remote state may be newer. Goal branch `goal/plainhand-personal-engine` points at the same commit, so it has no work of its own yet.
 **Companions:** [UNIFIED-GOAL.md](UNIFIED-GOAL.md), [GOAL-COVERAGE-REVIEW.md](GOAL-COVERAGE-REVIEW.md).
 
 Method: `git rev-parse`, `git merge-base --is-ancestor`, `git rev-list --left-right --count`, `git diff --shortstat` and `git status`. No source files were read beyond the documents named in the scope, and nothing was built or run. Test claims from other branches are **inherited claims**, not fresh results.
@@ -18,9 +18,13 @@ Method: `git rev-parse`, `git merge-base --is-ancestor`, `git rev-list --left-ri
 | `t3/app-benchmark-testing-harness` | `e351344fe8ad614ca8291374843db15f937e11d0` | yes | 0 / 16 | clean | Merged. `9a638a4` (`9a638a4e082cb4455b04353527b353d8bc996730`) merged it, and evaluation fixes followed through `fb39642` | None. Do not re-merge |
 | `t3/eval-harness-lane1-corpus` | `c7cd29c22231911d983326798fdb311231726051` | yes | 0 / 27 | clean | Reachable from main. Verified by ancestry check, not merged again | None. Stale; do not merge |
 | `t3/eval-harness-lane2-upgrade` | `2bb6f689ce256346df2425f26bfd25620db38210` | yes | 0 / 23 | clean | Reachable from main. Verified by ancestry check | None. Stale; do not merge |
-| `port/ai-job-search` | `439b1934b251fc47faf035db15a174132a705efa` | yes | 0 / 22 | not checked out in a worktree | Merged by `b449967` (PR #6) | None. Source of the adjacent features to inventory (U12) |
+| `port/ai-job-search` | `439b1934b251fc47faf035db15a174132a705efa` | yes | 0 / 22 | not checked out in a worktree | Reachable from main; `b449967` is recorded as its PR #6 merge. `origin/port/ai-job-search` is at `7132d625b296fb31218dac0c9e9fca580cc9253d` (also reachable, 23 commits behind main), one commit behind the local branch | None. Source of the adjacent features to inventory (U12) |
 | `t3/competitor-workflow-improvements` | `867c32956a38788a3099b045b19be450fcd16a86` | **no** | 1 / 0 | clean | Unmerged. Stage board, people roll-up, ICS calendar, CSV exports. `867c329`: 11 files, +515 / -11 | See "Unmerged competitor work" |
 | `t3/competitor-workflow-improvements-1` | `a46056fdc53a4159f5b30eae9b3de578efb3767d` | **no** | 14 / 0 | clean | Unmerged continuation of the redesign. 94 files, +2947 / -1901 against main | See "Unmerged competitor work" |
+| `origin/release/1.1` | `7c60871e5dafbcf258194326ff47ca73613434f4` | yes | 0 / 88 | no worktree | Reachable from main | None |
+| `origin/security/codeql-fixes` | `22e93d703d9ac26c9d99b5c92d1b1eaa07c49d7b` | yes | 0 / 35 | no worktree | Reachable from main | None. Checked because an unmerged security branch would matter |
+| `origin/dependabot/npm_and_yarn/hono-4.13.18` | `d1d3e94c28a7427a2fe5d62660b36f39ffcc3334` | **no** | 1 / 0 | no worktree | Unmerged dependency bump, not examined beyond ancestry | Owner or root decides whether to take it |
+| `origin/dependabot/npm_and_yarn/hono/node-server-2.1.8` | `cbf7552f059932018cee410d77d337de31a60481` | **no** | 1 / 0 | no worktree | Unmerged dependency bump, not examined beyond ancestry | Owner or root decides whether to take it |
 | `t3/unified-goal-scope-docs` | `fb396422d49e3f76f4fed5beb710397950ffa973` before this commit | yes before the commit | this packet adds one docs commit | the author's worktree | The scope-document branch | Root reads the diff and integrates |
 
 Worktree dirty status was clean for every worktree at check time: the main checkout, `integrate-main`, and one worktree each for the five `t3/*` branches above.
@@ -32,7 +36,7 @@ The ancestry check for the lane branches matches the instruction to verify reach
 Two findings change how to treat these branches.
 
 1. **They are siblings, not a stack.** Both branch from `main` at `fb39642`. `867c329` is **not** an ancestor of `a46056f`. Neither contains the other.
-2. **They overlap in five files:** `CHANGELOG.md`, `package.json`, `plainhand-server.mjs`, `plainhand/web/ui/core.mjs` and `tests/test-plainhand-ui.mjs`. Merging both needs a conflict decision; one is not simply a fast-forward after the other.
+2. **They overlap in five files:** `CHANGELOG.md`, `package.json`, `plainhand-server.mjs`, `plainhand/web/ui/core.mjs` and `tests/test-plainhand-ui.mjs`. One is not a fast-forward after the other. A read-only `git merge-tree --write-tree` of the two tips auto-merged four of the five files and reported **one content conflict, in `package.json`**. Auto-merged text is not proof the merged code works; tests must be re-run (P3).
 
 `t3/competitor-workflow-improvements` (`867c329`) holds one commit: tracking exports and views. It has a unit test (`tests/test-exports.mjs`) and a UI test change. Its test result is an inherited claim.
 
@@ -70,8 +74,8 @@ Thread links use `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/<thread-id
 
 | Thread | Link | Ended at | Resume point | Disposition |
 | --- | --- | --- | --- | --- |
-| Redesign `5746e18f-7928-43da-b67e-839f5a87bd3d` | `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/5746e18f-7928-43da-b67e-839f5a87bd3d` | Model and quota cooling; stopped before finishing | Its product work is on the sibling branches. The continuation, not this thread, holds the completed commits | Owner settles after the coverage review |
-| Continuation `e12f1575-914f-49cc-8a81-efa1e561273f` | `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/e12f1575-914f-49cc-8a81-efa1e561273f` | Completed locally at `a46056f` | Branch `t3/competitor-workflow-improvements-1`. Nothing pushed or merged. Resume at P3 integration and fresh validation of master and tailoring | Owner settles after review |
+| Redesign `5746e18f-7928-43da-b67e-839f5a87bd3d` | `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/5746e18f-7928-43da-b67e-839f5a87bd3d` | Model and quota cooling; stopped before finishing | Inferred, not verified: its product work reached the continuation, which holds the completed commits. Check the thread transcript before relying on this | Owner settles after the coverage review |
+| Continuation `e12f1575-914f-49cc-8a81-efa1e561273f` | `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/e12f1575-914f-49cc-8a81-efa1e561273f` | Completed locally at `a46056f` | Branch `t3/competitor-workflow-improvements-1`. Not merged to main; no remote-tracking ref for it exists locally, so it appears unpushed (no fetch was run). Resume at P3 integration and fresh validation of master and tailoring | Owner settles after review |
 | Benchmark `9104279e-b54d-4841-a9ae-7ebf21cb192a` | `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/9104279e-b54d-4841-a9ae-7ebf21cb192a` | `e351344`, since merged to main | A proposed live baseline plus judge was **not executed**. Resume at P4 (frozen design), then P6 | Owner settles after review |
 | Control plane `f3b1cc2a-de89-4fc8-9a17-5e96a84d34a6` | `t3-thread://v2/a2d80697-a3a1-473d-905b-2474769cce1b/f3b1cc2a-de89-4fc8-9a17-5e96a84d34a6` | Active | Owns the persistent goal and accepts or rejects this scope | n/a |
 
@@ -82,7 +86,7 @@ Nothing here settles, archives or deletes a thread.
 1. **No fresh test run** on any branch in this task. All pass counts for the competitor branches are inherited; the main-branch harness figures are from `EVALUATION-HARNESS.md` and the matrix, not re-run.
 2. **No live validation of master resume or per-job tailoring** on the continuation branch.
 3. **No live baseline or judge run** for the benchmark thread, and no human ratings for calibration.
-4. **No merge dry-run** for the five overlapping files. Conflict size is unknown.
-5. **No onboarded real-candidate data.** The main working checkout lacks `cv.md`, `config/profile.yml` and `portals.yml`.
+4. **Only a text-level merge dry-run** of the two competitor branches (one `package.json` conflict). No build or test of a merged result.
+5. **No onboarded real-candidate data.** The owner brief says the main working checkout lacks `cv.md`, `config/profile.yml` and `portals.yml`; the author did not run `doctor` to confirm.
 6. **No review of `PRODUCT-BUILDOUT-GOAL` and VERIFICATION-MATRIX claims against current code.** They are to be reconciled in P2.
 7. `port/ai-job-search` has no worktree; its state was read through refs only.

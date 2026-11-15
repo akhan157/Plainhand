@@ -57,10 +57,10 @@ escalate authority.
 
 | Topic | Decision |
 | --- | --- |
-| Audience | Finance, tech, STEM and adjacent professionals, new graduate to director. Licenses and certifications are first-class evidence. The field comes from the candidate, never from a default |
+| Audience | Finance, tech, STEM and adjacent professionals, intern to director. Benchmark personas run from new graduate to senior manager. Licenses and certifications are first-class evidence. The field comes from the candidate, never from a default |
 | Master record | One complete record, approved by the candidate in wording they stand behind. It replaces the "standard resume" as the thing every application starts from. Tailoring selects, orders and adapts from it and never edits it |
-| Supported ATS | Greenhouse, Lever and Ashby are measured **separately**, each at the support actually in the code. Workday is best effort with handoff. No claim beyond measured support |
-| LinkedIn and Indeed | Save, prepare, manual kit, or user-driven extension, **within existing behavior**. No new autonomous-board promise |
+| Supported ATS | Greenhouse, Lever and Ashby are measured **separately**, each at the support actually in the code. Workday is best effort with handoff (owner brief; the verification matrix only records Workday after sign-in as NOT VERIFIED). No claim beyond measured support |
+| LinkedIn and Indeed | Save, prepare, manual kit, or user-driven extension, **within existing behavior**. No new autonomous-board promise. Which baseline counts as "existing" is an open owner point: V1-GOAL says no automation of those pages, while unmerged `a46056f` matches board postings in the extension (see GOAL-COVERAGE-REVIEW) |
 | Unsupported site | Never prevents packet preparation. The complete manual kit (link, tailored PDFs, each answer with a copy control) is produced and tracking continues |
 | Autonomy | Ask per application by default. Preparing on its own is opt-in, within limits, and never submits |
 | Wording line | Market-norm default from V1-GOAL stays: own your part of a result, rounding stated as rounding, titles, employers, dates, degrees and level exact |
@@ -132,11 +132,11 @@ Order matters; each packet ends in a reviewer's disposition, never self-accept.
 | # | Packet | Gate before it starts | Output |
 | --- | --- | --- | --- |
 | P1 | Root integrates these three documents into the goal branch and writes any handoff or register | Root reads the diff independently | Committed scope on the goal branch |
-| P2 | Reconcile the VERIFICATION-MATRIX and the historical claims against current code. Read-only inventory of adjacent features (U12) | P1 | Table per claim: carried, re-run or retired. No new PASS |
-| P3 | Decide integration of the two unmerged competitor branches (siblings with overlapping files; see BRANCH-RECONCILIATION). Merge into the goal branch only, then re-run their tests fresh | Owner or root approves the order; main merges are not authorized | A merged goal branch with fresh test evidence, or a documented decision not to merge |
+| P2 | Reconcile the VERIFICATION-MATRIX and the historical claims against current code. Read-only inventory of adjacent features (U12). Start from `WORKFLOW.md`, which already names producers and consumers for interview prep, the skill-gap plan, email status proposals and the PDF ATS check | P1 | Table per claim: carried, re-run or retired. No new PASS |
+| P3 | Decide integration of the two unmerged competitor branches (siblings; a read-only merge-tree of the two shows one content conflict, in `package.json`; see BRANCH-RECONCILIATION). Merge into the goal branch only, then re-run their tests fresh | Owner or root approves the order; main merges are not authorized | A merged goal branch with fresh test evidence, or a documented decision not to merge |
 | P4 | Freeze the evaluation design (U13): SHAs, scenarios, rubrics, budgets, controls, held-out set, threshold-setting protocol | P3 so the target SHA is final | Frozen design document, committed before any live run |
 | P5 | Gap work on memory and master/tailoring (U02–U04) against the frozen scenarios, including a deterministic elicitation checklist (prompt wording alone failed in the analyst case) | P4 | Code and tests. Rows stay `in_progress` |
-| P6 | Live baseline, then change comparison, with a non-Claude judge and the quota plan | P4, provider quota available, budget approved | Evidence directories. Rows move only by reviewer disposition |
+| P6 | Live baseline, then change comparison, with a judge family different from the provider under test, and the quota plan | P4, provider quota available, budget approved | Evidence directories. Rows move only by reviewer disposition |
 | P7 | Application-path measurements on local realistic forms and owned portals, per ATS (U07, U08) | P4 | Per-ATS table with access tier |
 | P8 | Queues, autonomy, recovery, tracking and learning (U09, U10) | P5 | Tests and evidence |
 | P9 | Release pass: UI and CLI parity, fresh install, export and import (U12) | P3 onward | Reachability matrix and install log |
@@ -148,8 +148,9 @@ These need a human, a site or an owner decision. Setup does not authorize them.
 1. A person rates 20–30 packets for judge calibration.
 2. Voice validation by the actual user with their own writing.
 3. Real-candidate validation on onboarded, reviewed data. The main working
-   checkout is system-only; `doctor` reports `cv.md`, `config/profile.yml` and
-   `portals.yml` missing. That does not block fictional development.
+   checkout is system-only; per the owner brief, `doctor` reports `cv.md`,
+   `config/profile.yml` and `portals.yml` missing (not re-run by the author).
+   That does not block fictional development.
 4. Commercial-site write acceptance: an authorized vendor test account or an
    explicitly chosen real role with reviewed data. Final submission stays with
    the person.

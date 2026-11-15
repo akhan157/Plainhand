@@ -7,7 +7,7 @@
 
 - The scope-document task was first routed to a Go DeepSeek author. That attempt failed with insufficient balance and produced **no verdict and no output**; nothing from it was used.
 - The author was then escalated to the subscription-backed `claude-pool` / `claude-sonnet-5-5` at effort high.
-- Independent review is assigned to root Codex `gpt-6.1-sol`. The author is a Claude-family model and the orchestrator family is also Claude, so Codex review is the cross-family check. The author does not review or accept its own text.
+- Independent review is assigned to root Codex `gpt-6.1-sol`, per the task brief. The author is a Claude-family model, so a Codex review is a cross-family check. The author does not review or accept its own text.
 
 ## Owner needs to acceptance IDs
 
@@ -66,6 +66,7 @@ Historical evidence is kept. Only the forward-looking assumption changes.
 ## Open points for the owner
 
 - Which unmerged competitor branch merges first, and whether the tracking exports (`867c329`) are wanted at all.
+- Which LinkedIn and Indeed baseline counts as "existing behavior": V1-GOAL (no automation of those pages; find and save, apply on the employer's site) or the unmerged `a46056f` (board postings matched in the extension, manual kit when filling fails). The author did not decide this.
 - Whether the 20–30 human ratings are possible, and by whom.
 - Who may approve the pre-registered thresholds.
 - Which older threads are settled after this review.
