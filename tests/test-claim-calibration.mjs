@@ -89,3 +89,60 @@ test('a sentence about the employer may repeat the posting\'s numbers; a claim a
   const noJob = gradePacket({ resume: [], answers: [], coverLetter: 'I am applying to lead your 25 engineers.' }, sources, []);
   assert.equal(noJob.counts.unsupported, 1, 'without the posting the number is unsupported');
 });
+
+test('a posting number is exempt only where the employer is its subject', () => {
+  const sources = [{ id: 'cv', text: 'I manage 14 engineers across two teams.' }];
+  const jobText = 'The company operates in 28 countries. Lead three teams of about 25 engineers. Your 28-bed unit runs 12-hour shifts.';
+  const grade = coverLetter => gradePacket({ resume: [], answers: [], coverLetter }, sources, [], null, { jobText });
+  const unsupported = text => grade(text).claims.filter(claim => claim.rating === 'unsupported');
+  for (const fact of [
+    'Your company operates in 28 countries.',
+    'The role’s 12-hour shifts suit me.',
+    'Your 28-country footprint matches my experience.',
+    'Your team of 25 is impressive.',
+    'I am applying to lead your 25 engineers.',
+    'I hope to lead your team of 25.',
+    'I would like to manage your team of 25.',
+    'I am excited to lead your 25 engineers.',
+  ]) assert.deepEqual(unsupported(fact).map(claim => claim.text), [], fact);
+  for (const claim of [
+    'I led teams in 28 countries at your company.',
+    'Led your 25 engineers.',
+    'Managed your team of 25.',
+    'My experience includes leading your 25 engineers.',
+    'We currently manage your team of 25.',
+    'I led your 25 engineers.',
+    'I increased revenue at your company by 28%.',
+    'I managed 25 engineers at your company.',
+  ]) assert.equal(unsupported(claim).length, 1, claim);
+});
+
+test('repeated occurrences of one number are checked where each one sits', () => {
+  const sources = [{ id: 'cv', text: 'I manage 14 engineers across two teams.' }];
+  const jobText = 'Our team of 25 engineers ships hardware. The company operates in 28 countries.';
+  const unsupported = packet => gradePacket(packet, sources, [], null, { jobText }).claims.filter(claim => claim.rating === 'unsupported');
+  const twoSentences = unsupported({ resume: [], answers: [], coverLetter: 'Your team of 25 is impressive. I have led teams of 25.' });
+  assert.equal(twoSentences.length, 1, 'the employer fact does not exempt the candidate claim after it');
+  assert.match(twoSentences[0].text, /I have led teams of 25/);
+  const oneSentence = unsupported({ resume: [], answers: [], coverLetter: 'Your company operates in 28 countries and I led teams in 28 countries.' });
+  assert.equal(oneSentence.length, 1, 'the same value twice in one sentence is judged twice');
+  assert.match(oneSentence[0].text, /I led teams in 28 countries/);
+  const packet = {
+    resume: [{ section: 'Experience', text: 'Led your 25 engineers.' }],
+    answers: [{ question: 'How large was the team?', answer: 'We currently manage your team of 25.' }],
+    coverLetter: 'Your team of 25 ships hardware.',
+  };
+  assert.deepEqual(unsupported(packet).map(claim => claim.part).sort(), ['answer', 'resume']);
+});
+
+test('employer facts keep working, and numbers the posting lacks are never exempt', () => {
+  const sources = [{ id: 'cv', text: 'I manage 14 engineers across two teams.' }];
+  const jobText = 'A $2,000 training budget and a team of 25 engineers. The company operates in 28 countries.';
+  const grade = (coverLetter, posting = jobText) => gradePacket({ resume: [], answers: [], coverLetter }, sources, [], null, { jobText: posting });
+  const budget = grade('Your $2,000 training budget would help me lead the 25 engineers on your team.');
+  assert.equal(budget.claims.filter(c => c.rating === 'unsupported').length, 1, 'one sentence, one claim');
+  assert.deepEqual(budget.claims.find(c => c.rating === 'unsupported').signals, ['number-not-in-sources'], 'the employer’s $2,000 is exempt; the scope I claim is not');
+  assert.equal(grade('Your team of 25 is impressive.', 'Our team of 30 engineers ships hardware.').claims.filter(c => c.rating === 'unsupported').length, 1, 'a number the posting does not contain is not an employer fact');
+  assert.equal(grade('Your team of 25 is impressive.', '').counts.unsupported, 1, 'without the posting nothing is exempt');
+  assert.equal(grade('Your $2,000 training budget covers the 25 engineers I led.').claims.filter(c => c.rating === 'unsupported').length, 1, 'a comma inside $2,000 does not merge the clauses');
+});

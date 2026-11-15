@@ -8,7 +8,7 @@ import { discover, verifyJob, defaultFieldAnswers, isSensitiveLabel } from './jo
 import { UsageLedger } from './usage.mjs';
 import { AnswerBank } from './answer-bank.mjs';
 import { providerJob } from './application-record.mjs';
-import { integrityRecord } from './posting-integrity.mjs';
+import { integrityRecord, providerDescription } from './posting-integrity.mjs';
 import { logUnderstanding } from './profile-strength.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
@@ -309,7 +309,9 @@ export class Workflow {
           throw new Error('The factual review found issues. Review the findings in the application and add missing evidence before retrying.');
         }
         // How each claim compares with its evidence: undersold, balanced, stretched or unsupported.
-        job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state), { jobText: job.description || '' }), gradedAt: now(), line: Boolean(line) };
+        // The saved description is never rewritten; grade against the same sanitized copy the
+        // provider sees, so a sentence addressed to AI tools cannot whitelist a number.
+        job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state), { jobText: providerDescription(job.description || '') }), gradedAt: now(), line: Boolean(line) };
         job.fromStandard = compareToStandard(packet, standard);
         job.humanizer = humanizer;
         job.packet = packet; job.packetJobHash = digest([job.url, job.company, job.title, job.description]);
