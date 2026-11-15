@@ -86,36 +86,50 @@ const str = (value, max, name) => {
 
 // Two URLs are the same posting when they normalise to the same page, ignoring a
 // trailing slash and the /apply step (Lever, Ashby), or carry the same Greenhouse
-// job id (employer pages embed Greenhouse with ?gh_jid=). LinkedIn and Indeed show
-// one posting under many URLs (search results, collections, the apply step), so
-// their own job ids count too.
-function urlKeys(value) {
+// job id (employer pages embed Greenhouse with ?gh_jid=). A job board is different:
+// its paths are shared list and search routes, and the posting is identified by an
+// id in the query (?jk=, ?vjk=, ?currentJobId=, ?jobListingId=) or in a path segment
+// (/jobs/view/<id>). A board page with no id, or with two different ids, matches
+// nothing: guessing would offer the wrong role's application.
+const POSTING_ID_PARAM = /^(?:jk|vjk|currentjobid|joblistingid|jl|jobid|job_id|jid)$/i;
+const POSTING_ID_VALUE = /^[a-z0-9_-]{4,64}$/i;
+// Indeed serves the same product on country domains. The key is host-scoped, so this
+// only decides whether path-only keys are allowed; they never are on a board.
+const REGIONAL_BOARD_HOST = /(^|\.)indeed\.(?:[a-z]{2,3}|com\.[a-z]{2}|co\.[a-z]{2})$/i;
+const boardHost = hostname => REGIONAL_BOARD_HOST.test(hostname) || isBoardUrl(`https://${hostname}/`);
+const boardId = url => {
+  const ids = new Set();
+  if (/(^|\.)linkedin\.com$/i.test(url.hostname)) {
+    const fromPath = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d{6,})(?:\/|$)/)?.[1];
+    if (fromPath) ids.add(fromPath);
+  }
+  for (const [key, value] of url.searchParams) if (POSTING_ID_PARAM.test(key) && POSTING_ID_VALUE.test(value)) ids.add(value);
+  return ids.size === 1 ? [...ids][0].toLowerCase() : null;   // none, or contradictory ids
+};
+export function postingKeys(value) {
   let href;
   try { href = jobUrl(value); } catch { return { keys: [], ghId: null }; }
   const url = new URL(href);
   const path = url.pathname.replace(/\/+$/, '');
+  if (boardHost(url.hostname)) {
+    const id = boardId(url);
+    return { keys: id ? [`${url.hostname.toLowerCase().replace(/^www\./, '')}:${id}`] : [], ghId: null };
+  }
   const base = url.origin + path.replace(/\/(apply|application)$/i, '');
   const ghId = url.searchParams.get('gh_jid') || url.pathname.match(/\/jobs\/(\d{4,})(?:\/|$)/)?.[1] || null;
-  const keys = [href, url.origin + path, base];
-  if (/(^|\.)linkedin\.com$/i.test(url.hostname)) {
-    const id = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d{6,})/)?.[1] || url.searchParams.get('currentJobId');
-    if (/^\d{6,}$/.test(id || '')) keys.push(`linkedin:${id}`);
-  }
-  if (/(^|\.)indeed\.[a-z.]+$/i.test(url.hostname)) {
-    const id = url.searchParams.get('jk') || url.searchParams.get('vjk');
-    if (/^[a-f0-9]{8,}$/i.test(id || '')) keys.push(`indeed:${id.toLowerCase()}`);
-  }
-  return { keys, ghId: /(^|\.)(linkedin\.com|indeed\.[a-z.]+)$/i.test(url.hostname) ? null : ghId };
+  return { keys: [href, url.origin + path, base], ghId };
 }
 export function matchJob(jobs, pageUrl) {
-  const page = urlKeys(pageUrl);
+  const page = postingKeys(pageUrl);
   if (!page.keys.length) return null;
   const hits = jobs.filter(job => [job.url, job.applyUrl].filter(Boolean).some(saved => {
-    const known = urlKeys(saved);
+    const known = postingKeys(saved);
     return known.keys.some(key => page.keys.includes(key)) || (page.ghId && known.ghId === page.ghId);
   }));
-  // Prefer the role that is ready to fill, then the most recent.
-  return hits.find(job => job.approvedHash && job.approvedHash === packetIdentity(job)) || hits[0] || null;
+  // One saved role, or nothing. More than one means the identity is ambiguous, and
+  // filling the wrong role's packet is worse than asking the candidate.
+  const unique = new Map(hits.map(job => [job.id, job]));
+  return unique.size === 1 ? [...unique.values()][0] : null;
 }
 
 async function packetState(workspace, state, job) {
