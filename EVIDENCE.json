@@ -1,6 +1,6 @@
 {
   "checkpoint": "2026-11-15",
-  "kind": "scope_review_only",
+  "kind": "scope_review_and_p2_diagnostics",
   "base_sha": "fb396422d49e3f76f4fed5beb710397950ffa973",
   "author_tip": "93965287794589c9f05137ff34728e0b202dee97",
   "author": "claude-pool/claude-sonnet-5-5 high",
@@ -42,9 +42,9 @@
   },
   "register_counts": {
     "PASS": 0,
-    "in_progress": 0,
+    "in_progress": 4,
     "blocked": 0,
-    "not_run": 13,
+    "not_run": 9,
     "FAIL": 0
   },
   "failed_attempt": {
@@ -55,5 +55,38 @@
   },
   "review_correction": "Documentation checker initially matched scope rows as acceptance rows; narrowed to U followed by two digits; original error was IndexError and created no register.",
   "scope_merge_sha": "e7024bbb794dbadf8f1aeefe1fa64b2a259bc666",
-  "review_amendment_sha": "298d6fd5b23eea639643f4c277f1776b6e05dbed"
+  "review_amendment_sha": "298d6fd5b23eea639643f4c277f1776b6e05dbed",
+  "p2": {
+    "author_tip": "b756eec9c564add3471bee8db574c916ef98769b",
+    "merge_sha": "de26e0a808056f074ec2f2c80cc5e2cd4b6011b1",
+    "disposition": "source inventory accepted with root corrections; no product PASS",
+    "reviewer": "gpt-6.1-sol medium",
+    "authors": [
+      "claude-pool/claude-sonnet-5-5 high (429 failure; partial draft preserved)",
+      "pi/deepseek/deepseek-flash thinking max (configured metered fallback)"
+    ]
+  },
+  "diagnostics": [
+    {
+      "path": "output/goal-review/scorer-counterexamples.json",
+      "sha256": "ecab16d35daddf33d7048f59d9440eaea95bf7f4fd95439010a42c27a8db26c6",
+      "target": "e4da45fa2d21ce1f5945ce11662a73afda03b53f",
+      "result": "posting-number false pass; numeric heading skipped; PDF metadata-only counterexample",
+      "scope": "direct synthetic scorePacket inputs; no model/browser/PDF render"
+    },
+    {
+      "path": "output/goal-review/import-key-loss.json",
+      "sha256": "6bd72f2100c387f8093b4d81d74b81ee8746745a48dd040626d5a59dca4e016c",
+      "target": "e4da45fa2d21ce1f5945ce11662a73afda03b53f",
+      "result": "five exported keys absent after direct importWorkspace",
+      "scope": "fictional temporary workspace removed after probe"
+    }
+  ],
+  "runtime": {
+    "container": "plainhand-goal-tracking-pg",
+    "state_verified": "running",
+    "loopback_port": 32769,
+    "owner": "root",
+    "cleanup": "stop exact container after tracking lane and root verification; do not touch other containers"
+  }
 }

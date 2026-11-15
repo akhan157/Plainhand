@@ -1,6 +1,6 @@
 # P2 inventory result (companion to CURRENT-CAPABILITY-INVENTORY.md)
 
-**Status:** author result, proposed only. Root Codex reviews independently and registers; this file registers and accepts nothing.
+**Status:** P2 source inventory accepted with root corrections; product acceptance remains open. Author proposals below are retained as proposals, not register decisions. Root Codex independently reviewed Claude/DeepSeek authorship.
 **Base pin:** `e4da45fa2d21ce1f5945ce11662a73afda03b53f` on `t3/p2-capability-inventory`. No source file differs from main `fb396422d49e3f76f4fed5beb710397950ffa973`: `git diff --name-only` lists only ASSIGNMENT.md, EVIDENCE.json, GOAL-HANDOFF.md, RESULT.md, REVIEW.md and four `docs/internal/` files.
 **Author lineage.** First pass: Claude Sonnet 5.5, which wrote the inventory draft then ended in an API 429 rate limit before reporting. That run produced **no verdict and no acceptance**; its partial draft was preserved. Resume: Pi DeepSeek V4.1 Flash thinking max, on root's explicit fallback selection after the 429. Root Codex reviews. No content here inherits approval from either author.
 **Tip references:** `867c32956a38788a3099b045b19be450fcd16a86` (tracking) and `a46056fdc53a4159f5b30eae9b3de578efb3767d` (continuation). Read with `git show` only; neither was checked out, merged or executed.
@@ -10,8 +10,8 @@
 | Class | Items | What closes it |
 | --- | --- | --- |
 | Local (this lane could run) | All U01–U13 source mechanisms; the 18 probes; the six review-stop falsifiers | Bounded fictional workspace + the probe commands; no live model call required for the structural probes |
-| Root decision (not a blocker) | Integration order of `867c329` then `a46056f` (P3); thresholds/budgets/held-out design (P4); whether restart-loss satisfies U09 | Root records the choice; no external input |
-| External (no lane can close) | A real candidate's own voice and human acceptance; 20–30 human packet ratings for judge calibration; authorized commercial ATS/vendor test access; a permitted CAPTCHA environment; a real person's submission; live provider runs on quota | Owner action only: their own writing/ratings, an authorized sandbox account, or spend authorization |
+| Root decision (not a blocker) | Integration order of `867c329` then `a46056f` (P3); thresholds/budgets/held-out design (P4); how to verify restart persistence and explicit resume against U09 | Root records the choice; no external input |
+| External (no lane can close) | A real candidate's own voice and human acceptance; 20–30 human packet ratings for judge calibration; higher-access commercial/CAPTCHA checks only where authorized | Human writing/ratings or authorized access for that tier. Local realistic fixtures and handoffs proceed. Existing authorized provider runs are operationally quota-dependent, not automatically an owner decision. Real employer submission is prohibited and not required |
 
 No row below treats a root threshold/integration choice as an owner blocker.
 
@@ -23,7 +23,7 @@ No row below treats a root threshold/integration choice as an owner blocker.
 | --- | --- | --- | --- |
 | Harness, 10 Nov | Controlled 28/30, profile triples, 27/27 evaluation, journey, edge cases | Carryable mechanism, **re-run** for any current number | Harness lanes merged (`e351344`, `c7cd29c`, `2bb6f68`); controlled deltas are zero by design |
 | Harness, 10 Nov | Live profile-effect subset 3/6 | **Re-run**; a product signal, not a pass | `VERIFICATION-MATRIX.md:12`; no current-code live run |
-| 1.1.1/1.1.2, 5–6 Nov | Live Claude/Codex workflows 10/10, installers, real sites read-only, live-site bug fixes | Carryable mechanisms; **re-run** for live claims; installer checks are CI-path evidence | Workday after sign-in NOT VERIFIED `:38`; real submission external by design |
+| 1.1.1/1.1.2, 5–6 Nov | Live Claude/Codex workflows 10/10, installers, real sites read-only, live-site bug fixes | Carryable mechanisms; **re-run** for live claims; installer checks are CI-path evidence | Workday after sign-in NOT VERIFIED `:38`; employer submission prohibited; candidate simulation remains local |
 | Local rerun, 3 Nov | Core 304/304, full suite 42/44 (Go missing), UI/themes, dashboard, benchmarks | **Re-run**; environment-bound (no Go, no user workspace) | Numbers are not artifacts in this tree |
 | 1.0, 27 Oct | Live 1.0 flow, profile building, claim calibration, humanizer, resume format, fresh-copy install | Mechanisms carryable; **numbers re-run**; "one standard resume" is **obsolete** | Replaced prospectively by master record, only on `a46056f` |
 | Lifecycle, 26 Oct | Campaigns, grounded follow-ups, insights bands, sharing controls, import, mutation checks | Carryable mechanisms; **re-run** mutation/live follow-up checks | Outcome-module open issues `:109-112` not re-checked |
