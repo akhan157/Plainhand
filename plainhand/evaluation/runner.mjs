@@ -18,6 +18,7 @@ import { controlledAgent, profileFixtureAgent } from './agent.mjs';
 import { scenarios, personaById, jobById, portalById, expectedFor } from './corpus.mjs';
 import { personas as profilePersonas, simulatedCandidate, scoreRun } from '../benchmarks/profile-bench.mjs';
 import { scoreScenario, aggregate, markdownReport, compareToBaseline } from './score.mjs';
+import { pdfEvidence } from './pdf-evidence.mjs';
 
 const option = (argv, name) => { const index = argv.indexOf('--' + name); return index < 0 ? null : argv[index + 1]; };
 const has = (argv, name) => argv.includes('--' + name);
@@ -279,10 +280,13 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
     const prepared = (await app.workspace.load()).jobs.find(job => job.id === id);
     const sources = (await app.workspace.context(await app.workspace.load())).sources;
     const pdfBytes = await app.workspace.readBinary(prepared.pdf);
-    const pdf = { bytes: pdfBytes, sha: createHash('sha256').update(pdfBytes).digest('hex'), head: pdfBytes.subarray(0, 5).toString() };
     const coverPath = (prepared.artifacts || []).find(file => /cover-letter.*\.pdf$/.test(file));
     const coverBytes = coverPath ? await app.workspace.readBinary(coverPath) : null;
     const cover = coverBytes ? { path: coverPath, bytes: coverBytes, sha: createHash('sha256').update(coverBytes).digest('hex') } : null;
+    // Rendered-PDF evidence, not a header/size claim: the scorer reads the parsed
+    // text layer and item geometry of the bytes this run actually produced.
+    const evidence = await pdfEvidence(pdfBytes, { packet: prepared.packet, profile: persona.profile, job: jobSpec, sources, coverBytes });
+    const pdf = { bytes: pdfBytes, sha: createHash('sha256').update(pdfBytes).digest('hex'), head: pdfBytes.subarray(0, 5).toString(), evidence };
     packetResult = { packetQuestionsAsked, roleAnswered: Boolean(packetQuestionsAsked.length && persona.roleAnswers), packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
 
     if (scenario.family === 'resume') {
@@ -471,6 +475,8 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     await writeFile(path.join(out, `${scenario.id}.json`), JSON.stringify(scored, null, 2));
     // The raw packet and its sources, for benchmark-judge.mjs; kept apart so results.json stays small.
     if (result.packet?.packet) await writeFile(path.join(out, `${scenario.id}.packet.json`), JSON.stringify({ packet: result.packet.packet, sources: result.packet.sources || [] }, null, 2));
+    // Extracted PDF text and geometry, kept outside results.json so the report stays small.
+    if (result.packet?.pdf?.evidence) await writeFile(path.join(out, `${scenario.id}.pdf-evidence.json`), JSON.stringify(result.packet.pdf.evidence, null, 2));
     // Failures keep the raw fill plan, checkpoint and page snapshots so the cause can be traced.
     if (!scored.pass && result.application) {
       const { plan, checkpoint, snapshots, readback } = result.application;
