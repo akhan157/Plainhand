@@ -191,20 +191,29 @@ function visibleNumberUnits(packet, persona) {
 // range never licenses an unrelated count ("six teams"). A career total may cover
 // several roles, so the merged length of all ranges counts too, without the gaps.
 // Degree, publication, certification and break lines have the same shape as tenure
-// and never license years of work. Known residual: a range supports "N years" of
-// any field, not only the role it belongs to.
+// and never license years of work. Known residuals: a range supports "N years" of
+// any field, not only the role it belongs to; recency ("the past 6 years") is not
+// modeled; a project line outside a Projects heading still joins the total.
 const YEAR_RANGE = /\b((?:19|20)\d{2})\s*(?:to|through|until|-|\u2013|\u2014)\s*((?:19|20)\d{2})\b/gi;
-const NOT_EMPLOYMENT = /\b(?:publications?|published|papers?|degree|bachelor|master|phd|doctorate|education|university|college|certif\w*|licen[cs]e|career break|break|sabbatical|family care|took a year)\b/i;
+// A Projects or Education section may license its own "N years", never the career total.
+const NON_CAREER_HEADING = /^(?:projects?|education|publications?|certifications?|licenses?|awards?|honors?|volunteer\w*|activities)\b/i;
+const CAREER_HEADING = /^(?:experience|employment|work history|professional experience)\b/i;
+const NOT_EMPLOYMENT = /\b(?:publications?|published|papers?|degree|bachelor|master(?:['\u2019]s| of| degree)|phd|ph\.d|doctorate|education|university|college|certif\w*|licen[cs]e|career break|break|sabbatical|family care|took a year)\b/i;
 export function tenureYears(sourceText) {
   const spans = new Set(), ranges = [];
   const add = span => { if (span > 0 && span < 60) { spans.add(String(span)); spans.add(String(span + 1)); } };
   // Per line and sentence: a seeded profile can put a degree and a job on one line.
-  for (const line of String(sourceText || '').split(/\n|(?<=\.)\s+/)) {
+  // "B.S." or "Ph.D." must not split a degree line before the filter sees it.
+  let section = '';
+  for (const line of String(sourceText || '').split(/\n|(?<!\b[A-Za-z]\.)(?<=\.)\s+/)) {
+    const heading = line.trim().replace(/^["'\s]+/, '');
+    if (NON_CAREER_HEADING.test(heading)) { section = 'other'; continue; }
+    if (CAREER_HEADING.test(heading)) { section = 'experience'; continue; }
     if (NOT_EMPLOYMENT.test(line)) continue;
     for (const match of line.matchAll(YEAR_RANGE)) {
       const start = Number(match[1]), end = Number(match[2]);
       add(end - start);
-      if (end > start && end - start < 60) ranges.push([start, end]);
+      if (end > start && end - start < 60 && section !== 'other') ranges.push([start, end]);
     }
   }
   ranges.sort((a, b) => a[0] - b[0]);
@@ -217,7 +226,7 @@ export function tenureYears(sourceText) {
   if (ranges.length > 1) add(total);
   return spans;
 }
-const isTenureMention = (scan, mention) => /^\s*\+?\s*(?:full\s+)?years?\b(?!\s*(?:ago|earlier|prior|later|from now|hence)\b)/i.test(scan.slice(mention.index + mention.token.length));
+const isTenureMention = (scan, mention) => /^\s*\+?\s*(?:full\s+)?years?\b(?!\s*(?:ago|earlier|prior|later|from now|hence|before|back)\b)/i.test(scan.slice(mention.index + mention.token.length));
 
 // Structured per-mention verdicts plus the compatibility fields scorePacket keeps.
 export function numericGrounding({ packet, persona, job, sources }) {
@@ -560,6 +569,7 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
     expectedRecommendation: expectedRec,
     score: evaluation?.score ?? null,
     recommendation: evaluation?.recommendation ?? null,
+    modelRecommendation: evaluation?.modelRecommendation ?? null,
     matches: Array.isArray(evaluation?.matches) ? evaluation.matches.length : null,
     summary: evaluation?.summary ?? null,
     gaps: Array.isArray(evaluation?.gaps) ? evaluation.gaps : [],
@@ -584,7 +594,7 @@ export function scoreScenario(result) {
   else if (family === 'profile-effect') pass = Boolean((!result.profile || result.profile.pass) && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
   else if (family === 'profile') pass = result.profile?.pass === true;
   // Held-out tailoring rows declare no recommendation: their evaluation is reported, not gating.
-  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass || result.scenario.evaluationGate === false));
+  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass || (result.scenario.evaluationGate === false && result.scenario.holdout && !jobById(result.scenario.job)?.expectRecommendation)));
   else if (result.scenario.portal) {
     // A portal scenario is only scored once the application stage actually ran;
     // a packet that passed before a later crash is not an application result.
@@ -814,7 +824,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
   const failures = results.filter(result => !result.pass).map(result => {
     const reasons = [];
     if (result.error) reasons.push(result.error);
-    if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
+    if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}${result.evaluation.modelRecommendation && result.evaluation.modelRecommendation !== result.evaluation.recommendation ? ` (model said ${result.evaluation.modelRecommendation})` : ''}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
     if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}${result.packet.numericUncertainty?.length ? ` (${result.packet.numericUncertainty.length} uncertain)` : ''}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}, pdf ${result.packet.pdfState}`);
     if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, app-owed rescued ${result.application.appOwedRescued?.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, readback ${result.application.readbackMismatches?.join(', ') || 'ok'}, upload ${result.application.resumeUploadMatches === false || result.application.coverUploadMatches === false ? 'mismatch' : 'ok'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}${result.application.warning ? `, warning: ${result.application.warning}` : ''}`);
     if ((result.scenario.portal && !result.application) && !result.error) reasons.push('application stage did not run');

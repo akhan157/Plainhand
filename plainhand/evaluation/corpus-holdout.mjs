@@ -281,7 +281,7 @@ export const holdoutJobs = [
     location: 'Cambridge, US',
     requiredFactIds: ['team', 'audits', 'uptime'],
     atsTerms: ['lab operations', 'technicians', 'quality audits', 'maintenance', 'LIMS'],
-    retainFactIds: ['automation'],
+    retainFactIds: ['lims'],
     description: 'SYNTHETIC TEST JOB. Fictional Cell Sciences seeks a lab operations manager in Cambridge. Lead a team of lab technicians, prepare for external quality audits, and own instrument maintenance and uptime. Experience with a LIMS is helpful.',
   },
   {

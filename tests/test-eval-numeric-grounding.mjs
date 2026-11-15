@@ -439,3 +439,18 @@ test('tenure: a degree on the same line as a job excludes only its own sentence'
   assert.deepEqual(check('I taught mathematics for six years.'), []);
   assert.deepEqual(check('I studied for 4 years.'), ['4']);
 });
+
+test('tenure: abbreviated degrees, Projects sections and "before" cannot launder years', async () => {
+  const { numericGrounding } = await import('../plainhand/evaluation/score.mjs');
+  const job = { company: 'Acme', title: 'Analyst', description: 'Analyst role.' };
+  const check = (text, source) => numericGrounding({ packet: { resume: [], answers: [], coverLetter: text }, persona: { profile: { name: 'Test' } }, job, sources: [{ id: 'cv', text: source }] }).unsupportedNumbers;
+  assert.deepEqual(check('I studied for 4 years.', 'Example University — B.A. — Mathematics — 2015 to 2019. Example High School — Teacher — 2020 to 2026.'), ['4']);
+  assert.deepEqual(check('I have twelve years of experience.', 'Example University — B.S. — 2015 to 2019. Example Co — Analyst — 2019 to 2026.'), ['12']);
+  assert.deepEqual(check('I have 7 years of experience.', 'Example University — B.S. — 2015 to 2019. Example Co — Analyst — 2019 to 2026.'), []);
+  assert.deepEqual(check('I did research for 5 years.', 'Example Lab — Ph.D. — 2010 to 2015'), ['5']);
+  const roles = 'Experience\nExample A — Analyst — 2010 to 2012\nExample B — Analyst — 2013 to 2015\nProjects\nSide project — 2024 to 2026';
+  assert.deepEqual(check('I have six years of professional experience.', roles), ['6']);
+  assert.deepEqual(check('I have four years of professional experience.', roles), []);
+  assert.deepEqual(check('I migrated it six years before that.', 'Example Co — Analyst — 2020 to 2026'), ['6']);
+  assert.deepEqual(check('I have seven years of experience.', 'Example Co — Master Data Analyst — 2019 to 2026'), []);
+});

@@ -725,6 +725,7 @@ test('corpus: a required fact a persona lacks appears only on a declared borderl
     const missing = job.requiredFactIds.filter(id => !persona.facts.some(fact => fact.id === id));
     if (missing.length) assert.equal(job.expectRecommendation, 'Investigate', `${scenario.id} names unknown facts ${missing}`);
     if (job.scoreBand || job.expectRecommendation === 'Investigate') assert.ok(job.scoreBand && job.expectRecommendation === 'Investigate', `${job.id} band and label must come together`);
+    if (scenario.evaluationGate === false) assert.ok(scenario.holdout && !job.expectRecommendation && !job.scoreBand, `${scenario.id} may skip its evaluation gate only as a held-out tailoring row`);
     for (const id of job.retainFactIds || []) assert.ok(persona.facts.some(fact => fact.id === id), `${job.id} retains unknown fact ${id}`);
   }
 });
