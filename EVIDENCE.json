@@ -191,5 +191,39 @@
         "sha256": "fe4a2a22884366fb84169fa1b53366166aa78737d52d3771dd77ae93853457a7"
       }
     ]
+  },
+  "memory_restart_probe": {
+    "target": "e0dd48f",
+    "result": {
+      "target": "e0dd48ff8af518230f252b225a3cb2c1857e9562",
+      "kind": "real app initialization across separate Node processes with fictional seeded memory; provider-setting switch only; no model calls or generated packet",
+      "processRestartMemoryEqual": true,
+      "providerSettingSwitchMemoryEqual": true,
+      "contextHashStable": true,
+      "excludedCompensationAbsent": true,
+      "approvedCorrectionAndBankPersist": true,
+      "answerBankInDraftContext": false,
+      "sourceIds": [
+        "profile",
+        "cv",
+        "interview",
+        "writing-samples"
+      ],
+      "limits": [
+        "No actual provider inference, voice judgment or later-packet correction reuse tested",
+        "Import losses, durable story editing/deletion and contradiction surfacing remain open"
+      ]
+    },
+    "artifacts": [
+      {
+        "path": "output/goal-review/probe-memory-restart.mjs",
+        "sha256": "046114ae975de8787ffe5044af97fe302b3dfeb505d1d9aea90a41d6a6f20eab"
+      },
+      {
+        "path": "output/goal-review/memory-restart-proof.json",
+        "sha256": "06729124ed79697817ec0b091c8d3aa2fc7ab77fdd5b6651e66675cceb91b8a7"
+      }
+    ],
+    "finding": "Answer bank is not a Workspace.context source (sourceIds profile/cv/interview/writing-samples); approved corrections persist but are not shown to be reused in later drafting. Durable-memory design b9652fc recommends keeping bank out of context and using exact-label reuse; root decision pending."
   }
 }
