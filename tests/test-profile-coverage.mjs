@@ -107,3 +107,21 @@ test('a candidate who asks for the summary can have it while areas are still ope
     assert.equal(h.agent.calls.length, 1, 'the request was not refused');
   } finally { await h.close(); }
 });
+
+test('an area the candidate answered with "no" counts, so the interview moves on', () => {
+  const state = { profile: {}, conversation: [] };
+  const before = profileCoverage(state);
+  assert.ok(before.uncovered.includes('certifications and licences'));
+  const history = [
+    { role: 'assistant', text: 'Thanks, saved. Do you hold any certifications or licences?' },
+    { role: 'user', text: 'No.' },
+  ];
+  const after = profileCoverage(state, history);
+  assert.ok(!after.uncovered.includes('certifications and licences'));
+  assert.equal(after.covered, before.covered + 1);
+  // A question still waiting for an answer does not count.
+  assert.ok(profileCoverage(state, history.slice(0, 1)).uncovered.includes('certifications and licences'));
+  // Earlier sentences of the reply do not count as the question.
+  const unasked = [{ role: 'assistant', text: 'Your audit work is saved. What tools do you use?' }, { role: 'user', text: 'Excel mostly.' }];
+  assert.ok(profileCoverage(state, unasked).uncovered.includes('regulated or quality work such as SOPs, audits or controls'));
+});
