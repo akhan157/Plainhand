@@ -29,6 +29,15 @@ test('a reusable answer requires a question, an answer and an exact source quote
   } finally { await h.close(); }
 });
 
+test('a reusable answer cannot cite a writing sample or the reviewed understanding', async () => {
+  const h = await bank();
+  try {
+    await assert.rejects(() => h.bank.add({ question: 'Describe an improvement you made', answer: 'Checklist.', evidence: [{ sourceId: 'writing-samples', quote: 'Hi team, quick update: the upright passed the load test this morning.' }] }), /not a writing sample/);
+    await assert.rejects(() => h.bank.add({ question: 'Describe an improvement you made', answer: 'Checklist.', evidence: [{ sourceId: 'reviewed-understanding', quote: 'The candidate has designed and tested hardware.' }] }), /not the reviewed understanding/);
+    assert.equal((await h.bank.load()).length, 0, 'nothing is stored');
+  } finally { await h.close(); }
+});
+
 test('sensitive and legally meaningful questions are never stored as reusable answers', async () => {
   const h = await bank();
   try {

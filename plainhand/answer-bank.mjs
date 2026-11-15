@@ -1,14 +1,28 @@
 import yaml from 'js-yaml';
+import { nonFactualSource } from './store.mjs';
 import { isSensitiveLabel } from './field-policy.mjs';
 
 export const ANSWER_BANK_FILE = 'data/answer-bank.yml';
 const MAX_ANSWER = 5000;
 const normalize = value => String(value || '').toLowerCase().replace(/\s+/g, ' ').replace(/[*✱]/g, '').trim();
 
+// Why an evidence list is unusable, or null when it is usable. A reusable answer
+// may keep an assertion source ("candidate-answer", typed by the candidate) until
+// the provenance packet, but it can never cite a writing sample or the agent's
+// reviewed summary as fact.
+export function evidenceProblem(evidence) {
+  if (!Array.isArray(evidence) || !evidence.length) return 'an exact source quote of at least 8 characters';
+  for (const item of evidence) {
+    if (!item || typeof item.sourceId !== 'string' || !item.sourceId.trim()) return 'an exact source quote of at least 8 characters';
+    const kind = nonFactualSource(item.sourceId);
+    if (kind) return kind;
+    if (typeof item.quote !== 'string' || item.quote.trim().length < 8) return 'an exact source quote of at least 8 characters';
+  }
+  return null;
+}
+
 export function validEvidence(evidence) {
-  return Array.isArray(evidence) && evidence.length > 0 && evidence.every(item =>
-    item && typeof item.sourceId === 'string' && item.sourceId.trim() &&
-    typeof item.quote === 'string' && item.quote.trim().length >= 8);
+  return evidenceProblem(evidence) === null;
 }
 
 // Reusable, candidate-approved answers. Each entry carries provenance and a
@@ -33,7 +47,8 @@ export class AnswerBank {
     const answer = String(entry?.answer || '').trim();
     if (!question || !answer) throw new Error('A reusable answer needs a question and an answer.');
     if (answer.length > MAX_ANSWER) throw new Error('That answer is too long to store.');
-    if (!validEvidence(entry.evidence)) throw new Error('A reusable answer needs an exact source quote of at least 8 characters.');
+    const problem = evidenceProblem(entry.evidence);
+    if (problem) throw new Error(`A reusable answer needs ${problem}.`);
     if (isSensitiveLabel(question)) throw new Error('Sensitive or legally meaningful questions cannot be stored as reusable answers.');
     const reviewedAt = entry.reviewedAt || new Date().toISOString().slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(reviewedAt)) throw new Error('Record the review date as YYYY-MM-DD.');

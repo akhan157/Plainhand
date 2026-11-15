@@ -1,4 +1,4 @@
-import { AnswerBank, validEvidence } from './answer-bank.mjs';
+import { AnswerBank, evidenceProblem } from './answer-bank.mjs';
 import { isSensitiveLabel } from './field-policy.mjs';
 
 const FILE = 'data/plainhand/corrections.json';
@@ -39,7 +39,8 @@ export class Corrections {
   }
 
   async validateEvidence(evidence) {
-    if (!validEvidence(evidence)) throw new Error('A correction needs an exact source quote of at least 8 characters.');
+    const problem = evidenceProblem(evidence);
+    if (problem) throw new Error(`A correction needs ${problem}.`);
   }
 
   async approve(id, { reviewedAt = new Date().toISOString().slice(0, 10) } = {}) {

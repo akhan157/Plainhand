@@ -312,5 +312,33 @@
         "bench evidence vacuous"
       ]
     }
+  },
+  "memory_m2": {
+    "source_tip": "112beffe310f6500e0d3f4e212239067f8f5193f",
+    "author": "Pi deepseek/deepseek-flash",
+    "root_reviewer": "Claude Opus 5.5",
+    "root_finding": "Identity gate rejected any answer with an unsourced year, so availability answers (\"I can start in June 2026\") failed hasEvidence and aborted the whole prepare; \"hope to join ... at Northwind\" read as an employer claim.",
+    "root_correction": "Future years and intent/availability sentences are exempt; planted historical identity (Director at Northwind, 2019 to 2021; worked at Northwind in 2020) still fails. New test added.",
+    "checks": [
+      "gate + calibration files 31/31",
+      "test:plainhand + cloud-extension-api: 485 pass 0 fail"
+    ],
+    "not_run": [
+      "browser/UI",
+      "live models",
+      "hosted Postgres"
+    ],
+    "residuals": [
+      "undated title/employer claims left to reviewer",
+      "candidate-answer bank provenance until M4",
+      "intent-word exemption is lexical: \"I can confirm I was Director at Northwind in 2019\" would be exempt",
+      "root correction not independently reviewed"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/m2-merge-test-plainhand.log",
+        "sha256": "073fbfa2de76c9d89af8aa957e6269626e0c54d13c2f76194da7a16b0c26e641"
+      }
+    ]
   }
 }

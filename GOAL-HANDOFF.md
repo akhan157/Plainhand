@@ -72,3 +72,7 @@ File ownership disjoint; score.mjs reads hasEvidence, which M2 tightens — chec
 ## Calibration correction revised after independent review — 2026-11-15
 
 Independent DeepSeek review rejected root's first ownership-after rule: it flagged 9 honest employer-interest sentences, let a sentence-final number absorb the next sentence, and missed 5 leaks. The bench evidence was vacuous (the calibration bench passes no posting). Revised per the reviewer's validated patch, plus: the after-clause ends at the next number, so `$2,000 ... the 25 engineers I led` flags only 25. 14 new assertions; `test:plainhand` 457/457. Remaining leak: appositive `a team I built`. U07 stays in_progress.
+
+## M2 integrated — 2026-11-15
+
+M2 lane `112beff` (writing samples and the reviewed summary cannot ground a claim; identity negative control on answers) merged after root review. Root correction: the author's year check failed any availability answer and aborted prepare; future years and intent/availability sentences are now exempt, planted historical identity still fails. `test:plainhand` + extension API 485/485. Residual: the intent exemption is lexical (can be phrased around); root correction not independently reviewed. Next memory packet: M1 (lossless transfer with approval reset), pin to this merge.

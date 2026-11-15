@@ -154,8 +154,117 @@ export class Workspace {
   }
 }
 
+// Claim evidence: only sources that state facts about the candidate can ground a
+// claim. Writing samples guide voice, and the reviewed understanding is the agent's
+// own summary, so neither one is factual evidence.
+export const FACTUAL_SOURCE_IDS = Object.freeze(['profile', 'cv', 'structured-resume', 'narrative', 'proof-points', 'stories', 'interview']);
+const FACTUAL_SOURCES = new Set(FACTUAL_SOURCE_IDS);
+// The specific refusal a non-factual source gets, so answer storage and corrections
+// can say why instead of only "invalid evidence".
+export const NON_FACTUAL_SOURCE_REASONS = Object.freeze({
+  'writing-samples': 'a factual source quote, not a writing sample: samples record how you write, never what is true',
+  'reviewed-understanding': 'a factual source quote, not the reviewed understanding: it is the agent’s summary of your sources, not a source',
+});
+export const factualSource = sourceId => FACTUAL_SOURCES.has(sourceId);
+export const nonFactualSource = sourceId => Object.hasOwn(NON_FACTUAL_SOURCE_REASONS, sourceId) ? NON_FACTUAL_SOURCE_REASONS[sourceId] : null;
+
+// Identity negative control. An answer may not introduce an employer, seniority
+// title, date or name that the candidate's factual sources never state. The check
+// is deliberately narrow so ordinary prose is not mistaken for an identity claim:
+//   - every four-digit year must be a token in a factual source (dates are identity);
+//   - a seniority title directly before "at <Organisation>" in a sentence that also
+//     carries a year, or a past "worked at <Organisation>" frame with a year, must
+//     appear in the sources; the organisation must appear there too;
+//   - an explicit name introduction ("my name is …") must appear in the sources.
+// A title or employer asserted without any date is left to the reviewer; see
+// docs/internal/lanes/durable-memory/RESULT.md for that residual.
+const SENIORITY_TITLES = ['director', 'manager', 'head', 'lead', 'president', 'vice president', 'vp', 'chief', 'ceo', 'cto', 'cfo', 'coo', 'founder', 'co-founder', 'owner', 'partner', 'principal', 'supervisor'];
+const escapeWord = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const SENIORITY = new RegExp(`\\b(?:${SENIORITY_TITLES.map(escapeWord).join('|')})\\b`, 'gi');
+const ORG_AT = /\b[Aa]t\s+(?:the\s+)?((?:[A-Z][\w'’&.-]*)(?:\s+(?:[A-Z][\w'’&.-]*|of|and|&)){0,4})/g;
+const WORKED_AT = /\b(?:worked|served|employed)\s+at\s+(?:the\s+)?((?:[A-Z][\w'’&.-]*)(?:\s+(?:[A-Z][\w'’&.-]*|of|and|&)){0,4})/g;
+const NAME_INTRO = /\b(?:[Mm]y name is|[Ii] go by|[Cc]all me)\s+([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,2})/g;
+const YEAR = /(?<![$\d])\b(?:19|20)\d{2}\b(?![%\d])/g;
+const INTENT_OR_AVAILABILITY = /\b(?:can|could|will|would|hope|hoping|plan|planning|intend|available|availability|start|starting|join|joining|looking forward|eager|excited|keen|want|wish)\b/i;
+const ORG_STOPWORDS = new Set(['of', 'and', 'the', 'for', 'at', 'in', '&']);
+const claimWords = value => String(value || '').toLowerCase().match(/[a-z0-9]+/g) || [];
+// Seniority words are compared on a short stem so "manager" matches "managed" and
+// "director" matches "directed"; an absent title still fails.
+const titleStem = word => word.length > 5 ? word.slice(0, 5) : word;
+const vocabularyCache = new WeakMap();
+function sourceVocabulary(sources) {
+  if (!Array.isArray(sources)) return { words: new Set(), stems: new Set() };
+  const cached = vocabularyCache.get(sources);
+  if (cached) return cached;
+  const words = new Set(), stems = new Set();
+  for (const source of sources) {
+    if (!factualSource(source?.id)) continue;
+    for (const word of claimWords(source.text)) { words.add(word); stems.add(titleStem(word)); }
+  }
+  const vocabulary = { words, stems };
+  vocabularyCache.set(sources, vocabulary);
+  return vocabulary;
+}
+export function identityProblem(text, sources) {
+  const claim = String(text || '');
+  if (!claim.trim()) return null;
+  const { words, stems } = sourceVocabulary(sources);
+  const problems = [];
+  // Only history is identity. A future year, or a sentence about availability or
+  // intent ("I can start in June 2026", "hope to join the team at Acme in 2027"),
+  // answers the employer's question rather than stating where the candidate was.
+  const thisYear = new Date().getFullYear();
+  const sentences = claim.split(/(?<=[.!?])\s+|\n+/).filter(Boolean).filter(sentence => !INTENT_OR_AVAILABILITY.test(sentence));
+  const historical = sentence => (sentence.match(YEAR) || []).filter(year => Number(year) <= thisYear);
+  const missingYears = [...new Set(sentences.flatMap(historical))].filter(year => !words.has(year));
+  if (missingYears.length) problems.push(`date ${missingYears.join(', ')}`);
+  for (const sentence of sentences) {
+    if (!historical(sentence).length) continue;
+    const checkOrg = (match, withTitle) => {
+      if (withTitle) {
+        const titles = [...sentence.slice(0, match.index).matchAll(SENIORITY)].map(item => item[0]);
+        const title = titles.at(-1);
+        if (!title) return;
+        if (!stems.has(titleStem(title.toLowerCase()))) problems.push(`title ${title}`);
+      }
+      const missing = claimWords(match[1]).filter(word => !ORG_STOPWORDS.has(word) && !words.has(word));
+      if (missing.length) problems.push(`employer ${[...new Set(missing)].join(' ')}`);
+    };
+    for (const match of sentence.matchAll(ORG_AT)) checkOrg(match, true);
+    for (const match of sentence.matchAll(WORKED_AT)) checkOrg(match, false);
+  }
+  for (const match of claim.matchAll(NAME_INTRO)) {
+    const missing = claimWords(match[1]).filter(word => !words.has(word));
+    if (missing.length) problems.push(`name ${[...new Set(missing)].join(' ')}`);
+  }
+  return problems.length ? [...new Set(problems)].join('; ') : null;
+}
+
+// Why a claim's evidence is unusable, or null when it is valid. This is the
+// specific refusal behind hasEvidence, so a caller that explains a failure can
+// name the source kind instead of saying only "invalid evidence".
+export function claimEvidenceProblem(item, context) {
+  const evidence = item?.evidence;
+  if (!Array.isArray(evidence) || !evidence.length) return 'at least one exact source quote of at least 8 characters';
+  for (const entry of evidence) {
+    const kind = nonFactualSource(entry?.sourceId);
+    if (kind) return kind;
+    if (!factualSource(entry?.sourceId)) return `a factual source (${FACTUAL_SOURCE_IDS.join(', ')}), not “${entry?.sourceId}”`;
+    if (typeof entry.quote !== 'string' || entry.quote.trim().length < 8) return 'an exact source quote of at least 8 characters';
+  }
+  const sources = Array.isArray(context?.sources) ? context.sources : [];
+  if (!evidence.every(entry => sources.some(source => source.id === entry.sourceId && String(source.text).includes(entry.quote)))) return 'a quote that appears in the current source';
+  // Identity statements in an answer or form value need their own grounding; resume
+  // lines keep their heading check (resume-format.mjs) and the reviewer.
+  if (typeof item?.answer === 'string') {
+    const identity = identityProblem(item.answer, sources);
+    if (identity) return `identity facts that appear in the sources (${identity})`;
+  }
+  return null;
+}
+
 export function hasEvidence(item, context) {
-  return Array.isArray(item?.evidence) && item.evidence.length > 0 && item.evidence.every(e => e.sourceId !== 'reviewed-understanding' && typeof e.quote === 'string' && e.quote.trim().length >= 8 && context.sources.some(s => s.id === e.sourceId && s.text.includes(e.quote)));
+  return claimEvidenceProblem(item, context) === null;
 }
 
 const cell = value => String(value ?? '').replace(/[\t\r\n|]/g, ' ').replace(/\[/g, '(').replace(/\]/g, ')');
