@@ -2,63 +2,63 @@
 # Copy this file to config/profile.yml and fill in your details.
 # This is the single source of truth for your personal data across all modes.
 
-# The example is a nurse so nothing here leans toward one field. Replace every
-# value with your own: any field, any career stage, any credential.
+# The example is a financial analyst. Replace every value with your own field,
+# career stage and credentials.
 candidate:
   full_name: "Jane Smith"
   email: "jane@example.com"
   phone: "+1-555-0123"
-  location: "Columbus, OH"
+  location: "Boston, MA"
   linkedin: "linkedin.com/in/janesmith"
-  portfolio_url: ""          # Optional: portfolio, writing samples, work photos, lesson videos
+  portfolio_url: ""          # Optional: portfolio, publications, writing samples
   github: ""                 # Optional: only if your field uses it
   twitter: ""
 
 target_roles:
   # Your North Star roles — what you're optimizing for
   primary:
-    - "Registered Nurse, Cardiac Step-Down"
-    - "Telemetry Nurse"
+    - "Senior Financial Analyst, FP&A"
+    - "Finance Manager"
   # Archetypes help the evaluation system score fit. Name them in your field's words.
   archetypes:
-    - name: "Cardiac / Telemetry Nurse"
-      level: "Mid-level"
+    - name: "FP&A / Corporate Finance"
+      level: "Senior"
       fit: "primary"        # primary = dream role, secondary = good fit, adjacent = stretch
-    - name: "Medical-Surgical Nurse"
+    - name: "Finance Systems / Transformation"
       level: "Mid-level"
       fit: "secondary"
-    - name: "Clinical Educator"
-      level: "Entry"
+    - name: "Strategy & Operations"
+      level: "Mid-level"
       fit: "adjacent"
 
 narrative:
   # Your professional headline (1 line)
-  headline: "Med-surg nurse moving into cardiac care"
+  headline: "Financial analyst who builds the models the business plans from"
   # Your story — what makes you unique
-  exit_story: "Three years at the bedside on a 32-bed med-surg unit; telemetry patients are the part of the job I learn the most from."
+  exit_story: "Three years in corporate planning for a $240M business unit; ready to own the forecast for a product line."
   # Your top 3-5 strengths
   superpowers:
-    - "Calm escalation of rhythm changes"
-    - "Precepting new graduate nurses"
-    - "Patient and family education"
+    - "Driver-based forecasting"
+    - "Explaining variances to non-finance leaders"
+    - "Automating recurring reporting"
   # Proof points — results, projects, recognition, with something measurable when you have it
   proof_points:
-    - name: "Unit fall-prevention huddle"
+    - name: "Monthly reporting pack rebuild"
       url: ""
-      hero_metric: "Patient falls dropped from 9 to 4 in a year"
-    - name: "New graduate precepting"
+      hero_metric: "Preparation cut from 3 days to 1"
+    - name: "Business unit forecast model"
       url: ""
-      hero_metric: "Four nurses through 12-week orientation"
+      hero_metric: "Used for a $240M unit's monthly reforecast"
   # Optional: a portfolio or demo link with access details
   # dashboard:
   #   url: "https://example.com/portfolio"
   #   password: ""
 
 compensation:
-  target_range: "$38-45/hour"    # Your target pay: salary or hourly, as your field quotes it
+  target_range: "$95K-110K"      # Your target total comp
   currency: "USD"
-  minimum: "$36/hour"            # Walk-away number
-  location_flexibility: "On-site; open to nights and every third weekend"
+  minimum: "$88K"                # Walk-away number
+  location_flexibility: "Hybrid preferred; open to on-site in Boston"
 
 location:
   country: "United States"

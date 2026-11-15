@@ -1,24 +1,24 @@
 # Copy to config/cover-letter.yml (gitignored) and write your own paragraphs.
 # Used only by the command-line generator (npm run cover-letter); the Plainhand app
 # drafts cover letters from your evidence instead. Everything here is fictional.
-# The example is a nurse; replace every line with your own field and stories.
-intro: "I'm applying for the {role} position at {company}. I'm a registered nurse with three years on a medical-surgical unit and active BLS and ACLS certification."
+# The example is a financial analyst; replace every line with your own field and stories.
+intro: "I'm applying for the {role} position at {company}. I'm a financial analyst with three years in corporate planning and forecasting."
 hooks:
   # Optional. {company} and {practiceArea} are filled in.
   general: "{company} is doing the kind of {practiceArea} work I want to grow into."
 # Optional closing sentence after the hook. {company}, {role} and {practiceArea} are filled in.
-closing: "I'd welcome the chance to bring that bedside experience to {company}."
+closing: "I'd welcome the chance to bring that experience to {company}."
 # Optional. Words in a job report that name your practice area, first match wins.
-practice_areas: [cardiac care, step-down, telemetry, medical-surgical]
+practice_areas: [FP&A, forecasting, financial reporting, corporate finance]
 paragraphs:
   # Two paragraphs per focus; general is required, the others are optional and are
   # yours to name. A focus is chosen when the report mentions its name or one of
   # its focus_keywords.
   general:
-    - "I care for five to six patients per shift and monitor cardiac telemetry, escalating rhythm changes to the rapid response team."
-    - "I led our unit's fall-prevention huddle for a year, and patient falls dropped from 9 to 4."
-  cardiac:
-    - "Telemetry patients are the part of my work I learn the most from, and I want them to be the center of my next role."
-    - "I have precepted four new graduate nurses through their 12-week orientation."
+    - "I built and maintain the three-statement forecast model for a $240 million business unit and run its monthly variance review."
+    - "I rebuilt our monthly reporting pack in Power Query, which cut its preparation from 3 days to 1."
+  systems:
+    - "The reporting pack rebuild is the work I enjoyed most: replacing hand-pasted workbooks with one model that pulls from the ledger."
+    - "I trained two new analysts on the forecast model and wrote its user guide."
 focus_keywords:
-  cardiac: [cardiac, telemetry, step-down, cardiology]
+  systems: [systems, automation, transformation, Power Query]

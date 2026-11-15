@@ -80,12 +80,12 @@ test('verifiable facts can’t be stretched, and generic phrasing is flagged', a
 });
 
 test('a sentence about the employer may repeat the posting\'s numbers; a claim about the candidate may not', () => {
-  const sources = [{ id: 'cv', text: 'I care for five to six patients per shift on a medical-surgical unit.' }];
-  const jobText = 'Registered nurse for a 28-bed cardiac step-down unit. Three 12-hour shifts.';
-  const about = gradePacket({ resume: [], answers: [], coverLetter: 'I am applying for the position on your 28-bed unit.' }, sources, [], null, { jobText });
+  const sources = [{ id: 'cv', text: 'I manage 14 engineers across two teams.' }];
+  const jobText = 'Director of engineering for the payments platform. Lead three teams of about 25 engineers.';
+  const about = gradePacket({ resume: [], answers: [], coverLetter: 'I am applying to lead your 25 engineers.' }, sources, [], null, { jobText });
   assert.equal(about.counts.unsupported, 0);
-  const claim = gradePacket({ resume: [], answers: [], coverLetter: 'I have managed a 28-bed unit.' }, sources, [], null, { jobText });
+  const claim = gradePacket({ resume: [], answers: [], coverLetter: 'I have managed 25 engineers.' }, sources, [], null, { jobText });
   assert.equal(claim.counts.unsupported, 1, 'a first-person claim still needs candidate evidence');
-  const noJob = gradePacket({ resume: [], answers: [], coverLetter: 'I am applying for the position on your 28-bed unit.' }, sources, []);
+  const noJob = gradePacket({ resume: [], answers: [], coverLetter: 'I am applying to lead your 25 engineers.' }, sources, []);
   assert.equal(noJob.counts.unsupported, 1, 'without the posting the number is unsupported');
 });

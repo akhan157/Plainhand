@@ -8,7 +8,7 @@ Generate a structured prompt for Perplexity/Claude/ChatGPT with 6 axes:
 Context: I am evaluating a candidacy for [role] at [company]. I need actionable information for the interview.
 
 ### 1. Mission and how they deliver it
-- What does the organization do, and for whom (customers, patients, students, members, the public)?
+- What does the organization do, and for whom (customers, clients, investors, users, the public)?
 - What services, programs, products or locations does this role touch?
 - Where do they talk about their work? (blog, newsletter, annual report, news, social media, conference talks)
 
@@ -19,7 +19,7 @@ Context: I am evaluating a candidacy for [role] at [company]. I need actionable 
 - Any reorganization, merger or expansion?
 
 ### 3. Team culture and ways of working
-- How does this team do its day-to-day work? (shifts, caseloads, schedules, tools, processes)
+- How does this team do its day-to-day work? (planning cycles, release or close calendars, tools, processes)
 - Which tools, systems, methods or certifications does the team rely on?
 - Remote, hybrid or on-site? Schedule and on-call expectations?
 - What do employee reviews (Glassdoor, Indeed, field-specific forums) say about this team or role?

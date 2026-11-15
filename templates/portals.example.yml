@@ -10,7 +10,7 @@
 # IMPORTANT: Each company in tracked_companies MUST have careers_url.
 #   Prefer the BRANDED company careers URL whenever available; use ATS-hosted URL only as fallback.
 #   ✅ https://careers.mastercard.com   ⚠️ https://mastercard.wd1.myworkdayjobs.com (fallback only)
-#   ✅ https://careers.example-hospital.org   ⚠️ https://example.icims.com (fallback only)
+#   ✅ https://careers.example-bank.com   ⚠️ https://example.icims.com (fallback only)
 #   Exception: ATS-hosted careers_url is acceptable when no branded careers page exists.
 #   Using raw ATS URLs when a branded page exists can cause false 410 errors (job ID mismatch).
 #
@@ -74,17 +74,16 @@
 title_filter:
   positive: []
     # [CUSTOMIZE] Words from the titles you want, in your field. Examples:
-    #   nursing:     "Registered Nurse", "RN", "Telemetry", "Step-Down"
-    #   trades:      "Electrician", "Apprentice", "Maintenance Technician"
-    #   retail:      "Assistant Store Manager", "Shift Lead", "Store Manager"
-    #   education:   "Teacher", "Instructional Aide", "Paraprofessional"
-    #   government:  "Program Coordinator", "Administrative Specialist"
-    #   technology:  "Software Engineer", "Data Analyst"
+    #   finance:      "Financial Analyst", "FP&A", "Accountant", "Risk Analyst"
+    #   technology:   "Software Engineer", "Data Analyst", "Product Manager"
+    #   engineering:  "Mechanical Engineer", "Electrical Engineer", "Process Engineer"
+    #   science:      "Research Associate", "Scientist", "Lab Manager"
+    #   business:     "Business Analyst", "Operations Manager", "Consultant"
   negative: []
     # [CUSTOMIZE] Words for roles you want to exclude, such as a level or specialty.
   seniority_boost: []
     # Optional prefixes that add relevance without being required, such as
-    # "Senior", "Lead", "Charge", "Supervisor", "Manager" or "Director".
+    # "Senior", "Lead", "Staff", "Principal", "Manager" or "Director".
 
 # -- Search queries --
 # Each query triggers a WebSearch. Use site: to filter by portal.
@@ -93,11 +92,11 @@ title_filter:
 
 search_queries:
   - name: Example — your role on a job board
-    query: '"Registered Nurse" "Columbus, OH"'
+    query: '"Financial Analyst" "Boston, MA"'
     enabled: false
 
   - name: Example — your role on an ATS
-    query: 'site:jobs.lever.co OR site:boards.greenhouse.io "Assistant Store Manager"'
+    query: 'site:jobs.lever.co OR site:boards.greenhouse.io "Data Analyst"'
     enabled: false
 
 # -- Tracked companies --
@@ -158,8 +157,8 @@ search_queries:
 # bypass detect(). The `provider:` field wins over auto-detection.
 tracked_companies: []
   # [CUSTOMIZE] Employers whose career pages you want checked directly.
-  # Hospitals, school districts, retailers, contractors, agencies and companies
-  # all work the same way: name, careers_url, and optionally provider or parser.
+  # Banks, software companies, manufacturers, labs and consultancies all work the
+  # same way: name, careers_url, and optionally provider or parser.
   #
   # - name: Example Employer
   #   careers_url: https://jobs.lever.co/example

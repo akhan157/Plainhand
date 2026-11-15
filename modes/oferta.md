@@ -13,7 +13,7 @@ Classify the job into one of the archetypes (the user's own from `_profile.md`, 
 
 Table with:
 - Archetype detected
-- Domain (the industry or setting, e.g. hospital, school district, retail, construction, software)
+- Domain (the industry or setting, e.g. bank, software company, manufacturer, biotech lab, consultancy)
 - Function (deliver/serve/coordinate/analyze/create/build/lead)
 - Seniority
 - Remote (full/hybrid/onsite)

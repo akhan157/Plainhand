@@ -33,7 +33,7 @@ to copy from.
 1. **title_filter.positive**: Keywords matching your target roles (empty lets every title through)
 2. **title_filter.negative**: Specialties, levels or domains to exclude
 3. **search_queries**: WebSearch queries for job boards and ATS sites
-4. **tracked_companies**: Employers to check directly: hospitals, schools, retailers, contractors, agencies or companies
+4. **tracked_companies**: Employers to check directly
 
 ## CV Template (templates/cv-template.html)
 

@@ -1,8 +1,8 @@
 // Profile-building benchmark: a simulated candidate with hidden facts talks to the
 // assistant, and the run is scored on what reached the profile and how faithfully.
 // The candidate is deterministic (keyword matching, no model) so runs differ only
-// by the assistant. All personas are fictional, and they span fields and
-// credentials: a degree is one kind of evidence, not an assumption.
+// by the assistant. All personas are fictional and span finance, accounting,
+// technology, engineering and science, with and without professional licenses.
 
 export const personas = [
   {
@@ -45,46 +45,46 @@ export const personas = [
     absent: [{ id: 'production', keywords: ['production', 'on-call', 'scale', 'professional', 'industry', 'company'], text: 'I haven’t worked on a production system at a company yet.' }],
   },
   {
-    id: 'nurse',
-    profile: { name: 'Jamie Alvarez', location: 'Columbus, US', roles: 'Registered nurse, cardiac or step-down', graduation: 'B.S. Nursing, 2023',
-      resume: 'B.S. Nursing, Example University, 2023. Registered Nurse, Example Regional Hospital, medical-surgical unit, 2023 to 2026. BLS and ACLS.' },
+    id: 'fin-analyst',
+    profile: { name: 'Priya Raman', location: 'Boston, US', roles: 'Senior financial analyst, FP&A', graduation: 'B.S. Finance, 2023',
+      resume: 'B.S. Finance, Example University, 2023. Financial Analyst, Example Manufacturing Corp, 2023 to 2026. Passed CFA Level I.' },
     facts: [
-      { id: 'falls', keywords: ['project', 'proud', 'improve', 'change', 'safety', 'result'], text: 'I led our unit’s fall-prevention huddle for a year, and patient falls dropped from 9 to 4 between 2024 and 2025.', detail: 'Most falls happened at shift change, so the huddle named high-risk patients out loud and we put bed alarms on every one of them.' },
-      { id: 'unit', keywords: ['job', 'work', 'shift', 'day', 'patients', 'role', 'current'], text: 'I care for five to six patients per shift on a 32-bed medical-surgical unit, and I monitor their cardiac telemetry.', detail: 'When a rhythm changes I compare it with the last strip, check the patient, and call rapid response if it is new and they have symptoms.' },
-      { id: 'precept', keywords: ['lead', 'led', 'leadership', 'mentor', 'train', 'teach', 'people'], text: 'I have precepted four new graduate nurses through their 12-week orientation.', detail: 'I give each new nurse one more patient every two weeks and we review every med pass together until week six.' },
-      { id: 'license', keywords: ['license', 'certification', 'certified', 'credentials', 'tools', 'skills', 'qualifications'], text: 'I hold an active Ohio RN license through 2027, plus BLS and ACLS.', detail: 'I renewed ACLS in March and I am studying for the progressive care certification next.' },
-      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want to move to a cardiac step-down unit, where telemetry is the main part of the job.', detail: 'My telemetry patients are the ones I learn the most from.' },
-      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like plain words and real examples, not hospital jargon.', detail: 'If I wouldn’t say it to a patient’s family, I don’t want it on my resume.' },
+      { id: 'automation', keywords: ['project', 'proud', 'improve', 'change', 'built', 'result'], text: 'I rebuilt the monthly reporting pack in Power Query, which cut its preparation from 3 days to 1.', detail: 'The old pack was 14 linked workbooks pasted by hand; I replaced them with one model that pulls straight from the ledger export.' },
+      { id: 'model', keywords: ['job', 'work', 'day', 'current', 'role', 'responsible'], text: 'I built and maintain the three-statement forecast model for a $240 million business unit in Excel.', detail: 'It reforecasts monthly from drivers such as units, price and headcount, so the business can see what a volume change does to cash.' },
+      { id: 'mentor', keywords: ['lead', 'led', 'leadership', 'mentor', 'train', 'teach', 'people'], text: 'I trained two new analysts on the forecast model and wrote its user guide.', detail: 'Each of them rebuilt one schedule from scratch with me before touching the live model.' },
+      { id: 'cert', keywords: ['certification', 'license', 'credentials', 'tools', 'skills', 'software', 'qualifications'], text: 'I passed CFA Level I in 2024 and I’m registered for Level II; I work in Excel and SQL every day.', detail: 'I use SQL to pull actuals from the data warehouse instead of waiting for exports.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want a senior FP&A role where I own the forecast for a product line and work directly with the business.', detail: 'The part I like most is explaining a variance to someone who runs the operation and seeing them change a plan.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like it precise and plain, with the number and what it changed.', detail: 'If a sentence has no number or decision in it, I would rather cut it.' },
     ],
-    absent: [{ id: 'icu', keywords: ['icu', 'critical care', 'intensive care', 'ccrn'], text: 'I haven’t worked in an ICU; my critical care exposure was one clinical rotation.' }],
+    absent: [{ id: 'deals', keywords: ['m&a', 'deals', 'transactions', 'investment banking'], text: 'I haven’t worked on M&A deals; my modeling is all internal planning.' }],
   },
   {
-    id: 'apprentice',
-    profile: { name: 'Marcus Bell', location: 'Denver, US', roles: 'Commercial electrician apprentice',
-      resume: 'High school diploma, 2021. Electrical Apprentice, Example Electric Co, 2023 to 2026. OSHA 30.' },
+    id: 'accountant',
+    profile: { name: 'Dana Whitfield', location: 'Denver, US', roles: 'Senior accountant',
+      resume: 'B.S. Accounting, Example State University, 2022. Staff Accountant, Example Logistics Group, 2022 to 2026. CPA, Colorado.' },
     facts: [
-      { id: 'panel', keywords: ['project', 'proud', 'biggest', 'built', 'install'], text: 'I helped install and label a 400-amp panel upgrade for a 30-unit apartment building, working under a licensed journeyman.', detail: 'I pulled and landed most of the branch circuits and made the panel schedule, and the inspector passed it on the first visit.' },
-      { id: 'daily', keywords: ['work', 'day', 'job', 'current', 'role', 'typical'], text: 'I bend and run EMT conduit and pull wire on commercial jobs, and I have logged 5,600 on-the-job hours.', detail: 'Most of my hours are tenant build-outs: offices and two restaurants, mostly 3/4-inch EMT with some MC cable.' },
-      { id: 'safety', keywords: ['lead', 'responsibility', 'trust', 'safety', 'team', 'people', 'crew'], text: 'I keep my crew’s lockout/tagout log, and our crew went 2 years without a recordable injury.', detail: 'The foreman handed me the log after I caught a breaker someone had left unlocked on a panel we were working.' },
-      { id: 'cert', keywords: ['certification', 'license', 'training', 'school', 'classroom', 'tools', 'skills', 'qualifications'], text: 'I have my OSHA 30 card and I’m in year 3 of a 4-year state-registered apprenticeship, with 576 classroom hours done.', detail: 'Classroom is two nights a week; this year is motors and controls.' },
-      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want more commercial work so I am ready for the journeyman exam when I finish.', detail: 'Commercial jobs cover more of the code than houses do, and that is what the exam tests.' },
-      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like to keep it short and just say what I did on the job.', detail: 'I want it to sound like me talking to a foreman.' },
+      { id: 'close', keywords: ['project', 'proud', 'improve', 'change', 'result', 'biggest'], text: 'I own the month-end close for four entities and cut the close from 9 business days to 6.', detail: 'Most of the delay was intercompany entries booked late, so I moved them to a day-2 checklist and automated the eliminations.' },
+      { id: 'recs', keywords: ['work', 'day', 'job', 'current', 'role', 'typical'], text: 'I prepare 45 balance sheet reconciliations each month and cleared a backlog of 120 aged reconciling items.', detail: 'Some of those items were over a year old; I traced each one to a source document and wrote off only what the controller approved.' },
+      { id: 'audit', keywords: ['lead', 'responsibility', 'trust', 'audit', 'team', 'people'], text: 'I am the main contact for our external auditors and prepared the audit schedules for the last two annual audits.', detail: 'Last year the auditors had no adjusting entries on the accounts I prepared.' },
+      { id: 'cert', keywords: ['certification', 'license', 'cpa', 'credentials', 'tools', 'skills', 'software', 'qualifications'], text: 'I have an active Colorado CPA license since 2025, and I work in NetSuite and Excel.', detail: 'I studied for the exam at night over 14 months and passed all four sections on the first attempt.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want a senior accountant role where I review other people’s work and improve the close.', detail: 'I already review the junior accountant’s reconciliations informally and I want that to be my job.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like to keep it short and exact, and say what I own.', detail: 'I want it to read like a clean workpaper: what, how much, and who signed off.' },
     ],
-    absent: [{ id: 'license', keywords: ['journeyman license', 'electrical license', 'licensed electrician'], text: 'I do not have my journeyman license yet; I can sit for the exam after year four.' }],
+    absent: [{ id: 'sec', keywords: ['sec', '10-k', '10-q', 'public company', 'sox'], text: 'I haven’t done SEC reporting; my company is privately held.' }],
   },
   {
-    id: 'retail-lead',
-    profile: { name: 'Rosa Delgado', location: 'Phoenix, US', roles: 'Assistant store manager, retail operations',
-      resume: 'High school diploma, 2017. Shift Lead, Example Grocery, 2019 to 2026.' },
+    id: 'scientist',
+    profile: { name: 'Lena Fischer', location: 'San Diego, US', roles: 'Scientist, cell therapy research',
+      resume: 'M.S. Molecular Biology, Example University, 2021. Research Associate II, Example Biotherapeutics, 2021 to 2026.' },
     facts: [
-      { id: 'shrink', keywords: ['project', 'proud', 'improve', 'change', 'result', 'fixed'], text: 'I reorganized our receiving checklist, and inventory shrink fell from 2.1% to 1.4% over six months.', detail: 'Deliveries were being signed for without counting, so I cut the checklist to one page and had the closer count every pallet before signing.' },
-      { id: 'shift', keywords: ['job', 'work', 'day', 'current', 'role', 'responsible'], text: 'I run the evening shift for a team of 14 cashiers and stockers at a store that does about $90,000 in weekly sales.', detail: 'I set breaks, move people between registers and the floor when lines build, and close out the cash office at night.' },
-      { id: 'training', keywords: ['lead', 'led', 'leadership', 'train', 'teach', 'people', 'mentor', 'team'], text: 'I trained 20 new hires on the register and opening procedures in the last two years.', detail: 'Each new hire works their first three shifts with me, and I wrote them a one-page cheat sheet.' },
-      { id: 'customers', keywords: ['hard', 'challenge', 'difficult', 'problem', 'customer', 'conflict'], text: 'I handle customer complaints that get escalated past the register.', detail: 'Last month a customer was double-charged on a big order; I refunded it on the spot and called her the next day to confirm it posted.' },
-      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want to be an assistant store manager and learn the ordering and budget side.', detail: 'I already build my shift’s schedule; I want to see the whole week and the labor budget.' },
-      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I want it friendly and straight to the point, the way I talk at work.', detail: 'Write it the way I would explain it to a new hire.' },
+      { id: 'assay', keywords: ['project', 'proud', 'improve', 'change', 'result', 'developed'], text: 'I developed a cell-based potency assay that cut turnaround from 5 days to 2 and is now used across three programs.', detail: 'The old assay needed a 72-hour co-culture; I switched to a reporter line with a luminescence readout and validated it against the old one on 40 samples.' },
+      { id: 'screens', keywords: ['job', 'work', 'day', 'current', 'role', 'experiments'], text: 'I ran CRISPR knockout screens in primary T cells and analyzed the sequencing data in R.', detail: 'The screens covered about 2,000 guides; two of the hits became targets the team is still working on.' },
+      { id: 'sops', keywords: ['lead', 'led', 'leadership', 'train', 'teach', 'people', 'mentor', 'team'], text: 'I wrote 6 SOPs for our flow cytometry workflows and trained 4 new research associates on them.', detail: 'Each new associate runs the panel beside me twice before I sign off on their gating.' },
+      { id: 'pipeline', keywords: ['tools', 'software', 'skills', 'data', 'technical', 'code'], text: 'I built an R pipeline that processes plate-reader data for 30 plates a week and flags failed controls.', detail: 'Before that, each plate was analyzed by hand in a spreadsheet, about 20 minutes a plate.' },
+      { id: 'goal', keywords: ['looking', 'want', 'goal', 'next', 'kind', 'roles', 'interested', 'environment'], text: 'I want a scientist role where I design the experiments, not only run them.', detail: 'On the potency assay I proposed the design myself, and that is the work I want more of.' },
+      { id: 'voice', keywords: ['write', 'writing', 'sound', 'voice', 'tone', 'describe yourself', 'come across'], text: 'I like it clear and careful: the method, then the result.', detail: 'I would rather understate a result than have someone ask for data I do not have.' },
     ],
-    absent: [{ id: 'hiring', keywords: ['hiring', 'firing', 'fired', 'terminate'], text: 'I haven’t made hiring or firing decisions; the store manager does that.' }],
+    absent: [{ id: 'gmp', keywords: ['gmp', 'manufacturing', 'clinical production'], text: 'I haven’t worked in a GMP environment; all my work is research-stage.' }],
   },
 ];
 

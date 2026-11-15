@@ -77,7 +77,7 @@ In this repo, resume generation uses this policy only:
 ## Keyword injection strategy (ethical, truth-based)
 
 Examples of legitimate reformulation:
-- JD says "patient education" and CV says "explained discharge instructions to patients" → change to "patient education on discharge instructions"
+- JD says "variance analysis" and CV says "compared monthly actuals with budget and explained the differences" → change to "monthly budget-versus-actual variance analysis"
 - JD says "data-driven decisions" and CV says "built weekly sales reports the manager used to set orders" → change to "built weekly sales reports that drove ordering decisions"
 - JD says "RAG pipelines" and CV says "LLM workflows with retrieval" → change to "RAG pipeline design and LLM orchestration workflows"
 - JD says "stakeholder management" and CV says "collaborated with team" → change to "stakeholder management across engineering, operations, and business"

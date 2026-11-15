@@ -13,10 +13,10 @@
 ## Your Target Roles
 
 <!-- Replace these with YOUR target roles, in any field. Examples:
-     - Registered Nurse / Clinical Coordinator
+     - Financial Analyst / FP&A Analyst
      - Marketing Coordinator / Content Specialist
      - Elementary Teacher / Instructional Aide
-     - Electrician Apprentice / Maintenance Technician
+     - Research Scientist / Research Associate
      - Financial Analyst / Staff Accountant
      - Software Engineer / Data Analyst
      Whatever you're optimizing for. -->
@@ -29,7 +29,7 @@
 ## Your Adaptive Framing
 
 <!-- Map YOUR experience to each archetype. Examples:
-     | Clinical Coordinator | My unit's discharge-time project | cv.md |
+     | FP&A Analyst | The forecast model I rebuilt for my business unit | cv.md |
      | Marketing Coordinator | The campaign I ran for the campus food pantry | article-digest.md | -->
 
 | If the role is... | Emphasize about you... | Proof point sources |
@@ -50,7 +50,7 @@ Use the candidate's exit story from `config/profile.yml` to frame ALL content:
 
 <!-- What's your "signature move"? What do you do that others can't? -->
 
-Frame the profile around **[your signature strength, in your field's words, e.g. "the nurse families ask for by name" or "the coordinator nothing slips past"]** and adapt the framing to each role.
+Frame the profile around **[your signature strength, in your field's words, e.g. "the analyst whose model everyone trusts" or "the engineer who ships and then measures"]** and adapt the framing to each role.
 
 ## Your Portfolio / Demo
 

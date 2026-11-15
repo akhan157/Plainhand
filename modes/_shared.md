@@ -75,12 +75,12 @@ Block G assesses whether a posting is likely a real, active opening. It does NOT
 
 ## Archetype Detection
 
-Classify every offer into one of the user's own target archetypes from `modes/_profile.md` (or a hybrid of 2). If `_profile.md` defines none, use these field-neutral role families, which apply to any industry (healthcare, education, trades, business, creative, public service, technology):
+Classify every offer into one of the user's own target archetypes from `modes/_profile.md` (or a hybrid of 2). If `_profile.md` defines none, use these field-neutral role families, which apply across professional fields (finance, technology, engineering, science, business, design):
 
 | Archetype | Key signals in JD |
 |-----------|-------------------|
 | Hands-on Practitioner | performing the core work of the field; required licenses, certifications, tools or equipment |
-| People & Service | "clients", "patients", "students", "customers", "members", "care", "support" |
+| People & Service | "clients", "customers", "accounts", "stakeholders", "advisory", "support", "relationship" |
 | Coordination & Operations | "coordinate", "schedule", "logistics", "process", "administration", "compliance" |
 | Analysis & Research | "analyze", "data", "reporting", "research", "evaluate", "audit" |
 | Creative & Communications | "content", "design", "campaign", "brand", "writing", "media" |
