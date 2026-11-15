@@ -169,6 +169,13 @@ try {
   assert.equal(await ats.page.evaluate(() => window.submissionCount), 0, 'Automation never submitted the fixture form.');
   await ats.page.screenshot({ path: path.join(shots, '12-filled-employer-fixture.png'), fullPage: true });
   await shot(page, '13-reviewed-form-dark.png');
+  // The manual kit is always one click away: approved documents and answers to copy.
+  await page.getByRole('button', { name: 'Apply by hand instead', exact: true }).click();
+  await page.getByRole('heading', { name: 'Apply by hand', exact: true }).waitFor();
+  await panel(page).locator('section[aria-labelledby="ap-manual"]').getByRole('link', { name: 'Resume PDF', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Copy cover letter', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Apply by hand', exact: true }).scrollIntoViewIfNeeded();
+  await shot(page, '13b-manual-kit.png');
   await page.getByRole('button', { name: 'Take over the browser', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'The browser is yours.' }).waitFor();
   assert.equal(await ats.page.evaluate(() => window.submissionCount), 0);

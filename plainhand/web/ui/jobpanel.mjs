@@ -230,6 +230,28 @@ function ApplyLink({ job }) {
   </${Notice}>`;
 }
 
+// Applying by hand (docs/internal/PRODUCT-DEFINITION.md, "What manual means"): for a
+// site Plainhand can't drive, everything approved is here to download or copy, and
+// the candidate confirms the submission themselves.
+async function copyText(text, what) {
+  try { await navigator.clipboard.writeText(text); toast(`${what} copied.`); }
+  catch { toast('Copying is blocked in this browser. Select the text and copy it instead.', true); }
+}
+function ManualKit({ job, title }) {
+  const packet = job.packet, link = job.applyUrl || job.url;
+  const docs = (job.artifacts || []).filter(file => !file.endsWith('.md'));
+  return html`<${Section} title=${title || `Apply on ${hostOf(link)} yourself`} id="ap-manual">
+    <ol class="plain-list manual-steps">
+      <li><strong>Open the application.</strong> ${link ? html`<${LinkButton} class="small" href=${safeLink(link)} external>Open ${hostOf(link)}</${LinkButton}>` : null}</li>
+      <li><strong>Attach your approved documents.</strong> <span class="download-row">${store.demo ? html`<${Pill} tone="warn">Sample documents · demo only</${Pill}>` : docs.length ? docs.map(file => html`<a key=${file} class="button small" href=${artifactHref(file)} download><${Icon} name="download" />${artifactLabel(file)}</a>`) : html`<span class="muted-text">Regenerate the packet to make the PDFs.</span>`}</span></li>
+      <li><strong>Paste your answers.</strong> Each one is the approved wording.</li>
+    </ol>
+    ${packet?.coverLetter ? html`<div class="qa"><h4>Cover letter text</h4><p class="muted-text">For sites that ask you to paste it.</p><${Button} class="small" icon="copy" onClick=${() => copyText(packet.coverLetter, 'Cover letter')}>Copy cover letter</${Button}></div>` : null}
+    ${(packet?.answers || []).map((a, i) => html`<div class="qa" key=${i}><h4>${a.question}</h4><p>${a.answer}</p><${Button} class="small" icon="copy" onClick=${() => copyText(a.answer, 'Answer')}>Copy answer</${Button}></div>`)}
+    <p class="muted-text">Questions the packet doesn't cover, such as pay, work authorization or demographics, are yours to answer on the site. With the Plainhand extension installed, click it on the application page to fill from these same approved answers. You make the final submit click.</p>
+  </${Section}>`;
+}
+
 const CHECK_REASONS = { sensitive: 'Personal or legal', 'no-information': 'Not in your profile', document: 'Document', choice: 'Your choice' };
 function PresubmitCheck({ check, preview }) {
   if (!check?.items?.length) return null;
@@ -252,11 +274,20 @@ function ApplyTab({ job }) {
   const [plan, setPlan, clearPlan] = useDraft('plan:' + job.id, null);
   // One browser action at a time: the others wait until it finishes.
   const [running, setRunning] = useState(null);
+  const [manual, setManual] = useState(false);
   if (!job.approvedHash || job.stale) return html`<${Empty} icon="lock" title="A quick review before the next step.">Review and approve the exact application packet before opening form assistance.</${Empty}><div class="center-row"><${Button} class="primary" iconEnd="arrow" onClick=${() => setJobTab('packet')}>Review application packet</${Button}></div>`;
-  if (store.state.cloud) return html`<${Notice}>Review your approved documents, then fill the employer’s form yourself or use the Plainhand extension on a computer. The website cannot open a local application browser. You make the final submit click.</${Notice}><${CopyRequest} text=${'@Plainhand help me prepare to fill the application for ' + job.company + ' — ' + job.title + '. Job ID: ' + job.id} />${job.url ? html`<${LinkButton} href=${safeLink(job.applyUrl || job.url)} external>Open application</${LinkButton}>` : null}<${Button} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>I submitted this application</${Button}>`;
+  const submitted = job.status === 'Applied' || !!job.submittedAt;
+  const finish = html`<section class="finish" aria-labelledby="finish-title">
+      <h3 id="finish-title">Finished submitting?</h3>
+      <p class="muted-text">After you review and submit on the employer’s site, confirm it here. Filling a form or saving a draft does not count as an application.</p>
+      <${Button} icon="checkCircle" disabled=${submitted} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>${submitted ? 'Submission confirmed' : 'I submitted this application'}</${Button}>
+    </section>`;
+  if (store.state.cloud) return html`<${Notice}>The website can't open an application browser. Apply with the kit below, or ask your connected chat for help.</${Notice}><${ManualKit} job=${job} title="Apply with your approved packet" /><${CopyRequest} text=${'@Plainhand help me prepare to fill the application for ' + job.company + ' — ' + job.title + '. Job ID: ' + job.id} />${finish}`;
+  // A job-board posting without the employer's own link: Plainhand doesn't open the
+  // board, so the candidate applies there by hand (or adds the employer's link).
+  if (isBoard(job.url) && !job.applyUrl) return html`<${QueueNav} job=${job} kind="apply" /><${ApplyLink} job=${job} /><${ManualKit} job=${job} />${finish}`;
   const checkpoint = job.browserCheckpoint;
   const observation = plan?.observation;
-  const submitted = job.status === 'Applied' || !!job.submittedAt;
   const setAnswer = (key, value) => setPlan({ ...plan, answers: { ...plan.answers, [key]: value } });
   const n = plan?.steps?.length || 0;
   const act = (name, fn) => async () => { setRunning(name); try { await fn(); } finally { setRunning(null); } };
@@ -269,7 +300,6 @@ function ApplyTab({ job }) {
       <${ActionButton} class="primary" icon="external" disabled=${blocked('open')} onClick=${act('open', async () => { toast('Opening a separate application browser on this computer…'); setPlan(await api('browser/open', { id: job.id })); refresh(); })}>${plan ? 'Inspect form again' : 'Open & inspect application'}</${ActionButton}>
       <${ActionButton} class="primary" disabled=${blocked('autofill')} onClick=${act('autofill', async () => { toast('Filling supported form steps from your approved packet…'); setPlan(await api('browser/autofill', { id: job.id })); refresh(); })}>Autofill to final review</${ActionButton}>
       <${ActionButton} disabled=${blocked('resume')} onClick=${act('resume', async () => { setPlan(await api('browser/resume', { id: job.id })); refresh(); })}>Resume inspection</${ActionButton}>
-      <${LinkButton} class="ghost" href=${safeLink(job.applyUrl || job.url)} external>Apply manually</${LinkButton}>
     </div>
     ${observation ? html`<div class="observation">
       <${Notice} tone=${['challenge', 'login', 'paused', 'needs-answers'].includes(observation.state) ? 'warn' : 'neutral'}>${observation.message || 'Application inspected.'}</${Notice}>
@@ -305,11 +335,8 @@ function ApplyTab({ job }) {
       ${checkpoint.result.validation?.length ? html`<${Notice} tone="danger">${checkpoint.result.validation.join(' ')}</${Notice}>` : null}
       <${ActionButton} class="primary" icon="external" onClick=${async () => { const r = await api('browser/handoff', { id: job.id }); clearPlan(); toast(r.message); refresh(); }}>Take over the browser</${ActionButton}>
     </${Section}>` : null}
-    <section class="finish" aria-labelledby="finish-title">
-      <h3 id="finish-title">Finished submitting?</h3>
-      <p class="muted-text">After you review and submit on the employer’s site, confirm it here. Filling a form or saving a draft does not count as an application.</p>
-      <${Button} icon="checkCircle" disabled=${submitted} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>${submitted ? 'Submission confirmed' : 'I submitted this application'}</${Button}>
-    </section>`;
+    ${manual || observation?.state === 'unsupported' ? html`<${ManualKit} job=${job} title="Apply by hand" />` : html`<div class="action-row"><${Button} class="ghost small" icon="file" onClick=${() => setManual(true)}>Apply by hand instead</${Button}></div>`}
+    ${finish}`;
 }
 
 // ---------------------------------------------------------------------------

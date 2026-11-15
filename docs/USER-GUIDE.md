@@ -72,8 +72,10 @@ resume**. If your profile changes later, it tells you to rewrite it.
 On **Jobs**, add a role by its link. Company career pages and Greenhouse,
 Lever, Ashby, Workday, Workable, SmartRecruiters and similar sites all work.
 From **LinkedIn, Indeed or another job board**, paste the description too:
-Plainhand doesn't open those sites. When you apply, give it the employer's own
-application link (most postings have one).
+Plainhand doesn't open those sites. A job from any site can be evaluated and
+prepared. When you apply, either give it the employer's own application link
+(most postings have one) so Plainhand can fill that form, or apply on the board
+yourself with the kit described in section 7.
 
 **Evaluate** checks the posting is live and scores your fit (out of 5) with
 the evidence for each match and the gaps. **Campaigns** can check company
@@ -120,6 +122,15 @@ In the **Apply** tab of an approved application:
    (you approve them under **Workspace**).
 5. **Take over the browser**, check everything on the page, and submit it
    yourself. Back in Plainhand, press **I submitted this application**.
+
+**Applying by hand.** When Plainhand can't fill a site (a LinkedIn or Indeed
+posting without the employer's link, a form it can't read, or the hosted
+website), the Apply tab shows the kit instead: a link to the application, your
+approved resume and cover letter PDFs, and every prepared answer with a copy
+button. Press **Apply by hand instead** to see it any time. Apply on the site,
+then press **I submitted this application** so tracking and follow-ups carry
+on. With the Plainhand extension, click it on the application page to fill
+from the same approved answers.
 
 ## 8. After applying
 

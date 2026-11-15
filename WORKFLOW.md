@@ -210,6 +210,13 @@ integrations. Final submission always remains manual.
   that sends, applies, or finalizes the application. If a button or page state
   could plausibly submit the application and there is any uncertainty, stop and
   hand off to the candidate instead of clicking.
+- Manual kit (Plainhand app, `ManualKit` in `plainhand/web/ui/jobpanel.mjs`).
+  A site Plainhand can't drive is never refused: a job-board posting without
+  the employer's link (`isBoardUrl`), a form the browser can't read
+  (`observation.state === 'unsupported'`) and the hosted website all show the
+  approved packet as downloads and copyable answers. The candidate applies by
+  hand and confirms with `jobs.confirmSubmitted`, so TRACK and FOLLOW UP carry
+  on. It reads the approved packet only and writes nothing.
 - Candidate submits. Draft-save state is operational only; it does not change
   canonical tracker status.
 - After submit: status → Applied, entry added to `data/follow-ups.md`
