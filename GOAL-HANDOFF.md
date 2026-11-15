@@ -60,3 +60,11 @@ Continuation lane tip `5729bf6` (freshened on `8012a83`, pure merge of `a46056f`
 Gate 1 reviews committed: measurement design `b6c0b56` accepted with amendments (`docs/internal/lanes/measurement-design/REVIEW.md`: scorer at least as strict as production, cross-check test, root leak case, live budget not yet approved); durable-memory design `b9652fc` accepted (`docs/internal/lanes/durable-memory/REVIEW.md`: include source files, exact-label reuse, bank out of context, M5 deterministic; M1/M2 may land before the baseline freeze as defect fixes).
 
 Next: scorer implementation lane on this integration commit (zero live calls); M2 then M1 memory defect fixes; then baseline freeze. The live paired baseline (≤900 calls) needs an owner decision on which provider pays.
+
+## Dispatch checkpoint — 2026-11-15 (pin `31d7ba1bb80443a177312173db68413326661849`)
+
+Running, all Pi `deepseek/deepseek-flash` thinking max (non-Claude, reviewer is Claude Opus root), worktree-isolated, no live calls:
+- Scorer implementation (measurement §4–§6 + REVIEW amendments): `thread:delegated-task:command%3Amcp%3Acc0a461f-824f-4b5a-b0eb-1da2c9746ff1%3Adelegate-task%3Ad4ccc4af-c500-4958-9329-08b8a22f7ad4`.
+- Memory M2 evidence-source gate: `thread:delegated-task:command%3Amcp%3Acc0a461f-824f-4b5a-b0eb-1da2c9746ff1%3Adelegate-task%3Ae2225f70-0dbe-4942-a01f-b8f8522e21d3`. M1 follows M2.
+- Independent read-only review of root calibration correction: `thread:delegated-task:command%3Amcp%3Acc0a461f-824f-4b5a-b0eb-1da2c9746ff1%3Adelegate-task%3Aff0fb3b5-2b88-4ae8-b8f8-ab11d11c1778`.
+File ownership disjoint; score.mjs reads hasEvidence, which M2 tightens — check at integration. Owner decision pending: provider/budget for the live paired baseline (≤900 calls).
