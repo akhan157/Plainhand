@@ -133,7 +133,8 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
 
 ## Owner decisions: tailoring order, cover letters, updates — 2026-11-15
 
-- **Tailoring.** The candidate keeps a master resume per field. For each job, Plainhand
+- **Tailoring.** Plainhand keeps one master record (people often keep one master per
+  field; the owner described that as background, not a new decision). For each job, it
   keeps only the experience relevant to the posting and drops the rest (it stays in the
   master). Each kept role's lines are curated to the job. Kept roles go newest first by
   default; a candidate can instead put their strongest match on top. This is a
