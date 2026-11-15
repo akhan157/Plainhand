@@ -6,7 +6,7 @@ Status: **design only, awaiting root Gate 1 approval.** Nothing below has been i
 
 | Item | Value |
 |---|---|
-| Worktree | `/home/ak/.t3/worktrees/Plainhand/t3-ab261a42-466069d59d930d8a` |
+| Worktree | T3-managed isolated checkout for `t3/tracking-integration-design` |
 | Lane branch | `t3/tracking-integration-design` (the implementation continues on this branch after approval) |
 | Base HEAD (confirmed) | `e4da45fa2d21ce1f5945ce11662a73afda03b53f` |
 | Integration source | `867c32956a38788a3099b045b19be450fcd16a86` (`t3/competitor-workflow-improvements`, one commit `867c329`, parent `fb39642`) |
@@ -198,7 +198,7 @@ No change to `tests/test-web-modules.mjs` expected (new file is `.mjs`). `packag
 ## 7. Validation plan and resource rules (run only after Gate 1)
 
 1. `free -h` before every build/test/browser run; stop if available < 2GiB. Max 2 workers (`--test-concurrency=2`, Playwright `--workers=1`).
-2. Focused, in order: `node --test tests/test-exports.mjs` → `node --test tests/test-web-modules.mjs tests/test-css.mjs` → `node tests/test-plainhand-ui.mjs` (Chromium, evidence to a temp dir; `TMPDIR=/home/ak/.cache/plainhand-eval-tmp` per the memory note) → cloud suite (below).
+2. Focused, in order: `node --test tests/test-exports.mjs` → `node --test tests/test-web-modules.mjs tests/test-css.mjs` → `node tests/test-plainhand-ui.mjs` (Chromium, evidence to a temp dir; a task-specific gitignored scratch directory on disk (not RAM-backed /tmp) per the memory note) → cloud suite (below).
 3. **Postgres for `tests/test-cloud-app.mjs` (needs root approval to start a local service).** Verified available: cached image `postgres:17` and a reachable Docker daemon; no host Postgres binaries. Plan: `docker run --rm -d --pull never --name plainhand-lane-pg -p 127.0.0.1:<free port>:5432 --tmpfs /var/lib/postgresql/data -e POSTGRES_PASSWORD=<random, kept in an env var only> postgres:17`, wait for readiness, set `PLAINHAND_TEST_DATABASE_URL` to `postgresql://postgres:…@127.0.0.1:<port>/postgres`, run only `node --test tests/test-cloud-app.mjs`, then `docker stop` and confirm `docker ps` shows nothing of ours. Loopback only, no pull (`--pull never`), no external cloud, data on tmpfs and destroyed with the container. This worktree has no `node_modules`; the run needs the same dependency tree the main checkout uses, via a local symlink to its `node_modules` (gitignored, no network). If root declines the container, cloud tests are reported as **not run** (skip is never reported as pass) and the hosted route is then covered only by code review plus the exports unit tests; that gap would be stated in the result.
 4. No servers or containers left running; verify with `ss -ltn`/`docker ps` at the end of each run.
 5. Root will independently re-run the focused tests and the built UI after merge; the lane result will list exact commands, output tails and screenshot paths, and will not claim acceptance.
