@@ -86,7 +86,9 @@ const str = (value, max, name) => {
 
 // Two URLs are the same posting when they normalise to the same page, ignoring a
 // trailing slash and the /apply step (Lever, Ashby), or carry the same Greenhouse
-// job id (employer pages embed Greenhouse with ?gh_jid=).
+// job id (employer pages embed Greenhouse with ?gh_jid=). LinkedIn and Indeed show
+// one posting under many URLs (search results, collections, the apply step), so
+// their own job ids count too.
 function urlKeys(value) {
   let href;
   try { href = jobUrl(value); } catch { return { keys: [], ghId: null }; }
@@ -94,7 +96,16 @@ function urlKeys(value) {
   const path = url.pathname.replace(/\/+$/, '');
   const base = url.origin + path.replace(/\/(apply|application)$/i, '');
   const ghId = url.searchParams.get('gh_jid') || url.pathname.match(/\/jobs\/(\d{4,})(?:\/|$)/)?.[1] || null;
-  return { keys: [href, url.origin + path, base], ghId };
+  const keys = [href, url.origin + path, base];
+  if (/(^|\.)linkedin\.com$/i.test(url.hostname)) {
+    const id = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d{6,})/)?.[1] || url.searchParams.get('currentJobId');
+    if (/^\d{6,}$/.test(id || '')) keys.push(`linkedin:${id}`);
+  }
+  if (/(^|\.)indeed\.[a-z.]+$/i.test(url.hostname)) {
+    const id = url.searchParams.get('jk') || url.searchParams.get('vjk');
+    if (/^[a-f0-9]{8,}$/i.test(id || '')) keys.push(`indeed:${id.toLowerCase()}`);
+  }
+  return { keys, ghId: /(^|\.)(linkedin\.com|indeed\.[a-z.]+)$/i.test(url.hostname) ? null : ghId };
 }
 export function matchJob(jobs, pageUrl) {
   const page = urlKeys(pageUrl);

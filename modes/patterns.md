@@ -94,7 +94,7 @@ Note the percentage of all applications affected by each.
 
 Table showing conversion rate by remote policy bucket (global, regional, geo-restricted, hybrid/onsite).
 
-## Tech Stack Gaps
+## Skill Gaps
 
 List of most common missing skills in negative/self-filtered outcomes with frequency.
 

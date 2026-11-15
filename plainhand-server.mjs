@@ -46,7 +46,7 @@ function assetFile(pathname) {
   return file;
 }
 
-// Fictional content for previewing a resume format before a standard application exists.
+// Fictional content for previewing a resume format before a master resume exists.
 const FORMAT_SAMPLE = {
   profile: { name: 'Riley Example', email: 'riley@example.invalid', phone: '+1 617 555 0100', location: 'Boston, MA', links: '' },
   resume: [
@@ -93,7 +93,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
   }
   async function formPlan(state, job, fields) {
     const plan = { id: job.id, fields, observation: browser.status ? await browser.status(job.id) : { state: 'ready' }, answers: suggestFormAnswers(fields, state.profile, job.packet, { bank: await new AnswerBank(workspace).load(), job }), approval: job.approvedHash };
-    const unanswered = fields.filter(f => !plan.answers[f.key] && f.type !== 'file' && !/sponsor|authoriz|eligible|gender|race|veteran|disabil|salary|compens|consent|agree|legal|citizen|relocat|privacy|country|ethnic/i.test(f.label));
+    const unanswered = fields.filter(f => !plan.answers[f.key] && f.type !== 'file' && !isSensitiveLabel(f.label));
     if (unanswered.length) {
       try {
         const context = await workspace.context(state);
@@ -376,7 +376,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/format/save') return json(res, 200, await ui('format.save', input.reset ? { reset: true } : { format: input.format }));
       if (url.pathname === '/api/format/preview') {
-        // A first-page image of the standard application (or a fictional sample) in this format.
+        // A first-page image of the master resume (or a fictional sample) in this format.
         const state = await workspace.load(), format = cleanFormat(input.format || state.resumeFormat || DEFAULT_FORMAT);
         const sample = state.standard?.draft?.resume?.length ? state.standard.draft : FORMAT_SAMPLE;
         const profile = sample === FORMAT_SAMPLE ? FORMAT_SAMPLE.profile : state.profile;

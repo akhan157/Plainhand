@@ -53,7 +53,7 @@ const LEADS = {
   interview: 'Read the candidate\'s profile and interview so far, then write their profile summary and the follow-up questions.',
   evaluate: 'Judge how well this job fits the candidate, using only their evidence.',
   packet: 'Write the candidate\'s resume, cover letter and answers for this job.',
-  standard: 'Write the candidate\'s standard resume and cover letter.',
+  standard: 'Write the candidate\'s master resume and base cover letter.',
   humanize: 'Rewrite the wording of each item so it reads like the candidate wrote it.',
   review: 'Fact-check this application as an independent reviewer. Judge only INPUT.packet against the quoted sources in INPUT.context.sources and the job in INPUT.job, independently of any earlier drafting: if you or this chat wrote the draft earlier, ignore that work and anything you remember about it, and check each claim afresh against the sources. Plainhand also checks every quote itself; it cannot be argued past.',
   form: 'Draft answers for these application form fields.',
@@ -161,7 +161,7 @@ export function createStepRunner({ workspace, makeWorkflow, now = () => Date.now
       return { summary: open ? `Your application for ${name} is drafted, but it needs ${open === 1 ? 'one answer' : `${open} answers`} from you first. Nothing has been sent.` : `Your application for ${name} is ready to review. Nothing has been sent: read it and approve it on the website.`, link: website.packet(job.id) };
     }
     if (record.kind === 'interview') return { summary: 'Your profile summary and follow-up questions are ready. Read them and approve the summary on your profile page.', link: website.profile() };
-    if (record.kind === 'standard') return { summary: 'Your standard resume and cover letter are ready to review. Approve them on your profile page before they are used.', link: website.profile() };
+    if (record.kind === 'standard') return { summary: 'Your master resume and base cover letter are ready to review. Approve them on your profile page before they are used.', link: website.profile() };
     if (record.kind === 'discover') return { summary: `${state.events.find(e => /^Discovery added/.test(e.text))?.text?.replace(/ No applications were started\.$/, '') || 'Your job sources were checked.'} Nothing was applied to.`, link: website.jobs() };
     return { summary: 'The task finished.', link: '/' };
   }
@@ -228,7 +228,7 @@ export function createStepRunner({ workspace, makeWorkflow, now = () => Date.now
   async function start(kind, input = {}) {
     if (!TASK_KINDS.includes(kind)) return failed(null, `Unknown task. Use one of: ${TASK_KINDS.join(', ')}.`);
     const request = typeof input.request === 'string' ? input.request.trim().slice(0, 2000) : '';
-    // A revision without a role revises the standard application, as in the app.
+    // A revision without a role revises the master resume, as in the app.
     const actual = kind === 'revise' && !input.jobId ? 'standard' : kind;
     const jobId = ['evaluate', 'prepare', 'revise'].includes(actual) ? (typeof input.jobId === 'string' ? input.jobId : null) : null;
     if (['evaluate', 'prepare', 'revise'].includes(actual) && !jobId) return failed(null, 'Say which role: pass its jobId (find it with the jobs list).');

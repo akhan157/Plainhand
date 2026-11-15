@@ -168,12 +168,12 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       return { result, taintSources: result.coverage.recurringGaps.length ? [{ kind: 'evaluation-gaps', id: 'profile-strength', label: 'Gaps from evaluated postings' }] : [] };
     } });
 
-  define({ name: 'standard.approve', tier: 'candidate', title: 'Approve your standard application', description: 'The candidate approves their standard resume and cover letter as the base for every application.', input: {}, panel: () => ({ type: 'profile' }),
+  define({ name: 'standard.approve', tier: 'candidate', title: 'Approve your master resume', description: 'The candidate approves their master resume and base cover letter: the complete record every application selects from.', input: {}, panel: () => ({ type: 'profile' }),
     run: async () => {
       await workspace.mutate(async state => {
-        if (standardStatus(state, (await workspace.context(state)).hash) === 'stale') throw new ActionError('failed', 'Your profile changed since this was written. Rewrite your standard application first.');
+        if (standardStatus(state, (await workspace.context(state)).hash) === 'stale') throw new ActionError('failed', state.standard?.kind === 'master' ? 'Your profile changed since this was written. Rewrite your master resume first.' : 'Plainhand now keeps a master resume with everything you have done. Write it once to replace your old standard resume.');
         approveStandard(state, now());
-        state.events.unshift({ at: now(), text: 'Standard application approved. New applications start from it.' });
+        state.events.unshift({ at: now(), text: 'Master resume approved. New applications select from it.' });
       });
       return { result: { ok: true } };
     } });
@@ -444,10 +444,10 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
   define({ name: 'tasks.discover', tier: 'task', title: 'Check job sources', description: 'Run discovery on the configured boards with optional text filters. Never starts applications.', input: { filter: 'string?', location: 'string?', retryOf: 'string?' }, summarize: input => `Check your job sources${input.filter ? ` for "${input.filter}"` : ''}`, run: task('discover') });
   define({ name: 'tasks.evaluate', tier: 'task', title: 'Evaluate a role', description: 'Verify the posting and evaluate fit against the candidate evidence.', input: { jobId: 'string', retryOf: 'string?' }, summarize: () => 'Evaluate this role', run: task('evaluate') });
   define({ name: 'tasks.prepare', tier: 'task', title: 'Prepare the application', description: 'Write and fact-check the resume, cover letter and answers for a selected role.', input: { jobId: 'string', retryOf: 'string?' }, summarize: () => 'Prepare the application packet', run: task('prepare') });
-  define({ name: 'tasks.standard', tier: 'task', title: 'Write your standard application', description: 'Write (or rewrite) the candidate’s standard resume and cover letter: the base every application starts from. It is fact-checked and graded; the candidate approves it before it is used.', input: { retryOf: 'string?' }, summarize: () => 'Write your standard resume and cover letter',
+  define({ name: 'tasks.standard', tier: 'task', title: 'Write your master resume', description: 'Write (or rewrite) the candidate’s master resume and base cover letter: the complete record of what they have done, which every application selects from. It is fact-checked and graded; the candidate approves it before it is used.', input: { retryOf: 'string?' }, summarize: () => 'Write your master resume and base cover letter',
     run: async (ctx, input) => ({ result: { taskId: await workflow.enqueue('standard', null, { retryOf: cleanText(input.retryOf, 100) || null }) } }) });
-  define({ name: 'tasks.revise', tier: 'task', title: 'Revise an application', description: "Change an application packet (jobId) or, without jobId, the standard application, the way the candidate asked: for example make it shorter, lead with a project, warmer opening. request must be the candidate's own words. Only what the request concerns changes; it is fact-checked again and clears the packet's approval.", input: { jobId: 'string?', request: 'string', retryOf: 'string?' }, candidateWords: 'request',
-    summarize: input => `${input.jobId ? 'Revise this application' : 'Revise your standard application'}: "${String(input.request).slice(0, 120)}"`,
+  define({ name: 'tasks.revise', tier: 'task', title: 'Revise an application', description: "Change an application packet (jobId) or, without jobId, the master resume, the way the candidate asked: for example make it shorter, lead with a project, warmer opening. request must be the candidate's own words. Only what the request concerns changes; it is fact-checked again and clears the packet's approval.", input: { jobId: 'string?', request: 'string', retryOf: 'string?' }, candidateWords: 'request',
+    summarize: input => `${input.jobId ? 'Revise this application' : 'Revise your master resume'}: "${String(input.request).slice(0, 120)}"`,
     run: async (ctx, input) => {
       const request = requireText(input.request, 'request', 2000);
       const kind = input.jobId ? 'revise' : 'standard';

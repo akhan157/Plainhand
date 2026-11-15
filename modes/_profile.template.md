@@ -12,36 +12,30 @@
 
 ## Your Target Roles
 
-<!-- Replace these with YOUR target roles. Examples:
-     - Senior Backend Engineer / Staff Platform Engineer
-     - AI Product Manager / Technical PM
-     - Data Engineer / ML Engineer
-     - DevOps / SRE / Platform
+<!-- Replace these with YOUR target roles, in any field. Examples:
+     - Financial Analyst / FP&A Analyst
+     - Marketing Coordinator / Content Specialist
+     - Elementary Teacher / Instructional Aide
+     - Research Scientist / Research Associate
+     - Financial Analyst / Staff Accountant
+     - Software Engineer / Data Analyst
      Whatever you're optimizing for. -->
 
 | Archetype | Thematic axes | What they buy |
 |-----------|---------------|---------------|
-| **AI Platform / LLMOps Engineer** | Evaluation, observability, reliability, pipelines | Someone who puts AI in production with metrics |
-| **Agentic Workflows / Automation** | HITL, tooling, orchestration, multi-agent | Someone who builds reliable agent systems |
-| **Technical AI Product Manager** | GenAI/Agents, PRDs, discovery, delivery | Someone who translates business to AI product |
-| **AI Solutions Architect** | Hyperautomation, enterprise, integrations | Someone who designs end-to-end AI architectures |
-| **AI Forward Deployed Engineer** | Client-facing, fast delivery, prototyping | Someone who delivers AI solutions to clients fast |
-| **AI Transformation Lead** | Change management, adoption, org enablement | Someone who leads AI transformation in an org |
+| **[Your primary target role]** | [The 3-4 things this role is judged on] | [What the employer is really paying for] |
+| **[Your second target role]** | [...] | [...] |
 
 ## Your Adaptive Framing
 
-<!-- Map YOUR projects to each archetype. Example:
-     | Platform / LLMOps | My monitoring dashboard project | article-digest.md |
-     | Agentic | My chatbot with HITL escalation | cv.md section 3 | -->
+<!-- Map YOUR experience to each archetype. Examples:
+     | FP&A Analyst | The forecast model I rebuilt for my business unit | cv.md |
+     | Marketing Coordinator | The campaign I ran for the campus food pantry | article-digest.md | -->
 
 | If the role is... | Emphasize about you... | Proof point sources |
 |-------------------|------------------------|---------------------|
-| Platform / LLMOps | Production systems builder, observability, evals | article-digest.md + cv.md |
-| Agentic / Automation | Multi-agent orchestration, HITL, reliability | article-digest.md + cv.md |
-| Technical AI PM | Product discovery, PRDs, metrics | cv.md + article-digest.md |
-| Solutions Architect | System design, integrations, enterprise-ready | article-digest.md + cv.md |
-| Forward Deployed Engineer | Fast delivery, client-facing, prototype to prod | cv.md + article-digest.md |
-| AI Transformation Lead | Change management, team enablement, adoption | cv.md + article-digest.md |
+| [Your primary target role] | [The strengths and results to lead with] | cv.md + article-digest.md |
+| [Your second target role] | [...] | cv.md |
 
 ## Your Exit Narrative
 
@@ -56,16 +50,15 @@ Use the candidate's exit story from `config/profile.yml` to frame ALL content:
 
 <!-- What's your "signature move"? What do you do that others can't? -->
 
-Frame profile as **"Technical builder with real-world proof"** that adapts framing to the role.
+Frame the profile around **[your signature strength, in your field's words, e.g. "the analyst whose model everyone trusts" or "the engineer who ships and then measures"]** and adapt the framing to each role.
 
 ## Your Portfolio / Demo
 
-<!-- If you have a live demo, dashboard, or public project:
-     url: https://yoursite.dev/demo
-     password: demo-2026
-     when_to_share: "LLMOps, AI Platform roles" -->
+<!-- If you have a portfolio, writing samples, a lesson video, a project site or any public work:
+     url: https://yoursite.example/portfolio
+     when_to_share: "Marketing and content roles" -->
 
-If you have a live demo/dashboard (check profile.yml), offer access in applications for relevant roles.
+If you have a portfolio or public work sample (check profile.yml), offer it in applications for relevant roles.
 
 ## Your Comp Targets
 

@@ -31,6 +31,18 @@
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Apply by hand anywhere.** A job from any site can be evaluated and
+  prepared. Where Plainhand can't fill the form (a LinkedIn or Indeed posting
+  without the employer's link, a form it can't open or fill, or the hosted
+  website),
+  the Apply tab shows a kit: the application link, your approved PDFs and each
+  answer with a copy button. You apply and confirm; tracking carries on.
+- **Master resume.** The standard resume becomes a master resume: every role,
+  result, credential and skill your sources support, with no length limit.
+  Each application picks the lines that fit the job and leads with the most
+  relevant. Plainhand checks the master against your own resume, lists any
+  lines it missed, and redrafts once to add them. An older standard resume is
+  marked out of date until you write the master once.
 - **End-to-end evaluation harness.** `npm run benchmark:eval` runs fictional
   candidates through profile building, resume preparation, portal filling and a
   candidate-confirmed submission to an owned loopback sandbox, then scores fact

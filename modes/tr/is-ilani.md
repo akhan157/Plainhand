@@ -4,7 +4,7 @@ Aday bir ilan yapıştırdığında (metin veya URL) HER ZAMAN 7 bloğun tamamı
 
 ## Adım 0 — Arketip Tespiti
 
-İlanı `_shared.md`'deki arketiplerden birine sınıflandır. Hibrit ise en yakın ikisini belirt. Bu tespite göre:
+İlanı arketiplerden birine sınıflandır (önce kullanıcının `modes/_profile.md`'deki kendi arketipleri, yoksa `_shared.md`'deki rol aileleri). Hibrit ise en yakın ikisini belirt. Bu tespite göre:
 - B bloğunda hangi kanıt noktalarını öne çıkaracağın belirlenir
 - E bloğunda CV özeti nasıl yeniden yazılacağı belirlenir
 - F bloğunda hangi STAR hikayeleri hazırlanacağı belirlenir
@@ -13,8 +13,8 @@ Aday bir ilan yapıştırdığında (metin veya URL) HER ZAMAN 7 bloğun tamamı
 
 Şu alanları içeren bir tablo oluştur:
 - Tespit edilen arketip
-- Alan (fintech / e-ticaret / kurumsal yazılım / SaaS / oyun / telekom vb.)
-- İşlev (geliştirme / danışmanlık / yönetim / deployment)
+- Alan (sektör / uzmanlık; ör. banka, yazılım şirketi, üretim şirketi, biyoteknoloji laboratuvarı, danışmanlık firması)
+- İşlev (uygulama / hizmet / koordinasyon / danışmanlık / yönetim / geliştirme)
 - Kıdem seviyesi (junior / mid / senior / staff)
 - Çalışma şekli (tam uzaktan / hibrit / ofis)
 - Takım büyüklüğü (ilanda belirtilmişse)
@@ -25,12 +25,14 @@ Aday bir ilan yapıştırdığında (metin veya URL) HER ZAMAN 7 bloğun tamamı
 `cv.md` dosyasını oku. İlandaki her gereksinimi CV'deki tam satırlarla karşılaştıran bir tablo oluştur.
 
 **Arketipe göre öne çıkarılacaklar:**
-- FDE → hızlı teslimat ve müşteri yönlü kanıt noktaları
-- SA → sistem tasarımı ve entegrasyon deneyimi
-- PM → product discovery ve metrikler
-- LLMOps → evals, observability, pipeline'lar
-- Agentic → multi-agent, HITL, orchestration
-- Transformation → değişim yönetimi, benimseme, ölçekleme
+- `modes/_profile.md` o arketip için bir vurgu belirliyorsa onu kullan
+- Hands-on Practitioner → lisanslar, sertifikalar ve asıl işin doğrudan pratiği
+- People & Service → hizmet verilen insanlar, hacim ve onlar için elde edilen sonuçlar
+- Coordination & Operations → güvenilirlik, koordine edilen işin ölçeği, süreç iyileştirmeleri
+- Analysis & Research → yöntemler, araçlar ve analizin yön verdiği kararlar
+- Creative & Communications → portfolyo çalışmaları, hedef kitle ve ölçülebilir erişim
+- Technical & Engineering → neyin tasarlandığı ya da inşa edildiği ve nasıl doğrulandığı
+- Leadership & Management → ekip büyüklüğü, bütçe ve başkaları aracılığıyla elde edilen sonuçlar
 
 **Eksikler bölümü** — her eksiklik için şunları değerlendir:
 1. Sert engel mi yoksa "olsa iyi olur" mu?
@@ -80,12 +82,13 @@ CV için en etkili 5 değişiklik + LinkedIn profili için en etkili 5 değişik
 **Story Bank:** `interview-prep/story-bank.md` varsa bu hikayelerin orada olup olmadığını kontrol et. Yoksa ekle. Zamanla her mülakat sorusuna uyarlanabilecek 5-10 ana hikayeden oluşan yeniden kullanılabilir bir banka oluşur.
 
 **Arketipe göre seçim ve çerçeveleme:**
-- FDE → teslimat hızı ve müşteri yönlü yaklaşım ön planda
-- SA → mimari kararlar ön planda
-- PM → discovery süreci ve trade-off'lar ön planda
-- LLMOps → metrikler, evals, production sağlamlaştırma ön planda
-- Agentic → orchestration, hata yönetimi, HITL ön planda
-- Transformation → benimseme ve kurumsal değişim ön planda
+- Hands-on Practitioner → gerçek koşullar altında ustalık ve anlık yapılan doğru değerlendirmeler ön planda
+- People & Service → empati, yönetilen zor durumlar ve hizmet verilen insanlar için sonuçlar ön planda
+- Coordination & Operations → işi sonuna kadar takip etme, öncelikleri dengeleme, bozuk bir süreci düzeltme ön planda
+- Analysis & Research → soru, yöntem ve bunun sonucunda neyin değiştiği ön planda
+- Creative & Communications → hedef kitle, fikir ve aldığı karşılık ön planda
+- Technical & Engineering → problem, trade-off'lar ve nasıl test edildiği ön planda
+- Leadership & Management → insanları geliştirme, zor kararlar ve ekip sonuçları ön planda
 
 Ayrıca ekle:
 - 1 önerilen vaka çalışması (hangi projeyi nasıl sunacağın)

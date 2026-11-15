@@ -53,6 +53,6 @@ export function connectionResult(marker, startedAt, provider) {
   return 'waiting';
 }
 export function chatRequest(kind, job, input = {}, provider = 'chatgpt') {
-  const task = { interview: 'Build my candidate understanding. Ask me about missing facts.', discover: 'Check my saved job sources for suitable roles.', evaluate: 'Evaluate this job against my saved evidence:', prepare: 'Prepare my application using only my saved evidence:', standard: 'Write my standard application using my saved evidence.', revise: 'Revise my application:' }[kind] || `Help me with ${kind}.`;
+  const task = { interview: 'Build my candidate understanding. Ask me about missing facts.', discover: 'Check my saved job sources for suitable roles.', evaluate: 'Evaluate this job against my saved evidence:', prepare: 'Prepare my application using only my saved evidence:', standard: 'Write my master resume using my saved evidence.', revise: 'Revise my application:' }[kind] || `Help me with ${kind}.`;
   return [(provider === 'chatgpt' ? '@Plainhand ' : '') + task, job ? `${job.company} — ${job.title}\n${job.url || ''}\nPlainhand job ID: ${job.id}` : '', input.request || '', input.text || ''].filter(Boolean).join('\n');
 }

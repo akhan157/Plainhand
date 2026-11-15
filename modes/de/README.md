@@ -8,7 +8,7 @@ Verwende `modes/de/`, wenn mindestens eine der folgenden Bedingungen zutrifft:
 
 - Du bewirbst dich vor allem auf **deutschsprachige Stellenanzeigen** (StepStone, XING, kununu, Bundesagentur für Arbeit, deutsche Karriereseiten)
 - Deine **Lebenslauf-Sprache** ist Deutsch oder du wechselst je nach Stellenanzeige zwischen DE und EN
-- Du brauchst Antworten und Anschreiben in **natürlichem Tech-Deutsch**, nicht maschinenübersetzt
+- Du brauchst Antworten und Anschreiben in **natürlichem Deutsch, wie es in deinem Berufsfeld gesprochen wird**, nicht maschinenübersetzt
 - Du musst mit **DACH-spezifischen Vertragselementen** umgehen: 13. Monatsgehalt, Probezeit, Kündigungsfrist, AGG, Tarifvertrag, Festanstellung vs. Freelance, VWL, bAV, Arbeitszeugnisse
 
 Wenn die meisten deiner Stellenanzeigen auf Englisch sind, bleib bei den Standard-Modi unter `modes/`. Die englischen Modi greifen automatisch zu deutschen Anzeigen, sobald Claude sie als deutschsprachig erkennt — aber sie kennen die DACH-Marktbesonderheiten nicht im selben Detail.
@@ -60,14 +60,14 @@ Wenn die Community die deutschen Modi annimmt, werden weitere Modi in einem Folg
 
 ## Was bleibt englisch?
 
-Bewusst nicht eingedeutscht, weil Standard-Tech-Vokabular:
+Bewusst nicht eingedeutscht, weil Standard-Vokabular dieses Tools:
 
 - `cv.md`, `pipeline`, `tracker`, `report`, `score`, `archetype`, `proof point`
 - Tool-Namen (`Playwright`, `WebSearch`, `WebFetch`, `Read`, `Write`, `Edit`, `Bash`)
 - Status-Werte im Tracker (`Evaluated`, `Applied`, `Interview`, `Offer`, `Rejected`)
 - Code-Snippets, Pfade, Befehle
 
-Die Modi verwenden deutsches Tech-Deutsch, wie es in echten Engineering-Teams in Berlin, München oder Zürich gesprochen wird: deutscher Fließtext, englische Fachbegriffe da, wo sie üblich sind. Keine erzwungene Eindeutschung von "Pipeline" zu "Förderband", kein "Lebenslauf-Datei" für `cv.md`.
+Die Modi verwenden Deutsch, wie es im jeweiligen Berufsalltag in Berlin, Wien oder Zürich gesprochen wird: deutscher Fließtext, englische Fachbegriffe nur da, wo sie in der Branche üblich sind. Keine erzwungene Eindeutschung von "Pipeline" zu "Förderband", kein "Lebenslauf-Datei" für `cv.md`.
 
 ## Vokabular-Spickzettel
 

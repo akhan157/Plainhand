@@ -12,7 +12,7 @@ import { integrityRecord } from './posting-integrity.mjs';
 import { logUnderstanding } from './profile-strength.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
-import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision } from './standard.mjs';
+import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage } from './standard.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized } from './humanize.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings } from './resume-format.mjs';
@@ -218,41 +218,56 @@ export class Workflow {
           await this.workspace.write(job.reportPath, report);
           await syncTracker(this.workspace, latest);
         });
-        // Opt-in autonomy: a strong match may be prepared from the approved standard. Never submitted.
+        // Opt-in autonomy: a strong match may be prepared from the approved master resume. Never submitted.
         await this.autoPrepare(job.id, context.hash);
       } else if (task.kind === 'standard') {
         const previous = state.standard?.draft || null, request = task.input.request || '';
-        if (request && !previous) throw new Error('Write your standard application before asking for changes.');
-        await this.progress(id, request ? 'Revising your standard application as you asked' : 'Writing your standard resume and cover letter');
+        if (request && !previous) throw new Error('Write your master resume before asking for changes.');
+        await this.progress(id, request ? 'Revising your master resume as you asked' : 'Writing your master resume and base cover letter');
         const line = lineInput(state, null), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         let draft, review, humanizer;
         const reviewAttempts = [];
+        // The master must cover the candidate's own resume. A first draft that leaves
+        // lines out gets one more pass with those lines named; a revision the
+        // candidate asked for is not second-guessed.
+        const ownResume = context.sources.find(source => source.id === 'cv')?.text || '';
+        let missing = [], fallback = null;
         for (let attempt = 0; attempt < 2; attempt++) {
           const base = attempt ? draft : previous;
-          draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}) });
-          requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 60);
-          draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
-          if (!draft.resume.length || draft.resume.some(item => !hasEvidence(item, context))) throw new Error('The standard application contains a claim without an exact source reference. Check your evidence and retry.');
-          for (const item of draft.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
-          verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
-          await this.progress(id, 'Removing AI writing patterns');
-          ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
-          await this.progress(id, 'Checking factual claims against the original sources');
-          review = await run(REVIEW_INSTRUCTION, { job: STANDARD_JOB, packet: { ...draft, answers: [] }, ...lineData });
-          if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
-          review.issues = strings(review.issues, 'review issues');
-          reviewAttempts.push({ attempt: attempt + 1, ...review });
-          if (review.passed && !review.issues.length) break;
-          if (attempt === 0) await this.progress(id, 'Correcting unsupported claims using the reviewer’s source checks');
+          try {
+            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
+            requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 150);
+            draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
+            if (!draft.resume.length || draft.resume.some(item => !hasEvidence(item, context))) throw new Error('The master resume contains a claim without an exact source reference. Check your evidence and retry.');
+            for (const item of draft.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
+            verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
+            await this.progress(id, 'Removing AI writing patterns');
+            ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
+            await this.progress(id, 'Checking factual claims against the original sources');
+            review = await run(REVIEW_INSTRUCTION, { job: STANDARD_JOB, packet: { ...draft, answers: [] }, ...lineData });
+            if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
+            review.issues = strings(review.issues, 'review issues');
+            reviewAttempts.push({ attempt: attempt + 1, ...review });
+          } catch (error) {
+            // A redraft that only added missing lines must not lose the reviewed first draft.
+            check(); if (!fallback || error instanceof TaskPaused) throw error;
+            ({ draft, review, humanizer } = fallback); break;
+          }
+          const reviewed = review.passed && !review.issues.length;
+          if (attempt === 1 && fallback && (!reviewed || masterCoverage(ownResume, draft.resume).covered < masterCoverage(ownResume, fallback.draft.resume).covered)) { ({ draft, review, humanizer } = fallback); break; }
+          missing = attempt === 0 && !request ? masterCoverage(ownResume, draft.resume).missing : [];
+          if (reviewed && !missing.length) break;
+          if (reviewed) fallback = { draft, review, humanizer };
+          if (attempt === 0) await this.progress(id, reviewed ? 'Adding resume lines the first draft left out' : 'Correcting unsupported claims using the reviewer’s source checks');
         }
-        if (!review.passed || review.issues.length) throw new Error(`The factual review found issues in your standard application: ${review.issues.slice(0, 3).join(' ')}`);
+        if (!review.passed || review.issues.length) throw new Error(`The factual review found issues in your master resume: ${review.issues.slice(0, 3).join(' ')}`);
         const clean = { headline: draft.headline, resume: draft.resume.map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence })), coverLetter: draft.coverLetter, suggestions: draft.suggestions };
         const calibration = { ...gradePacket({ ...clean, answers: [] }, context.sources, review.calibration, candidateLine(state)), gradedAt: now() };
         await this.workspace.mutate(async latest => {
           check(); await this.assertContext(latest, context);
-          latest.standard = { draft: clean, review, reviewAttempts, humanizer, calibration, contextHash: context.hash, createdAt: now(), approvedAt: null, approvedHash: null };
+          latest.standard = { kind: 'master', draft: clean, review, reviewAttempts, humanizer, calibration, coverage: masterCoverage(ownResume, clean.resume), contextHash: context.hash, createdAt: now(), approvedAt: null, approvedHash: null };
           if (request) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: null, request }].slice(-200);
-          latest.events.unshift({ at: now(), text: request ? 'Standard application revised. Review it before it becomes your standard.' : 'Standard application written. Review it before it becomes your standard.' });
+          latest.events.unshift({ at: now(), text: request ? 'Master resume revised. Review it before applications use it.' : 'Master resume written. Review it before applications use it.' });
         });
       } else if (task.kind === 'prepare' || task.kind === 'revise') {
         const revising = task.kind === 'revise', request = revising ? String(task.input.request || '') : '';
@@ -268,7 +283,7 @@ export class Workflow {
         const reviewAttempts = [];
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         for (let attempt = 0; attempt < 2; attempt++) {
-          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...(standard && !revising ? { standard } : {}),
+          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...(standard && !revising ? { master: standard } : {}),
             ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}) });
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
@@ -294,7 +309,7 @@ export class Workflow {
           throw new Error('The factual review found issues. Review the findings in the application and add missing evidence before retrying.');
         }
         // How each claim compares with its evidence: undersold, balanced, stretched or unsupported.
-        job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state)), gradedAt: now(), line: Boolean(line) };
+        job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state), { jobText: job.description || '' }), gradedAt: now(), line: Boolean(line) };
         job.fromStandard = compareToStandard(packet, standard);
         job.humanizer = humanizer;
         job.packet = packet; job.packetJobHash = digest([job.url, job.company, job.title, job.description]);

@@ -26,44 +26,50 @@
 
 ## North Star -- Roles cibles
 
-Le skill traite TOUS les roles cibles avec le meme soin. Aucun n'est primaire ou secondaire -- chacun est un succes si la remuneration et les perspectives d'evolution sont au rendez-vous :
+Le skill traite TOUS les roles cibles avec le meme soin. Aucun n'est primaire ou secondaire -- chacun est un succes si la remuneration et les perspectives d'evolution sont au rendez-vous.
+
+Utiliser d'abord les archetypes cibles du candidat definis dans `modes/_profile.md`. S'il n'en definit aucun, utiliser ces familles de roles, valables dans tous les domaines professionnels (finance, technologie, ingenierie, sciences, entreprise, design) :
 
 | Archetype | Axes thematiques | Ce que l'entreprise achete |
 |-----------|------------------|----------------------------|
-| **AI Platform / LLMOps Engineer** | Evaluation, Observability, Fiabilite, Pipelines | Quelqu'un qui met l'IA en production avec des metriques |
-| **Agentic Workflows / Automation** | HITL, Tooling, Orchestration, Multi-Agent | Quelqu'un qui construit des systemes agents fiables |
-| **Technical AI Product Manager** | GenAI/Agents, PRDs, Discovery, Delivery | Quelqu'un qui traduit le business en produits IA |
-| **AI Solutions Architect** | Hyperautomation, Enterprise, Integrations | Quelqu'un qui concoit des architectures IA end-to-end |
-| **AI Forward Deployed Engineer** | Client-facing, Livraison rapide, Prototypage | Quelqu'un qui deploie des solutions IA rapidement chez le client |
-| **AI Transformation Lead** | Conduite du changement, Adoption, Enablement | Quelqu'un qui pilote la transformation IA dans les organisations |
+| **Praticien du metier (Hands-on Practitioner)** | Coeur du metier ; diplomes, habilitations, certifications, outils, equipements | Quelqu'un qui fait bien le travail des le premier jour |
+| **Relation & Service (People & Service)** | Clients, comptes, parties prenantes, conseil, support, relation client | Quelqu'un qui prend soin des personnes servies |
+| **Coordination & Operations (Coordination & Operations)** | Coordination, planning, logistique, processus, administration, conformite | Quelqu'un a qui rien n'echappe |
+| **Analyse & Recherche (Analysis & Research)** | Analyse, donnees, reporting, recherche, evaluation, audit | Quelqu'un dont les conclusions guident les decisions |
+| **Creation & Communication (Creative & Communications)** | Contenu, design, campagnes, marque, redaction, medias | Quelqu'un qui touche un public |
+| **Technique & Ingenierie (Technical & Engineering)** | Construire, concevoir, systemes, technique, ingenierie, logiciel | Quelqu'un qui construit des choses qui fonctionnent |
+| **Direction & Management (Leadership & Management)** | Manager, encadrer, diriger une equipe, budget, strategie, collaborateurs directs | Quelqu'un qui obtient des resultats a travers les autres |
 
-<!-- [PERSONNALISER] Adapte les archetypes ci-dessus a tes roles cibles.
-     Exemple pour le backend engineering :
-     - Senior Backend Engineer
-     - Staff Platform Engineer
-     - Engineering Manager
+<!-- [PERSONNALISER] Remplace les archetypes ci-dessus par tes roles cibles, dans n'importe quel domaine. Exemples :
+     - Analyste FP&A / Controleur(se) de gestion
+     - Charge(e) de marketing / Specialiste contenu
+     - Business analyst / Analyste des operations
+     - Chercheur(se) / Ingenieur(e) de recherche
+     - Analyste financier / Comptable
+     - Developpeur(se) / Data analyst
      etc. -->
 
 ### Framing adaptatif par archetype
 
-> **Metriques concretes : les lire depuis `cv.md` et `article-digest.md` au moment de l'evaluation. JAMAIS les coder en dur ici.**
+> **Metriques concretes : les lire depuis `cv.md` et `article-digest.md` au moment de l'evaluation. JAMAIS les coder en dur ici.** Si `modes/_profile.md` precise quoi mettre en avant pour un archetype, c'est lui qui prime.
 
 | Si le role est... | Mettre en avant chez le candidat... | Sources de proof points |
 |-------------------|-------------------------------------|-------------------------|
-| Platform / LLMOps | Experience production, observability, evals, closed-loop | article-digest.md + cv.md |
-| Agentic / Automation | Orchestration multi-agent, HITL, fiabilite, couts | article-digest.md + cv.md |
-| Technical AI PM | Product discovery, PRDs, metriques, gestion des parties prenantes | cv.md + article-digest.md |
-| Solutions Architect | Conception systeme, integrations, pret pour l'entreprise | article-digest.md + cv.md |
-| Forward Deployed Engineer | Livraison rapide, proximite client, prototype a production | cv.md + article-digest.md |
-| AI Transformation Lead | Conduite du changement, enablement d'equipe, adoption | cv.md + article-digest.md |
+| Hands-on Practitioner | Diplomes, habilitations, certifications, pratique directe du coeur du metier | cv.md + article-digest.md |
+| People & Service | Personnes servies, volume, resultats obtenus pour elles | cv.md + article-digest.md |
+| Coordination & Operations | Fiabilite, ampleur de ce qui a ete coordonne, ameliorations de processus | cv.md + article-digest.md |
+| Analysis & Research | Methodes, outils, decisions eclairees par l'analyse | article-digest.md + cv.md |
+| Creative & Communications | Pieces de portfolio, audience, portee mesurable | article-digest.md + cv.md |
+| Technical & Engineering | Ce qui a ete concu ou construit, et comment ca a ete valide | article-digest.md + cv.md |
+| Leadership & Management | Taille d'equipe, budget, resultats obtenus a travers les autres | cv.md + article-digest.md |
 
-<!-- [PERSONNALISER] Associe tes projets/articles concrets aux archetypes ci-dessus -->
+<!-- [PERSONNALISER] Associe tes experiences/projets concrets aux archetypes ci-dessus -->
 
 ### Narratif de transition (a utiliser dans TOUS les framings)
 
 <!-- [PERSONNALISER] Remplace par ton propre narratif. Exemples :
-     - "SaaS construite et vendue apres 5 ans. Desormais 100% focus sur l'IA appliquee en entreprise."
-     - "Lead engineering dans une Series-B pendant une croissance x10. En quete du prochain defi."
+     - "Cinq ans comme analyste financier en banque. Desormais en transition vers le FP&A chez un editeur de logiciels."
+     - "Analyste des operations pendant une forte phase d'expansion. En quete du prochain defi."
      - "Transition du conseil vers le produit. Recherche de roles a forte responsabilite."
      Lu depuis config/profile.yml -> narrative.exit_story -->
 
@@ -75,25 +81,22 @@ Utiliser le narratif de transition depuis `config/profile.yml` pour cadrer TOUS 
 
 ### Avantage transversal
 
-Cadrer le profil comme **"Builder technique avec une pratique demontrable"**, en adaptant le framing au role :
-- Pour PM : "Builder qui reduit l'incertitude avec des prototypes puis livre en production de maniere disciplinee"
-- Pour FDE : "Builder qui livre des le jour 1 avec observability et metriques"
-- Pour SA : "Builder qui concoit des systemes end-to-end avec une vraie experience d'integration"
-- Pour LLMOps : "Builder qui met l'IA en production avec des systemes qualite en boucle fermee"
+<!-- [PERSONNALISER] Quelle est ta force signature ? Que fais-tu que les autres ne font pas ? -->
 
-Positionner "Builder" comme signal professionnel -- pas comme "bricoleur". Les proof points reels rendent ca credible.
+Cadrer le profil autour de **[ta force signature, dans les mots de ton metier, ex. "l'analyste dont le modele fait reference pour tous" ou "l'ingenieur qui livre, puis mesure"]**, en adaptant le framing a chaque role.
+
+Le framing change, la verite reste la meme. Les proof points reels rendent ca credible.
 
 ### Portfolio comme proof point (utiliser dans les candidatures a fort enjeu)
 
-<!-- [PERSONNALISER] Si tu as une demo live, un dashboard ou un projet public, configure-le ici.
+<!-- [PERSONNALISER] Si tu as un portfolio, des exemples de redaction, une video de conference, un site de projet ou tout travail public, configure-le ici.
      Exemple :
      dashboard:
-       url: "https://tondomaine.dev/demo"
-       password: "demo-2026"
-       when_to_share: "Roles LLMOps, AI Platform, Observability"
+       url: "https://tonsite.example/portfolio"
+       when_to_share: "Roles marketing et contenu"
      Lu depuis config/profile.yml -> narrative.proof_points et narrative.dashboard -->
 
-Si le candidat a une demo live / un dashboard (verifier `profile.yml`), proposer l'acces dans les candidatures pertinentes.
+Si le candidat a un portfolio ou un exemple de travail public (verifier `profile.yml`), le proposer dans les candidatures pertinentes.
 
 ### Intelligence remuneration (Comp Intelligence)
 
@@ -115,7 +118,7 @@ Dans les offres et negociations francophones, certains termes n'existent pas sur
 | **CDD** (Contrat a Duree Determinee) | Contrat temporaire, duree fixe | Acceptable pour des missions specifiques. Sinon, questionner pourquoi pas CDI |
 | **Periode d'essai** | 3-4 mois cadre (renouvelable 1 fois, max 8 mois total) | Standard marche. Flaguer si > 4 mois initial |
 | **Preavis** | 1-3 mois selon convention collective et anciennete | Planifier la date de demarrage en consequence |
-| **Statut cadre** | Categorie socio-professionnelle specifique a la France. Implique forfait jours, cotisations differentes | La quasi-totalite des postes tech sont cadre. Verifier si mentionne |
+| **Statut cadre** | Categorie socio-professionnelle specifique a la France. Implique forfait jours, cotisations differentes | La plupart des postes qualifies sont cadre. Verifier si mentionne |
 | **Convention collective SYNTEC** | Convention la plus courante en IT/conseil. Definit minima salariaux, classifications | Verifier la classification (position + coefficient) pour valider le salaire |
 | **RTT** (Reduction du Temps de Travail) | Jours de repos supplementaires (8-12/an en general) pour les cadres au forfait | Un vrai plus. Equivalent a 1-2 semaines de conges en plus |
 | **13e mois** | Mois de salaire supplementaire, souvent verse en decembre | Inclure dans le calcul : brut annuel = brut mensuel x 13. NE JAMAIS oublier dans la comparaison |
@@ -124,7 +127,7 @@ Dans les offres et negociations francophones, certains termes n'existent pas sur
 | **Mutuelle** | Complementaire sante obligatoire. Part employeur >= 50% | Standard. Verifier si la couverture est bonne (famille, optique, dentaire) |
 | **Prevoyance** | Assurance deces/invalidite/incapacite | Plus rare comme argument de vente, mais important a verifier |
 | **CSE** (Comite Social et Economique) | Instance representative du personnel | Avantages CSE (cheques vacances, culture, sport) = bonus non negligeable dans les grands groupes |
-| **Conges payes** | 25 jours legaux (5 semaines). Certaines conventions donnent plus | < 25 jours = illegal en France. 25 + RTT = standard tech. > 30 jours = excellent |
+| **Conges payes** | 25 jours legaux (5 semaines). Certaines conventions donnent plus | < 25 jours = illegal en France. 25 + RTT = standard frequent. > 30 jours = excellent |
 | **Portage salarial** | Statut hybride entre salariat et freelance | Alternative au freelance pur. Simplifie l'administratif mais cout ~10% |
 | **Auto-entrepreneur / Micro-entreprise** | Statut freelance simplifie, plafond de CA | Pour les missions courtes. Attention au plafond et aux charges |
 
@@ -187,7 +190,7 @@ Dans les offres et negociations francophones, certains termes n'existent pas sur
 5. Enregistrer dans le tracker apres chaque evaluation
 6. Generer le contenu dans la langue de l'offre (francais si l'offre est en francais, anglais sinon)
 7. Etre direct et concret -- pas de blabla
-8. Francais tech naturel pour les textes generes. Phrases courtes, verbes d'action, eviter le passif. Ne pas traduire de force les termes techniques (stack, pipeline, deployment, embedding)
+8. Francais naturel et professionnel, dans le vocabulaire du metier concerne, pour les textes generes. Phrases courtes, verbes d'action, eviter le passif. Ne pas traduire de force les termes d'usage courant dans le secteur (ex. onboarding, reporting, pipeline)
 8b. **URLs de case studies dans le Professional Summary du PDF :** Si le PDF mentionne des case studies ou demos, les URLs DOIVENT apparaitre dans le premier paragraphe (Professional Summary). Les recruteurs ne lisent souvent que le summary. Toutes les URLs en HTML avec `white-space: nowrap`
 9. **Entrees tracker en TSV** -- NE JAMAIS editer applications.md directement pour de nouveaux ajouts. Ecrire le TSV dans `batch/tracker-additions/`, `merge-tracker.mjs` gere la fusion
 10. **`**URL:**` dans chaque en-tete de report** -- entre Score et PDF

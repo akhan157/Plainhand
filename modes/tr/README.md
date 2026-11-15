@@ -66,14 +66,14 @@ Diğer modlar (`scan`, `batch`, `pdf`, `tracker`, `auto-pipeline`, `deep`, `cont
 
 ## Türkçe Olmayan Terimler
 
-Kasıtlı olarak çevrilmedi — standart teknik kelime dağarcığı:
+Kasıtlı olarak çevrilmedi — bu aracın standart kelime dağarcığı:
 
 - `cv.md`, `pipeline`, `tracker`, `report`, `score`, `archetype`, `proof point`
 - Araç adları (`Playwright`, `WebSearch`, `WebFetch`, `Read`, `Write`, `Edit`, `Bash`)
 - Takipçideki durum değerleri (`Evaluated`, `Applied`, `Interview`, `Offer`, `Rejected`)
 - Kod parçacıkları, dosya yolları, komutlar
 
-Modlar, İstanbul ve Ankara'daki gerçek mühendislik ekiplerinde konuşulduğu gibi Türkçe teknik dil kullanır: Türkçe akıcı metin, yaygın kullanımda yerleşmiş İngilizce teknik terimler. "Pipeline" kelimesinin zorla "boru hattı"na çevrilmesi gibi uygulamalardan kaçınılmıştır.
+Modlar, İstanbul ve Ankara'daki gerçek iş yerlerinde konuşulduğu gibi doğal bir iş Türkçesi kullanır: Türkçe akıcı metin, yalnızca sektörde yerleşmiş İngilizce terimler. "Pipeline" kelimesinin zorla "boru hattı"na çevrilmesi gibi uygulamalardan kaçınılmıştır.
 
 ## Kelime Kılavuzu
 

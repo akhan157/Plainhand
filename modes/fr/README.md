@@ -8,7 +8,7 @@ Utilise `modes/fr/` si au moins une de ces conditions est remplie :
 
 - Tu postules principalement a des **offres d'emploi en francais** (Welcome to the Jungle, Indeed FR, APEC, Pole emploi / France Travail, LinkedIn FR, sites carrieres)
 - Ton **CV est en francais** ou tu alternes entre FR et EN selon l'offre
-- Tu as besoin de reponses et lettres de motivation en **francais tech naturel**, pas traduit par une machine
+- Tu as besoin de reponses et lettres de motivation en **francais naturel, dans le vocabulaire de ton metier**, pas traduit par une machine
 - Tu dois gerer des **specificites contractuelles francophones** : convention collective, RTT, mutuelle, prevoyance, 13e mois, periode d'essai, preavis, cheques-dejeuner, interessement/participation
 
 Si la plupart de tes offres sont en anglais, reste sur les modes standard dans `modes/`. Les modes anglais fonctionnent pour les offres francophones, mais ne connaissent pas les specificites du marche francophone en detail.
@@ -50,14 +50,14 @@ Les autres modes (`scan`, `batch`, `pdf`, `tracker`, `auto-pipeline`, `deep`, `c
 
 ## Ce qui reste en anglais
 
-Volontairement non traduit car vocabulaire tech standard :
+Volontairement non traduit car vocabulaire standard de l'outil :
 
 - `cv.md`, `pipeline`, `tracker`, `report`, `score`, `archetype`, `proof point`
 - Noms d'outils (`Playwright`, `WebSearch`, `WebFetch`, `Read`, `Write`, `Edit`, `Bash`)
 - Valeurs de statut dans le tracker (`Evaluated`, `Applied`, `Interview`, `Offer`, `Rejected`)
 - Extraits de code, chemins, commandes
 
-Les modes utilisent du francais tech naturel, tel qu'il est parle dans les equipes engineering a Paris, Lyon ou Geneve : texte courant en francais, termes techniques en anglais la ou c'est l'usage. Pas de traduction forcee de "Pipeline" en "Canalisation" ni de "Deploy" en "Deploiement applicatif".
+Les modes utilisent un francais naturel, tel qu'il est parle au quotidien dans chaque metier a Paris, Lyon ou Geneve : texte courant en francais, termes anglais seulement la ou c'est l'usage dans le secteur. Pas de traduction forcee de "Pipeline" en "Canalisation" ni de "Score" en "Note chiffree".
 
 ## Lexique de reference
 

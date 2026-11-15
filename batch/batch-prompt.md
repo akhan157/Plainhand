@@ -69,39 +69,23 @@ Read `cv.md`. Ejecuta TODOS los bloques:
 
 #### Paso 0 — Detección de Arquetipo
 
-Clasifica la oferta en uno de los 6 arquetipos. Si es híbrido, indica los 2 más cercanos.
+Clasifica la oferta en uno de los arquetipos objetivo del candidato definidos en `modes/_profile.md`. Si es híbrido, indica los 2 más cercanos. Si `_profile.md` no define ninguno, usa estas familias de rol, válidas para cualquier sector (salud, educación, oficios, negocios, creatividad, servicio público, tecnología):
 
-**Los 6 arquetipos (todos igual de válidos):**
-
-| Arquetipo | Ejes temáticos | Qué compran |
-|-----------|----------------|-------------|
-| **AI Platform / LLMOps Engineer** | Evaluation, observability, reliability, pipelines | Alguien que ponga AI en producción con métricas |
-| **Agentic Workflows / Automation** | HITL, tooling, orchestration, multi-agent | Alguien que construya sistemas de agentes fiables |
-| **Technical AI Product Manager** | GenAI/Agents, PRDs, discovery, delivery | Alguien que traduzca negocio → producto AI |
-| **AI Solutions Architect** | Hyperautomation, enterprise, integrations | Alguien que diseñe arquitecturas AI end-to-end |
-| **AI Forward Deployed Engineer** | Client-facing, fast delivery, prototyping | Alguien que entregue soluciones AI a clientes rápido |
-| **AI Transformation Lead** | Change management, adoption, org enablement | Alguien que lidere el cambio AI en una organización |
+| Arquetipo | Señales en el JD | Qué compran |
+|-----------|------------------|-------------|
+| **Hands-on Practitioner** | Trabajo central del oficio; licencias, certificaciones, herramientas | Alguien que haga bien el trabajo desde el primer día |
+| **People & Service** | Clientes, pacientes, alumnos, socios, atención | Alguien que cuide a las personas atendidas |
+| **Coordination & Operations** | Coordinar, agendar, logística, procesos, cumplimiento | Alguien a quien no se le escape nada |
+| **Analysis & Research** | Analizar, datos, informes, investigación, auditoría | Alguien cuyas conclusiones guíen decisiones |
+| **Creative & Communications** | Contenido, diseño, campañas, marca, redacción | Alguien que llegue a una audiencia |
+| **Technical & Engineering** | Construir, diseñar, sistemas, ingeniería, software | Alguien que construya cosas que funcionen |
+| **Leadership & Management** | Gestionar, supervisar, equipo, presupuesto | Alguien que consiga resultados a través de otros |
 
 **Framing adaptativo:**
 
-> **Las métricas concretas se leen de `cv.md` + `article-digest.md` en cada evaluación. NUNCA hardcodear números aquí.**
+> **Las métricas concretas se leen de `cv.md` + `article-digest.md` en cada evaluación. NUNCA hardcodear números aquí.** Si `modes/_profile.md` define qué enfatizar por arquetipo, eso manda.
 
-| Si el rol es... | Emphasize about the candidate... | Fuentes de proof points |
-|-----------------|--------------------------|--------------------------|
-| Platform / LLMOps | Builder de sistemas en producción, observability, evals, closed-loop | article-digest.md + cv.md |
-| Agentic / Automation | Orquestación multi-agente, HITL, reliability, cost | article-digest.md + cv.md |
-| Technical AI PM | Product discovery, PRDs, métricas, stakeholder mgmt | cv.md + article-digest.md |
-| Solutions Architect | Diseño de sistemas, integrations, enterprise-ready | article-digest.md + cv.md |
-| Forward Deployed Engineer | Fast delivery, client-facing, prototype → prod | cv.md + article-digest.md |
-| AI Transformation Lead | Change management, team enablement, adoption | cv.md + article-digest.md |
-
-**Ventaja transversal**: Enmarcar perfil como **"Technical builder"** que adapta su framing al rol:
-- Para PM: "builder que reduce incertidumbre con prototipos y luego productioniza con disciplina"
-- Para FDE: "builder que entrega fast con observability y métricas desde día 1"
-- Para SA: "builder que diseña sistemas end-to-end con experiencia real en integrations"
-- Para LLMOps: "builder que pone AI en producción con closed-loop quality systems — leer métricas de article-digest.md"
-
-Convertir "builder" en señal profesional, no en "hobby maker". El framing cambia, la verdad es la misma.
+El framing cambia según el rol; la verdad es la misma.
 
 #### Bloque A — Resumen del Rol
 
@@ -112,12 +96,13 @@ Tabla con: Arquetipo detectado, Domain, Function, Seniority, Remote, Team size, 
 Read `cv.md`. Tabla con cada requisito del JD mapeado a líneas exactas del CV o keys de i18n.ts.
 
 **Adaptado al arquetipo:**
-- FDE → priorizar delivery rápida y client-facing
-- SA → priorizar diseño de sistemas e integrations
-- PM → priorizar product discovery y métricas
-- LLMOps → priorizar evals, observability, pipelines
-- Agentic → priorizar multi-agent, HITL, orchestration
-- Transformation → priorizar change management, adoption, scaling
+- Hands-on Practitioner → priorizar licencias, certificaciones y práctica directa
+- People & Service → priorizar a quién se atendió, volumen y resultados para esas personas
+- Coordination & Operations → priorizar fiabilidad, escala y mejoras de procesos
+- Analysis & Research → priorizar métodos, herramientas y decisiones que se tomaron gracias al análisis
+- Creative & Communications → priorizar piezas de portfolio, audiencia y alcance medible
+- Technical & Engineering → priorizar qué se diseñó o construyó y cómo se validó
+- Leadership & Management → priorizar tamaño del equipo, presupuesto y resultados a través de otros
 
 Sección de **gaps** con estrategia de mitigación para cada uno:
 1. ¿Es hard blocker o nice-to-have?
