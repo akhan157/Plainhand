@@ -163,5 +163,33 @@
         "sha256": "082f191f2c6ab94336a32aceb3b1c94cb889a756cf1506507dbc7cee7301117e"
       }
     ]
+  },
+  "setup_memory_regressions": {
+    "target": "02145c8",
+    "commands": [
+      {
+        "command": "node --test --test-concurrency=2 tests/test-setup.mjs tests/test-workspace-import.mjs tests/test-brain-controls.mjs tests/test-writing-samples.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs",
+        "result": "18 pass, 0 fail, 0 skip; 5923.7ms"
+      },
+      {
+        "command": "npm run setup -- --check",
+        "result": "exit 0, this host Ready; Node 26.12.1, dependencies/Chromium/pdftotext/connector binaries found; no installs"
+      }
+    ],
+    "limits": [
+      "Existing import tests do not cover five lost state keys; direct failing probe remains authoritative",
+      "Not a fresh clone/machine install or end-to-end onboarding",
+      "No live model/provider-switch downstream quality claim"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/memory-transfer-regressions-02145c8.log",
+        "sha256": "29bb234538f83d81d4fdf483db24c50f41b963ba3b3a38817f78a734077fbb5f"
+      },
+      {
+        "path": "output/goal-review/setup-check-02145c8.log",
+        "sha256": "fe4a2a22884366fb84169fa1b53366166aa78737d52d3771dd77ae93853457a7"
+      }
+    ]
   }
 }
