@@ -1,8 +1,9 @@
 # Lane assignment: continuation-integration (Gate 1 design)
 
-Status: **design only, awaiting root Gate 1 approval.** Nothing below has been
-implemented, merged, built or run. This is the design sub-agent's proposal; it is
-not an acceptance record and nothing in it is self-accepted.
+Status: **Gate 1 approved with amendments** by root in [REVIEW.md](REVIEW.md),
+which overrides conflicting design text below. This file stays the design record;
+the implementation is recorded in RESULT.md. Nothing here is product acceptance
+and nothing is self-accepted.
 
 ## 1. Pin, branch and preconditions
 
@@ -102,12 +103,13 @@ keep the lane minimal.
 
 ## 4. What the source actually does (verified, not assumed)
 
-Three design-time probes were run against `a46056f`, read-only, no repo writes.
-Standard and calibration probes imported the real modules extracted with
-`git show`; the extension probe used a verbatim copy of `jobs.mjs` `jobUrl`
+Three design-time probes were run against `a46056f`. They were **read-only source
+and replica diagnostics**: no test suite, build, server or product acceptance, and
+no repo writes. Standard and calibration probes imported the real modules extracted
+with `git show`; the extension probe used a verbatim copy of `jobs.mjs` `jobUrl`
 (lines 62–69) and `extension-api.mjs` `urlKeys`/`matchJob`, because
 `extension-api.mjs` pulls the whole workflow graph. The copies are labelled as
-such on purpose.
+such on purpose. The implementation's suites are recorded in RESULT.md, separately.
 
 **Probe A — board URL identity (replica):**
 
@@ -256,6 +258,9 @@ also changing the hash. A comment states the rule: any field added to the payloa
 must be added to `identity` in the same change. Sending `heading` and not hashing
 it is the bug; hashing anything the drafter never sees would force pointless
 re-approvals.
+
+Amended by root in REVIEW.md §2: the heading slot is omitted when absent, not set
+to null, so the old hash survives for masters that have no headings at all.
 
 Migration consequence, stated plainly: an existing approval was computed without
 headings, so after this change an approved master that has any heading reads

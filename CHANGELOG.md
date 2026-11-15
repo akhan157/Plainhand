@@ -42,7 +42,16 @@
   Each application picks the lines that fit the job and leads with the most
   relevant. Plainhand checks the master against your own resume, lists any
   lines it missed, and redrafts once to add them. An older standard resume is
-  marked out of date until you write the master once.
+  marked out of date until you write the master once. Approval covers the
+  headline, each line and the role headings each application receives; the
+  profile shows those headings, and editing an approved one asks for approval
+  again. A master with no headings keeps an approval it already had.
+- **Claims checked where they sit.** Every number in a packet is checked
+  against your evidence in the clause where it appears. A posting's own figures
+  can be restated about the employer or the role; a number about your work
+  still needs your evidence, even when the sentence also mentions the employer.
+  Postings are read through the same sanitized copy the agent sees, so text
+  addressed to AI tools cannot excuse a claim.
 - **End-to-end evaluation harness.** `npm run benchmark:eval` runs fictional
   candidates through profile building, resume preparation, portal filling and a
   candidate-confirmed submission to an owned loopback sandbox, then scores fact
@@ -107,7 +116,10 @@
 - **The browser extension (Manifest V3).** Save this job, Fill this page
   (approved packet only, sensitive fields always yours, every click screened by
   the shared submit guard, never submits), and I submitted this. Optional host
-  permissions requested on first use for the known application hosts.
+  permissions requested on first use for the known application hosts. On a job
+  board the extension matches a page by its posting id, never by a shared list
+  or search address; a page with no id, conflicting ids, or two saved roles
+  matching it returns no match instead of filling the wrong application.
 - **CI** gains a `cloud` job running the Postgres-backed suites
   (`test:cloud`) and the real-Chromium extension suite (`test:extension`).
 

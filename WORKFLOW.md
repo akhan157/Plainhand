@@ -140,6 +140,22 @@ integrations. Final submission always remains manual.
   used. A record without `kind: 'master'` (the earlier curated "standard
   application") reads as stale until rewritten. The names still say
   "standard" so saved workspaces and agent contracts keep working.
+  Approval covers the headline, each line's section and text, and the fixed
+  role-heading fields (`org`, `title`, `location`, `dates`) that the drafter
+  receives; `standardInput` sends those headings through the same projection
+  the approval hash uses. The profile shows every heading, and changing any
+  approved field asks for approval again.
+- Claim calibration (Plainhand app, `plainhand/claim-calibration.mjs`), stored
+  as `job.calibration` / `standard.calibration`. Producer: the prepare and
+  master tasks call `gradePacket`; the posting is passed through
+  `providerDescription`, so text addressed to AI tools cannot excuse a claim,
+  and master grading receives no posting at all. A posting number may be
+  restated only where the employer is its subject ("your 25 engineers", "your
+  company operates in 28 countries") or in an explicit application-intent
+  sentence ("I am applying to lead your 25 engineers"); each occurrence is
+  judged in its own clause, so a candidate claim never hides behind an employer
+  fact. Consumers: `jobs.get`, `calibration.decide`, the Packet tab and the
+  hosted re-derivation.
 - Contract: `docs/artifact-contract.md` defines exact naming, metadata,
   freshness, and apply-resolution behavior for all per-job artifacts
 - Contract enforcement now treats malformed metadata values as blockers too,
@@ -217,6 +233,13 @@ integrations. Final submission always remains manual.
   approved packet as downloads and copyable answers. The candidate applies by
   hand and confirms with `jobs.confirmSubmitted`, so TRACK and FOLLOW UP carry
   on. It reads the approved packet only and writes nothing.
+- Browser extension matching (`plainhand/cloud/extension-api.mjs`). The
+  extension sends the page address and receives the one saved role it belongs
+  to. On a job board the role is identified by its host-scoped posting id
+  (`?jk=`, `?vjk=`, `?currentJobId=`, `?jobListingId=`, `/jobs/view/<id>`),
+  never by a list or search path. No id, conflicting ids, or two saved roles
+  matching one page returns no match, and the candidate picks in Plainhand.
+  Employer pages embedding Greenhouse still match by `gh_jid`.
 - Candidate submits. Draft-save state is operational only; it does not change
   canonical tracker status.
 - After submit: status → Applied, entry added to `data/follow-ups.md`
