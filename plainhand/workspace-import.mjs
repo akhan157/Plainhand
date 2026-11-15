@@ -4,7 +4,7 @@ import { cleanText, emptyProfile, factualSource, now, syncTracker } from './stor
 import { AnswerBank, ANSWER_BANK_FILE } from './answer-bank.mjs';
 import { Corrections, CORRECTIONS_FILE } from './corrections.mjs';
 import { cleanFormat } from './resume-format.mjs';
-import { DEFAULT_AUTONOMY } from './standard.mjs';
+import { DEFAULT_AUTONOMY, DEFAULT_ROLE_ORDER, ROLE_ORDERS } from './standard.mjs';
 import { isSensitiveLabel } from './field-policy.mjs';
 
 // Restores a workspace exported from /api/export into this workspace, after backing
@@ -140,7 +140,7 @@ export function cleanSettings(value) {
   const autonomy = object(value.autonomy) ? value.autonomy : {};
   const perDay = Number.isFinite(+autonomy.perDay) && +autonomy.perDay >= 1 && +autonomy.perDay <= 10 ? Math.round(+autonomy.perDay) : DEFAULT_AUTONOMY.perDay;
   const minScore = Number.isFinite(+autonomy.minScore) && +autonomy.minScore >= 3.5 && +autonomy.minScore <= 5 ? +autonomy.minScore : DEFAULT_AUTONOMY.minScore;
-  return { autonomy: { enabled: false, perDay, minScore } };
+  return { autonomy: { enabled: false, perDay, minScore }, roleOrder: ROLE_ORDERS.includes(value.roleOrder) ? value.roleOrder : DEFAULT_ROLE_ORDER };
 }
 
 // The understanding is the agent's own summary. Its text is kept so the candidate can

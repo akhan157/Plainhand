@@ -7,6 +7,8 @@ import { digest } from './store.mjs';
 
 export const STANDARD_JOB = { company: '{company}', title: '{role}', description: 'The candidate’s master resume and base cover letter, not for a specific job. {company} and {role} are slots filled per application.' };
 export const DEFAULT_AUTONOMY = { enabled: false, perDay: 3, minScore: 4 };
+export const DEFAULT_ROLE_ORDER = 'recent';
+export const ROLE_ORDERS = ['recent', 'match'];
 
 // What the candidate approved is exactly what the drafter receives. A heading is
 // one projection: fixed fields, trimmed, and no other key can travel. The heading
@@ -93,6 +95,13 @@ export function masterCoverage(resumeText, entries) {
 
 export function autonomyOf(state) {
   return { ...DEFAULT_AUTONOMY, ...(state.settings?.autonomy || {}) };
+}
+// How the roles on a tailored resume are ordered: newest first (the default), or the
+// role that best matches the job first. A setting of its own, not part of the resume
+// format: the format is re-derived from an uploaded PDF, and this choice is not in it.
+export function roleOrderOf(state) {
+  const order = state?.settings?.roleOrder;
+  return ROLE_ORDERS.includes(order) ? order : DEFAULT_ROLE_ORDER;
 }
 
 // A just-evaluated role Plainhand may prepare on its own: autonomy on, a strong

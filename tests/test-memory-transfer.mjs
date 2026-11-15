@@ -139,7 +139,7 @@ test('a rich workspace moves with every memory intact and no authority', async t
   assert.equal(state.understanding.approved, false);
   assert.equal(context.sources.some(item => item.id === 'reviewed-understanding'), false);
   assert.equal(autonomyOf(state).enabled, false);
-  assert.deepEqual(state.settings, { autonomy: { enabled: false, perDay: 4, minScore: 4.5 } });
+  assert.deepEqual(state.settings, { autonomy: { enabled: false, perDay: 4, minScore: 4.5 }, roleOrder: 'recent' });
   assert.equal(autoPrepareDecision(state, job, context.hash, '2026-11-15').prepare, false);
 
   // No machine state: job approval, checkpoint and connection check never travel.

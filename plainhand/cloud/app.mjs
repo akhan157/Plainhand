@@ -22,7 +22,7 @@ import { createRegistry, STATUS_VALUES, CORE_ATTENTION } from '../actions.mjs';
 import { profileStrength } from '../profile-strength.mjs';
 import { currentCalibration } from '../claim-calibration.mjs';
 import { candidateLine } from '../claim-line.mjs';
-import { standardStatus, autonomyOf } from '../standard.mjs';
+import { standardStatus, autonomyOf, roleOrderOf } from '../standard.mjs';
 import { FEATURES } from '../features/index.mjs';
 import { markStalePrep } from '../features/interview-prep.mjs';
 import { StorageError } from '../storage.mjs';
@@ -276,6 +276,7 @@ export function createCloudApp(deps) {
       resumeFormat: state.resumeFormat || null,
       standardStatus: standardStatus(state, context.hash),
       autonomy: autonomyOf(state),
+      roleOrder: roleOrderOf(state),
       featureAttention: registry.digest(state).attention.filter(item => !CORE_ATTENTION.includes(item.kind)),
       usage: await workflow.usage.summary(state), contextHash: context.hash, sourceManifest: context.sources.map(s => ({ id: s.id, characters: s.text.length })),
       tracker: await workspace.read('data/applications.md'), loginSessions: [], applicationSessions: [] };
@@ -401,6 +402,7 @@ export function createCloudApp(deps) {
     if (p === '/api/format/save') return json(res, 200, await ui('format.save', input.reset ? { reset: true } : { format: input.format }));
     if (p === '/api/standard/approve') { await ui('standard.approve', {}); return json(res, 200, { ok: true }); }
     if (p === '/api/settings/autonomy') return json(res, 200, await ui('settings.autonomy', { enabled: input.enabled === true, ...(input.perDay != null ? { perDay: Number(input.perDay) } : {}), ...(input.minScore != null ? { minScore: Number(input.minScore) } : {}) }));
+    if (p === '/api/settings/role-order') return json(res, 200, await ui('settings.roleOrder', { order: input.order }));
     if (p === '/api/samples/add') return json(res, 200, await ui('profile.addWritingSample', { title: input.title || '', text: input.text }));
     if (p === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
     if (p === '/api/calibration/decide') return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true });

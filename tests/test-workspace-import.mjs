@@ -138,7 +138,7 @@ test('an export carries memory and source files; the import restores it without 
     assert.equal(restored.standard.approvedHash, null);
     assert.equal(restored.standard.approvedAt, null);
     assert.deepEqual(restored.resumeFormat, exported.resumeFormat);
-    assert.deepEqual(restored.settings, { autonomy: { enabled: false, perDay: 5, minScore: 4.2 } });
+    assert.deepEqual(restored.settings, { autonomy: { enabled: false, perDay: 5, minScore: 4.2 }, roleOrder: 'recent' });
     assert.equal(restored.understanding.approved, false);
     assert.equal(restored.understanding.result.summary, 'A hands-on engineering graduate.');
     assert.equal(restored.jobs[0].approvedHash, null);

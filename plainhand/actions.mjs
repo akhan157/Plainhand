@@ -201,6 +201,11 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       });
       return { result };
     } });
+  define({ name: 'settings.roleOrder', tier: 'candidate', title: 'Order of experience on each tailored resume', description: 'The candidate chooses how the roles on a tailored resume are ordered: most recent first (the default when unset) or the role that best matches the job first, then the rest newest first.', input: { order: 'enum:recent|match' }, panel: () => ({ type: 'workspace' }),
+    run: async (ctx, input) => {
+      await workspace.mutate(state => { state.settings = { ...(state.settings || {}), roleOrder: input.order }; });
+      return { result: { order: input.order } };
+    } });
   define({ name: 'calibration.decide', tier: 'candidate', title: 'Choose the wording', description: 'The candidate chooses, for one flagged claim in a packet, between the suggested wording (use-suggestion) and their own (keep-mine). Their choices teach Plainhand where they draw the line. Unsupported claims cannot be kept.', input: { jobId: 'string', claimId: 'string', decision: 'string' }, panel: input => ({ type: 'packet', id: input.jobId }),
     run: async (ctx, input) => {
       if (!['use-suggestion', 'keep-mine'].includes(input.decision)) throw new ActionError('invalid_input', 'decision must be use-suggestion or keep-mine.');

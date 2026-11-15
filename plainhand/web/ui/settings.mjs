@@ -311,6 +311,19 @@ function RemoteCard() {
   </${Card}>`;
 }
 
+function RoleOrderCard() {
+  const order = store.state.roleOrder === 'match' ? 'match' : 'recent';
+  const save = async next => { await api('settings/role-order', { order: next }); refresh(); };
+  return html`<${Card} title="Resume order" icon="layers" id="role-order-title" subtitle="How your experience is ordered on each tailored resume. Your master resume keeps everything either way.">
+    <div class="field appearance"><label for="role-order">Order of experience on each tailored resume</label>
+      <select id="role-order" value=${order} disabled=${store.demo} onChange=${e => save(e.currentTarget.value)}>
+        <option value="recent">Most recent first (default)</option>
+        <option value="match">Best match first</option>
+      </select>
+      <small>Most recent first lists your newest role at the top. Best match first puts the role that fits the job at the top, then the rest newest first.</small></div>
+  </${Card}>`;
+}
+
 function AutonomyCard() {
   const a = store.state.autonomy || { enabled: false, perDay: 3, minScore: 4 };
   const ready = store.state.standardStatus === 'approved';
@@ -335,6 +348,7 @@ export function WorkspacePage() {
         <select id="theme-preference" value=${theme.preference} onChange=${e => window.plainhandTheme.set(e.currentTarget.value)}>${[['system', 'Follow system'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => html`<option value=${v}>${l}</option>`)}</select>
         <small>Follow system tracks your device, including changes while Plainhand is open.</small></div>
     </${Card}>
+    <${RoleOrderCard} />
     <${AutonomyCard} />
     <${RemoteCard} />
     <div class="two-col">
