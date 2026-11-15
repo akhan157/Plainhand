@@ -30,10 +30,10 @@
     {
       "id": "U04",
       "requirement": "**Per-job relevance and order.** Each tailored resume selects and orders for the job and keeps older relevant roles",
-      "status": "in_progress",
+      "status": "not_run",
       "evidence_required": "Paired jobs with the same persona where the right selection differs. Held-out cases. Scored selection and order, plus an old-but-relevant role planted. Judge on relevance with quote validation",
       "falsifier": "An older role that matches the job is dropped. An irrelevant role leads. A pre-specified pair requiring different evidence produces the same selection despite the documented relevance difference. Selection is correct only because the job vocabulary was copied",
-      "review_note": "Continuation integrated: per-job selection/order of master entries. No paired/held-out scored run yet."
+      "review_note": "Per-job selection/order mechanism merged with continuation (f366946); no root-run paired or held-out evidence yet, so the row stays not_run."
     },
     {
       "id": "U05",
@@ -55,7 +55,7 @@
       "status": "in_progress",
       "evidence_required": "Independent claim check with validated source quotes. Planted unsupported claims are caught (negative controls). Real PDF text extraction, layout and ATS-parse checks against rendered files",
       "falsifier": "A planted unsupported claim passes. A PDF drops or reorders text. The reviewed packet differs from what is attached. Claim numbers are matched without the source",
-      "review_note": "Production calibration now attributes each posting number per occurrence (continuation fix plus root first-person-after leak fix, 10/10 adversarial probe). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open; scorer design b6c0b56 accepted with amendments."
+      "review_note": "Production calibration now attributes each posting number per occurrence (continuation fix plus a root narrowing of the first-person leak; residual leaks remain for \"whom I managed\" and \"is my current team\", root fix not independently reviewed). Scorer counterexamples, real PDF fidelity and independent factual acceptance remain open; scorer design b6c0b56 accepted with amendments."
     },
     {
       "id": "U08",

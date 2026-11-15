@@ -21,6 +21,18 @@ Each needs its own failing-then-passing test.
 3. M5: **deterministic and decision-only**. Semantic contradiction detection is
    deferred to measurement.
 4. Per-provider sharing controls stay out of scope.
+5. Probe tiers as proposed: structural now, real-model in the measurement lane. No
+   provider call is authorized by this design.
+6. The legacy CLI answer bank (`data/application-answers.md`) stays CLI-only and is
+   not imported.
+7. `contextPrefs` exclusions keep governing provider input only. They do not
+   change local form fill (design §4 finding 11).
+8. Correction to the design's coordination notes: the continuation lane is now
+   merged (goal commit `f366946`). "Continuation-owned" files (`actions.mjs`,
+   `agents.mjs`, `workflow.mjs`, UI) are now free on the goal branch. Packets
+   pin to the dispatch SHA, not `8012a83`.
+
+Read in full (215 lines) by root before this verdict.
 
 ## Root evidence relevant to this design
 
