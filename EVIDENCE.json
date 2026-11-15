@@ -37,7 +37,8 @@
     "product_branches_integrated": false,
     "main_modified": false,
     "push": false,
-    "external_evidence_directory": null
+    "external_evidence_directory": null,
+    "merged_tree_documentation_validation": "13/13 register IDs and not_run statuses match; required records exist; no host paths; git diff --check clean"
   },
   "register_counts": {
     "PASS": 0,
@@ -52,5 +53,7 @@
     "role": "read-only review",
     "result": "Insufficient balance; no verdict"
   },
-  "review_correction": "Documentation checker initially matched scope rows as acceptance rows; narrowed to U followed by two digits; original error was IndexError and created no register."
+  "review_correction": "Documentation checker initially matched scope rows as acceptance rows; narrowed to U followed by two digits; original error was IndexError and created no register.",
+  "scope_merge_sha": "e7024bbb794dbadf8f1aeefe1fa64b2a259bc666",
+  "review_amendment_sha": "298d6fd5b23eea639643f4c277f1776b6e05dbed"
 }

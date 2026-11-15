@@ -15,3 +15,5 @@ External checks: human calibration, actual user voice, authorized commercial wri
 Routing: Go DeepSeek read-only review failed insufficient balance and gave no verdict; documentation author used configured subscription-backed claude-pool/claude-sonnet-5-5 high; root reviewer gpt-6.1-sol medium. Read current routing before dispatch. No metered fallback used.
 
 The owner settles older threads. Preserve unmerged branches/worktrees. No main merge, push, deploy, new paid service, submission or employer contact. No temporary runtime was started.
+
+Integrated scope/review commit: `e7024bbb794dbadf8f1aeefe1fa64b2a259bc666` (merge); reviewer amendments `298d6fd5b23eea639643f4c277f1776b6e05dbed`. These are scope-only commits, not integration of either application branch.

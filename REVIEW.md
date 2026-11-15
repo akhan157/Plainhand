@@ -11,7 +11,7 @@ Retained findings:
 3. Two different jobs may legitimately use the same experience. The falsifier now requires a pre-specified relevance contrast, not arbitrary difference.
 4. Surface parity must honor intended consumers and action tiers; candidate-only actions must not become agent-callable. Added actual light/dark/mobile, keyboard and focus evidence to UI acceptance.
 5. A single stochastic queue-quality difference is not proof of regression. Repeated paired evidence and a frozen bound are required.
-6. Baseline must precede gap edits. P5 now depends on immutable P6 baseline evidence, with baseline and candidate SHAs separately pinned.
+6. Baseline must precede gap edits. Gap work now depends on immutable baseline evidence; final packet order is P5 baseline then P6 improvements, with baseline and candidate SHAs separately pinned.
 7. Do not prescribe a deterministic elicitation checklist without design evidence. Mechanism selection returns to a design gate.
 8. Integration order, already-authorized tracking work and technical threshold design are routine control-plane choices, not new owner blockers. Latest manual-kit/user-invoked extension scope governs review; no unattended-board automation is added.
 9. Master record means organized source-backed evidence, not a new schema or allowing generated text to bootstrap truth.
