@@ -72,9 +72,10 @@
     {
       "id": "U10",
       "requirement": "**Tracking and learning.** Tracker, contacts, calendar, imports and exports, follow-ups, outcome recommendations",
-      "status": "not_run",
+      "status": "in_progress",
       "evidence_required": "Round-trip import and export. Stage board, contact roll-up, calendar and CSV from the unmerged branches, re-tested. Follow-ups cite the submitted packet. Recommendations remain candidates until approved and show insufficient data",
-      "falsifier": "A follow-up is marked sent without the candidate. Insufficient data is shown as a rate. A recommendation changes configuration unapproved. An import corrupts the tracker"
+      "falsifier": "A follow-up is marked sent without the candidate. Insufficient data is shown as a rate. A recommendation changes configuration unapproved. An import corrupts the tracker",
+      "review_note": "Tracking increment integrated at 9ec623777e1c77157b975a1f92e07175babaa0f4; root export/cloud/local Chromium checks passed. U10 round-trip/follow-up/outcome acceptance still incomplete; hosted browser unverified."
     },
     {
       "id": "U11",
