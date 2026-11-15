@@ -181,6 +181,85 @@ test('one user can never read or change another user\'s workspace', { skip }, as
   assert.equal((await (await a.api('state')).json()).jobs.length, 1);
 });
 
+test('hosted CSV and calendar downloads are authenticated, per-user and read-only', { skip }, async () => {
+  const a = await app.client().signIn(), b = await app.client().signIn();
+  const wa = app.accounts.workspaceFor(a.userId), wb = app.accounts.workspaceFor(b.userId);
+  const at = '2026-11-01T09:00:00.000Z';
+  const makeJob = (id, company, title, status, record = {}) => ({ id, company, title, status, url: `https://jobs.example.invalid/${id}`, createdAt: at, updatedAt: at, evaluation: { score: 4.1, at, recommendation: 'apply' }, record });
+  await wa.mutate(state => {
+    state.jobs.push(makeJob('a-open', 'Acme', 'Field Engineer', 'Interview', { nextAction: { text: 'Send a thank-you note', due: '2026-12-01' }, interviews: [] }));
+    state.jobs.push(makeJob('a-closed', 'Closed Co', 'Dead Role', 'Rejected', { nextAction: { text: 'Give up', due: '2026-12-02' }, interviews: [] }));
+  });
+  const tracker = [
+    '# Applications',
+    '| # | Date | Company | Role | Score | Status | PDF | Report | Notes |',
+    '|---|---|---|---|---|---|---|---|---|',
+    '| 7 | 2026-09-02 | Arcwell Energy | Manufacturing Engineer | 3.8/5 | Evaluated | — | — | legacy row |',
+  ].join('\n') + '\n';
+  await wa.write('data/applications.md', tracker);
+  await wb.mutate(state => { state.jobs.push(makeJob('b-open', 'Beta', 'Other Role', 'Apply', { nextAction: { text: 'Beta private deadline', due: '2026-12-03' }, interviews: [] })); });
+
+  const before = await wa.load();
+  const [beforeFiles] = await db.sql`select count(*)::int as files, coalesce(max(updated_at)::text, '') as latest from plainhand.workspace_files where user_id = ${a.userId}`;
+  const emailsBefore = app.auth.emails.length;
+
+  const csv = await a.api('applications.csv');
+  assert.equal(csv.status, 200);
+  assert.equal(csv.headers.get('content-type'), 'text/csv; charset=utf-8');
+  assert.equal(csv.headers.get('content-disposition'), 'attachment; filename="plainhand-applications.csv"');
+  assert.equal(csv.headers.get('cache-control'), 'no-store');
+  assert.equal(csv.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(csv.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  const csvBody = Buffer.from(await csv.arrayBuffer());
+  assert.deepEqual([...csvBody.subarray(0, 3)], [0xEF, 0xBB, 0xBF], 'the download keeps the byte-order mark');
+  const csvText = csvBody.toString('utf8');
+  assert.ok(csvText.startsWith('\uFEFF'));
+  assert.match(csvText, /Company,Role,Status,Fit,Next action/);
+  assert.match(csvText, /Acme,Field Engineer,Interview,4\.1,Send a thank-you note/);
+  assert.match(csvText, /Arcwell Energy,Manufacturing Engineer/);
+  assert.doesNotMatch(csvText, /Beta|Other Role/);
+
+  const ics = await a.api('calendar.ics');
+  assert.equal(ics.status, 200);
+  assert.equal(ics.headers.get('content-type'), 'text/calendar; charset=utf-8');
+  assert.equal(ics.headers.get('content-disposition'), 'attachment; filename="plainhand-calendar.ics"');
+  assert.equal(ics.headers.get('cache-control'), 'no-store');
+  const icsText = await ics.text();
+  assert.match(icsText, /^BEGIN:VCALENDAR\r\n/);
+  assert.match(icsText, /SUMMARY:Send a thank-you note/);
+  assert.match(icsText, /DTSTART;VALUE=DATE:20261201/);
+  assert.doesNotMatch(icsText, /Give up/, 'a rejected application keeps no deadlines');
+  assert.doesNotMatch(icsText, /Beta|Other Role/);
+
+  assert.match(await (await b.api('applications.csv')).text(), /Beta,Other Role,Apply/);
+  assert.doesNotMatch(await (await b.api('applications.csv')).text(), /Acme|Arcwell/);
+  assert.match(await (await b.api('calendar.ics')).text(), /SUMMARY:Beta private deadline/);
+  assert.doesNotMatch(await (await b.api('calendar.ics')).text(), /Acme|Arcwell/);
+
+  const anon = app.client();
+  for (const path of ['/api/applications.csv', '/api/calendar.ics']) {
+    const res = await anon.request(path);
+    assert.equal(res.status, 401, path);
+    assert.match(res.headers.get('content-type'), /^application\/json/);
+    assert.equal(res.headers.get('content-disposition'), null, path);
+    assert.doesNotMatch(await res.text(), /Acme|Beta|BEGIN:VCALENDAR/, path);
+  }
+  for (const path of ['applications.csv', 'calendar.ics']) {
+    assert.equal((await a.api(path, undefined, { token: 'wrong' })).status, 403, path);
+    assert.equal((await a.api(path, undefined, { token: '' })).status, 403, path);
+    assert.equal((await b.api(path, undefined, { token: a.token })).status, 403, path);
+  }
+
+  const after = await wa.load();
+  const [afterFiles] = await db.sql`select count(*)::int as files, coalesce(max(updated_at)::text, '') as latest from plainhand.workspace_files where user_id = ${a.userId}`;
+  assert.equal(after.revision, before.revision, 'a download never bumps the workspace revision');
+  assert.equal(afterFiles.files, beforeFiles.files);
+  assert.equal(afterFiles.latest, beforeFiles.latest);
+  assert.equal(await wa.read('data/applications.md'), tracker, 'the tracker file is only read');
+  assert.equal(await wa.read('data/plainhand/audit.jsonl'), '', 'a download records no external action');
+  assert.equal(app.auth.emails.length, emailsBefore);
+});
+
 test('state-changing requests from other sites are refused (CSRF)', { skip }, async () => {
   const c = await app.client().signIn();
   const job = { company: 'Csrf', title: 'Role', url: 'https://jobs.example.com/csrf/1' };

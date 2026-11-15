@@ -300,6 +300,35 @@ The strongest improvements are workflow and UX improvements, not more generic AI
 8. **Campaigns without autonomous submission** — Borrow [JobPilot](https://github.com/suxrobGM/jobpilot)'s campaign concepts: daily limits, pause/resume, retry handling, journals, and notifications. Keep the safety boundary: Career-Ops may prepare and save drafts, but the candidate submits.
 9. **A coherent local web workflow** — Borrow the browser presentation from [career-ops-ui](https://github.com/Fighter90/career-ops-ui): inbox, live scan logs, auto-pipeline stepper, report deep links, artifact preview, tracker, and maintenance actions. Keep the existing local files as the source of truth.
 
+### Manage Job Applications (research date 2026-11-13)
+
+[managejobapplications.com](https://managejobapplications.com/) is a free,
+account-backed tracker with an unusually complete workflow layer: a one-click
+browser importer for eleven job boards, a Jobs list with drag ordering, Kanban
+tracking, contacts with relationships and referrals, tasks and deadlines pushed
+to Google Calendar, Sankey and funnel reports, a cost tracker, spreadsheet import
+and CSV export, and an AI coach (Gemini) that drafts resumes, cover letters and
+a mock interview from a base resume plus one job description. Its own feature
+table compares against Huntr Pro and Teal+ on exactly these points. Reported
+user feedback was that its workflow feels better than Plainhand's, not that its
+AI output is better.
+
+| Their feature | Decision | Why |
+| --- | --- | --- |
+| Kanban board with per-stage counts | **Built (2026-11-13)** | Same canonical statuses as the tracker; drag or menu changes a status, Applied still needs the submission confirmation |
+| Contacts in one place, not just per job | **Built as a read-only roll-up** | Contacts stay owned by each application record; the People card is a view, so there is no second write path |
+| Deadlines pushed to a calendar | **Built as `.ics` download** | A calendar-server integration would need a hosted account; a snapshot import works offline and keeps the human in control |
+| Spreadsheet export and import | **Export built; import not taken** | CSV mirrors the tracker table. Importing a spreadsheet would need a column mapping and merge rules for duplicate company+role; the existing JSON workspace import and `applications.md` merge already cover migration |
+| One-click job capture from job boards | **Not taken this round** | The extension already extracts a posting and posts it to the hosted API. Pointing it at the local app needs a local pairing token and a review of the job-board terms stance; the current policy is that Plainhand never opens LinkedIn or Indeed |
+| Custom application stages | **Rejected** | Breaks the canonical `templates/states.yml` contract shared with the tracker, dashboard and reports |
+| Tasks and Google Calendar sync | **Partially taken** | Next actions and interview rounds already carry due dates and now export; a separate task list would duplicate the application record |
+| Cost tracker and funnel/Sankey charts | **Not taken** | Low value at single-user scale; Insights already reports score bands and interview rates with sample sizes, which is the decision-relevant part |
+| AI coach that drafts from a base resume | **Already covered, and deeper** | Plainhand's packet is evidence-checked and humanized; MJA's Gemini draft has no claim verification |
+
+The gap it exposed was workflow surface, not model quality: Plainhand had strong
+per-application depth and weak cross-application views. The fix was to add
+views and exports over the existing records rather than new data models.
+
 ### Do not copy
 
 - Unattended final submission
