@@ -8,6 +8,7 @@ import { AuditLog } from './audit.mjs';
 import { FEATURES } from './features/index.mjs';
 import { addContact, addInterview, setInterviewStatus, removeEntry, setNextAction, followUpQueue, upcomingInterview, recordOf } from './application-record.mjs';
 import { profileStrength, logUnderstanding } from './profile-strength.mjs';
+import { profileCoverage } from './profile-coverage.mjs';
 import { currentCalibration } from './claim-calibration.mjs';
 import { candidateLine, recordDecision } from './claim-line.mjs';
 import { approveStandard, autonomyOf, standardStatus } from './standard.mjs';
@@ -93,7 +94,7 @@ export function buildDigest(state, { features = FEATURES } = {}) {
   if (missing.length) attention.unshift({ kind: 'profile', jobId: null, text: `Profile: still missing ${missing.join(', ')}` });
   else if (understanding === 'needs-review') attention.unshift({ kind: 'profile', jobId: null, text: 'Profile: your understanding summary is ready for review' });
   return {
-    profile: { name: profile.name || '', roles: profile.roles || '', ready: Boolean(profile.name && profile.resume), missing, understanding, next: profileStrength(state).next.filter(n => !n.fromModel).map(n => n.text) },
+    profile: { name: profile.name || '', roles: profile.roles || '', ready: Boolean(profile.name && profile.resume), missing, understanding, interview: profileCoverage(state), next: profileStrength(state).next.filter(n => !n.fromModel).map(n => n.text) },
     provider: state.provider || null,
     counts: { jobs: jobs.length, selected: jobs.filter(j => j.selected).length, prepared: state.jobs.filter(j => j.packet).length, applied: state.jobs.filter(j => j.submittedAt).length },
     jobs, followUps, tasks, attention: attention.slice(0, 12),
