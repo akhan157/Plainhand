@@ -415,7 +415,7 @@
     "date": "2026-11-15",
     "commit": "bc543d904843978c802cb245f28c345fa40e8fdb",
     "dirty": true,
-    "note": "Pre-freeze pilot, not baseline evidence. Tree was dirty (fixture work in progress, not loaded by this scenario's modules at start is not guaranteed).",
+    "note": "Pre-freeze pilot, not baseline evidence. Started on clean bc543d9; the dirty flag reflects fixture edits made while it ran, so the tree it recorded is not a frozen one.",
     "scenario": "profile-effect-fin-built",
     "provider": "codex",
     "providerVersion": "codex-cli 0.167.1",
