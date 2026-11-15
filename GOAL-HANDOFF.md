@@ -139,8 +139,12 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
   master). Each kept role's lines are curated to the job. Kept roles go newest first by
   default; a candidate can instead put their strongest match on top. This is a
   per-candidate setting. Recorded in U04.
-- **Cover letters.** The owner's convention: a concise restatement of the resume's
-  strongest matches. The owner asked for a double-check of that convention.
+- **Cover letters (confirmed).** Not a line-by-line restatement of the resume. Take
+  the top two or three qualifications the posting asks for and turn them into a short
+  case for fit: a concrete example each with context the resume lacks, why this role
+  and employer, one page, three or four paragraphs. Owner confirmed; university career
+  center guides agree (UC Davis, Dartmouth, Oregon State, Wesleyan, UMass Dartmouth,
+  USC, MIT).
 - **Updates (deferred).** Candidates must move to each new version without losing their
   setup, and the release workflow on our side must be simple and repeatable. New row
   U15, to start after the current work.
