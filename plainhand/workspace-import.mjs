@@ -395,8 +395,13 @@ export async function importWorkspace({ workspace, data, busy = false }) {
       // Hold what cannot be verified: the sources here are the imported ones, before
       // sharing exclusions, so a quote is judged on whether its text travelled.
       const context = await workspace.context({ ...state, contextPrefs: {} });
-      const bank = cleanAnswerBank(data.answerBank, context.sources);
-      const corrections = cleanCorrections(data.corrections, bank.answers);
+      // A newer export carries its bank and corrections. An older export has neither:
+      // keep what this workspace already had and hold every entry the imported sources
+      // can no longer prove, so nothing is silently deleted and nothing stale is used.
+      const bankSource = Array.isArray(data.answerBank) ? data.answerBank : await new AnswerBank(workspace).load();
+      const correctionSource = Array.isArray(data.corrections) ? data.corrections : await new Corrections(workspace).list();
+      const bank = cleanAnswerBank(bankSource, context.sources);
+      const corrections = cleanCorrections(correctionSource, bank.answers);
       if (bank.answers.length) await new AnswerBank(workspace).save(bank.answers); else await workspace.remove(ANSWER_BANK_FILE);
       if (corrections.corrections.length) await new Corrections(workspace).save(corrections.corrections); else await workspace.remove(CORRECTIONS_FILE);
       const claims = [];

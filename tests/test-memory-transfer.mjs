@@ -239,6 +239,22 @@ test('a source file too large for the export is reported and never deleted from 
   assert.match((await target.load()).events[0].text, /1 source file too large to include/);
 });
 
+test('an older export without a bank keeps the destination answers, held when their quote did not travel', async t => {
+  const source = await richWorkspace(t), target = await tempWorkspace(t);
+  await target.saveProfile({ ...candidate, name: 'Existing Candidate', resume: 'Reconciled supplier ledgers at Example Co.' }, 0);
+  const cvQuote = 'Reconciled supplier ledgers at Example Co.';
+  await new AnswerBank(target).save([{ id: 'answer-target', question: 'Describe your reconciliation work', answer: 'I reconciled supplier ledgers.', evidence: [{ sourceId: 'cv', quote: cvQuote }], scope: 'global', reviewedAt: '2026-01-01', reviewBy: null }]);
+  const exported = await exportOf(source);
+  delete exported.answerBank;
+  delete exported.corrections;
+  const result = await transfer.importWorkspace({ workspace: target, data: exported });
+  const bank = await new AnswerBank(target).load();
+  assert.deepEqual(bank.map(entry => [entry.id, entry.status || 'usable']), [['answer-target', 'needs-review']]);
+  assert.equal(result.answerBank.stored, 1);
+  assert.equal(result.answerBank.held, 1);
+  assert.equal(AnswerBank.match(bank, { label: 'Describe your reconciliation work', asOf: '2026-11-15' }), null);
+});
+
 test('an injected write failure leaves the previous workspace byte-identical, then the import completes', async t => {
   const source = await richWorkspace(t), target = await tempWorkspace(t);
   await target.saveProfile({ ...candidate, name: 'Existing Candidate', resume: 'Existing resume text, unrelated to the export.' }, 0);
