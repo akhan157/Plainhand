@@ -643,3 +643,41 @@ Lane `a18bb98` (OMP DeepSeek), merged by root.
   waiting on quota).
 - U03 master completeness and U01 onboarding metrics.
 - Independent review of root-authored fixes and merge resolutions.
+
+## U03/U01, U15 and the root-fix review merged; register updated — 2026-11-16
+
+- **U03/U01 lane `4ac0b7d`, merged.**
+  - Master completeness check, missing-items card, and the entry cap removed.
+  - Onboarding report covers 74 live runs.
+  - Controlled fresh-install onboarding proof, run 3 times.
+- **U15 lane `6f43db1`, merged.**
+  - Migrations v1→v2 with backup and rollback.
+  - `plainhand update` and `plainhand rollback`.
+  - `docs/UPDATING.md`, `docs/internal/RELEASE.md` and `scripts/release-check.mjs`.
+  - v1.1.2→HEAD update proof: 169 checks.
+  - Root checked that migrated `needs-refresh` jobs show as "Needs refresh" (`job.stale`) and cannot be approved until re-prepared.
+- **Independent review of root-authored fixes** (`a1aa661`): accept-with-fixes overall, no
+  rejects. Root applied all four fixes in `ccc4153`:
+  - interview coverage now counts the current answer on the same turn (engine test,
+    mutation-checked);
+  - the kit verifies resume bytes against the approved hash, and a tampered file is
+    refused;
+  - the U11 scanner now scans its own file;
+  - the folded-humanizer instruction contract is stated in both instructions.
+- **Gates on the merged tree:** suite 653/653; controlled 64/67, 0 unexpected.
+- **Register:** 10 of 15 rows accepted locally (U02, U03, U06–U12, U15). Root accepts as a
+  different family from the authors. Root's own fixes were independently reviewed.
+- **Remaining rows, each blocked only by provider quota plus named external checks:**
+  - U01: live fresh onboarding.
+  - U04: held-out set 2 live.
+  - U05: live voice contrast.
+  - U13: set 2 live, re-measuring the packet-quality and cost changes, and judge
+    calibration (external).
+  - U14: live billed-token confirmation.
+- **Next live run, when the owner's Codex window resets** (about 225 calls per window):
+  1. the manifest smoke (set 2 plus journey-sci, about 110 calls);
+  2. the paired subset;
+  3. `voice-contrast` and `queue-vs-single`;
+  4. the judge on the same subset.
+
+  The manifest's tree hash will need a re-freeze for product-file changes first.
