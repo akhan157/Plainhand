@@ -12,6 +12,7 @@ benchmark entry points, push, merge or deploy. Review of the diff is the root's.
 |---|---|
 | Branch | `t3/master-completeness-onboarding` |
 | Dispatch HEAD | `789dcd523baef5951ce0626b41410f3c519b50e3` (clean at start) |
+| Measured code commit | `e9e962e4e5679753366370ab54eabd3504f46be5` (a message-only rewrite of `14a4443`; the tree is identical) |
 | Author | implementation sub-agent, DeepSeek Flash |
 | Reviewer | root, different model family |
 | TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repository) |
@@ -204,24 +205,24 @@ loopback port, and drives the public HTTP API with the controlled fixture agent:
 6. prepare and `/api/packet/approve`.
 
 Evidence: three controlled repeats under
-`output/onboarding-proof-2026-11-16T04-32-{53-259,09-256,24-363}Z/`
+`output/onboarding-proof-2026-11-16T04-34-{47-566,35-01-066,35-16-372}Z/`
 (each has `report.json`, `REPORT.md`, `transcript.json`, `install.log`,
 `setup.log`).
 
 | Measurement | Value (mean ± sample SD over 3 repeats) |
 |---|---|
-| Clone commit | `14a4443ef89e1a1744ed7fe7f8d24cc6c67135c5` |
-| `npm ci` | exit 0 in all; 8.2 ± 0.9 s |
-| `npm run setup` | exit 0 in all; 1.8 ± 0.3 s |
-| Total install | 10.0 ± 1.1 s |
-| First reviewed master | 1.06 ± 0.17 s from app start, 10 calls, 259,955 prompt characters |
-| First prepared packet | 2.54 ± 0.67 s from app start, 14 calls, 329,385 prompt characters |
+| Clone commit | `53cb6103fd0bbe5bf701f542b07199f8c21e80c5` (code tree identical to `e9e962e`) |
+| `npm ci` | exit 0 in all; 7.0 ± 1.3 s |
+| `npm run setup` | exit 0 in all; 1.6 ± 0.5 s |
+| Total install | 8.6 ± 1.3 s |
+| First reviewed master | 1.20 ± 0.69 s from app start, 10 calls, 259,955 prompt characters |
+| First prepared packet | 2.86 ± 0.64 s from app start, 14 calls, 329,385 prompt characters |
 | Tokens | not reported by the controlled fixture (no provider call); prompt characters reported instead |
 | Master completeness | roles 3/3, certifications 1/1, degrees 1/1, results 3/3 (8/8) in every repeat |
 | Checks | conversation, resume import, understanding, master, evaluation, packet, packet approval all pass in every repeat |
 
 Calls, prompt characters and intervention counts were identical across the three
-repeats; only wall time varied (0.94–1.25 s to the master, 1.79–3.06 s to the
+repeats; only wall time varied (0.79–2.00 s to the master, 2.28–3.54 s to the
 packet), which is local machine scheduling, not a model effect.
 
 Interventions:
@@ -284,8 +285,9 @@ Commands actually run on this lane, in this order:
   missing-list branch itself is exercised by the state-level test, not by this
   fixture.)
 - `node benchmarks/benchmark-eval.mjs --concurrency 2`: **64/67 passed, 3
-  expected failures, 0 unexpected** (scorer v3, controlled, 145 s wall). The only
-  failures are the three `*-minimal` control rows:
+  expected failures, 0 unexpected** (scorer v3, controlled, 145 s wall; run on
+  the tree now at `e9e962e`). The only failures are the three `*-minimal`
+  control rows:
   `profile-effect-fin-minimal`, `profile-effect-analyst-minimal`,
   `profile-effect-sci-minimal`. All holdout and journey rows pass.
 
