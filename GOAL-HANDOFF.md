@@ -428,3 +428,39 @@ The two unexpected failures are product findings:
    need, so it belongs in evaluation gaps, not in blocking packet questions.
 
 The smoke run (unseen set 2) is running.
+
+## M5 and M6 merged — 2026-11-16
+
+Lane `308677a` (OMP DeepSeek), reviewed and merged by root. Root resolved a
+`workspace-import.mjs` conflict with U10's `EXPORT_FILES`.
+
+What it adds:
+- **Detectors (`memory-checks.mjs`).** Deterministic detectors for:
+  - employer/title conflicts (promotion-aware);
+  - overlapping dates;
+  - degree and graduation year;
+  - people counts;
+  - location and eligibility.
+- **`conflictReview` state.** Holds decisions only and transfers through
+  export/import.
+- **Prepare pre-check.** Order is: settled-question lookup (profile, then bank, then
+  packet), then a block only when the packet cites an involved source. Excluded text
+  never enters a question.
+- **Repeat-question ledger and counts.** This is U06's counter.
+- **UI.** A profile card with both quotes and the actions "This is right" and "Edit a
+  source".
+
+Verification:
+- The author fixed a degree false positive found by the gate.
+- Mutation checks: turning the detector off and turning the pre-check off each fail
+  their tests.
+- `scripts/memory-probe.mjs`: 47 checks, 0 failures. It covers restart, provider
+  switch, an excluded-value and credential grep, deletion, correction reuse,
+  contradiction resolution, and import.
+- Suite 612/612. UI flow passes. Controlled gate 64/67, 0 unexpected.
+
+Residuals:
+- No semantic contradiction detection, by design.
+- Evaluation and understanding question channels are not counted.
+- Conflicts found only in source files appear on the card but are not in the digest
+  counts.
