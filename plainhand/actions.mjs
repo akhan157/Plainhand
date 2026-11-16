@@ -14,6 +14,7 @@ import { candidateLine, recordDecision } from './claim-line.mjs';
 import { approveStandard, autonomyOf, standardStatus } from './standard.mjs';
 import { cleanFormat } from './resume-format.mjs';
 import { providerDescription } from './posting-integrity.mjs';
+import { writeManualKit } from './manual-kit.mjs';
 
 // One definition per Plainhand capability, shared by the screens, the in-app agent
 // and the MCP server. Tiers are enforced here, never by the caller.
@@ -451,6 +452,12 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       let previous;
       await mutateJob(input.jobId, job => { previous = Boolean(job.selected); choose(job, input.selected); });
       return { result: { selected: input.selected }, undo: previous !== input.selected ? () => mutateJob(input.jobId, job => choose(job, previous)) : null };
+    } });
+  define({ name: 'jobs.manualKit', tier: 'write', title: 'Save the application kit', description: 'Write the posting links, approved documents and approved answers for one role to a folder under output/manual-kit, for applying by hand on a site Plainhand cannot drive. Never submits.', input: { jobId: 'string' },
+    summarize: input => `Save the application kit for job ${input.jobId}`,
+    run: async (ctx, input) => {
+      const state = await workspace.load();
+      return { result: await writeManualKit({ workspace, state, job: findJob(state, input.jobId) }) };
     } });
   define({ name: 'jobs.setApplyLink', tier: 'candidate', title: 'Set the employer’s application link', description: 'For a role saved from LinkedIn, Indeed or another job board, the candidate sets the employer’s own application link, where Plainhand fills the form. Plainhand checks that the page is live.', input: { jobId: 'string', applyUrl: 'string' }, panel: input => ({ type: 'form', id: input.jobId }),
     run: async (ctx, input) => {

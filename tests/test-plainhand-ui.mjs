@@ -213,6 +213,8 @@ try {
   await page.getByRole('heading', { name: 'Apply by hand', exact: true }).waitFor();
   await panel(page).locator('section[aria-labelledby="ap-manual"]').getByRole('link', { name: 'Resume PDF', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Copy cover letter', exact: true }).waitFor();
+  await panel(page).locator('section[aria-labelledby="ap-manual"]').getByRole('button', { name: 'Save kit files', exact: true }).click();
+  await page.getByRole('status').filter({ hasText: 'Application kit saved to output/manual-kit/' }).waitFor();
   await page.getByRole('heading', { name: 'Apply by hand', exact: true }).scrollIntoViewIfNeeded();
   await shot(page, '13b-manual-kit.png');
   await page.getByRole('button', { name: 'Take over the browser', exact: true }).click();

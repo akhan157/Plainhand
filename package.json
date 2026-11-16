@@ -90,7 +90,8 @@
     "build:cloud:trace": "node scripts/cloud/trace-build.mjs",
     "check:cloud:build": "node scripts/cloud/check-build-output.mjs",
     "smoke:cloud:render": "node scripts/cloud/render-smoke.mjs",
-    "test:workspace-transfer-ui": "playwright test -c tests/playwright-workspace-transfer.config.mjs"
+    "test:workspace-transfer-ui": "playwright test -c tests/playwright-workspace-transfer.config.mjs",
+    "test:u08-sites": "node --test --test-concurrency=1 tests/test-u08-sites.mjs"
   },
   "keywords": [
     "ai",
