@@ -246,7 +246,7 @@ try {
       const start = mark();
       await page.goto(`${base}/#home`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('main h1, main h2');
-      const toggle = page.locator('#nav-toggle,[aria-controls="nav"],button[aria-label*="menu" i]').first();
+      const toggle = page.locator('.nav-toggle, [aria-controls="sidenav"]').first();
       if (await toggle.count()) {
         await toggle.click();
         await settle(page);
