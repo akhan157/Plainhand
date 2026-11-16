@@ -118,6 +118,31 @@ test('a master that drops one old role and one credential lists exactly those as
   }
 });
 
+test('common resume section headings are read, not only the persona layout', () => {
+  const resume = [
+    'Work Experience',
+    'Acme Corp — Financial Analyst — 2020 to 2022',
+    'Cut the close from 9 days to 5.',
+    '',
+    'Certifications & Licenses',
+    'CPA, 2021',
+    '',
+    'Education & Training',
+    'Example University — B.S. Accounting — 2018',
+  ].join('\n');
+  const master = [
+    { section: 'Experience', heading: { org: 'Acme Corp', title: 'Financial Analyst', location: '', dates: '2020 to 2022' }, text: 'Cut the close from 9 days to 5.' },
+    { section: 'Certifications', heading: null, text: 'CPA, 2021' },
+    { section: 'Education', heading: { org: 'Example University', title: 'B.S. Accounting', location: '', dates: '2018' }, text: '' },
+  ];
+  const result = masterCompleteness([{ id: 'cv', text: resume }], master);
+  assert.deepEqual(result.missing, []);
+  assert.equal(result.counts.roles.total, 1);
+  assert.equal(result.counts.certifications.total, 1);
+  assert.equal(result.counts.degrees.total, 1);
+  assert.equal(result.counts.results.total, 1);
+});
+
 async function harness({ persona, job = jobById('holdout-job-fin-forecast'), agent = null, profile = null }) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-u03-'));
   const base = agent || controlledAgent({ scenario: { id: 'u03', roleOrder: 'recent' }, persona, job });

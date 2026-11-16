@@ -59,9 +59,9 @@ const isNumberBearing = text => !CONTACT.test(text) && numbersOf(text).length > 
 function sectionOf(line) {
   const value = clean(line).replace(/^[#>\s*•·\-–—▪◦]+/, '').replace(/[:.]+$/, '').trim().toLowerCase();
   if (!value) return null;
-  if (/^(?:experience|employment(?: history)?|work history|professional experience)$/.test(value)) return 'experience';
-  if (/^(?:education|training)$/.test(value)) return 'education';
-  if (/^(?:certifications?|licen[cs]e?s?|licenses? & certifications|licenses? and certifications|certificates?)$/.test(value)) return 'credentials';
+  if (/^(?:experience|employment(?: history)?|work history|work experience|professional experience|relevant experience)$/.test(value)) return 'experience';
+  if (/^(?:education|training|education (?:&|and) training)$/.test(value)) return 'education';
+  if (/^(?:certifications?|licen[cs]e?s?|licenses? (?:&|and) certifications?|certifications? (?:&|and) licen[cs]es?|certificates?)$/.test(value)) return 'credentials';
   if (/^(?:projects?|publications?|papers?|awards?|honou?rs?|volunteer\w*)$/.test(value)) return 'other';
   if (/^(?:summary|profile|skills?|interests?|languages?|references?)$/.test(value)) return 'skip';
   return null;
@@ -103,10 +103,13 @@ function resumeItems(text, sourceId, items) {
       continue;
     }
     if (section === 'education' || section === 'credentials') {
-      if (!isNumberBearing(line) && !DEGREE.test(line) && !CREDENTIAL_HINT.test(line)) continue;
       const parts = splitHeading(line);
       const label = parts.length >= 2 ? parts.join(' — ') : line;
-      if (DEGREE.test(line) || section === 'education') items.degrees.push({ kind: 'degree', text: line, label, sourceId });
+      // A certifications section is a list of credentials by definition. An
+      // education section may also carry coursework, so only a degree word or an
+      // institution — programme — date line is a degree item.
+      if (section === 'education' && !DEGREE.test(line) && !(parts.length >= 2 && parseDates(parts.at(-1)))) continue;
+      if (DEGREE.test(line)) items.degrees.push({ kind: 'degree', text: line, label, sourceId });
       else items.certifications.push({ kind: 'credential', text: line, label, sourceId });
       continue;
     }

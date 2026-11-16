@@ -82,11 +82,12 @@ test accepts and stores a 200-entry master; a real resume observed in this repo
 
 ### 3.4 Evidence
 
-`node --test tests/test-u03-master.mjs` — 5 tests, 5 pass:
+`node --test tests/test-u03-master.mjs` — 6 tests, 6 pass:
 
 | Test | Result |
 |---|---|
 | Every held-out persona (set 1 and set 2, six personas) has 3+ roles, a credential, a degree and numbered results; a master built from the persona's own resume has every item present at a real entry index | pass |
+| Common candidate headings (`Work Experience`, `Certifications & Licenses`, `Education & Training`) are read, not only the persona layout | pass |
 | With `holdout-fin-controller`, `holdout-sre-platform`, `holdout2-fin-close` and `holdout2-stem-assay`, dropping the oldest role and the certification leaves exactly two missing names: `role:Example Retail Group — Senior Accountant — 2010 to 2014` and `credential:Certified Public Accountant (CPA), Colorado, active since 2013.` (and the analogous pair on each persona) | pass |
 | The app stores the completeness result on the master; the dropped-master run reports `total 8, present 7, missing 1 role + 1 credential` | pass |
 | Preparing two tailored packets leaves `JSON.stringify(state.standard)` and `digest(state.standard)` byte-identical before and after both packets | pass |
@@ -272,9 +273,9 @@ Commands actually run on this lane, in this order:
 
 ### 5.1 Gate results
 
-- `npm run test:plainhand -- --test-concurrency=2`: **638 tests, 638 pass, 0
-  fail** (50.8 s of test time). This includes the new
-  `tests/test-u03-master.mjs` (5 tests) and the existing durable-memory probe.
+- `npm run test:plainhand -- --test-concurrency=2`: **639 tests, 639 pass, 0
+  fail** (about 51 s of test time). This includes the new
+  `tests/test-u03-master.mjs` (6 tests) and the existing durable-memory probe.
 - `npm run test:plainhand-ui`: **passed** — “Plainhand full browser workflow
   passed: themes, persistence, interview, discovery, evaluation, real PDFs/
   downloads, approval, real browser form filling/upload, handoff, confirmed
