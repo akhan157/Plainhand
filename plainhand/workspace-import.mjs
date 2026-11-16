@@ -1,3 +1,4 @@
+import { STATE_VERSION } from './migrations.mjs';
 import { randomUUID } from 'node:crypto';
 import yaml from 'js-yaml';
 import { cleanText, emptyProfile, factualSource, now, syncTracker } from './store.mjs';
@@ -46,7 +47,11 @@ const jsonWithin = (value, max = 200000) => {
 
 export function validateExport(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new ImportError('Choose a Plainhand workspace export (a .json file from Workspace → Export).');
-  if (data.version !== 1) throw new ImportError('This export is from an unknown Plainhand version.');
+  // An export carries the state version of the workspace that wrote it. Any version this
+  // code can migrate from is accepted; the imported keys are cleaned below, and the target
+  // keeps its own (current) version. A newer export is refused: update Plainhand first.
+  if (!Number.isInteger(data.version) || data.version < 1) throw new ImportError('This export is from an unknown Plainhand version.');
+  if (data.version > STATE_VERSION) throw new ImportError('This export was made by a newer Plainhand. Update Plainhand, then import it.');
   if (!data.profile || typeof data.profile !== 'object') throw new ImportError('The export has no profile.');
   for (const key of ['jobs', 'sources', 'tasks', 'conversation', 'events', 'answerBank', 'corrections', 'writingSamples', 'agentConversation', 'agentUsage', 'agentProposals']) if (data[key] !== undefined && !Array.isArray(data[key])) throw new ImportError(`The export's ${key} are not a list.`);
   for (const key of ['claimLine', 'standard', 'resumeFormat', 'settings', 'understanding', 'conflictReview', 'files']) if (data[key] !== undefined && data[key] !== null && !object(data[key])) throw new ImportError(`The export's ${key} is not an object.`);

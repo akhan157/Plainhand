@@ -155,3 +155,26 @@ test('an export carries memory and source files; the import restores it without 
     assert.match(imported[0].text, /1 sensitive answer dropped/);
   } finally { await a.close(); await b.close(); }
 });
+
+test('a workspace migrated to the current state version still exports and imports; a newer export is refused', async () => {
+  const roots = [await mkdtemp(path.join(tmpdir(), 'plainhand-mig-a-')), await mkdtemp(path.join(tmpdir(), 'plainhand-mig-b-'))];
+  try {
+    let app = await createPlainhand({ root: roots[0], providers: fixtureProviders });
+    const fresh = await app.workspace.load();
+    await app.workspace.saveProfile({ ...fresh.profile, ...candidate }, fresh.revision);
+    await app.close();
+    app = await createPlainhand({ root: roots[0], providers: fixtureProviders });
+    const { STATE_VERSION } = await import('../plainhand/migrations.mjs');
+    assert.equal((await app.workspace.load()).version, STATE_VERSION, 'the second start migrated the workspace');
+    const { exportWorkspace, importWorkspace, ImportError } = await import('../plainhand/workspace-import.mjs');
+    const data = await exportWorkspace(app.workspace);
+    await app.close();
+    const target = await createPlainhand({ root: roots[1], providers: fixtureProviders });
+    try {
+      const summary = await importWorkspace({ workspace: target.workspace, data, busy: false });
+      assert.ok(summary, 'the migrated export imports');
+      assert.equal((await target.workspace.load()).profile.name, candidate.name);
+      await assert.rejects(importWorkspace({ workspace: target.workspace, data: { ...data, version: STATE_VERSION + 1 }, busy: false }), /newer Plainhand/);
+    } finally { await target.close(); }
+  } finally { for (const root of roots) await rm(root, { recursive: true, force: true }); }
+});

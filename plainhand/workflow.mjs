@@ -81,23 +81,19 @@ const SUGGESTION_TAIL = /\s+(?:from|in|on|to|into|within|under)\s+(?:the|my|your
 // Structural words name a place, not an item, so they never prove an inclusion claim.
 const SUGGESTION_GENERIC = new Set(['resume', 'cv', 'letter', 'packet', 'draft', 'profile', 'application', 'certificate', 'certification', 'certifications', 'license', 'licensure', 'degree', 'course', 'courses', 'project', 'projects', 'role', 'roles', 'skill', 'skills', 'section', 'summary', 'experience', 'education', 'publication', 'publications', 'award', 'awards', 'line', 'bullet', 'page', 'qualification', 'qualifications', 'credential', 'credentials', 'internship', 'position', 'job', 'company', 'employer', 'work']);
 const suggestionText = value => String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-// Any other sentence that asserts an inclusion ("The master includes X", "Every role,
-// including X, is listed") is checked the same way, unless it states an omission.
-const SUGGESTION_ANY_INCLUSION = /\b(?:includ(?:es|ed|ing)|list(?:s|ed)|keeps|kept|adds|added|retains|retained|preserves|preserved|carries|carried|shows|shown|appears?)\b/i;
-const SUGGESTION_OMISSION = /\b(?:left out|leaves out|omit\w*|not included|exclud\w*|dropped|removed|missing|absent|without)\b/i;
-const MID_SENTENCE_NAMED = /^(?:The|A|An|Every|Each|All|Your|My|This|That|These|Those|It|I|We|Also|Then|Finally)$/;
+// Two more phrasings the model uses to assert an inclusion: the document as the subject
+// ("The master resume includes X", "The resume lists X") and an enumeration ("Every role,
+// including X, is listed"). Advice, questions and conditionals ("Consider adding X",
+// "If you have X") never match, so they are never rewritten.
+const SUGGESTION_DOC_CLAIM = /^(?:the\s+)?(?:master(?:\s+resume)?|resume|packet|letter|cover letter|draft|application)\s+(?:also\s+|now\s+)?(?:includes|included|lists|listed|keeps|kept|adds|added|retains|retained|shows|carries|carried)\s+(.+)$/i;
+const SUGGESTION_ENUM_CLAIM = /^(?:every|each|all)\b[^,]*,\s*including\s+(.+?),\s*(?:is|are)\s+(?:listed|included|kept|shown|retained)\b/i;
 function suggestionItem(suggestion) {
   const text = String(suggestion ?? '');
-  const match = text.match(SUGGESTION_CLAIM) || text.match(SUGGESTION_SUBJECT_CLAIM);
-  if (!match) {
-    if (!SUGGESTION_ANY_INCLUSION.test(text) || SUGGESTION_OMISSION.test(text)) return null;
-    const named = text.replace(/[.;:!?]+$/, '').split(/[\s,()]+/)
-      .filter(word => /^[A-Z0-9]/.test(word) && !MID_SENTENCE_NAMED.test(word) && !SUGGESTION_GENERIC.has(suggestionText(word)) && suggestionText(word).length >= 2);
-    return named.length ? { item: text.replace(/[\s.;:!?]+$/, ''), named, sentence: true } : null;
-  }
+  const match = text.match(SUGGESTION_CLAIM) || text.match(SUGGESTION_SUBJECT_CLAIM) || text.match(SUGGESTION_DOC_CLAIM) || text.match(SUGGESTION_ENUM_CLAIM);
+  if (!match) return null;
   const item = match[1].replace(SUGGESTION_TAIL, '').replace(/[\s.;:!?]+$/, '').replace(/^(?:the|a|an|my|your|their|his|her|our)\s+/i, '').trim();
-  if (!item || item.length > 120 || item.split(/\s+/).length > 12) return null;
-  const named = item.split(/[\s,()]+/).filter(word => /^[A-Z0-9]/.test(word) && !SUGGESTION_GENERIC.has(suggestionText(word)) && suggestionText(word).length >= 2);
+  if (!item || item.length > 160 || item.split(/\s+/).length > 18) return null;
+  const named = item.split(/[\s,();:]+/).filter(word => /^[A-Z0-9]/.test(word) && !SUGGESTION_GENERIC.has(suggestionText(word)) && suggestionText(word).length >= 2);
   return named.length ? { item, named } : null;
 }
 export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
@@ -107,10 +103,6 @@ export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
     const claim = suggestionItem(suggestion);
     if (!claim) return suggestion;
     if (claim.named.every(word => haystack.includes(` ${suggestionText(word)} `))) return suggestion;
-    if (claim.sentence) {
-      const missing = claim.named.filter(word => !haystack.includes(` ${suggestionText(word)} `));
-      return `Left out: ${missing.join(' ')}. (A note claimed it was included, but it is not in the resume or letter.)`;
-    }
     const item = claim.item.charAt(0).toUpperCase() + claim.item.slice(1);
     return `Left out: ${item}.`;
   });

@@ -270,9 +270,15 @@ test('suggestion guard: an inclusion claimed anywhere in the sentence is checked
   const { guardSuggestions } = await import('../plainhand/workflow.mjs');
   const resume = [{ section: 'Experience', heading: { org: 'Fictional Biologics', title: 'Scientist', location: '', dates: '2021 to 2026' }, text: 'Ran potency assays at Fictional Biologics.' }];
   const [master] = guardSuggestions(['The master includes the Example Bioinstruments role and the Lean Six Sigma Green Belt certification.'], resume, '');
-  assert.match(master, /^Left out: Example Bioinstruments Lean Six Sigma Green Belt\./);
+  assert.match(master, /^Left out: Example Bioinstruments role and the Lean Six Sigma Green Belt certification\./);
   const [every] = guardSuggestions(['Every role, including Example Bioinstruments, is listed with its title and dates.'], resume, '');
   assert.match(every, /^Left out: Example Bioinstruments\./);
   assert.deepEqual(guardSuggestions(['The Fictional Biologics role is listed with its dates.'], resume, ''), ['The Fictional Biologics role is listed with its dates.']);
   assert.deepEqual(guardSuggestions(['Left out the Example Bioinstruments role because it predates the posting.'], resume, ''), ['Left out the Example Bioinstruments role because it predates the posting.']);
+});
+
+test('suggestion guard leaves advice, questions and conditionals alone', async () => {
+  const { guardSuggestions } = await import('../plainhand/workflow.mjs');
+  const resume = [{ section: 'Experience', heading: { org: 'Fictional Biologics', title: 'Scientist', location: '', dates: '2021 to 2026' }, text: 'Ran potency assays.' }];
+  for (const note of ['Consider adding AWS if your resume lists it.', 'If you have Python experience, it appears relevant.', 'The posting lists Kubernetes; your sources do not show it.', 'Could you confirm whether SQL is listed elsewhere?']) assert.deepEqual(guardSuggestions([note], resume, ''), [note]);
 });
