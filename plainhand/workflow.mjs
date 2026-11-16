@@ -667,13 +667,13 @@ export class Workflow {
           }
           // The candidate's newest-first setting is a rule, not a hope: the roles are
           // put in date order here. "match" order and revisions stay as drafted.
-          if (!revising && roleOrderOf(state) === 'recent') packet.resume = orderRolesNewestFirst(packet.resume);
+          if (!revising && roleOrderOf(state) === 'recent') packet.resume = orderRolesNewestFirst(packet.resume, { sections: formatSections });
           // Deterministic findings ride the existing one retry, before humanize and
           // review so their resume:<index> keys name the entries that will ship:
           // a misplaced accomplishment section, a plural the item's own evidence never
           // uses (scope stretch), and a credential the posting names or relates to that
           // the resume left out.
-          scopeGaps = pluralScopeIssues(packet, { sources: context.sources });
+          scopeGaps = pluralScopeIssues(packet, { sources: context.sources, allowVerbs: revising || (line?.allowedStretches || []).some(kind => ['ownership', 'level', 'scope'].includes(kind)) });
           // On a revision the candidate's request decides what the resume keeps, so a
           // credential they asked to remove is never asked back, carried or noted.
           credentialGaps = revising ? [] : relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
@@ -765,7 +765,7 @@ export class Workflow {
           // The final attempt never blocks on these quality findings; it records them
           // for the candidate. Recomputed on the rewritten text, so a humanizer pass
           // cannot hide a count or credential finding behind changed wording.
-          const finalScope = pluralScopeIssues(packet, { sources: context.sources });
+          const finalScope = pluralScopeIssues(packet, { sources: context.sources, allowVerbs: revising || (line?.allowedStretches || []).some(kind => ['ownership', 'level', 'scope'].includes(kind)) });
           const finalCredentials = revising ? [] : relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
           if (placement.ambiguous) packet.suggestions = [accomplishmentSuggestion(placement), ...packet.suggestions].slice(0, 40);

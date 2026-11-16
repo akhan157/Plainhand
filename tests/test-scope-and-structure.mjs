@@ -425,3 +425,19 @@ test('review e21dd19: the issuer fallback needs the written name to spell the ac
   assert.equal(packetHasCredential({ text: 'CQE (ASQ), 2019' }, r('Certified Quality Auditor, ASQ, 2019')), false);
   assert.equal(packetHasCredential({ text: 'CKA (CNCF), 2022' }, r('Certified Kubernetes Administrator, CNCF, 2022')), true);
 });
+
+test('a raised verb its own evidence never uses is a scope stretch, unless the candidate allows it', () => {
+  const packet = {
+    resume: [
+      { section: 'Summary', heading: null, text: 'Mechanical engineer who built a lightweight chassis for a Formula SAE team.', evidence: [{ sourceId: 'cv', quote: 'Designed and tested a lightweight chassis for the Formula SAE team.' }] },
+      { section: 'Experience', heading: null, text: 'Led weekly design reviews.', evidence: [{ sourceId: 'cv', quote: 'Led weekly design reviews for the team.' }] },
+    ],
+    coverLetter: 'I built a LIMS that tracked 1,200 samples.', answers: [],
+  };
+  const sources = [{ id: 'cv', text: 'Designed and tested a lightweight chassis for the Formula SAE team. Led weekly design reviews for the team. I built a LIMS that tracked 1,200 samples.' }];
+  const issues = pluralScopeIssues(packet, { sources });
+  assert.deepEqual(issues.map(issue => [issue.kind, issue.index, issue.word]), [['resume', 0, 'built']]);
+  assert.match(scopeRetryFeedback(issues).join('\n'), /"built" is a stronger verb than the cited evidence uses/);
+  assert.match(scopeSuggestions(issues)[0], /says "built", a verb its cited evidence does not use/);
+  assert.deepEqual(pluralScopeIssues(packet, { sources, allowVerbs: true }), []);
+});

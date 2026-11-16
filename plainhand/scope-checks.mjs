@@ -133,22 +133,56 @@ const quotesOf = item => (Array.isArray(item?.evidence) ? item.evidence : []).ma
 // letter has no per-sentence evidence, so its reference is the candidate's whole
 // source context when the caller supplies it; a plural any source uses is allowed.
 // Without sources, the packet's evidence quotes are the fallback reference.
-export function pluralScopeIssues(packet, { sources = [] } = {}) {
+// Raised verbs: a line that says the candidate built, led or managed something when
+// its own evidence never uses that verb in any form ("designed and tested a chassis"
+// becomes "built a chassis"). Each entry lists the forms that support it.
+const RAISED_VERBS = [
+  ['built', /\b(?:build|builds|built|building|builder)\b/],
+  ['led', /\b(?:lead|leads|led|leading|leader|leadership)\b/],
+  ['managed', /\b(?:manage|manages|managed|managing|manager|management)\b/],
+  ['launched', /\b(?:launch|launches|launched|launching)\b/],
+  ['founded', /\b(?:found|founded|founder|co-founded|cofounded)\b/],
+  ['headed', /\b(?:head|heads|headed|heading)\b/],
+  ['directed', /\b(?:direct|directs|directed|directing|director)\b/],
+  ['architected', /\b(?:architect|architects|architected|architecture)\b/],
+  ['spearheaded', /\b(?:spearhead|spearheads|spearheaded)\b/],
+  ['oversaw', /\b(?:oversee|oversees|oversaw|overseen|overseeing|oversight)\b/],
+  ['supervised', /\b(?:supervise|supervises|supervised|supervising|supervisor)\b/],
+];
+const RAISED_FORMS = new Map([
+  ['built', /\b(?:built|builds|building)\b/], ['led', /\b(?:led|leads|leading)\b/], ['managed', /\b(?:managed|manages|managing)\b/],
+  ['launched', /\b(?:launched|launches)\b/], ['founded', /\b(?:founded|co-founded|cofounded)\b/], ['headed', /\b(?:headed)\b/],
+  ['directed', /\b(?:directed|directs)\b/], ['architected', /\b(?:architected)\b/], ['spearheaded', /\b(?:spearheaded|spearheads)\b/],
+  ['oversaw', /\b(?:oversaw|oversees|overseeing)\b/], ['supervised', /\b(?:supervised|supervises|supervising)\b/],
+]);
+function verbItem({ kind, index, text, quotes }) {
+  const value = String(text ?? '').toLowerCase(), reference = quotes.join(' ').toLowerCase();
+  if (!reference.trim()) return [];
+  return RAISED_VERBS.flatMap(([verb, supported]) => {
+    const form = value.match(RAISED_FORMS.get(verb));
+    return form && !supported.test(reference) ? [{ kind, index, word: form[0], verb, text: String(text ?? ''), quote: quotes[0] || '' }] : [];
+  });
+}
+
+// allowVerbs: the candidate chose stronger ownership or level wording (their line's
+// allowedStretches), so raised verbs are their informed choice, not a stretch.
+export function pluralScopeIssues(packet, { sources = [], allowVerbs = false } = {}) {
+  const verbs = item => (allowVerbs ? [] : verbItem(item));
   const resume = Array.isArray(packet?.resume) ? packet.resume : [];
   const answers = Array.isArray(packet?.answers) ? packet.answers : [];
   const issues = [];
   resume.forEach((entry, index) => {
     if (!String(entry?.text ?? '').trim()) return;
-    issues.push(...scanItem({ kind: 'resume', index, text: entry.text, quotes: quotesOf(entry) }));
+    issues.push(...scanItem({ kind: 'resume', index, text: entry.text, quotes: quotesOf(entry) }), ...verbs({ kind: 'resume', index, text: entry.text, quotes: quotesOf(entry) }));
   });
   answers.forEach((entry, index) => {
     if (!String(entry?.answer ?? '').trim()) return;
-    issues.push(...scanItem({ kind: 'answer', index, text: entry.answer, quotes: quotesOf(entry) }));
+    issues.push(...scanItem({ kind: 'answer', index, text: entry.answer, quotes: quotesOf(entry) }), ...verbs({ kind: 'answer', index, text: entry.answer, quotes: quotesOf(entry) }));
   });
   const sourceText = (Array.isArray(sources) ? sources : []).map(source => String(source?.text ?? '')).filter(Boolean);
   const letterQuotes = sourceText.length ? sourceText : [...resume.flatMap(quotesOf), ...answers.flatMap(quotesOf)];
   if (letterQuotes.length && String(packet?.coverLetter ?? '').trim()) {
-    sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes })));
+    sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: letterQuotes })));
   }
   return issues;
 }
@@ -166,13 +200,18 @@ function around(text, word) {
 export function scopeRetryFeedback(issues) {
   if (!issues.length) return [];
   return [
-    'Keep counts and number exactly as the sources state: a plural the evidence does not use is a scope stretch.',
-    ...issues.map(issue => `${label(issue)}: "${issue.word}" must stay "${issue.singular}" unless the evidence states a count; the cited evidence says "${issue.singular}". Sentence: "${around(issue.text, issue.word)}"`),
+    'Keep counts, number and verbs exactly as the sources state: a plural or a stronger verb (built, led, managed) the evidence does not use is a scope stretch.',
+    ...issues.map(issue => issue.verb
+      ? `${label(issue)}: "${issue.word}" is a stronger verb than the cited evidence uses; use the evidence's own verb (for example "designed", "tested", "worked on") unless a source says "${issue.verb}". Sentence: "${around(issue.text, issue.word)}"`
+      : `${label(issue)}: "${issue.word}" must stay "${issue.singular}" unless the evidence states a count; the cited evidence says "${issue.singular}". Sentence: "${around(issue.text, issue.word)}"`),
   ];
 }
 
 export function scopeSuggestions(issues) {
   // Quote the line, never an index: a reviewer counting entries from zero would read
   // "Resume entry 2" as a different line and reject the note as false.
-  return issues.map(issue => `Scope check (not a factual issue): ${issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line'} "${around(issue.text, issue.word)}" says "${issue.word}" where its cited evidence says "${issue.singular}". Keep the singular or add evidence for more than one.`);
+  const where = issue => issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line';
+  return issues.map(issue => issue.verb
+    ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a verb its cited evidence does not use. Use the evidence's own verb or add a source that says "${issue.verb}".`
+    : `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}" where its cited evidence says "${issue.singular}". Keep the singular or add evidence for more than one.`);
 }

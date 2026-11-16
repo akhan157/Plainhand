@@ -338,31 +338,47 @@ function header(profile, format) {
 // "liquidhandling", so the line no longer matches what the candidate approved.
 const HYPHENATED = /[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+/g;
 const prose = text => esc(text).replace(HYPHENATED, word => `<span class="nobreak">${word}</span>`);
-// Newest role first, by the candidate's own dates. Each role keeps its lines together
-// and in their order; roles whose dates cannot be read, and lines with no heading,
-// keep their place after the dated roles. Only the Experience section moves.
-const EXPERIENCE_SECTION = /^(?:experience|work experience|professional experience|relevant experience|employment(?: history)?|work history|career(?: history)?)$/i;
-export function orderRolesNewestFirst(resume) {
+// Newest role first, by start date, the definition the rest of Plainhand uses (two
+// roles that start the same year may go either way). A draft already in that order
+// is left exactly as drafted. Otherwise dated roles are sorted among the slots dated
+// roles occupy; a role whose dates cannot be read keeps its slot; a line with no
+// heading travels with the role above it. Every section named like experience
+// counts, including a name the candidate's own format uses.
+const EXPERIENCE_NAME = /experience|employment|work history|career|professional history/i;
+export function orderRolesNewestFirst(resume, { sections = [] } = {}) {
   const entries = Array.isArray(resume) ? resume : [];
-  const isExperience = entry => EXPERIENCE_SECTION.test(String(entry?.section ?? '').trim());
-  const first = entries.findIndex(isExperience);
-  if (first < 0) return entries;
-  const experience = entries.filter(isExperience);
-  const groups = [];
-  for (const entry of experience) {
-    const key = entry?.heading && typeof entry.heading === 'object' ? headingKey(entry.heading) : null;
-    const group = key && groups.find(item => item.key === key);
-    if (group) group.rows.push(entry);
-    else groups.push({ key, rows: [entry], dates: key ? parseDates(entry.heading.dates) : null });
+  const named = new Set((Array.isArray(sections) ? sections : []).map(name => String(name ?? '').trim().toLowerCase()).filter(name => EXPERIENCE_NAME.test(name)));
+  const isExperience = entry => {
+    const name = String(entry?.section ?? '').trim();
+    return EXPERIENCE_NAME.test(name) || named.has(name.toLowerCase());
+  };
+  const out = [...entries];
+  // Each run of consecutive experience rows is one section; order within it.
+  for (let i = 0; i < out.length;) {
+    if (!isExperience(out[i])) { i++; continue; }
+    let j = i;
+    while (j < out.length && isExperience(out[j]) && String(out[j].section) === String(out[i].section)) j++;
+    const run = out.slice(i, j);
+    const groups = [];
+    for (const entry of run) {
+      const key = entry?.heading && typeof entry.heading === 'object' ? headingKey(entry.heading) : null;
+      const existing = key && groups.find(group => group.key === key);
+      if (existing) existing.rows.push(entry);
+      else if (!key && groups.length) groups.at(-1).rows.push(entry);
+      else groups.push({ key, rows: [entry], dates: key ? parseDates(entry.heading.dates) : null });
+    }
+    const dated = groups.filter(group => group.dates && Number.isFinite(Number(group.dates.start)));
+    const inOrder = dated.every((group, index) => !index || Number(group.dates.start) <= Number(dated[index - 1].dates.start));
+    if (!inOrder) {
+      const sorted = [...dated].sort((a, b) => (Number(b.dates.start) - Number(a.dates.start))
+        || ((b.dates.ongoing ? Infinity : Number(b.dates.end ?? b.dates.start)) - (a.dates.ongoing ? Infinity : Number(a.dates.end ?? a.dates.start))));
+      let next = 0;
+      const placed = groups.map(group => (dated.includes(group) ? sorted[next++] : group));
+      out.splice(i, run.length, ...placed.flatMap(group => group.rows));
+    }
+    i = j;
   }
-  const rank = group => !group.dates ? -Infinity : group.dates.ongoing ? Infinity : Number(group.dates.end ?? group.dates.start ?? -Infinity);
-  const ordered = groups.map((group, index) => ({ group, index })).sort((a, b) => {
-    const dated = Number(Boolean(b.group.dates)) - Number(Boolean(a.group.dates));
-    if (dated) return dated;
-    return rank(b.group) - rank(a.group) || Number(b.group.dates?.start ?? 0) - Number(a.group.dates?.start ?? 0) || a.index - b.index;
-  }).flatMap(({ group }) => group.rows);
-  const rest = entries.filter(entry => !isExperience(entry));
-  return [...rest.slice(0, first), ...ordered, ...rest.slice(first)];
+  return out;
 }
 
 export function renderResumeHtml(format, profile, packet, title = 'Resume') {
