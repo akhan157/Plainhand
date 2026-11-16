@@ -74,8 +74,11 @@ const yearOf = text => { const match = String(text || '').match(YEAR); return ma
 // The graduation year a degree line states: the first year it gives, read as a lone
 // year or as a range's end, so a later job year or range never replaces it.
 const LONE_YEAR = /(?<![$\d]|[–—-]\s*|\bto\s+|\buntil\s+)\b(?:19|20)\d{2}\b(?![%\d])(?!\s*(?:[–—-]|to\b|until\b))/i;
-function graduationYearOf(text) {
-  const value = String(text || '');
+function graduationYearOf(text, from = 0) {
+  // Years before the degree name belong to earlier work, so reading starts at the
+  // degree; a line with no year after it falls back to the whole line.
+  const whole = String(text || '');
+  const value = from > 0 && /\b(?:19|20)\d{2}\b/.test(whole.slice(from)) ? whole.slice(from) : whole;
   // Whichever comes first belongs to the degree: "MSc in 2018 ... 2019 to 2021" is
   // 2018, "MSc from 2019 to 2021, then joined X in 2022" is 2021.
   const lone = value.match(LONE_YEAR), range = value.match(RANGE);
@@ -169,7 +172,7 @@ function degreeFact(sourceId, sentence) {
   const institution = sentence.match(INSTITUTION);
   return {
     sourceId, quote: sentence, level: degreeLevel(degree[0]),
-    year: graduationYearOf(sentence),
+    year: graduationYearOf(sentence, degree.index),
     org: institution ? normalizeOrg(institution[1]) : null,
   };
 }
@@ -177,7 +180,7 @@ function profileGraduationFact(profile) {
   const text = String(profile?.graduation || '').trim();
   if (!text) return null;
   const degree = degreeMatch(text);
-  const year = graduationYearOf(text);
+  const year = graduationYearOf(text, degree ? degree.index : 0);
   if (!degree && !year) return null;
   const institution = text.match(INSTITUTION);
   return {

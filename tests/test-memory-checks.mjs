@@ -349,3 +349,10 @@ test('review e21dd19: the first year on the degree line is its year, lone or a r
   const degree = (text, graduation) => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
   assert.equal(degree('I completed my MSc in Data Science from 2019 to 2021, then joined Example Health in 2022.', 'MSc in Data Science, 2021'), 0);
 });
+
+test('review e0d3e5e: an earlier job range never becomes the degree year', () => {
+  const degree = (text, graduation) => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('After working at Example Freight Systems from 2008 to 2012, I earned my Bachelor of Science in Accounting in 2013.', '2013'), 0);
+  assert.equal(degree('I worked at Example Health from 2018 to 2022 and completed my BSc in Computer Science in 2019.', '2019'), 0);
+  assert.equal(degree('I worked at Example Health from 2016 to 2020, and graduated with a BSc in Computer Science in 2021.', '2021'), 0);
+});
