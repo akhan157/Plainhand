@@ -409,13 +409,20 @@ test('what each provider call is given: no excluded data, credentials, answer ba
     const sampleSources = [evaluateInput, prepareInput, standardInput, ...reviewInputs].map(input => input.data.context.sources.find(source => source.id === 'writing-samples')).filter(Boolean);
     assert.ok(sampleSources.length >= 1 && sampleSources[0].text.includes(SAMPLE), 'the sample is shared as voice');
     for (const input of inputs) for (const citation of evidenceCitations(input.data)) assert.ok(!['writing-samples', 'reviewed-understanding'].includes(citation.entry?.sourceId), `${citation.at} never cites voice or model summary as evidence`);
-    // The candidate's own profile fields travel in the profile source until the
-    // candidate excludes them; the switch below proves the exclusion works. Third-party
-    // contact details are what never travel by default.
-    assert.ok(evaluateInput.data.context.sources.find(source => source.id === 'profile').text.includes(CANDIDATE_EMAIL), 'a shared profile field travels in the profile source');
+    // The candidate's email and phone never travel to a provider: the contact header is
+    // rendered locally and form fill reads the profile locally. Every other shared field
+    // still travels. The switch below proves ordinary exclusions still work.
+    for (const input of [evaluateInput, prepareInput, standardInput, ...reviewInputs]) {
+      const profileText = input.data.context.sources.find(source => source.id === 'profile').text;
+      for (const secret of [CANDIDATE_EMAIL, CANDIDATE_PHONE]) {
+        assert.ok(!profileText.includes(secret), `the profile source never carries contact details: ${secret}`);
+        assert.ok(!JSON.stringify(input.data).includes(secret), `no provider payload carries contact details: ${secret}`);
+      }
+      assert.ok(profileText.includes('Test Graduate'), 'the rest of the profile still travels');
+    }
 
     // Narrow what is shared, then capture a fresh call: excluded data is gone.
-    await h.ui('context.exclude', { sources: ['writing-samples', 'interview'], fields: ['email', 'phone'] });
+    await h.ui('context.exclude', { sources: ['writing-samples', 'interview'], fields: ['email', 'phone', 'location'] });
     const before = h.agent.inputs.length;
     await h.ui('tasks.standard', {});
     await h.app.workflow.queue;
@@ -424,7 +431,9 @@ test('what each provider call is given: no excluded data, credentials, answer ba
     assert.deepEqual(excludedInput.data.context.sources.map(source => source.id), ['profile', 'cv', 'narrative'], 'excluded sources are removed; the saved narrative still travels');
     const excluded = JSON.stringify(excludedInput.data);
     for (const secret of [SAMPLE, injectedInstructions, CANDIDATE_EMAIL, CANDIDATE_PHONE]) assert.ok(!excluded.includes(secret), `excluded data is absent: ${secret.slice(0, 24)}`);
-    assert.ok(!excludedInput.data.context.sources.find(source => source.id === 'profile').text.includes(CANDIDATE_EMAIL), 'the excluded profile email is not in the profile source');
+    const excludedProfile = excludedInput.data.context.sources.find(source => source.id === 'profile').text;
+    assert.ok(!excludedProfile.includes(CANDIDATE_EMAIL), 'the contact email is not in the profile source');
+    assert.ok(!excludedProfile.includes('Boston'), 'an excluded profile field is not in the profile source');
   } finally { await h.close(); }
 });
 

@@ -11,6 +11,10 @@ export function requireText(value, label, max = 100000) {
 }
 export const cleanText = (value, max = 100000) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 export const emptyProfile = () => ({ name: '', email: '', phone: '', location: '', timezone: '', roles: '', compensation: '', eligibility: '', graduation: '', links: '', resume: '', story: '', voice: '', constraints: '' });
+// Contact details are for the candidate's own documents and local form fill, never
+// for a provider prompt. This holds even when the candidate shares everything.
+export const PRIVATE_PROFILE_FIELDS = Object.freeze(['email', 'phone']);
+const PRIVATE_FIELDS = new Set(PRIVATE_PROFILE_FIELDS);
 export function initialState() {
   return { version: 1, revision: 0, profile: emptyProfile(), provider: null, jobs: [], sources: [], tasks: [], conversation: [], understanding: null, events: [] };
 }
@@ -103,10 +107,11 @@ export class Workspace {
   async context(state) {
     // The candidate decides what reaches the provider: excluded sources and profile fields
     // are left out here, which also changes the fingerprint and so invalidates approvals.
+    // Email and phone are always left out; documents and form fill read them locally.
     const prefs = state.contextPrefs || {};
     const excludedFields = new Set(prefs.excludedFields || []), excludedSources = new Set(prefs.excludedSources || []);
     const sources = [
-      { id: 'profile', text: JSON.stringify(Object.fromEntries(Object.entries(state.profile).filter(([key]) => key !== 'resume' && !excludedFields.has(key))), null, 2) },
+      { id: 'profile', text: JSON.stringify(Object.fromEntries(Object.entries(state.profile).filter(([key]) => key !== 'resume' && !PRIVATE_FIELDS.has(key) && !excludedFields.has(key))), null, 2) },
       { id: 'cv', text: state.profile.resume || await this.read('cv.md') },
     ];
     const interview = state.conversation.filter(m => m.role === 'user').map(m => m.text).join('\n\n');

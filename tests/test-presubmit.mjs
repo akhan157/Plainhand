@@ -14,8 +14,8 @@ const field = (key, label, extra = {}) => ({ key, label, type: 'text', required:
 test('standard fields map from the profile; names a person chooses and legal questions are left to them', () => {
   const fields = [field('a', 'First Name'), field('b', 'Last Name'), field('c', 'Legal Name'), field('d', 'Name Pronunciation | How do you pronounce your name?'), field('e', 'Preferred Name'),
     field('f', 'LinkedIn Profile'), field('g', 'GitHub URL'), field('h', 'Portfolio URL'), field('i', 'Current location ✱'), field('j', 'Country'), field('k', 'Will you now or in the future require sponsorship?'),
-    field('l', 'Cover Letter', { type: 'file' }), field('m', 'Resume/CV', { type: 'file' }), field('n', 'Attach', { type: 'file' }), field('o', 'Phone')];
-  assert.deepEqual(defaultFieldAnswers(fields, profile), { a: 'Riley', b: 'Chen', c: 'Riley Chen', f: 'https://www.linkedin.com/in/riley-example', g: 'https://github.com/riley-example', h: 'https://riley.example', i: 'Boston, US', l: '__cover_letter__', m: '__resume__', o: '+1 617 555 0100' });
+    field('l', 'Cover Letter', { type: 'file' }), field('m', 'Resume/CV', { type: 'file' }), field('n', 'Attach', { type: 'file' }), field('o', 'Phone'), field('p', 'Email', { type: 'email' })];
+  assert.deepEqual(defaultFieldAnswers(fields, profile), { a: 'Riley', b: 'Chen', c: 'Riley Chen', f: 'https://www.linkedin.com/in/riley-example', g: 'https://github.com/riley-example', h: 'https://riley.example', i: 'Boston, US', l: '__cover_letter__', m: '__resume__', o: '+1 617 555 0100', p: 'riley@example.invalid' });
   assert.deepEqual(profileLinks({ links: '' }), { linkedin: '', github: '', website: '' });
   assert.deepEqual(defaultFieldAnswers([field('x', 'LinkedIn Profile')], { ...profile, links: '' }), {}, 'empty values are never entered');
 });

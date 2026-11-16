@@ -68,6 +68,8 @@ test('the reviewed packet wins over the reusable bank, which fills only unanswer
   const fields = [
     { key: 'a', label: 'Why this role?', type: 'text' },
     { key: 'b', label: 'Describe an improvement you made', type: 'text' },
+    { key: 'email', label: 'Email', type: 'email' },
+    { key: 'phone', label: 'Phone', type: 'text' },
   ];
   const packet = { answers: [{ question: 'Why this role?', answer: 'Packet answer.', evidence }] };
   const bankAnswers = [
@@ -77,6 +79,8 @@ test('the reviewed packet wins over the reusable bank, which fills only unanswer
   const answers = suggestFormAnswers(fields, { name: 'Test Candidate', email: 'a@example.invalid', phone: '+1 202 555 0189' }, packet, { bank: bankAnswers, asOf: '2026-10-21' });
   assert.equal(answers.a, 'Packet answer.');
   assert.equal(answers.b, 'Bank reuse.');
+  assert.equal(answers.email, 'a@example.invalid', 'contact details still fill forms locally');
+  assert.equal(answers.phone, '+1 202 555 0189', 'contact details still fill forms locally');
 });
 
 const SOURCES = [{ id: 'cv', text: 'Designed and tested a lightweight chassis for a Formula SAE team.' }];
