@@ -1,11 +1,18 @@
 {
-  "version": 2,
-  "scorerVersion": 2,
-  "previous": {
-    "version": 1,
-    "commit": "00ce1bfbffa4ec0edec6045f0caf3b0b5333384f",
-    "note": "v1 baseline; its evidence is re-scored offline with scripts/rescore.mjs and reported beside v2, never mixed."
-  },
+  "version": 3,
+  "scorerVersion": 3,
+  "previous": [
+    {
+      "version": 1,
+      "commit": "00ce1bfbffa4ec0edec6045f0caf3b0b5333384f",
+      "note": "v1 live baseline; re-scored offline with scripts/rescore.mjs and reported beside later versions, never mixed."
+    },
+    {
+      "version": 2,
+      "commit": "5e4a000",
+      "note": "v2 freeze; never run live."
+    }
+  ],
   "note": "Frozen baseline manifest. The baseline SHA is the commit containing this file. Any change to a hashed file invalidates the baseline and requires a re-freeze.",
   "design": {
     "commit": "b6c0b562732b45455e4709e5e390fe00d2a4874d",
@@ -14,11 +21,13 @@
   "files": {
     "docs/internal/lanes/measurement-design/ASSIGNMENT.md": "66bec864c1193cb58c21672b3563759d45ff97f859b68e1f5ec769285d217fc8",
     "docs/internal/lanes/measurement-design/REVIEW.md": "224a5be1414a3d6a7b5d33e1f5b42dd9eae0d7dab5e1c3dd5750822c2d2fd9da",
-    "plainhand/evaluation/corpus.mjs": "ed218cdace2bb8c401f37a07e4d55cb15c66d05a4ec4ce7d13d2ad15d033d81e",
+    "plainhand/evaluation/corpus.mjs": "4ebc26b2d7e12439e3648c75ae232022365861145aaab37dce1e5b351786417d",
     "plainhand/evaluation/corpus-holdout.mjs": "ac9a751ef1de26edeacb0c7e04fb05cc077c4b57f25b35a66a0e9f71e7f6dfab",
-    "plainhand/evaluation/score.mjs": "50f960e05624007555c430f2833d78a7602c9ee3c4bce074ecc2a91ef57dce0e",
-    "plainhand/evaluation/agent.mjs": "65b76221129afc075adb3ae98220b593782d82c965826426e10a024227b904e3",
-    "plainhand/evaluation/runner.mjs": "7bcf51b55d6da736cc017040df358dacfcb7dff7451e33864200b95c49e5c523",
+    "plainhand/evaluation/corpus-holdout-2.mjs": "633c5389839360d023ee2c0eb9c93b22232904f9ae220ee2a485186f3e185aeb",
+    "plainhand/evaluation/roles.mjs": "1a94be76493f6aed4c63ed6af09a7ae37be2078f09eda6e64803aaf7a17b6e1b",
+    "plainhand/evaluation/score.mjs": "5cae8cdde0392f58ef0013055f5b82d34235f56a40aa089e2e8454b6551a49f4",
+    "plainhand/evaluation/agent.mjs": "21ac78e9fb290c146cb65e815968db10439e0b13b841f42f1c889766fe2ad458",
+    "plainhand/evaluation/runner.mjs": "c673da79bc0f2ab3a53be15df8e4fe035cb75d178d2299374e1fc08f9a75ae7f",
     "plainhand/evaluation/claims.mjs": "de3f9ad0aff708f2c947f0407ed4de315e1e71e973ef311d0cab31fda16b093a",
     "plainhand/evaluation/judge.mjs": "face16249419325db7dafbf33b9a8212bcd3b99f1f1db5231c27bdf5eb2fd5a2",
     "plainhand/evaluation/pdf-evidence.mjs": "ca62d6cc967fbddeb3c849210ecc9b982b855708781d089515c122021942d3e4",
@@ -31,13 +40,13 @@
     "plainhand/claim-calibration.mjs": "3611666d8eed1b7b3f9847e6805b7e5068c026b2b86e052c0d2d169945c2f0e8",
     "plainhand/store.mjs": "92acfba2afed463cb4f68eac61423be589a46d5c4386d5a9cfae63cac3d69d37",
     "plainhand/usage.mjs": "cfa48e8a6fac243230a3edbdf7d8ef48339595ead20465f3f969f674db673699",
-    "scripts/rescore.mjs": "ccab14e1450668e15ebbe8570f0320a0aa062bbad430b32de0536980d16b7830",
+    "scripts/rescore.mjs": "40807fed75200ddbb69314908602e0a18ca751c3b98cc706bb412f91d905ac56",
     "benchmarks/benchmark-eval.mjs": "3e521cadf89a7673512533e1bff85f6bba24f0861011eabbd5388515f4ed5c38",
     "benchmarks/benchmark-judge.mjs": "d7fc0268f00da80b98d0df07d27d7ca987225763618fe81f29929c460376ed2d"
   },
   "scenarios": {
-    "count": 59,
-    "idsSha256": "98ae89d6a7e433464a3bfff45c74d1d863ecdb59729b1112901dea0edac3c07d",
+    "count": 67,
+    "idsSha256": "7bac48a0c58bca88411038331cfcd8218db6ea25abf807ed025a992cc866a64f",
     "ids": [
       "profile-mech-grad",
       "profile-career-changer",
@@ -97,7 +106,15 @@
       "holdout-mismatch",
       "holdout-journey-stem",
       "borderline-swe",
-      "borderline-fin"
+      "borderline-fin",
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
     ],
     "expectedFailures": [
       "profile-effect-fin-minimal",
@@ -114,7 +131,25 @@
       "holdout-mismatch",
       "holdout-journey-stem",
       "borderline-swe",
-      "borderline-fin"
+      "borderline-fin",
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
+    ],
+    "heldOutSet2": [
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
     ],
     "seenHeldOut": {
       "ids": [
@@ -148,7 +183,15 @@
       "holdout-mismatch",
       "holdout-journey-stem",
       "borderline-swe",
-      "borderline-fin"
+      "borderline-fin",
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
     ]
   },
   "controlledGate": {
@@ -177,20 +220,19 @@
     },
     "smoke": {
       "scenarios": [
-        "holdout-oldrole-fin-systems",
-        "holdout-oldrole-fin-forecast",
-        "holdout-oldrole-stem-automation",
-        "holdout-oldrole-stem-ops",
-        "holdout-oldrole-tech-reliability",
-        "holdout-oldrole-tech-ml",
-        "holdout-mismatch",
-        "holdout-journey-stem",
-        "borderline-swe",
-        "borderline-fin",
+        "holdout2-oldrole-fin-recent",
+        "holdout2-oldrole-fin-match",
+        "holdout2-oldrole-tech-recent",
+        "holdout2-oldrole-tech-match",
+        "holdout2-newer-unrelated-stem",
+        "holdout2-skip-aero",
+        "holdout2-borderline-gmp",
+        "holdout2-journey-stem",
         "journey-sci"
       ],
       "repeat": 1,
-      "command": "node benchmarks/benchmark-eval.mjs --provider codex --scenarios holdout-oldrole-fin-systems,holdout-oldrole-fin-forecast,holdout-oldrole-stem-automation,holdout-oldrole-stem-ops,holdout-oldrole-tech-reliability,holdout-oldrole-tech-ml,holdout-mismatch,holdout-journey-stem,borderline-swe,borderline-fin,journey-sci --concurrency 1 --agent-timeout 900"
+      "note": "Unseen held-out set 2 plus journey-sci. Set 1 is seen; run it only to compare with the v1 baseline (rescore).",
+      "command": "node benchmarks/benchmark-eval.mjs --provider codex --scenarios holdout2-oldrole-fin-recent,holdout2-oldrole-fin-match,holdout2-oldrole-tech-recent,holdout2-oldrole-tech-match,holdout2-newer-unrelated-stem,holdout2-skip-aero,holdout2-borderline-gmp,holdout2-journey-stem,journey-sci --concurrency 1 --agent-timeout 900"
     },
     "pilot": "Pre-freeze: profile-effect-fin-built took 13 calls, 331k input and 3.7k output tokens, 163 s (EVIDENCE.codex_pilot)."
   },
@@ -219,6 +261,7 @@
   },
   "thresholds": {
     "existing": "unchanged: factCoverage >= 0.66, leadShare >= 0.67, Apply >= 4, Skip <= maxScore (default 3.9), zero absent claims/unsupported numbers/banned words, review/calibration and first-person gates",
+    "v3": "Lead share no longer gates: kept experience roles must follow the run roleOrder (recent: newest first by heading dates; match: the required-fact role first, rest newest first), and a role holding a required fact may not be dropped. Within-role curation is a diagnostic.",
     "v2": "An honest zero-match Skip (Skip band, gaps naming posting requirements) passes evidenceValid; PDF line matching picks the occurrence consistent with order so far. Reordered-line and Apply-without-evidence controls still fail.",
     "new": "Investigate within job.scoreBand with the below-4 prepare guard; recent-role jobs keep their retainFactIds",
     "proposed": "design §8.8, not approved; diagnostic only"
