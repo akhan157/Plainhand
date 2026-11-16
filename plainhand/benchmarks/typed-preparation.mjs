@@ -1,11 +1,12 @@
 import { hasEvidence, requireText } from '../store.mjs';
 import { PACKET_INSTRUCTION, REVIEW_INSTRUCTION } from '../agents.mjs';
+import { headingOnlyRow } from '../workflow.mjs';
 
 function validate(packet, context) {
   requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
   if (!Array.isArray(packet.resume) || !packet.resume.length || packet.resume.length > 60 || !Array.isArray(packet.answers) || packet.answers.length > 40 || !Array.isArray(packet.questions)) throw Error('Invalid packet structure.');
   for (const entry of [...packet.resume, ...packet.answers]) if (!hasEvidence(entry, context)) throw Error('Packet claim lacks valid source evidence.');
-  for (const entry of packet.resume) { requireText(entry.section, 'section', 100); requireText(entry.text, 'resume text', 10000); }
+  for (const entry of packet.resume) { requireText(entry.section, 'section', 100); if (!headingOnlyRow(entry)) requireText(entry.text, 'resume text', 10000); }
   for (const answer of packet.answers) { requireText(answer.question, 'question', 2000); requireText(answer.answer, 'answer', 15000); }
   for (const question of packet.questions) requireText(question, 'missing fact', 15000);
 }
