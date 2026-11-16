@@ -400,3 +400,10 @@ test('review 2c9f88e: a known issuer is never the designation, in either order',
   assert.deepEqual(dropCredentialInclusionClaims(['The certificate that the posting asks for in its second paragraph was not included.'], [{ text: 'CPA, 2021' }]),
     ['The certificate that the posting asks for in its second paragraph was not included.']);
 });
+
+test('review cba3b5c: an issuer-only group is never the credential; a shared negation covers its list', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (ASQ), 2019' }, [{ section: 'Certifications', heading: null, text: 'ASQ, 2019' }]), false);
+  assert.deepEqual(dropCredentialInclusionClaims(['The certificate was not added or listed.'], [{ text: 'CPA, 2021' }]), ['The certificate was not added or listed.']);
+});

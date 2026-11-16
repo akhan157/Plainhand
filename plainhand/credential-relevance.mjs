@@ -112,7 +112,7 @@ export function credentialName(text) {
   const paren = [...value.matchAll(/([A-Za-z])\s*\(([^)]*)\)/g)].flatMap(match => {
     const tokens = match[2].split(/[\s/]+/).filter(isAcronym);
     const own = tokens.filter(token => !ISSUER.has(token));
-    return own.length ? own : tokens.slice(-1);
+    return own;
   });
   const ownIsAcronym = ownWords.length >= 1 && ownWords.every(isAcronym);
   const inner = ownIsAcronym ? ownWords : ownWords.slice(1).filter(isAcronym);

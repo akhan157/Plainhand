@@ -326,3 +326,13 @@ test('review 2c9f88e: clause starters end the degree sentence; a year, bracket o
   for (const text of ['I completed my MSc. Then, in 2018, I joined Example Health.', 'I completed my MSc. Later, in 2018, I joined Example Health.', 'I completed my MSc. Afterwards, in 2018, I moved.']) assert.equal(degree(text), 0, text);
   for (const text of ['I hold an M.Sc. (2018) from Example University.', 'M.Sc. 2018, Example University.', 'M.Sc. — 2018 — Example University.', 'M.Sc. Computer Science at Example University — 2018.']) assert.equal(degree(text), 1, text);
 });
+
+test('review cba3b5c: a study range graduates at its end; contrastive starters end the degree sentence', () => {
+  const degree = (text, graduation = '2012') => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('M.Sc. 2019 – 2021, Example University.', '2021'), 0);
+  assert.equal(degree('Example University — MSc Biology — 2019 to 2021.', '2021'), 0);
+  assert.equal(degree('Example University — MSc Biology — 2019 to 2021.', '2012'), 1);
+  assert.equal(degree('I hold an M.Sc. 2019 was my first year at Example Health.'), 0);
+  assert.equal(degree('I completed my MSc. However, in 2018, I joined Example Health.'), 0);
+  assert.equal(degree('I completed my MSc. Therefore, in 2018, I joined.'), 0);
+});

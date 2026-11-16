@@ -163,7 +163,7 @@ export function dropRepairedOmissions(suggestions, added) {
 // out, so it is dropped. Advice and questions are not inclusion claims.
 const CREDENTIAL_NOUN_MENTION = /\b(?:certif\w*|licen[cs]\w*|credentials?)\b/i;
 // "was not added" reports an omission, not an inclusion.
-const NEGATED_INCLUSION = /(?:\b(?:not|never|no longer)|n['’]t)\s+(?:\w+ly\s+)?(?:been\s+)?(?:kept|retained|included|listed|shown|preserved|carried|added)\b/i;
+const NEGATED_INCLUSION = /(?:\b(?:not|never|no longer)|n['’]t)\s+(?:\w+ly\s+)?(?:been\s+)?(?:kept|retained|included|listed|shown|preserved|carried|added)\b|^\s*(?:,\s*)?(?:or|nor)\s/i;
 const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried|added|adds)\b/i;
 // `missing` holds the missing credentials; a note counts as being about one when it
 // uses a credential noun or names one of those credentials' own acronyms or name

@@ -42,7 +42,7 @@ const DEGREE_ABBREVIATION = new Set(['m.sc', 'b.sc', 'ph.d', 'msc', 'bsc']);
 // ends its heading field or leads into the school ("Computer Science — 2018",
 // "Computer Science at Example University"). A clause starter ("Then, in 2018, I
 // joined") is a new sentence, so its year is never read as a graduation year.
-const DEGREE_CONTINUES = /^\s*(?:[a-z]|[\d(—–]|(?!(?:Then|Later|Next|Afterwards?|Subsequently|Today|Meanwhile|Finally|Now|Before|After|Since|During|In|At|On|By|From)\b)(?:[A-Z][a-z]+\s+){0,5}[A-Z][a-z]+(?:\s*[—–,]|\s+(?:at|from|in|of)\s))/;
+const DEGREE_CONTINUES = /^\s*(?:[a-z]|\(\s*(?:19|20)\d{2}\s*\)|[—–]\s*(?:19|20)\d{2}\s*(?:[—–,.]|$)|(?:19|20)\d{2}\s*(?:[,)—–](?!\s*(?:19|20)\d{2})|\.?\s*$)|(?!(?:Then|Later|Next|Afterwards?|Subsequently|Today|Meanwhile|Finally|Now|Before|After|Since|During|In|At|On|By|From|However|Therefore|Thus|Instead|Still|Though|Although|Eventually|Overall|Also|Additionally)\b)(?:[A-Z][a-z]+\s+){0,5}[A-Z][a-z]+(?:\s*[—–,]|\s+(?:at|from|in|of)\s))/;
 function sentences(text) {
   const source = String(text || '');
   const found = [];
@@ -156,8 +156,10 @@ function degreeFact(sourceId, sentence) {
   if (!degree) return null;
   const institution = sentence.match(INSTITUTION);
   return {
+    // A study range ("2019 – 2021") graduates at its end, not its start.
     sourceId, quote: sentence, level: degreeLevel(degree[0]),
-    year: yearOf(sentence), org: institution ? normalizeOrg(institution[1]) : null,
+    year: (() => { const range = sentence.match(RANGE); return range && /^\d{4}$/.test(range[2]) ? Number(range[2]) : yearOf(sentence); })(),
+    org: institution ? normalizeOrg(institution[1]) : null,
   };
 }
 function profileGraduationFact(profile) {
