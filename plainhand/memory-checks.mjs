@@ -32,8 +32,9 @@ const MAX_QUOTE = 400;
 // A period after a single capital letter (B.S., Ph.D., U.S.) does not end a sentence;
 // splitting there would hide a degree from the year and institution that qualify it.
 const ABBREVIATION = new Set(['mr', 'mrs', 'ms', 'dr', 'prof', 'inc', 'ltd', 'co', 'vs', 'etc']);
-// A degree abbreviation ends a sentence unless the next word is lower-case: "M.Sc. in
-// Biology" continues, "I completed my MSc. I then worked" does not.
+// A degree abbreviation ends a sentence only before a word that starts a new clause:
+// "M.Sc. Computer Science — 2018" and "MSc. in Biology" continue, "I completed my MSc.
+// I then worked" does not.
 const DEGREE_ABBREVIATION = new Set(['m.sc', 'b.sc', 'ph.d', 'msc', 'bsc']);
 function sentences(text) {
   const source = String(text || '');
@@ -51,7 +52,7 @@ function sentences(text) {
       const before = source.slice(start, index);
       const word = before.match(/([A-Za-z.]+)$/)?.[1] || '';
       if (/\b[A-Z]$/.test(before) || ABBREVIATION.has(word.toLowerCase())) continue;
-      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && /^\s*[a-z]/.test(source.slice(index + 1))) continue;
+      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && !/^\s*(?:I|We|They|It|He|She|My|Our|This|That|Then|After|Later|Next|Since|From)\b/.test(source.slice(index + 1))) continue;
     }
     push(index + 1);
     start = index + 1;
@@ -90,7 +91,7 @@ const DEGREE_TOKEN = /\b(Ph\.?\s?D\.?|Doctorate|Doctor of [A-Za-z]+|MBA|M\.?B\.?
 // 2018" or "MS Excel" are not degrees, and need a degree shape after them: "MS in
 // Chemistry", "BSc Physics", or a comma and a field that ends the heading field
 // ("BA, economics — 2018"), never a comma before more prose ("BA, Pilot study in").
-const DEGREE_ABBR = /\b(MSc|BSc|MS|MA|BS|BA)(?=\s+(?:in|of)\s+[A-Za-z]|\s+[A-Z][a-z]+\s*[—–,]|,\s*[A-Za-z]+(?:\s+[A-Za-z]+)?\s*(?:[—–]|$|\.\s*$|,\s*(?:19|20)\d{2}))/;
+const DEGREE_ABBR = /\b(MSc|BSc|MS|MA|BS|BA)\.?(?=\s+(?:in|of)\s+[A-Za-z]|\s+[A-Z][a-z]+\s*[—–,]|,\s*[A-Za-z]+(?:\s+[A-Za-z]+)?\s*(?:[—–]|$|\.\s*$|,\s*(?:19|20)\d{2}))/;
 const degreeMatch = text => String(text ?? '').match(DEGREE_TOKEN) || String(text ?? '').match(DEGREE_ABBR);
 const INSTITUTION = /\b((?:[A-Z][\w'’.-]*\s+){0,3}(?:University|College|Institute|School|Polytechnic|Academy)(?:\s+of\s+[A-Z][\w'’.-]*(?:\s+[A-Z][\w'’.-]*)*)?)\b/;
 

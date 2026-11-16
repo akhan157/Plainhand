@@ -91,7 +91,8 @@ const ACRONYM_SECTION = /certif|licen[cs]|credential|education|training|professi
 const normalizedText = value => ` ${String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
 const entryLine = entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ');
 export function credentialName(text) {
-  const value = clean(text);
+  // An issuer written first ("(ISC)2 CISSP, 2021") is not the name.
+  const value = clean(text).replace(/^\([^)]*\)\S*\s*/, '');
   const own = value.split(/\s*[,(;]\s*|\s+[—–-]\s+/)[0] || value;
   // Generic trailing words ("PE license", "CPA license") are not part of the name.
   const ownWords = own.split(/\s+/).filter(Boolean);
@@ -102,8 +103,13 @@ export function credentialName(text) {
   // acronym after the first word ("Kubernetes CKA", "Passed CFA Level I"). A first-word
   // acronym in a longer name is a prefix ("AWS Certified Solutions Architect"), and an
   // issuer field after a comma ("PMI", "(ISC)2") is never the credential.
-  const after = value.slice(own.length).match(/^\s*\(([^)]*)\)/);
-  const paren = after ? after[1].split(/[\s/]+/).filter(isAcronym) : [];
+  // A parenthesised designation follows a word ("Professional (PMP)", "ASQ (CSSGB)");
+  // a group standing alone in its field ("(ISC)2") is the issuer. In a spaced group
+  // ("ASQ CSSGB") the longest token is the designation, the rest is the issuer.
+  const paren = [...value.matchAll(/([A-Za-z])\s*\(([^)]*)\)/g)].flatMap(match => {
+    const tokens = match[2].split(/[\s/]+/).filter(isAcronym);
+    return tokens.length ? [tokens.sort((a, b) => b.length - a.length)[0]] : [];
+  });
   const ownIsAcronym = ownWords.length >= 1 && ownWords.every(isAcronym);
   const inner = ownIsAcronym ? ownWords : ownWords.slice(1).filter(isAcronym);
   const acronyms = [...new Set([...paren, ...inner])];

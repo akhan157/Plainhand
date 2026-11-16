@@ -364,3 +364,15 @@ test('review e03f483: acronyms inside names, generic suffixes, Registered titles
   assert.deepEqual(dropCredentialInclusionClaims(["The certificate wasn't added because no date is stated.", 'The certificate was not formally listed.', 'The CPA is included with its year, but the CFP was not added.'], [{ text: 'CPA, 2021' }]),
     ["The certificate wasn't added because no date is stated.", 'The certificate was not formally listed.']);
 });
+
+test('review 0b20f66: issuer fields, issuer-first names, spaced groups, appositive claims', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  const r = text => [{ section: 'Certifications', heading: null, text }];
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt, ASQ (CSSGB), 2019' }, r('CSSGB, 2019')), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional, PMI (PMP), 2021' }, r('PMP, 2021')), true);
+  assert.equal(packetHasCredential({ text: '(ISC)2 CISSP, 2021' }, r('CISSP, 2021')), true);
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (ASQ CSSGB), 2019' }, r('ASQ member since 2019')), false);
+  assert.equal(packetHasCredential({ text: 'Certified Information Systems Security Professional (CISSP), (ISC)2, 2021' }, r('ISC')), false);
+  assert.deepEqual(dropCredentialInclusionClaims(['The PMP, which PMI issues, is included with its year.'], [{ text: 'PMP, 2021' }]), []);
+});

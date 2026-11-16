@@ -178,7 +178,7 @@ export function dropCredentialInclusionClaims(suggestions, missing = []) {
   return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
     const value = String(text ?? '');
     if (QUESTION_OR_ADVICE.test(value)) return true;
-    return !value.split(/[;,]|\s+(?:but|while|whereas|although)\s+/i).some(clause => {
+    return !value.split(/;|,?\s+(?:but|while|whereas|although)\s+/i).some(clause => {
       const about = CREDENTIAL_NOUN_MENTION.test(clause) || names.some(pattern => pattern.test(clause));
       return about && INCLUSION_VERB.test(clause) && !NEGATED_INCLUSION.test(clause);
     });
@@ -695,7 +695,10 @@ export class Workflow {
                 // The same credential is the same written name or abbreviation; two
                 // credentials that cite one source sentence are still two.
                 const name = credentialName(entryLine(row));
-                const keys = [...(name.phrase ? [`name:${name.phrase.toLowerCase()}`] : []), ...name.acronyms.map(acronym => `abbr:${acronym.toLowerCase()}`)];
+                // A written name decides on its own; an abbreviation only for a row that
+                // has no written name, so two certificates sharing a family code (GCP)
+                // are both carried.
+                const keys = name.phrase ? [`name:${name.phrase.toLowerCase()}`] : name.acronyms.map(acronym => `abbr:${acronym.toLowerCase()}`);
                 if (!keys.length) keys.push(`line:${entryLine(row).toLowerCase()}`);
                 if (keys.some(key => seenCarry.has(key)) || packetHasCredential({ text: entryLine(row) }, packet.resume)) return false;
                 for (const key of keys) seenCarry.add(key);

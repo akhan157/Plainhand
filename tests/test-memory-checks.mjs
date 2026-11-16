@@ -306,3 +306,10 @@ test('review e03f483: abbreviations without regex modifiers; a degree abbreviati
   const source = readFileSync(new URL('../plainhand/memory-checks.mjs', import.meta.url), 'utf8');
   assert.ok(!/\(\?-?[ims]+:/.test(source), 'no inline RegExp modifiers');
 });
+
+test('review 0b20f66: a degree abbreviation keeps its field and year in one sentence', () => {
+  const degree = text => findConflicts({ sources: [interview(text)], profile: { graduation: '2012' } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('Example University — M.Sc. Computer Science — 2018.'), 1);
+  assert.equal(degree('I earned my MSc. in Biology at Example University in 2018.'), 1);
+  assert.equal(degree('I completed my MSc. I then worked at Example Health from 2013 to 2018.'), 0);
+});
