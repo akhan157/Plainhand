@@ -495,3 +495,46 @@ Residuals:
   - Cutting calls per application is the U14 lever.
 - **Judge:** Claude is running on the same paired subset as the baseline (built and
   seeded, r1 and r2, 12 packets).
+
+## Privacy/robustness merged; judge on the comparison run — 2026-11-16
+
+- **Lane `4fc5c20` (OMP DeepSeek), merged.** Three changes:
+  - Prepare and master now retry once on uncited entries, with feedback that names
+    each one.
+  - PACKET_INSTRUCTION: "whether the candidate meets a requirement is never a packet
+    question".
+  - Email and phone never enter provider context (`PRIVATE_PROFILE_FIELDS`). The
+    rendered header and local form fill still use them. Approvals reset once.
+- **Regression caught by root.** `benchmark-simulation` dropped from 49/49 to 9/49:
+  the legacy oracle quoted the whole profile JSON, contact fields included. Root
+  fixed the fixture (`plainhand/benchmarks/cases.mjs`); simulation is back to 49/49
+  and the implementations benchmark passes. Suite 615/615.
+- **Judge (Claude, uncalibrated) on the paired subset.** 10 packets now against 12 at
+  baseline, because two runs produced no packet.
+
+  | | baseline v1 | now |
+  |---|---|---|
+  | unsupported claims | 0 | 0 |
+  | partial claims | 6 | 14 |
+  | semantic fact coverage | 0.86 | **1.00** |
+  | relevance | 4.42 | 4.23 |
+  | specificity | 4.81 | 4.20 |
+  | structure | 3.50 | 3.60 |
+  | voice | 4.17 | 4.27 |
+  | cover | 3.61 | 3.63 |
+  | honesty | 5.00 | 4.83 |
+  | overall | 4.03 | 4.00 |
+
+  Overall is flat. Coverage is up. Specificity is down, and cover did not improve.
+- **What the judge's reasons say, consistently across packets:**
+  1. Cover letters still restate the resume "nearly word for word". When a master
+     exists, PACKET_INSTRUCTION reuses the base letter and tailors only the opening
+     and close, so the body is copied.
+  2. Education entries carry filler lines ("Graduated.", "Finance studies.",
+     "Completed undergraduate study."). Every entry must have text, and
+     the heading already says everything.
+  3. A bullet is sometimes duplicated, and one role is written as several entries
+     under the same heading. The renderer groups consecutive identical headings, so
+     some of this is how the judge reads the JSON, but the duplicates are real.
+
+  Next: a product lane on these three findings.
