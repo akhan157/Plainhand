@@ -13,10 +13,32 @@ const RESULT_VERB = /\b(built|led|ran|own|owned|wrote|cut|reduced|increased|impr
 const any = (texts, pattern) => texts.some(text => pattern.test(String(text || '')));
 const filled = (value) => Boolean(String(value || '').trim());
 
+// Role dates: a year range ("2016 to 2020", "2016-present") or an explicit start year
+// ("from 2016", "since 2016", "joined ... in 2016"). A bare year is not a date here, so
+// graduation years and result numbers never read as role dates.
+const YEAR = '(?:19|20)\\d{2}';
+const ROLE_DATES = new RegExp(`\\b${YEAR}\\s*(?:-|–|—|to|until|through|thru)\\s*(?:${YEAR}|present|now|current|today)\\b|\\b(?:since|from)\\s+(?:in\\s+)?${YEAR}\\b|\\b(?:starting|started|start|joined|began)\\b[^.;\\n]{0,40}?\\b${YEAR}\\b`, 'i');
+// An employer-like phrase is two or more capitalised words in a row ("Fictional
+// Biotech"), the shape an employer, school or dated project takes in the candidate's
+// own sentence or on a resume line. Deliberately shallow and deterministic. Limits: a
+// one-word employer ("Pfizer") or a lower-case mention ("at a startup") is not read, so
+// the interview asks again, and asked-and-answered then moves it on; a place or school
+// after "at" and a dated project title can read as an employer; a month before a year
+// ("May 2024 to August 2025") is not read yet. A wrong guess only stops one question
+// early; it never invents an employer or a date for any document.
+const EMPLOYER_LIKE = /\b[A-Z][\w&'’.+-]*(?:\s+(?:[A-Z][\w&'’.+-]*|of|&|and))+/;
+// A resume the candidate uploaded or pasted counts once a line reads as a role heading:
+// an employer-like name and role dates on the same line.
+const datedRoleLines = resume => String(resume || '').split('\n').some(line => EMPLOYER_LIKE.test(line) && ROLE_DATES.test(line));
+
 // Order matters only for what the interview asks first: the work itself comes before
-// the details around it.
+// the details around it, and each role's employer, title and dates come straight after
+// the results so the heading is attached to the story while it is still fresh. The role
+// facts are not first because a new candidate's opening answer is usually about a
+// project, not a job, and a role question lands oddly before any work has been told.
 export const PROFILE_AREAS = [
   { id: 'results', asked: /\b(responsib\w*|results?|achiev\w*|accomplish\w*|impact)\b/i, label: 'what each role was responsible for and the results, with numbers', covered: texts => texts.some(text => NUMBER.test(text) && RESULT_VERB.test(text)) },
+  { id: 'roles', asked: /\b(employers?|compan(?:y|ies)|organi[sz]ations?|job titles?|official titles?|dates?|date ranges?|start(?:ing|ed)? (?:and|to) end\w*)\b/i, label: "each role's employer, official job title and dates", covered: (texts, profile) => texts.some(text => EMPLOYER_LIKE.test(text) && ROLE_DATES.test(text)) || datedRoleLines(profile.resume) },
   { id: 'tools', asked: /\b(tools?|software|systems?|platforms?)\b/i, label: 'the tools, software and systems they use', covered: texts => any(texts, /\b(tools?|software|systems?|platforms?|excel|spreadsheets?|sql|python|pandas|tableau|power ?bi|power query|netsuite|quickbooks|sap|cad|solidworks|ansys|matlab|labview|figma|jira|salesforce|typescript|javascript|java|aws|azure|docker|git|sas|stata|rstudio|rmarkdown)\b/i) },
   { id: 'credentials', asked: /\b(certificat\w*|licen[cs]\w*|credential\w*)\b/i, label: 'certifications and licences', covered: texts => any(texts, /\b(certificat\w*|licen[cs]e[ds]?|certified|credential\w*|cpa|cfa|pmp|exam|registered for|series \d)\b/i) },
   { id: 'education', asked: /\b(education|degree|studied|study|training|school|university|college)\b/i, label: 'education and training', covered: (texts, profile) => filled(profile.graduation) || any(texts, /\b(degree|b\.?s\.?|m\.?s\.?|bachelor\w*|master'?s?|ph\.?d|doctorate|university|college|graduat\w*|diploma|coursework|minor|gpa|school|apprentice\w*|bootcamp)\b/i) },
