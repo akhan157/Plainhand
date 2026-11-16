@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Offline re-score of a saved evidence directory with the current scorer (scorer v3).
+// Offline re-score of a saved evidence directory with the current scorer (scorer v4).
 // Zero model calls, zero PDF renders, and no writes to the evidence it reads: the
 // recorded verdict stays exactly as it was produced, and the current one is reported
 // beside it.
@@ -116,7 +116,10 @@ async function rescorePdf(dir, id, scenario, record) {
     ...(poppler?.status === 'pass' ? [poppler] : []),
     ...(cover && cover.status !== 'fail' ? [cover] : []),
   ];
-  const synthesized = { ...evidence, checks };
+  // The recorded state includes the checks this rescore replaces. Recompute it from
+  // the synthesized checks, or a row whose only failure was a replaced check keeps
+  // reporting `pdf issues` after every current check passes.
+  const synthesized = { ...evidence, state: checks.some(check => check.status === 'fail') ? 'issues' : 'passed', checks };
   // The packet verdict comes from the real scorePacket, with the synthesized evidence.
   const job = safeJob(scenario.job);
   const persona = safePersona(scenario.persona);
@@ -166,6 +169,13 @@ async function rescoreScenario(dir, record) {
   // 2. The rendered-PDF line order, recomputed from the saved extraction.
   const pdf = await rescorePdf(dir, scenario.id, scenario, record);
   if (pdf) checks.push(...pdf.checks);
+  // A recorded failure that stopped before a packet existed (the factual review
+  // blocked prepare) produced no saved packet stage. The evidence does not settle
+  // that gate, so it is unscorable, not a pass: an absent stage must not flip a
+  // recorded failure.
+  if (!record.packet && !record.pass && (record.blocked?.stage || record.error)) {
+    checks.push(row('packet (all gates)', 'fail', 'unscorable', 'unscorable', `run stopped at ${record.blocked?.stage || 'prepare'}: ${record.error || 'no packet was produced'}`));
+  }
   // 3. The profile gate, when the run built its profile in conversation (a seeded or
   // minimal run has no profile stage and none is invented here).
   if (record.profile) checks.push(row('profile', record.profile.pass ? 'pass' : 'fail', record.profile.pass ? 'carried' : 'fail', `capture ${record.profile.captureRate ?? 'n/a'}, coverage of all facts ${record.profile.coverageOfAllFacts ?? 'n/a'}; v3 does not touch profile scoring`));

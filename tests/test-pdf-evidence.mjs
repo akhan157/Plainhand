@@ -148,6 +148,103 @@ test('PDF control: interleaved columns fail reading order', async () => {
   assert.equal(pdfEvidencePassed(evidence), false);
 });
 
+// Measured live on holdout2-oldrole-fin-recent / holdout2-oldrole-fin-match: the
+// Summary line and the later "Revenue Systems Manager" heading share the words
+// "revenue systems". The heading title matched its opening words at the Summary
+// occurrence, and merging that run with the heading's org run produced a span that
+// covered the Summary line, so a correctly ordered page was reported as interleaved.
+// These are the extracted lines and the visible units of that row.
+test('PDF control: a heading anchored on an earlier duplicate of its title is not interleaved', async () => {
+  const finLines = [
+    'Bettina Marsh',
+    'bettina@example.invalid · +1 614 555 0161 · Columbus, US · https://example.invalid/bettina',
+    'SUMMARY',
+    'Divisional controller with twelve years in accounting, revenue systems and close.',
+    'CERTIFICATIONS',
+    'Ohio',
+    'Certified Public Accountant (CPA) active since 2015',
+    'EXPERIENCE',
+    'Example Instruments Group',
+    'Divisional Controller 2021 to 2026',
+    '• Cut month-end close for a $480 million division from 7 days to 4 by rebuilding the close checklist and',
+    'intercompany tie-out.',
+    '• Closed two external audits with no significant findings.',
+    '• Run the division internal controls programme.',
+    "• Set the team's close calendar.",
+    'Example Freight Systems',
+    'Revenue Systems Manager 2016 to 2021',
+    '• Built the revenue recognition process for a subscription freight platform under ASC 606.',
+    '• Automated the revenue recognition process in NetSuite.',
+    '• Migrated billing and revenue schedules for 9,000 customer contracts onto NetSuite.',
+    '• Led the first system audit of the revenue engine.',
+    '• Wrote the control narratives the auditors tested.',
+    'Example Distribution Co',
+    'Senior Accountant 2012 to 2016',
+    '• Owned balance sheet reconciliations for receivables and deferred revenue.',
+    '• Cleared the quarterly review.',
+    'EDUCATION',
+    'Example University',
+    'Bachelor of Science, Accounting 2013',
+  ];
+  const heading = (title, org, dates) => ({ title, org, location: '', dates });
+  const finPacket = {
+    headline: 'Divisional Controller | Revenue Accounting Systems | CPA',
+    resume: [
+      { section: 'Summary', heading: null, text: finLines[3] },
+      { section: 'Certifications', heading: heading('Certified Public Accountant (CPA)', 'Ohio', 'active since 2015'), text: '' },
+      { section: 'Experience', heading: heading('Divisional Controller', 'Example Instruments Group', '2021 to 2026'), text: 'Cut month-end close for a $480 million division from 7 days to 4 by rebuilding the close checklist and intercompany tie-out.' },
+      { section: 'Experience', heading: null, text: 'Closed two external audits with no significant findings.' },
+      { section: 'Experience', heading: null, text: 'Run the division internal controls programme.' },
+      { section: 'Experience', heading: null, text: "Set the team's close calendar." },
+      { section: 'Experience', heading: heading('Revenue Systems Manager', 'Example Freight Systems', '2016 to 2021'), text: 'Built the revenue recognition process for a subscription freight platform under ASC 606.' },
+      { section: 'Experience', heading: null, text: 'Automated the revenue recognition process in NetSuite.' },
+      { section: 'Experience', heading: null, text: 'Migrated billing and revenue schedules for 9,000 customer contracts onto NetSuite.' },
+      { section: 'Experience', heading: null, text: 'Led the first system audit of the revenue engine.' },
+      { section: 'Experience', heading: null, text: 'Wrote the control narratives the auditors tested.' },
+      { section: 'Experience', heading: heading('Senior Accountant', 'Example Distribution Co', '2012 to 2016'), text: 'Owned balance sheet reconciliations for receivables and deferred revenue.' },
+      { section: 'Experience', heading: null, text: 'Cleared the quarterly review.' },
+      { section: 'Education', heading: heading('Bachelor of Science, Accounting', 'Example University', '2013'), text: '' },
+    ],
+    answers: [],
+    coverLetter: '',
+  };
+  const finProfile = { name: 'Bettina Marsh', email: 'bettina@example.invalid', phone: '+1 614 555 0161' };
+  const finJob = { company: 'Fictional Brokerage Cloud', title: 'Revenue Systems Manager', description: 'Revenue recognition, NetSuite, close.', reportPath: 'reports/x.md' };
+  const evidence = await pdfEvidence(Buffer.from('resume'), { packet: finPacket, profile: finProfile, job: finJob, sources: [], coverBytes: null, extractor: extractor(fakePages(finLines)) });
+  assert.equal(check(evidence, 'resume-coverage').status, 'pass', JSON.stringify(evidence.coverage));
+  const order = check(evidence, 'reading-order');
+  assert.equal(order.status, 'pass', order.detail);
+  assert.doesNotMatch(order.detail, /Interleaved lines/);
+  assert.equal(evidence.state, 'passed', JSON.stringify(evidence.checks.filter(item => item.status === 'fail')));
+});
+
+// A real interleave: the second line's own run starts before the first line's run
+// ends. Both lines are fully present, every line probe is found in ascending order,
+// and only the overlapping runs prove that the two lines share a stretch of text.
+test('PDF control: two lines whose matched runs partially overlap are interleaved', async () => {
+  const overlapPacket = {
+    headline: 'Finance systems',
+    resume: [
+      { section: 'Experience', heading: null, text: 'Migrated billing schedules onto NetSuite for the freight division' },
+      { section: 'Experience', heading: null, text: 'For the freight division the billing finance team saw no exceptions.' },
+    ],
+    answers: [],
+    coverLetter: '',
+  };
+  const evidence = await pdfEvidence(Buffer.from('resume'), {
+    packet: overlapPacket,
+    profile,
+    job,
+    sources: [],
+    coverBytes: null,
+    extractor: extractor(fakePages(['Migrated billing schedules onto NetSuite for the freight division the billing finance team saw no exceptions.'])),
+  });
+  const order = check(evidence, 'reading-order');
+  assert.equal(order.status, 'fail');
+  assert.match(order.detail, /Interleaved lines: resume line "Migrated billing schedules onto NetSuite for the freight division" \/ resume line "For the freight division the billing finance team saw no exceptions\."/);
+  assert.equal(pdfEvidencePassed(evidence), false);
+});
+
 test('PDF control: garbled glyphs fail the readable-character check', async () => {
   const evidence = await pdfEvidence(Buffer.from('resume'), input({ extractor: extractor(fakePages([...resumeLines, 'Skills \uFFFD\uFFFD (cid:42)']), fakePages(coverLines)) }));
   assert.equal(check(evidence, 'garbled').status, 'fail');
