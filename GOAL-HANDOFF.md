@@ -258,3 +258,17 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
   Scientist"}`, and holdout2-journey-stem lost the Genomics heading entirely. A
   conversation-built resume then has roles with no employer or dates.
 - Next: the live comparison on `c9e09cb` once the Codex quota resets (about 250 calls).
+
+## Interview asks each role's employer, title and dates — 2026-11-16
+
+- Lane `376e806` (DeepSeek), reviewed and merged by root. Adds a ninth coverage area,
+  "each role's employer, official job title and dates", placed after results.
+  - Detection is deterministic: an employer-like phrase plus a year range or start
+    year, or a dated line in the uploaded resume. Asked-and-answered also counts.
+  - The instruction never suggests employers or dates, and saves the candidate's exact
+    words.
+  - `verifyHeadings` is unchanged. The author confirmed that conversation text reaches
+    its source text as the `interview` source.
+- Suite 562/562; controlled 64/67, 0 unexpected. `agent.mjs` is product code and not
+  hashed by the measurement manifest, so v3 still matches.
+- Ready for the live comparison on this tree once the owner's Codex quota resets.
