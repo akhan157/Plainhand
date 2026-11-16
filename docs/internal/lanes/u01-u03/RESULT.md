@@ -204,24 +204,24 @@ loopback port, and drives the public HTTP API with the controlled fixture agent:
 6. prepare and `/api/packet/approve`.
 
 Evidence: three controlled repeats under
-`output/onboarding-proof-2026-11-16T04-26-{19-622,33-612,52-367}Z/`
+`output/onboarding-proof-2026-11-16T04-32-{53-259,09-256,24-363}Z/`
 (each has `report.json`, `REPORT.md`, `transcript.json`, `install.log`,
 `setup.log`).
 
 | Measurement | Value (mean ± sample SD over 3 repeats) |
 |---|---|
-| Clone commit | `781fc4c09b24a28081830928b92e8c2f2d934c93` |
-| `npm ci` | exit 0 in all; 8.4 ± 3.4 s |
-| `npm run setup` | exit 0 in all; 1.2 ± 0.7 s |
-| Total install | 9.6 ± 3.8 s |
-| First reviewed master | 0.65 ± 0.43 s from app start, 10 calls, 259,955 prompt characters |
-| First prepared packet | 1.36 ± 0.89 s from app start, 14 calls, 329,385 prompt characters |
+| Clone commit | `14a4443ef89e1a1744ed7fe7f8d24cc6c67135c5` |
+| `npm ci` | exit 0 in all; 8.2 ± 0.9 s |
+| `npm run setup` | exit 0 in all; 1.8 ± 0.3 s |
+| Total install | 10.0 ± 1.1 s |
+| First reviewed master | 1.06 ± 0.17 s from app start, 10 calls, 259,955 prompt characters |
+| First prepared packet | 2.54 ± 0.67 s from app start, 14 calls, 329,385 prompt characters |
 | Tokens | not reported by the controlled fixture (no provider call); prompt characters reported instead |
 | Master completeness | roles 3/3, certifications 1/1, degrees 1/1, results 3/3 (8/8) in every repeat |
 | Checks | conversation, resume import, understanding, master, evaluation, packet, packet approval all pass in every repeat |
 
 Calls, prompt characters and intervention counts were identical across the three
-repeats; only wall time varied (0.16–0.93 s to the master, 0.36–2.09 s to the
+repeats; only wall time varied (0.94–1.25 s to the master, 1.79–3.06 s to the
 packet), which is local machine scheduling, not a model effect.
 
 Interventions:
@@ -264,8 +264,8 @@ Commands actually run on this lane, in this order:
 
 | Gate | Result |
 |---|---|
-| `node --test tests/test-standard.mjs tests/test-u03-master.mjs` | 19/19 pass |
-| `npm run test:plainhand -- --test-concurrency=2` | 638/638 pass (51.6 s) |
+| `node --test tests/test-standard.mjs tests/test-u03-master.mjs` | 20/20 pass |
+| `npm run test:plainhand -- --test-concurrency=2` | 639/639 pass (81.4 s wall) |
 | `npm run test:plainhand-ui` | pass |
 | `node benchmarks/benchmark-eval.mjs --concurrency 2` | 64/67 pass, 3 expected failures |
 | `node scripts/onboarding-report.mjs <four directories>` | exit 0; tables above |
@@ -284,7 +284,7 @@ Commands actually run on this lane, in this order:
   missing-list branch itself is exercised by the state-level test, not by this
   fixture.)
 - `node benchmarks/benchmark-eval.mjs --concurrency 2`: **64/67 passed, 3
-  expected failures, 0 unexpected** (scorer v3, controlled, 131 s wall). The only
+  expected failures, 0 unexpected** (scorer v3, controlled, 145 s wall). The only
   failures are the three `*-minimal` control rows:
   `profile-effect-fin-minimal`, `profile-effect-analyst-minimal`,
   `profile-effect-sci-minimal`. All holdout and journey rows pass.
