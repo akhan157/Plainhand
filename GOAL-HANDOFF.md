@@ -195,3 +195,34 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
   calls. At the baseline means (5 to 15 calls per application), that is about 25 to 75
   applications per window if nothing else used the plan.
 - Next: rerun the comparison once the quota resets.
+
+## Scorer v2 merged and baseline re-frozen — 2026-11-16
+
+- Lane `1ba6f39` (DeepSeek, executedModel deepseek-flash). Root reviewed the score and
+  pdf-evidence diffs and merged them.
+  - PDF line matching now picks the occurrence that fits the order so far.
+  - An honest zero-match Skip is valid when it falls in the Skip band and its gaps
+    name the posting's requirements.
+  - `SCORER_VERSION = 2`. Comparisons across versions return `comparable:false`.
+  - Usage now records cached and reasoning tokens and `promptChars`. `actualModel`
+    is null: the author probed `codex exec --json` on 0.167.1 and found it states no
+    model id.
+  - Added `scripts/rescore.mjs`.
+  - Mutation checks: both fixes' tests fail when the fix is reverted.
+  - Suite 551/551; controlled gate 56/59 with 0 unexpected.
+- Offline rescore of baseline `00ce1bf` evidence (zero calls): one verdict changes.
+  holdout-mismatch moves from FAIL to PASS. The PDF fix clears the false order checks
+  on fin-systems, tech-ml and journey-sci, but none of them flips: fin-systems and
+  tech-ml still fail lead share, and journey-sci still fails ats and cover. Poppler and
+  cover checks cannot be rescored offline because their text was not saved.
+- Manifest v2 frozen at `5e4a000`. It hashes 22 files, adding usage.mjs and
+  rescore.mjs, and records the scorer version and the seen held-out rows.
+- **Open measurement item (v3):** the lead-share gate encodes "the old relevant role
+  leads". Under the owner's default (`roleOrder: recent`, relevant roles newest first),
+  fin-systems and stem-automation fail by design unless the newer role is dropped as
+  irrelevant. The gate should check order against the run's `roleOrder`: newest first
+  among kept roles for `recent`, best match first for `match`. That needs a v3 scorer,
+  a review and a re-freeze, plus fresh held-out fixtures. Until then, read lead-share
+  failures on those two rows as measuring the old expectation.
+- Next live run (after the Codex quota resets): the manifest v2 paired and smoke
+  commands on `5e4a000`. The judge then runs on the same subset as at baseline.
