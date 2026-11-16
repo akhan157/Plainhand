@@ -145,7 +145,9 @@ export function cleanSettings(value) {
   const autonomy = object(value.autonomy) ? value.autonomy : {};
   const perDay = Number.isFinite(+autonomy.perDay) && +autonomy.perDay >= 1 && +autonomy.perDay <= 10 ? Math.round(+autonomy.perDay) : DEFAULT_AUTONOMY.perDay;
   const minScore = Number.isFinite(+autonomy.minScore) && +autonomy.minScore >= 3.5 && +autonomy.minScore <= 5 ? +autonomy.minScore : DEFAULT_AUTONOMY.minScore;
-  return { autonomy: { enabled: false, perDay, minScore }, roleOrder: ROLE_ORDERS.includes(value.roleOrder) ? value.roleOrder : DEFAULT_ROLE_ORDER };
+  // foldHumanize is an opt-in; absent means the default two-call path, so an
+  // untouched workspace keeps its previous settings shape on export/import.
+  return { autonomy: { enabled: false, perDay, minScore }, roleOrder: ROLE_ORDERS.includes(value.roleOrder) ? value.roleOrder : DEFAULT_ROLE_ORDER, ...(value.foldHumanize === true ? { foldHumanize: true } : {}) };
 }
 
 // The understanding is the agent's own summary. Its text is kept so the candidate can

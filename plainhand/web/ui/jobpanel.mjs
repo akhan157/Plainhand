@@ -145,7 +145,7 @@ function Calibration({ job }) {
   const item = c => html`<li key=${c.id}><p class="cal-claim">“${c.text}”</p>${c.reason ? html`<p class="muted-text">${c.reason}</p>` : null}${c.suggestion ? html`<p class="cal-suggestion"><strong>Closer to your evidence:</strong> ${c.suggestion}</p>` : null}${choices(c)}</li>`;
   const [tone, label] = BANDS[calibration.band] || BANDS.balanced;
   return html`<${Section} title="How strongly this describes you" id="pk-calibration">
-    ${job.humanizer ? html`<p class="from-standard"><${Icon} name="spark" />Humanizer pass: ${job.humanizer.changed} ${job.humanizer.changed === 1 ? 'part' : 'parts'} rewritten to remove AI writing patterns${job.humanizer.tellsAfter.length ? ` · ${job.humanizer.tellsAfter.length} left to check` : ' · none left'}</p>` : null}
+    ${job.humanizer ? html`<p class="from-standard"><${Icon} name="spark" />${job.humanizer.folded ? 'Humanizer rules applied while drafting' : html`Humanizer pass: ${job.humanizer.changed} ${job.humanizer.changed === 1 ? 'part' : 'parts'} rewritten to remove AI writing patterns`}${job.humanizer.tellsAfter.length ? ` · ${job.humanizer.tellsAfter.length} left to check` : ' · none left'}</p>` : null}
     <div class="cal-head"><${Pill} tone=${tone}>${label}</${Pill}><span>${calibration.counts.balanced} of ${calibration.total} claims match your evidence${calibration.counts.withinLine ? ` · ${calibration.counts.withinLine} within your line` : ''}${calibration.modelRated ? '' : ' · rule checks only'}</span></div>
     ${over.length ? html`<h4>Stronger than your evidence</h4><ul class="plain-list cal-list">${over.map(item)}</ul>` : null}
     ${under.length ? html`<h4>You can say more</h4><ul class="plain-list cal-list">${under.map(item)}</ul>` : null}

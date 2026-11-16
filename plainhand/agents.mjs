@@ -217,6 +217,40 @@ export function sayStream(onText) {
   };
 }
 
+// The CLI's own coding-agent prompt, skill catalog, tools and environment block are
+// pure overhead for a call that only returns JSON. Both CLIs accept per-call switches
+// that replace or remove them; nothing is written to the user's config. The Safety
+// rules Plainhand sends stay in the prompt (agentPrompt); the CLI system text is
+// replaced by the same preamble so the model is not left without them.
+export const CLI_INSTRUCTIONS = AGENT_PREAMBLE;
+const tomlString = value => `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+// Exported so a test (and the cost harness) can measure the exact request the CLI
+// makes without duplicating these flags.
+export function codexExecArgs({ resultFile, instructionsFile }) {
+  return [
+    'exec', '--json', '--skip-git-repo-check', '--ephemeral', '--ignore-user-config', '--sandbox', 'read-only',
+    // The shell tool is the one Codex tool Plainhand keeps disabled by flag; the rest
+    // below are per-call config overrides in the same style.
+    '-c', 'features.shell_tool=false',
+    // Replace Codex's coding-agent system prompt with Plainhand's one-paragraph contract.
+    '-c', `model_instructions_file=${tomlString(instructionsFile)}`,
+    // No skill catalog, plugin/app instructions, permission prose or environment block:
+    // this call reads no files and runs no commands.
+    '-c', 'skills.include_instructions=false',
+    '-c', 'include_environment_context=false',
+    '-c', 'include_permissions_instructions=false',
+    '-c', 'include_collaboration_mode_instructions=false',
+    // No tools at all: the reply is one JSON object.
+    '-c', 'features.multi_agent=false',
+    '-c', 'features.goals=false',
+    '-c', 'features.view_image=false',
+    '-c', 'tools.experimental_request_user_input.enabled=false',
+    // Keep project documents out even if the temp cwd ever contains one.
+    '-c', 'project_doc_max_bytes=0',
+    '--color', 'never', '-o', resultFile, '-',
+  ];
+}
+
 export async function executeAgent(id, instruction, data, { signal, runner = runProcess, onUsage, onText, chatgpt, timeout = 180000 } = {}) {
   const p = providerById(id);
   // Sign in with ChatGPT runs in-process; the caller supplies the agent bound to its token store.
@@ -231,9 +265,13 @@ export async function executeAgent(id, instruction, data, { signal, runner = run
   let telemetry = '';
   try {
     let args;
-    if (id === 'codex') args = ['exec', '--json', '--skip-git-repo-check', '--ephemeral', '--ignore-user-config', '--sandbox', 'read-only', '-c', 'features.shell_tool=false', '-c', 'features.exec_tool=false', '--color', 'never', '-o', path.join(cwd, 'result.json'), '-'];
+    if (id === 'codex') {
+      const instructionsFile = path.join(cwd, 'instructions.txt');
+      await writeFile(instructionsFile, CLI_INSTRUCTIONS + '\n');
+      args = codexExecArgs({ resultFile: path.join(cwd, 'result.json'), instructionsFile });
+    }
     const streaming = id === 'claude' && typeof onText === 'function';
-    if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence'];
+    if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence', '--system-prompt', CLI_INSTRUCTIONS];
     if (id === 'antigravity') args = ['--input-format', 'stream-json', '--output-format', 'stream-json', '--mode', 'plan', '--sandbox', '--print-timeout', `${Math.ceil(timeout / 1000)}s`];
     const input = id === 'antigravity' ? JSON.stringify({ event: 'user', message: { content: prompt } }) + '\n' : prompt;
     const cmd = providerCommand(p);

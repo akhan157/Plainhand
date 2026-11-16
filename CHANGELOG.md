@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased: quota efficiency
+
+- **Less provider overhead per call.** Codex CLI and Claude Code now run with
+  their own coding-agent prompt, tool definitions, skill catalog and environment
+  context removed, and with Plainhand's one-paragraph output contract as the
+  system text. The candidate prompt is unchanged. On a 16k-character prompt the
+  Codex request fell from 61,035 to 18,190 bytes and the Claude request from
+  23,543 to 18,231; the per-call estimate is 10.7k–17.3k fewer input tokens.
+  Re-evaluating an unchanged job reuses the stored, validated evaluation instead
+  of calling the model again. `scripts/cost-breakdown.mjs` reports calls by
+  purpose for evidence runs. An opt-in setting (`settings.foldHumanize`, default
+  off) applies the humanizer rules inside the drafting call and skips the
+  separate rewrite, saving one call per master and application; the independent
+  factual review is never folded.
+
 ## Unreleased: tracking workflow (board, people, deadlines, exports)
 
 - **A board for the whole search.** Applications has a Table / Board switch.
