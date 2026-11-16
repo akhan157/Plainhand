@@ -12,12 +12,14 @@
   only in an existing `applications.md` appear in a read-only section under the
   columns, filtered by the same search box; they never become cards.
 - **People in one place.** A People card lists every contact recorded on any
-  application with their role and email, newest first, each linked to its role.
-  Contacts are still added and removed on the application's Record tab; this is
-  a read-only roll-up, so there is one owner for the data.
+  application, grouped by company, with their role and email, newest first, each
+  linked to its role. Contacts are still added and removed on the application's
+  Record tab; this is a read-only roll-up, so there is one owner for the data.
 - **Deadlines in your own calendar.** **Deadlines to calendar** downloads a
-  standard `.ics` file (RFC 5545) with each application's next action and each
-  scheduled interview round as an all-day event. Completed rounds and closed
+  standard `.ics` file (RFC 5545) with each application's next action as an
+  all-day event and each scheduled interview round. An interview with an
+  optional time is a one-hour timed event, written in UTC from your profile time
+  zone; without a time it stays all-day. Completed rounds and closed
   applications are left out. Import it into Google Calendar, Apple Calendar or
   anything else; re-import after changes.
 - **Your table in a spreadsheet.** **Export CSV** downloads the same table the
@@ -28,6 +30,12 @@
   Implementation: `plainhand/exports.mjs`, two read-only routes, and the
   Applications page; tests are `tests/test-exports.mjs` plus the browser
   workflow check.
+- **A submission keeps its packet.** Confirming a submission freezes the exact
+  packet hashes that were sent. Follow-up queue items cite that version, so a
+  later packet revision cannot rewrite what the follow-up refers to.
+- **Tracker rows move with a workspace.** A workspace export now includes
+  `data/applications.md`, and import restores it before syncing app jobs, so
+  rows that exist only in the tracker are not lost on a new computer.
 
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 

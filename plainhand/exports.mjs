@@ -85,6 +85,45 @@ const nextDay = iso => {
   return day(date.toISOString());
 };
 
+// The wall clock a time zone shows at one instant, as a UTC-midnight-based number.
+function wallClock(timeZone, instant) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(instant);
+  const value = type => Number(parts.find(part => part.type === type)?.value);
+  return Date.UTC(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'), value('second'));
+}
+
+// A calendar date and a wall-clock time in the candidate's zone, as a UTC instant.
+// Two passes settle a date near a daylight-saving change. No zone (or an invalid
+// one) returns null and the event stays floating local time, which RFC 5545 allows.
+function zonedInstant(date, time, timeZone) {
+  const wall = Date.parse(`${date}T${time}:00Z`);
+  if (!Number.isFinite(wall) || !timeZone) return null;
+  try {
+    let instant = wall;
+    for (let pass = 0; pass < 2; pass++) instant = wall - (wallClock(timeZone, new Date(instant)) - instant);
+    return instant;
+  } catch { return null; }
+}
+
+function timedStart(event) {
+  if (event.start !== null && event.start !== undefined) return `DTSTART:${stamp(new Date(event.start))}`;
+  return `DTSTART:${day(event.date)}T${String(event.time).replace(':', '')}00`;
+}
+
+// One hour is the default round length; the record stores a start, not an end.
+function timedEnd(event) {
+  const start = event.start !== null && event.start !== undefined
+    ? event.start
+    : Date.parse(`${event.date}T${event.time}:00Z`);
+  const end = start + 3600000;
+  // A floating start must have a floating end; a UTC start keeps its Z.
+  return event.start !== null && event.start !== undefined
+    ? `DTEND:${stamp(new Date(end))}`
+    : `DTEND:${new Date(end).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, '')}`;
+}
+
 export function calendarEvents(state) {
   const events = [];
   const jobs = (state.jobs || []).filter(job => !CLOSED.has(job.status));
@@ -102,7 +141,9 @@ export function calendarEvents(state) {
     for (const round of job.record?.interviews || []) {
       if (round.status !== 'scheduled' || !round.date) continue;
       const details = [title, round.interviewer && `With ${round.interviewer}`, round.preparation && `Prep: ${round.preparation}`].filter(Boolean).join('\n');
-      events.push({ uid: `${job.id}-${round.id}@plainhand`, date: round.date, summary: `${round.stage} interview — ${job.company}`, description: details });
+      events.push({ uid: `${job.id}-${round.id}@plainhand`, date: round.date, time: round.time || null,
+        start: round.time ? zonedInstant(round.date, round.time, state.profile?.timezone) : null,
+        summary: `${round.stage} interview — ${job.company}`, description: details });
     }
   }
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.uid.localeCompare(b.uid));
@@ -123,8 +164,7 @@ export function calendarIcs(state, { now = new Date() } = {}) {
       'BEGIN:VEVENT',
       `UID:${escapeText(event.uid)}`,
       `DTSTAMP:${dtstamp}`,
-      `DTSTART;VALUE=DATE:${day(event.date)}`,
-      `DTEND;VALUE=DATE:${nextDay(event.date)}`,
+      ...(event.time ? [timedStart(event), timedEnd(event)] : [`DTSTART;VALUE=DATE:${day(event.date)}`, `DTEND;VALUE=DATE:${nextDay(event.date)}`]),
       `SUMMARY:${escapeText(event.summary)}`,
       `DESCRIPTION:${escapeText(event.description)}`,
       'TRANSP:TRANSPARENT',

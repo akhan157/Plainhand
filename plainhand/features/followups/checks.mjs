@@ -38,7 +38,7 @@ export function followupSources(job, { recipient = null, notes = '' } = {}) {
   if (recipient) add('record.recipient', 'Recipient', `Recipient: ${recipient.name}${recipient.role ? `, ${recipient.role}` : ''} (${recipient.type}) at ${job.company}.`);
   for (const round of recordOf(job).interviews) {
     if (round.status === 'canceled') continue;
-    add(`record.interview.${round.id}`, `Interview · ${round.stage}`, `Interview round: ${round.stage} on ${round.date}, ${round.status}${round.interviewer ? `, with ${round.interviewer}` : ''}.`);
+    add(`record.interview.${round.id}`, `Interview · ${round.stage}`, `Interview round: ${round.stage} on ${round.date}${round.time ? ` at ${round.time}` : ''}, ${round.status}${round.interviewer ? `, with ${round.interviewer}` : ''}.`);
   }
   add('notes', 'Your notes', notes);
   return sources;

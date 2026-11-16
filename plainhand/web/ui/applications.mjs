@@ -6,6 +6,7 @@ import { StatusSelect } from './jobpanel.mjs';
 import { matches } from './jobs.mjs';
 import { Inbox } from './inbox.mjs';
 import { legacyTrackerRows, legacyMatches } from './tracker-rows.mjs';
+import { contactsByCompany } from './people.mjs';
 
 export function FollowUps() {
   const state = store.state;
@@ -30,19 +31,20 @@ function describe(contact) {
   return type && !role.toLowerCase().includes(type.toLowerCase()) ? `${role} · ${type}` : role;
 }
 
-// Everyone recorded on an application, newest first, with the role they belong to.
+// Everyone recorded on an application, grouped by company, newest first.
 export function People() {
-  const people = [];
-  for (const job of store.state.jobs) for (const contact of job.record?.contacts || []) people.push({ ...contact, job });
-  if (!people.length) return null;
-  people.sort((a, b) => String(b.addedAt || '').localeCompare(String(a.addedAt || '')));
-  return html`<${Card} title="People" icon="users" id="people-title" subtitle="Everyone you have spoken to about a role.">
-    <ul class="people">${people.map(contact => html`<li key=${contact.id + contact.job.id}>
-      <span class="person-icon"><${Icon} name="user" /></span>
-      <div class="person-main"><strong>${contact.name}</strong><p>${describe(contact)}</p>
-        ${contact.email ? html`<small>${contact.email}</small>` : null}</div>
-      <${Button} class="small ghost" iconEnd="chevron" onClick=${() => openJob(contact.job.id, 'record')}>${contact.job.company}</${Button}>
-    </li>`)}</ul>
+  const groups = contactsByCompany(store.state);
+  if (!groups.length) return null;
+  return html`<${Card} title="People" icon="users" id="people-title" subtitle="Everyone you have spoken to, grouped by company.">
+    ${groups.map(group => html`<section class="people-group" key=${group.company.toLowerCase()}>
+      <h4 class="people-company">${group.company} <span class="board-count">${group.contacts.length}</span></h4>
+      <ul class="people">${group.contacts.map(contact => html`<li key=${contact.id + contact.job.id}>
+        <span class="person-icon"><${Icon} name="user" /></span>
+        <div class="person-main"><strong>${contact.name}</strong><p>${describe(contact)}</p>
+          ${contact.email ? html`<small>${contact.email}</small>` : null}</div>
+        <${Button} class="small ghost" iconEnd="chevron" onClick=${() => openJob(contact.job.id, 'record')}>${contact.job.company}</${Button}>
+      </li>`)}</ul>
+    </section>`)}
   </${Card}>`;
 }
 

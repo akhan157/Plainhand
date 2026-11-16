@@ -1042,6 +1042,8 @@ tbody tr:last-child th[scope="row"] { border-bottom: 0; }
 .board-legacy .plain-list { margin: 0; }
 .board-legacy li { color: var(--text-2); font-size: var(--fs-sm); }
 .people { list-style: none; padding: 0; margin: 0; display: grid; }
+.people-group + .people-group { margin-top: var(--sp-3); }
+.people-company { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--text-2); }
 .people li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
 .people li:last-child { border-bottom: 0; }
 .person-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); color: var(--text-2); }

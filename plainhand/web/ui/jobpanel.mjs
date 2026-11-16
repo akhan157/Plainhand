@@ -363,7 +363,7 @@ function timeline(job) {
   if (job.approvedHash) add(job.approvedAt || job.updatedAt || job.createdAt, 'Packet approved for browser assistance', 'checkCircle');
   if (job.browserCheckpoint) add(job.browserCheckpoint.at || job.updatedAt || job.createdAt, 'Form progress saved', 'layers');
   for (const contact of job.record?.contacts || []) add(contact.addedAt, `Contact added: ${contact.name}${contact.role ? ', ' + contact.role : ''}`, 'user');
-  for (const round of job.record?.interviews || []) add(round.date + 'T12:00:00.000Z', `${round.stage} interview (${round.status})`, 'calendar', true);
+  for (const round of job.record?.interviews || []) add(round.date + 'T' + (round.time || '12:00') + ':00.000Z', `${round.stage} interview${round.time ? ' at ' + round.time : ''} (${round.status})`, 'calendar', true);
   for (const change of job.statusHistory || []) add(change.at, `${change.from || 'New'} → ${change.to}`, 'arrow');
   const KINDS = { 'thank-you': 'Thank-you note', 'check-in': 'Check-in', reply: 'Reply' };
   for (const note of job.followups || []) if (note.status === 'sent') add(note.sentAt, `${KINDS[note.kind] || 'Follow-up'} sent${note.channel ? ' by ' + note.channel : ''}`, 'send');
@@ -375,7 +375,7 @@ function RecordTab({ job }) {
   const next = record.nextAction;
   const contacts = record.contacts || [], rounds = record.interviews || [];
   const [nextDraft, setNext, clearNext] = useDraft('next:' + job.id, { text: next?.text || '', due: next?.due || '' });
-  const emptyRound = { stage: '', date: '', interviewer: '', status: 'scheduled', preparation: '', notes: '' };
+  const emptyRound = { stage: '', date: '', time: '', interviewer: '', status: 'scheduled', preparation: '', notes: '' };
   const [round, setRound, clearRound] = useDraft('round:' + job.id, emptyRound);
   const emptyContact = { name: '', role: '', type: 'recruiter', email: '', phone: '', linkedin: '', notes: '' };
   const [contact, setContact, clearContact] = useDraft('contact:' + job.id, emptyContact);
@@ -398,14 +398,15 @@ function RecordTab({ job }) {
     <${FollowUps} job=${job} />
     <${Section} title="Interviews" id="rec-rounds">
       ${rounds.length ? html`<ul class="record-list">${rounds.map(r => html`<li key=${r.id}><span class=${'record-icon' + (r.status === 'completed' ? ' done' : '')}><${Icon} name=${r.status === 'completed' ? 'checkCircle' : 'calendar'} /></span>
-        <div class="record-main"><strong>${r.stage} · <${Day} iso=${r.date} weekday=${false} /></strong><p>${[r.interviewer && 'With ' + r.interviewer, r.preparation && 'Prep: ' + r.preparation, r.notes].filter(Boolean).join(' · ') || 'No notes yet.'}</p></div>
+        <div class="record-main"><strong>${r.stage}${r.time ? ' · ' + r.time : ''} · <${Day} iso=${r.date} weekday=${false} /></strong><p>${[r.interviewer && 'With ' + r.interviewer, r.preparation && 'Prep: ' + r.preparation, r.notes].filter(Boolean).join(' · ') || 'No notes yet.'}</p></div>
         <div class="record-tools"><label class="visually-hidden" for=${'round-' + r.id}>Status for ${r.stage} interview</label>
         <select class="compact-select" id=${'round-' + r.id} value=${r.status} onChange=${async e => { const el = e.currentTarget; try { await api('jobs/record/interview-status', { id: job.id, entryId: r.id, status: el.value }); toast('Interview round updated.'); refresh(); } catch (error) { el.value = r.status; fail(error); } }}>${['scheduled', 'completed', 'canceled'].map(v => html`<option value=${v}>${v[0].toUpperCase() + v.slice(1)}</option>`)}</select>
         ${remove('interview', r, r.stage + ' interview')}</div></li>`)}</ul>` : html`<p class="muted-text">No interview rounds recorded.</p>`}
       <${Disclosure} label="Add interview round" id=${'round-form-' + job.id} open=${roundOpen} onToggle=${() => setRoundOpen(!roundOpen)}>
-        <form class="form-grid" onSubmit=${async e => { e.preventDefault(); try { await api('jobs/record/interview', { id: job.id, interview: { stage: round.stage, date: round.date, status: round.status, interviewer: round.interviewer, preparation: round.preparation, notes: round.notes } }); clearRound(); setRoundOpen(false); toast('Interview round added.'); refresh(); } catch (error) { fail(error); } }}>
+        <form class="form-grid" onSubmit=${async e => { e.preventDefault(); try { await api('jobs/record/interview', { id: job.id, interview: { stage: round.stage, date: round.date, time: round.time, status: round.status, interviewer: round.interviewer, preparation: round.preparation, notes: round.notes } }); clearRound(); setRoundOpen(false); toast('Interview round added.'); refresh(); } catch (error) { fail(error); } }}>
           <${Field} form=${'round-' + job.id} name="stage" label="Stage" placeholder="Recruiter screen, technical, onsite…" required value=${round.stage} onInput=${v => setRound({ ...round, stage: v })} />
           <${Field} form=${'round-' + job.id} name="date" label="Date" type="date" required value=${round.date} onInput=${v => setRound({ ...round, date: v })} />
+          <${Field} form=${'round-' + job.id} name="time" label="Time (optional)" type="time" value=${round.time} onInput=${v => setRound({ ...round, time: v })} />
           <${Field} form=${'round-' + job.id} name="interviewer" label="Interviewer" placeholder="Optional" value=${round.interviewer} onInput=${v => setRound({ ...round, interviewer: v })} />
           <${Field} form=${'round-' + job.id} name="roundStatus" label="Status" value=${round.status} options=${[['scheduled', 'Scheduled'], ['completed', 'Completed'], ['canceled', 'Canceled']]} onInput=${v => setRound({ ...round, status: v })} />
           <${Field} form=${'round-' + job.id} name="preparation" label="Preparation" full placeholder="Topics, stories to use, or a prep link" value=${round.preparation} onInput=${v => setRound({ ...round, preparation: v })} />
