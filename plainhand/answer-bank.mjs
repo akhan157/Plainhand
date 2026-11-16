@@ -16,6 +16,18 @@ export function answerSourceKind(evidence) {
   return items.some(item => item?.sourceId === ASSERTION_SOURCE) ? 'assertion' : 'factual';
 }
 
+// Entries saved by 1.1.2 and earlier carry neither `sourceKind` nor `verifiedAt`. Their
+// provenance follows from the evidence they already hold, and the review date they were
+// saved with was the verification. Filling both on read keeps a saved answer reusable
+// across an update without rewriting the candidate's data/answer-bank.yml; an entry that
+// records `verifiedAt: null` on purpose still needs re-approval.
+export function withProvenance(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
+  const sourceKind = entry.sourceKind || answerSourceKind(entry.evidence);
+  const verifiedAt = entry.verifiedAt === undefined && typeof entry.reviewedAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.reviewedAt) ? entry.reviewedAt : entry.verifiedAt;
+  return { ...entry, sourceKind, verifiedAt };
+}
+
 // Whether every quote still appears verbatim in a current factual source. This is the
 // same test the import hold rule uses, applied at reuse time against the shared sources.
 export function quoteInSources(evidence, sources) {
@@ -74,7 +86,7 @@ export class AnswerBank {
   async load() {
     try {
       const document = yaml.load(await this.workspace.read(ANSWER_BANK_FILE)) || {};
-      return Array.isArray(document.answers) ? document.answers : [];
+      return Array.isArray(document.answers) ? document.answers.map(withProvenance) : [];
     } catch { return []; }
   }
 

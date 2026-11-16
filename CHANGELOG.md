@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased: updates keep the candidate's setup
+
+- **One command to update.** `plainhand update` finds the newest release,
+  installs its dependencies, migrates the workspace and asks for a restart.
+  Installed copies go through the same installer, so the workspace folder is
+  never copied or replaced. `plainhand rollback` restores the pre-update state
+  from `data/plainhand/backups/` and switches the code back; `plainhand status`
+  shows versions and pending migrations, and `plainhand --check` prints the
+  workspace state version. See [docs/UPDATING.md](docs/UPDATING.md).
+- **The workspace state is versioned and migrates itself.** `state.version` is
+  now read by an ordered migration chain (`plainhand/migrations.mjs`) with an
+  `up` and a `down` per step. It runs at start, copies the exact previous state
+  file to a dated backup first, writes atomically, journals what ran, and
+  refuses a corrupt or newer-than-the-code state instead of rewriting it.
+- **Updating from 1.1.2 keeps every approval that is still valid.** A master
+  resume approved under the previous release stays approved: its approval
+  covers the wording, and only the list of profile fields shared with the AI
+  changed. A packet approved under 1.1.2 is marked "Review again" with the
+  reason, and the old approval is kept as evidence, because 1.1.2 sent the
+  candidate's email and phone to the provider and current releases do not.
+- **Reusable answers saved before provenance existed keep working.** Entries
+  without `sourceKind`/`verifiedAt` get both when the bank is read — derived
+  from the evidence they already hold and the review date they were saved with.
+  `data/answer-bank.yml` is not rewritten.
+- **A release workflow and gate.** `docs/internal/RELEASE.md` is the release
+  procedure, and `scripts/release-check.mjs` refuses a dirty tree, a
+  VERSION/tag mismatch or missing release notes, then runs the fast suite, the
+  browser UI gate, the controlled evaluation and the simulation benchmark.
+- **Proven end to end.** `scripts/update-proof.mjs` clones a populated 1.1.2
+  install, updates it to the next release with the documented commands, checks
+  every record and setting through the API and on disk, checks the provider
+  credential directories were untouched, runs the one-command update, and rolls
+  back across the migration byte for byte. The result is
+  `docs/internal/lanes/u15-updates/RESULT.md`.
+
 ## Unreleased: packet quality (cover letter, education headings, duplicates)
 
 - **The cover letter tells the story behind the resume.** With an approved

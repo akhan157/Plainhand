@@ -25,6 +25,7 @@ import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { markStalePrep } from './plainhand/features/interview-prep.mjs';
 import { importWorkspace, preview as previewImport, exportWorkspace, recoverInterruptedImport } from './plainhand/workspace-import.mjs';
+import { migrateWorkspace } from './plainhand/migrations.mjs';
 import { applicationsCsv, calendarIcs } from './plainhand/exports.mjs';
 import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
@@ -61,6 +62,10 @@ const FORMAT_SAMPLE = {
 
 export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, browser, providers = inspectProviders, features = FEATURES, startFeatures = true, chatgptOptions = {} } = {}) {
   const workspace = new Workspace(root);
+  // A workspace written by an older Plainhand is migrated before anything reads it. The
+  // state file is backed up first; a corrupt or newer-than-this-code state is refused.
+  const migration = await migrateWorkspace(workspace);
+  if (migration.status === 'migrated') console.log(`Workspace state migrated ${migration.from} → ${migration.to} (backup: ${migration.backup}).`);
   // An import that crashed before its state commit is rolled back (or finished) before
   // anything reads this workspace.
   await recoverInterruptedImport(workspace);

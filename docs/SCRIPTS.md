@@ -15,9 +15,12 @@ Scripts live in `lib/` (engine and CLI), `tests/`, `benchmarks/` and
 | `npm run pdf` | `lib/generate-pdf.mjs` | Convert HTML to ATS-optimized PDF |
 | `npm run sync-check` | `lib/cv-sync-check.mjs` | Validate CV/profile consistency |
 | `npm run patterns` | `lib/analyze-patterns.mjs` | Analyze tracker outcomes and report patterns |
-| `npm run update:check` | `lib/update-system.mjs check` | Check for upstream updates |
-| `npm run update` | `lib/update-system.mjs apply` | Apply upstream update |
-| `npm run rollback` | `lib/update-system.mjs rollback` | Rollback last update |
+| `npm run update:check` | `lib/plainhand-update.mjs check` | Check for a newer Plainhand release |
+| `npm run update` | `lib/plainhand-update.mjs apply` | Install the newest release; keep the workspace |
+| `npm run rollback` | `lib/plainhand-update.mjs rollback` | Restore the pre-update workspace and code |
+| `npm run update:status` | `lib/plainhand-update.mjs status` | Show app, workspace and pending migrations |
+| `npm run migrate` | `lib/plainhand-update.mjs migrate` | Run pending workspace migrations |
+| `npm run update:upstream` | `lib/update-system.mjs apply` | career-ops upstream updater (legacy path) |
 | `npm run liveness` | `lib/check-liveness.mjs` | Test if job URLs are still active |
 | `npm run scan` | `lib/scan.mjs` | Zero-token portal scanner |
 | `npm run sandbox:demo` | `lib/sandbox-demo.mjs` | Build a personal-data-free local dashboard sandbox |
@@ -159,46 +162,69 @@ node lib/lib/analyze-patterns.mjs --self-test
 
 ## update:check
 
-Checks whether a newer version of career-ops is available upstream. Outputs JSON to stdout:
+Asks the release remote for the newest tag and compares it with `VERSION`. In a
+git checkout it reads the remote's tags; an installed copy asks the GitHub
+releases API. `--json` prints `{ kind, version, latest, updateAvailable }`.
 
 ```bash
 npm run update:check
 ```
 
-Possible JSON responses:
-
-| `status` | Meaning |
-|----------|---------|
-| `up-to-date` | Local version matches remote |
-| `update-available` | Newer version exists (includes `local`, `remote`, `changelog`) |
-| `dismissed` | User dismissed the update prompt |
-| `offline` | Could not reach GitHub |
-
-**Exit codes:** `0` always.
+**Exit codes:** `0` always; the report is the output.
 
 ---
 
 ## update
 
-Applies the upstream update. Creates a timestamped backup branch (`backup-pre-update-<version>-<YYYYMMDDTHHMMSSZ>`), fetches from the canonical repo, checks out only system-layer files, runs `npm install`, and commits. The timestamp is derived from UTC ISO time with separators and milliseconds removed (for example, `backup-pre-update-1.8.1-20260608T071302Z`). User-layer files (`cv.md`, `config/profile.yml`, `data/`, etc.) are never touched.
+Installs the newest release and keeps the workspace. In a git checkout it
+fetches the tag, checks it out, runs `npm ci` when `package-lock.json` changed,
+migrates the workspace state and asks for a restart. An installed copy runs its
+own installer without starting, then migrates. The pre-update state is copied to
+`data/plainhand/backups/migrate-*` and the update record to
+`data/plainhand/backups/update-*`; user files are never copied or replaced.
+Candidate-facing steps: [UPDATING.md](UPDATING.md). Release procedure:
+[internal/RELEASE.md](internal/RELEASE.md).
 
 ```bash
 npm run update
+npm run update -- --version v1.2.0       # a specific release
+npm run update -- --offline              # use the npm cache only
+npm run update -- --no-install           # skip npm ci (dependencies already right)
 ```
 
-**Exit codes:** `0` success, `1` lock conflict or safety violation.
+**Exit codes:** `0` updated or already current, `1` refused (dirty tree, failed
+install, migration error) — in which case the code is switched back and the
+workspace is unchanged.
 
 ---
 
 ## rollback
 
-Restores system-layer files from the most recent backup branch created during an update. Rollback prefers the newest timestamped branch matching `backup-pre-update-<version>-<YYYYMMDDTHHMMSSZ>` and still accepts legacy `backup-pre-update-<version>` branches for older installs.
+Restores the workspace state the previous release wrote (from the migration
+backup) and switches the code back to that release, reinstalling dependencies
+when the lockfile differs. Without `--version` it uses the previous release from
+the last update record; pass `--version vX.Y.Z` to go further back. The workspace
+state version that release understands comes from `STATE_VERSION_BY_RELEASE`.
 
 ```bash
 npm run rollback
+npm run rollback -- --version v1.1.2 --offline
 ```
 
-**Exit codes:** `0` success, `1` no backup branch found or git error.
+**Exit codes:** `0` rolled back, `1` no update record or a failed switch.
+
+---
+
+## update:status / migrate
+
+`update:status` prints the app and workspace versions and any pending migration
+(`--json` for the same as JSON). `migrate` runs the pending migrations without
+touching the code; Plainhand also does this itself on every start.
+
+```bash
+npm run update:status
+npm run migrate
+```
 
 ---
 

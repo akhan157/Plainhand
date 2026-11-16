@@ -20,7 +20,9 @@ const headingOf = heading => {
   for (const key of Object.keys(clean)) clean[key] = typeof heading[key] === 'string' ? heading[key].trim() : '';
   return Object.values(clean).some(Boolean) ? clean : null;
 };
-const identity = draft => digest([
+// Exported so a state migration can tell an approval made under the earlier identity
+// (which ignored headings) from a real content change, and keep it approved.
+export const standardIdentity = draft => digest([
 draft.headline,
 draft.resume.map(entry => {
 const heading = headingOf(entry.heading);
@@ -28,6 +30,7 @@ return heading ? [entry.section, heading, entry.text] : [entry.section, entry.te
 }),
 draft.coverLetter,
 ]);
+const identity = standardIdentity;
 
 // none | draft | approved | stale (the profile changed since it was written, or it
 // is a curated standard resume from before the master resume existed)
