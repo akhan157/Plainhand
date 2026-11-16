@@ -148,3 +148,23 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
 - **Updates (deferred).** Candidates must move to each new version without losing their
   setup, and the release workflow on our side must be simple and repeatable. New row
   U15, to start after the current work.
+
+## Product lanes merged; comparison run started — 2026-11-15
+
+- Profile interview coverage (finding 1): `c781c37` by DeepSeek. Root review found a
+  candidate with no licence or projects would be asked about them forever; root fixed
+  it in `23645f7` (an area counts once asked and answered, even "no"). Merged `d54123b`.
+- Tailoring (findings 2-4): `87c38f9` by DeepSeek (executedModel deepseek-flash; its
+  report mislabels itself Claude). Adds the `settings.roleOrder` setting, defaulting to
+  `recent`. Covers role selection and ordering, the confirmed cover-letter rule, and
+  heading and education structure rules. Root reviewed it and merged it as `1bd7205`
+  after resolving a package.json conflict.
+- Gates on `1bd7205`: suite 544/544. Controlled gate 56/59, 0 unexpected. The manifest
+  check flags only `agents.mjs` and `workflow.mjs`, the product files under test.
+  Scoring files are unchanged.
+- Live comparison: the manifest's paired and smoke commands, run on Codex in a clean
+  worktree `/home/ak/.cache/plainhand-live-1bd7205`. They are scored with the frozen
+  v1 scorer, so the comparison with baseline `00ce1bf` is direct.
+- Scorer v2 and U14 usage fields: delegated to DeepSeek. Scope is the PDF order
+  probe, zero-match Skip, cached and reasoning tokens, model identity, Plainhand
+  prompt size, and an offline rescore script. That work needs a re-freeze before use.
