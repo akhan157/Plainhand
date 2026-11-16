@@ -1,23 +1,31 @@
 #!/usr/bin/env node
-// Offline re-score of a saved evidence directory with the current scorer (scorer v2).
-// Zero model calls, zero PDF renders, and no writes to the evidence it reads: the v1
-// record stays exactly as it was produced, and the v2 verdict is reported beside it.
+// Offline re-score of a saved evidence directory with the current scorer (scorer v3).
+// Zero model calls, zero PDF renders, and no writes to the evidence it reads: the
+// recorded verdict stays exactly as it was produced, and the current one is reported
+// beside it.
 //
 //   node scripts/rescore.mjs output/baseline-00ce1bf
 //   node scripts/rescore.mjs output/baseline-00ce1bf --out /tmp/rescore.md
 //
 // What is re-computed, and what is not:
+//   role order       - recomputed from the saved packet. v3 replaced the lead-share
+//                      gate with a role-order gate keyed on the run's roleOrder, and a
+//                      saved packet still holds every heading and its dates, so the
+//                      order is scored again rather than carried. Ordering by
+//                      settings.roleOrder arrived with U04, so a run recorded before
+//                      that setting existed is re-scored as the product default
+//                      (`recent`), and the row says so.
 //   evaluation gate  - recomputed when the record lists no matches (the zero-match
 //                      Skip rule is the v2 change). Rows that list matches carry their
-//                      v1 verdict: v2's rule for a present match is byte-identical, and
-//                      the raw matches and quotes are not saved.
+//                      recorded verdict: the rule for a present match is byte-identical,
+//                      and the raw matches and quotes are not saved.
 //   resume-coverage  - recomputed from the saved line texts and the saved packet, with
 //     reading-order    the same rules pdfEvidence uses. No PDF is parsed again.
 //   poppler, cover   - carried from v1 where they passed. Where v1 failed them they are
 //                      `unscorable`: their extracted text was not saved, so the same
 //                      repeated-wording cause cannot be re-tested offline.
-//   everything else  - carried from v1 and labelled as such (the v2 change does not
-//                      touch it).
+//   everything else  - carried from the recorded verdict and labelled as such (v3
+//                      changes the resume gates only, not the profile or the form).
 // The job and persona objects come from the corpus at the current commit: that is where
 // the Skip band and the posting vocabulary are read from, so a corpus change since the
 // run is drift, and the report says so.
@@ -40,7 +48,7 @@ if (!roots.length) {
 
 const exists = async file => { try { await stat(file); return true; } catch { return false; } };
 const readJson = async file => { try { return JSON.parse(await readFile(file, 'utf8')); } catch { return null; } };
-const label = state => state === 'pass' ? 'pass' : state === 'fail' ? 'FAIL' : state === 'carried' ? 'carried-v1' : state === 'unchanged' ? 'unchanged' : state === 'absent' ? 'absent' : 'UNSCORABLE';
+const label = state => state === 'pass' ? 'pass' : state === 'fail' ? 'FAIL' : state === 'carried' ? 'carried' : state === 'unchanged' ? 'unchanged' : state === 'absent' ? 'absent' : 'UNSCORABLE';
 const row = (id, v1, v2, state, note = '') => ({ id, v1, v2, state, note });
 
 // A saved root may hold one run or several (the baseline writes paired/ and smoke/).
@@ -60,6 +68,25 @@ async function evidenceDirs(root) {
 const checkOf = (evidence, id) => (evidence?.checks || []).find(check => check.id === id) || null;
 const safeJob = id => { try { return id ? jobById(id) : null; } catch { return null; } };
 const safePersona = id => { try { return id ? personaById(id) : null; } catch { return null; } };
+
+// What the packet verdict rests on now, including the gate that changed in v3. The
+// order is read from the saved packet, never from the recorded summary, and the
+// recorded lead share is kept beside it so the old expectation stays visible.
+function packetNote(packet, record) {
+  const tailoring = packet.tailoring || {};
+  const parts = [
+    `fact coverage ${packet.factCoverage}`,
+    `review ${packet.reviewPassed}`,
+    `numbers ${packet.unsupportedNumbers.length} unsupported`,
+    `pdf ${packet.pdfState}`,
+    `role order ${tailoring.roleOrderOk ? 'ok' : tailoring.roleOrderReason} (${tailoring.roleOrder || 'recent'})`,
+    `kept roles ${(tailoring.roles || []).map(role => role.start ?? '?').join(' > ') || 'none'}`,
+    `lead share recorded/now ${record.packet.leadShare ?? 'n/a'}/${tailoring.leadShare ?? 'n/a'}`,
+  ];
+  if (tailoring.droppedRequiredRoles?.length) parts.push(`dropped a role holding a required fact: ${tailoring.droppedRequiredRoles.map(role => role.heading).join('; ')}`);
+  if (tailoring.unparseableRoles?.length) parts.push(`${tailoring.unparseableRoles.length} role heading(s) with unreadable dates`);
+  return parts.join(', ');
+}
 
 // The v2 PDF verdict, from the saved extraction. The rendered bytes are not saved, so
 // the parse is not repeated; the line-order rules are.
@@ -104,6 +131,7 @@ async function rescorePdf(dir, id, scenario, record) {
     packetQuestionsAsked: record.packet.questionsAsked || [],
     roleAnswered: Boolean(record.packet.roleAnswered),
     expectTailoring: Boolean(scenario.withStandard),
+    roleOrder: scenario.roleOrder,
   }) : null;
   return {
     checks: [
@@ -112,7 +140,7 @@ async function rescorePdf(dir, id, scenario, record) {
       row('reading-order', checkOf(evidence, 'reading-order')?.status, orderOk ? 'pass' : 'fail'),
       row('poppler-cross-check', poppler?.status ?? 'absent', !poppler ? 'unscorable' : poppler.status === 'fail' ? 'unscorable' : 'carried', poppler?.status === 'fail' ? 'text not saved' : ''),
       row('cover', cover?.status ?? 'absent', !cover ? 'unscorable' : cover.status === 'fail' ? 'unscorable' : 'carried', cover?.status === 'fail' ? 'text not saved' : ''),
-      packet ? row('packet (all gates)', record.packet.pass ? 'pass' : 'fail', packet.pass ? 'pass' : 'fail', `fact coverage ${packet.factCoverage}, review ${packet.reviewPassed}, numbers ${packet.unsupportedNumbers.length} unsupported, pdf ${packet.pdfState}`) : row('packet (all gates)', record.packet.pass ? 'pass' : 'fail', 'unscorable', 'the persona or job is no longer in the corpus'),
+      packet ? row('packet (all gates)', record.packet.pass ? 'pass' : 'fail', packet.pass ? 'pass' : 'fail', 'recomputed', packetNote(packet, record)) : row('packet (all gates)', record.packet.pass ? 'pass' : 'fail', 'unscorable', 'unscorable', 'the persona or job is no longer in the corpus'),
     ],
     unscorable,
   };
@@ -140,9 +168,9 @@ async function rescoreScenario(dir, record) {
   if (pdf) checks.push(...pdf.checks);
   // 3. The profile gate, when the run built its profile in conversation (a seeded or
   // minimal run has no profile stage and none is invented here).
-  if (record.profile) checks.push(row('profile', record.profile.pass ? 'pass' : 'fail', record.profile.pass ? 'carried' : 'fail', `capture ${record.profile.captureRate ?? 'n/a'}, coverage of all facts ${record.profile.coverageOfAllFacts ?? 'n/a'}; the v2 change does not touch profile scoring`));
-  // 4. The application stage: v2 does not score it differently.
-  if (record.application) checks.push(row('application', record.application.pass ? 'pass' : 'fail', record.application.pass ? 'carried' : 'fail', 'the v2 change does not touch application scoring'));
+  if (record.profile) checks.push(row('profile', record.profile.pass ? 'pass' : 'fail', record.profile.pass ? 'carried' : 'fail', `capture ${record.profile.captureRate ?? 'n/a'}, coverage of all facts ${record.profile.coverageOfAllFacts ?? 'n/a'}; v3 does not touch profile scoring`));
+  // 4. The application stage: v3 does not score it differently.
+  if (record.application) checks.push(row('application', record.application.pass ? 'pass' : 'fail', record.application.pass ? 'carried' : 'fail', 'v3 does not touch application scoring'));
   // A decidable failure decides; then a pass; the saved evidence settles nothing.
   const failed = checks.some(check => check.v2 === 'fail');
   const unscorable = checks.some(check => check.v2 === 'unscorable');
@@ -165,7 +193,7 @@ async function rescoreDir(dir) {
 
 const cells = value => String(value).replace(/\|/g, '\\|').replace(/\n/g, ' ');
 function table(result) {
-  const head = `### ${result.dir}\n\nRecorded scorer version: v${result.v1Version}. Re-scored with v${SCORER_VERSION}.\n\n| Scenario | v1 recorded | v2 rescore | Checks (v1 → v2) |\n|---|---|---|---|\n`;
+  const head = `### ${result.dir}\n\nRecorded scorer version: v${result.v1Version}. Re-scored with v${SCORER_VERSION}.\n\n| Scenario | recorded | v${SCORER_VERSION} rescore | Checks (recorded → v${SCORER_VERSION}) |\n|---|---|---|---|\n`;
   const body = result.rows.map(item => {
     const checks = item.checks.map(check => `${check.id} ${check.v1} → ${label(check.v2)}`).join('<br>');
     return `| ${cells(item.id)} | ${item.v1} | ${item.v2 === 'unscorable' ? 'UNSCORABLE' : item.v2.toUpperCase()} | ${checks} |`;
@@ -200,7 +228,7 @@ const main = async () => {
   const results = [];
   for (const dir of dirs) results.push(await rescoreDir(dir));
   const summary = summaryOf(results);
-  const markdown = `# Offline re-score with scorer v${SCORER_VERSION}\n\nZero model calls. v1 evidence is read only; nothing is overwritten. Where the saved\nitems do not settle a check, it is reported as unscorable rather than assumed. Job and\npersona definitions come from the corpus at this commit, not from the recorded run.\n\n${results.map(table).join('\n')}\n## Summary\n\n| | Count |\n|---|---|\n| Scenarios | ${summary.scenarios} |\n| v1 recorded pass | ${summary.v1Passed} (plus ${summary.v1ExpectedFail} expected-failure controls) |\n| v2 rescore pass | ${summary.v2Passed} |\n| v2 rescore fail | ${summary.v2Failed} |\n| v2 unscorable | ${summary.v2Unscorable} |\n| Rows whose verdict changed | ${summary.changed} |\n\n${summary.changedIds.length ? summary.changedIds.map(id => `- ${id}`).join('\n') + '\n' : ''}`;
+  const markdown = `# Offline re-score with scorer v${SCORER_VERSION}\n\nZero model calls. The recorded evidence is read only; nothing is overwritten. Where the saved\nitems do not settle a check, it is reported as unscorable rather than assumed. Job and\npersona definitions come from the corpus at this commit, not from the recorded run.\n\n${results.map(table).join('\n')}\n## Summary\n\n| | Count |\n|---|---|\n| Scenarios | ${summary.scenarios} |\n| Recorded pass | ${summary.v1Passed} (plus ${summary.v1ExpectedFail} expected-failure controls) |\n| v${SCORER_VERSION} rescore pass | ${summary.v2Passed} |\n| v${SCORER_VERSION} rescore fail | ${summary.v2Failed} |\n| v${SCORER_VERSION} unscorable | ${summary.v2Unscorable} |\n| Rows whose verdict changed | ${summary.changed} |\n\n${summary.changedIds.length ? summary.changedIds.map(id => `- ${id}`).join('\n') + '\n' : ''}`;
   console.log(markdown);
   if (outFile) await writeFile(outFile, markdown);
   if (jsonFile) await writeFile(jsonFile, JSON.stringify({ scorerVersion: SCORER_VERSION, dirs: results.map(result => result.dir), sources: roots, summary, results }, null, 2));

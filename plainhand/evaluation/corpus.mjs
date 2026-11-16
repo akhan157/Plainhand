@@ -4,6 +4,7 @@
 // what the app built instead of asking a model whether it did well.
 import { emptyProfile } from '../store.mjs';
 import { holdoutPersonas, holdoutJobs, holdoutScenarios } from './corpus-holdout.mjs';
+import { holdout2Personas, holdout2Jobs, holdout2Scenarios } from './corpus-holdout-2.mjs';
 
 export const personas = [
   {
@@ -743,9 +744,10 @@ export const jobs = [
 ];
 
 // Held-out baseline fixtures live in their own file so the manifest can hash them.
-personas.push(...holdoutPersonas);
-for (const persona of holdoutPersonas) persona.seedProfile = seedProfileFor(persona);
-jobs.push(...holdoutJobs);
+// Set 2 was written after set 1 was seen (scorer v3, the role-order gate).
+personas.push(...holdoutPersonas, ...holdout2Personas);
+for (const persona of [...holdoutPersonas, ...holdout2Personas]) persona.seedProfile = seedProfileFor(persona);
+jobs.push(...holdoutJobs, ...holdout2Jobs);
 
 // Field expectations are deliberately explicit. A scorer should never have to
 // guess whether a portal question was answerable from the candidate's sources.
@@ -946,6 +948,7 @@ export const scenarios = [
   { id: 'profile-effect-sci-seeded', family: 'profile-effect', persona: 'scientist', job: 'scientist-i', portal: 'lever-single', profileMode: 'seeded', pairId: 'sci' },
   { id: 'profile-effect-sci-minimal', family: 'profile-effect', persona: 'scientist', job: 'scientist-i', portal: 'lever-single', profileMode: 'minimal', pairId: 'sci', expectFail: true },
   ...holdoutScenarios,
+  ...holdout2Scenarios,
 ];
 
 export const personaById = id => personas.find(p => p.id === id || p.aliases?.includes(id));

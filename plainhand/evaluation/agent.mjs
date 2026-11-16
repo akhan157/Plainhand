@@ -12,7 +12,8 @@ import {
 import { HUMANIZE_INSTRUCTION } from '../humanize.mjs';
 import { NAVIGATION_INSTRUCTION } from '../browser-driver.mjs';
 import { fixtureAgent } from '../test-fixtures.mjs';
-import { absentClaimsIn } from './corpus.mjs';
+import { captures, absentClaimsIn } from './corpus.mjs';
+import { personaRoles } from './roles.mjs';
 
 const numberTokens = text => (String(text || '').match(/\d[\d.,]*%?/g) || []);
 
@@ -46,26 +47,78 @@ function evidenceFor(persona, fact, context) {
 // Certifications ...); anything unnamed is Experience. No field is assumed.
 const factSection = fact => fact.section || 'Experience';
 
-function resumeEntries(persona, job, context, facts) {
-  const required = job.requiredFactIds.map(id => facts.find(f => f.id === id)).filter(Boolean);
-  const rest = facts.filter(f => !required.includes(f));
-  const chosen = [...required, ...rest].slice(0, 5);
-  return chosen.map(fact => ({
-    section: factSection(fact),
-    heading: fact.atEmployer ? { org: persona.employer, title: persona.title, location: persona.profile.location.split(',')[0], dates: persona.dates } : null,
-    text: fact.text,
-    evidence: evidenceFor(persona, fact, context),
-  }));
+// The persona's master roles, and which role each available fact came from: a fact
+// belongs to the role whose master lines state it. A fact under no role is a section
+// line (certifications, education) and stays outside the role groups.
+function masterRoles(persona, facts) {
+  const roles = personaRoles(persona).map(role => ({ role, facts: [] }));
+  const loose = [];
+  for (const fact of facts) {
+    const entry = roles.find(item => item.role.body.some(line => captures(fact.text, line)));
+    (entry ? entry.facts : loose).push(fact);
+  }
+  return { roles: roles.filter(item => item.facts.length), loose };
 }
 
-function packetFor(persona, job, context) {
+const headingOf = role => ({ org: role.org, title: role.title, location: '', dates: role.dates });
+
+// Dropping a role leaves an unexplained gap when the nearest *kept* role on either
+// side of it in the record is more than a year away in the dates. Such a role is kept
+// with exactly one short line, as the product instructs. A role older than every kept
+// role is simply left off (that is not a gap), which is why the neighbours are found by
+// walking the persona's own role list outward instead of comparing start years.
+function bridgesGap(entry, all, kept) {
+  const sorted = [...all].sort((a, b) => b.role.start - a.role.start);
+  const at = sorted.indexOf(entry);
+  const above = sorted.slice(0, at).reverse().find(item => kept.includes(item)) || null;
+  const below = sorted.slice(at + 1).find(item => kept.includes(item)) || null;
+  const endOf = role => role.end ?? role.start;
+  if (above && above.role.start - endOf(entry.role) > 1) return true;
+  if (below && entry.role.start - endOf(below.role) > 1) return true;
+  return false;
+}
+
+// The candidate's own order (settings.roleOrder, handed to the packet as INPUT.roleOrder):
+// newest first, or the role that best matches the job first and the rest newest first.
+// A role's match is the number of the job's required facts it states, never a job's
+// expected outcome, so the fixture cannot be tuned to a scenario.
+function orderRoles(roles, requiredIds, roleOrder) {
+  const newestFirst = (a, b) => (b.role.start - a.role.start) || ((b.role.end ?? b.role.start) - (a.role.end ?? a.role.start));
+  const sorted = [...roles].sort(newestFirst);
+  if (roleOrder !== 'match') return sorted;
+  const requiredCount = item => item.facts.filter(fact => requiredIds.has(fact.id)).length;
+  const match = sorted.reduce((best, item) => requiredCount(item) > requiredCount(best) ? item : best, sorted[0]);
+  if (!requiredCount(match)) return sorted;
+  return [match, ...sorted.filter(item => item !== match)];
+}
+
+function roleEntries(persona, job, context, facts, roleOrder) {
+  const requiredIds = new Set(job.requiredFactIds || []);
+  const needed = new Set([...(job.requiredFactIds || []), ...(job.retainFactIds || [])]);
+  const { roles, loose } = masterRoles(persona, facts);
+  const hasNeeded = item => item.facts.some(fact => needed.has(fact.id));
+  const kept = roles.filter(hasNeeded);
+  // A candidate with no role holding a needed fact still has experience worth showing.
+  if (!kept.length && roles.length) kept.push(roles.reduce((newest, item) => item.role.start > newest.role.start ? item : newest, roles[0]));
+  for (const entry of roles) if (!kept.includes(entry) && bridgesGap(entry, roles, kept)) kept.push(entry);
+  const entries = [];
+  for (const entry of orderRoles(kept, requiredIds, roleOrder)) {
+    // A role kept only to explain the dates carries one short line, not its record.
+    const lines = hasNeeded(entry) ? [...entry.facts].sort((a, b) => Number(requiredIds.has(b.id)) - Number(requiredIds.has(a.id))) : entry.facts.slice(0, 1);
+    for (const fact of lines) entries.push({ section: 'Experience', heading: headingOf(entry.role), text: fact.text, evidence: evidenceFor(persona, fact, context) });
+  }
+  for (const fact of loose) entries.push({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) });
+  return entries;
+}
+
+function packetFor(persona, job, context, roleOrder) {
   const facts = availableFacts(persona, context);
   const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0] || null;
   const educationEvidence = quoteEvidence(persona.educationEvidence, context) || fallbackEvidence(context, persona);
   return {
     headline: `${persona.profile.roles.split(',')[0]} for ${job.title}`,
     resume: [
-      ...resumeEntries(persona, job, context, facts),
+      ...roleEntries(persona, job, context, facts, roleOrder),
       {
         section: 'Education',
         heading: null,
@@ -201,11 +254,13 @@ export function controlledAgent({ scenario, persona, job }) {
       const candidateCorpus = [persona.profile.resume, persona.profile.roles, ...facts.map(f => f.text)].join(' ').toLowerCase();
       const matchedTerms = (job.atsTerms || []).filter(term => candidateCorpus.includes(term.toLowerCase()));
       if ((job.atsTerms || []).length > 0 && matchedTerms.length === 0) {
+        // An honest Skip states no matches: the posting's requirements have nothing in
+        // the profile behind them, and the gaps name those requirements (scorer v2).
         return {
           score: 2.2,
           recommendation: 'Skip',
           summary: `The role requires ${job.atsTerms.join(', ')} experience not present in the available profile.`,
-          matches: [{ text: 'General background documented in the available profile.', evidence: fallbackEvidence(data.context, persona) }],
+          matches: [],
           gaps: [`No documented experience with ${job.atsTerms.join(', ')}.`],
           questions: [],
           legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
@@ -236,7 +291,9 @@ export function controlledAgent({ scenario, persona, job }) {
         legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
       };
     }
-    if (instruction === PACKET_INSTRUCTION) return packetFor(persona, job, data.context);
+    // The fixture follows the candidate's order setting, as the product's packet
+    // instruction does (INPUT.roleOrder), so the controlled gate measures the gate.
+    if (instruction === PACKET_INSTRUCTION) return packetFor(persona, job, data.context, data.roleOrder ?? scenario.roleOrder ?? 'recent');
     if (instruction === STANDARD_INSTRUCTION) return standardFor(persona, data.context);
     if (instruction === REVIEW_INSTRUCTION) return reviewBody(persona, data.packet || {}, data.context || { sources: [] });
     if (instruction === FORM_INSTRUCTION) return formSuggestions(persona, job, data.fields, data.context);
