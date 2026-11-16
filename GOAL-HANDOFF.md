@@ -926,3 +926,41 @@ holdout2-journey-stem fails again, the same way.
   - passive suggestion guard;
   - deterministic section order and a grouping repair;
   - voiceTarget carries the candidate's own register phrases.
+
+## Fix lane and live-blocker fixes — 2026-11-16 afternoon
+
+- **Lane `bee4439` (OMP DeepSeek), merged by root.** Changes:
+  - role placement in the interview;
+  - completeness parsing of one-line resumes;
+  - heading-only master roles;
+  - passive suggestion guard;
+  - section order;
+  - accomplishment repair;
+  - register phrases.
+- **Root changes, each reviewed by OMP DeepSeek and the findings fixed:**
+  - `5221169`, `2ffd619`: master repair before the review; repair made idempotent.
+  - `37eb4fd`: three live blockers from the `2ffd619` run, all in deterministic code:
+    1. "Research Associate" read as a degree, which produced a false degree conflict
+       question. This blocked 4 rows.
+    2. Word-overlap credential matching, which wrote false "Left out" notes.
+    3. A false "kept" note left standing.
+  - `9c9c490`: review findings. Name-first credential match; register rate for the
+    candidate's own register only, capped; degree forms.
+  - `cec2918`: a needed credential is carried from the approved master on the last
+    attempt; scope notes quote the line instead of using a 1-based index.
+  - `b8a81cb`: the carry never overrides a revision.
+  - State after these: suite 711/711, controlled gate 64/67 (expected), simulation 49/49.
+- **Live runs:**
+  - `2ffd619`: 1/6. holdout2-journey-stem passed the master for the first time,
+    then hit blocker 1 above.
+  - `37eb4fd`: fin-seeded and journey-sci pass; journey-sci had been blocked by
+    blocker 1, so the fix holds live. analyst-seeded hit the two deterministic note
+    defects fixed in `cec2918`. In analyst-built the reviewer caught real model
+    stretches ("multiple dashboards", "operations teams"). Codex quota ran out before
+    holdout2-journey-stem and sci-built ran. Voice on `2ffd619`: the formal letter
+    rose from 0.8 to 2.9 markers per 100 words, still short of ~4.
+- **Incident.** A reviewer told to "delete your probes" wiped the shared
+  `plainhand-eval-tmp`, including a running clone. Live runs now use
+  `~/.cache/plainhand-recheck` (script `recheck2-live.sh`). Reviewers get a
+  private probe folder.
+- **Next.** Live run after the 4:54 PM Codex reset on HEAD.
