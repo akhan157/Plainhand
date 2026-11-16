@@ -266,7 +266,7 @@ Commands actually run on this lane, in this order:
 | Gate | Result |
 |---|---|
 | `node --test tests/test-standard.mjs tests/test-u03-master.mjs` | 20/20 pass |
-| `npm run test:plainhand -- --test-concurrency=2` | 639/639 pass (81.4 s wall) |
+| `npm run test:plainhand` | 639/639 pass (60.0 s wall) |
 | `npm run test:plainhand-ui` | pass |
 | `node benchmarks/benchmark-eval.mjs --concurrency 2` | 64/67 pass, 3 expected failures |
 | `node scripts/onboarding-report.mjs <four directories>` | exit 0; tables above |
@@ -274,8 +274,9 @@ Commands actually run on this lane, in this order:
 
 ### 5.1 Gate results
 
-- `npm run test:plainhand -- --test-concurrency=2`: **639 tests, 639 pass, 0
-  fail** (about 51 s of test time). This includes the new
+- `npm run test:plainhand`: **639 tests, 639 pass, 0 fail** (59.5 s of test
+  time, 60.0 s wall). A second run with `--test-concurrency=2` also passed
+  639/639 (80.6 s test time). This includes the new
   `tests/test-u03-master.mjs` (6 tests) and the existing durable-memory probe.
 - `npm run test:plainhand-ui`: **passed** — “Plainhand full browser workflow
   passed: themes, persistence, interview, discovery, evaluation, real PDFs/
