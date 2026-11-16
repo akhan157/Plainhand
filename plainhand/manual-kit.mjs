@@ -2,13 +2,16 @@
 // links, the approved documents, and every approved answer with its sources.
 // Files are written under output/, which is local and gitignored. Nothing here
 // submits, opens a browser or contacts the employer.
-import { slug } from './workflow.mjs';
+import { slug, packetIdentity } from './workflow.mjs';
 
 export const kitDirectory = job => `output/manual-kit/${slug(job.company)}-${slug(job.title)}-${job.id.slice(0, 8)}`;
 
 export async function writeManualKit({ workspace, state, job }) {
   if (!job) throw new Error('Job not found.');
   if (!job.packet) throw new Error('Prepare this application packet first; the kit needs the reviewed documents.');
+  // The kit is what the candidate submits by hand, so it carries only documents they
+  // approved, in exactly the version they approved.
+  if (!job.approvedHash || job.approvedHash !== packetIdentity(job)) throw new Error('Approve this application first; the kit carries only the version you approved.');
   const directory = kitDirectory(job);
   const link = job.applyUrl || job.url;
   const files = [];

@@ -265,6 +265,8 @@ for (const board of [
       assert.throws(() => applicationTarget(job), /doesn't open/);
       assert.equal(job.status, 'Apply');
       assert.equal(job.submittedAt, undefined);
+      await assert.rejects(h.request('jobs/manual-kit', { id: job.id }), /Approve this application first/, 'an unapproved packet never goes into a kit');
+      await h.request('packet/approve', { id: job.id });
       const kit = await h.request('jobs/manual-kit', { id: job.id });
       const byName = Object.fromEntries(kit.files.map(file => [file.name, file.path]));
       const pdfBytes = await readFile(await h.app.workspace.safe(job.pdf));
@@ -304,12 +306,14 @@ test('an unknown careers host cannot block preparation: the packet is rendered, 
     assert.equal(supportedUrl(job.url), false, 'the host is not a known ATS');
     assert.equal(isBoardUrl(job.url), false);
     assert.equal(portalRoot(job.url), 'acme-u08.invalid');
+    await assert.rejects(h.request('jobs/manual-kit', { id: job.id }), /Approve this application first/, 'an unapproved packet never goes into a kit');
+    await h.request('packet/approve', { id: job.id });
     const kit = await h.request('jobs/manual-kit', { id: job.id });
     const names = kit.files.map(file => file.name);
     for (const name of ['posting.md', 'resume.pdf', 'cover-letter.pdf', 'answers.md', 'kit.json']) assert.ok(names.includes(name), `${name} is in the kit`);
     const fresh = await h.freshJob(job.id);
     assert.equal(fresh.status, 'Apply');
-    assert.equal(fresh.stage, 'packet-ready');
+    assert.equal(fresh.stage, 'approved');
     const tracker = await h.app.workspace.read('data/applications.md');
     assert.match(tracker, /Graduate Design Engineer/);
     assert.match(tracker, /Apply/);
