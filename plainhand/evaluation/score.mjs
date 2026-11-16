@@ -5,6 +5,13 @@ import { captures, expectedFor, fieldOwner, hasWord, absentClaimsIn, personaById
 import { splitSentences, coverLetterClaims, headingText, jobSource } from './claims.mjs';
 import { pdfEvidencePassed, pdfEvidenceSummary } from './pdf-evidence.mjs';
 
+// The scorer's version. A check that changes what a pass means is a new version, and a
+// pass from one version is never combined with, or compared against, another: v1
+// evidence (which recorded no version) is reported beside v2, never mixed with it.
+// v2: an honest zero-match Skip is valid (the PDF line-order rule is unchanged in
+// meaning but its occurrence choice was corrected; see pdf-evidence.mjs).
+export const SCORER_VERSION = 2;
+
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const numberTokens = text => (String(text || '').match(/\d(?:[\d.,]*\d)?%?|\d%?/g) || []);
 
@@ -549,6 +556,30 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
   };
 }
 
+// What an honest Skip has to say: the requirements the posting names that the sources
+// do not support. Only the posting's own vocabulary is used, so rephrasing is fine and
+// an empty or vague gaps list is not. Stopwords and the fixture marker are excluded so
+// the check cannot be satisfied by saying "synthetic test job".
+const GAP_STOPWORDS = new Set(['ability', 'about', 'after', 'against', 'along', 'among', 'another', 'because', 'before', 'being', 'between', 'candidate', 'company', 'corporate', 'could', 'during', 'environment', 'every', 'experience', 'fictional', 'from', 'have', 'including', 'into', 'knowledge', 'looking', 'minimum', 'more', 'most', 'must', 'other', 'over', 'practice', 'preferred', 'professional', 'related', 'relevant', 'required', 'requirements', 'requires', 'role', 'seeking', 'should', 'similar', 'skills', 'strong', 'successful', 'synthetic', 'than', 'that', 'their', 'there', 'these', 'they', 'this', 'those', 'through', 'under', 'until', 'where', 'which', 'while', 'will', 'with', 'within', 'without', 'work', 'working', 'would', 'years']);
+function postingRequirementWords(job) {
+  // The posting's own vocabulary: its ATS terms as written, plus the content words of
+  // its description. Matching a phrase or one word is enough to name a requirement.
+  const terms = (Array.isArray(job?.atsTerms) ? job.atsTerms : []).map(term => String(term ?? '').trim().toLowerCase()).filter(term => term.length >= 3);
+  const text = String(job?.description || '').toLowerCase();
+  const words = (text.match(/[a-z][a-z+#.%]{4,}/g) || []).filter(word => !GAP_STOPWORDS.has(word));
+  return [...new Set([...terms, ...words])];
+}
+// A gap is a sentence naming something missing, not a placeholder: at least 20
+// characters, and at least one of them must use the posting's own requirement words.
+function gapsNameMissingRequirements(gaps, job) {
+  const named = (Array.isArray(gaps) ? gaps : []).map(gap => String(gap ?? '').trim()).filter(gap => gap.length >= 20);
+  if (!named.length) return false;
+  const words = postingRequirementWords(job);
+  if (!words.length) return false;
+  const text = named.join(' ').toLowerCase();
+  return words.some(word => text.includes(word));
+}
+
 export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithoutOverride }) {
   const validScore = typeof evaluation?.score === 'number' && evaluation.score >= 0 && evaluation.score <= 5;
   const expectedRec = job?.expectRecommendation || 'Apply';
@@ -559,7 +590,14 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
   const scoreBandCorrect = band
     ? typeof evaluation?.score === 'number' && evaluation.score >= band.min && evaluation.score <= band.max
     : expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
-  const evidenceValid = Array.isArray(evaluation?.matches) && evaluation.matches.length > 0 && evaluation.matches.every(match => hasEvidence(match, { sources: sources || [] }));
+  const matches = Array.isArray(evaluation?.matches) ? evaluation.matches : null;
+  // Any match that is present must be a real source quote. An honest Skip that states
+  // no matches is valid only inside the Skip band and only when it names the missing
+  // requirements: "no evidence, no gaps" is a refusal to assess, not an assessment.
+  // Apply and Investigate still need at least one supported match.
+  const matchesValid = Boolean(matches && matches.every(match => hasEvidence(match, { sources: sources || [] })));
+  const honestZeroMatchSkip = Boolean(expectedRec === 'Skip' && matches?.length === 0 && scoreBandCorrect && gapsNameMissingRequirements(evaluation?.gaps, job));
+  const evidenceValid = matchesValid && (matches.length > 0 || honestZeroMatchSkip);
   // Production refuses to prepare any role below 4/5 without a recorded reason.
   const guardCorrect = expectedRec === 'Skip' || expectedRec === 'Investigate' ? prepareRefusedWithoutOverride === true : true;
   // A band must come with its expected label, and Investigate must come with a band.
@@ -577,6 +615,7 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
     recCorrect,
     scoreBandCorrect,
     evidenceValid,
+    honestZeroMatchSkip,
     guardCorrect,
     prepareRefusedWithoutOverride: prepareRefusedWithoutOverride ?? null,
     pass,
@@ -606,7 +645,7 @@ export function scoreScenario(result) {
   // A scenario that threw never passes, whatever stage it reached first.
   if (result.error) pass = false;
   const expectedFail = Boolean(result.scenario.expectFail);
-  return { ...result, packet, application, evaluation, expectedFail, unexpected: !pass && !expectedFail, pass: Boolean(pass) };
+  return { ...result, scorerVersion: SCORER_VERSION, packet, application, evaluation, expectedFail, unexpected: !pass && !expectedFail, pass: Boolean(pass) };
 }
 
 const avg = values => {
@@ -716,6 +755,7 @@ export function aggregate(results) {
   }
   return {
     scenarios: results.length,
+    scorerVersion: SCORER_VERSION,
     passed: results.filter(result => result.pass).length,
     failed: results.filter(result => !result.pass).map(result => result.scenario.id),
     expectedFailures: results.filter(result => !result.pass && (result.expectedFail ?? result.scenario.expectFail)).map(result => result.scenario.id),
@@ -775,6 +815,18 @@ export function aggregate(results) {
 
 export function compareToBaseline(summary, baseline, currentResults = []) {
   if (!baseline?.summary) return null;
+  // A pass under a different scorer version means something else: report the version
+  // instead of a delta, so no one reads two versions as one series.
+  const versionOf = source => source?.scorerVersion ?? source?.scorer?.version ?? 1;
+  const baselineVersion = versionOf(baseline), currentVersion = versionOf(summary);
+  if (baselineVersion !== currentVersion) {
+    return {
+      comparable: false,
+      baselineScorerVersion: baselineVersion,
+      scorerVersion: currentVersion,
+      reason: `Scorer v${baselineVersion} and v${currentVersion} results are not comparable: a changed check changes what a pass means. Re-run the baseline under the current scorer.`,
+    };
+  }
   const before = baseline.summary, after = summary;
   const delta = (path) => {
     const get = (object, keys) => keys.reduce((value, key) => value == null ? null : value[key], object);
@@ -797,6 +849,8 @@ export function compareToBaseline(summary, baseline, currentResults = []) {
     return runs.length > 0 && runs.every(item => item.pass === true);
   });
   return {
+    comparable: true,
+    scorerVersion: currentVersion,
     scenarios: { before: before.scenarios, after: after.scenarios, delta: delta(['scenarios']) },
     passed: { before: before.passed, after: after.passed, delta: delta(['passed']) },
     factCoverage: { before: before.resume?.factCoverage ?? null, after: after.resume?.factCoverage ?? null, delta: delta(['resume', 'factCoverage']) },
@@ -812,6 +866,10 @@ export function compareToBaseline(summary, baseline, currentResults = []) {
 }
 
 export function markdownReport({ evidenceTier, provider, summary, results, comparison }) {
+  // Version is reported per run; a report that somehow holds two versions says so
+  // instead of presenting one number.
+  const versions = [...new Set(results.map(result => result.scorerVersion ?? 1))].sort();
+  const scorerVersion = versions.length ? versions.join(' + ') + (versions.length > 1 ? ' (MIXED: not one series)' : '') : SCORER_VERSION;
   const line = (result) => {
     const parts = [];
     if (result.evaluation) parts.push(`eval ${result.evaluation.score ?? 'n/a'}/5 ${result.evaluation.recommendation ?? ''}`.trim());
@@ -854,6 +912,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Submissions accepted | ${summary.application?.submissionsAccepted ?? 0}/${summary.application?.submissionsExpected ?? 0} |
 | Profile capture rate | ${summary.profile?.captureRate ?? 'n/a'} |
 | Model calls | ${summary.calls} |
+| Scorer version | ${scorerVersion} |
 | Duration | ${(summary.durationMs / 1000).toFixed(1)}s |
 
 ${summary.profileEffect?.length ? `## Profile effectiveness

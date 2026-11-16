@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { validateSubmission } from '../plainhand/evaluation/sandbox.mjs';
-import { scorePacket, scoreApplication, scoreEvaluation, scoreScenario, aggregate, compareToBaseline, markdownReport } from '../plainhand/evaluation/score.mjs';
+import { scorePacket, scoreApplication, scoreEvaluation, scoreScenario, aggregate, compareToBaseline, markdownReport, SCORER_VERSION } from '../plainhand/evaluation/score.mjs';
 import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord, absentClaimsIn, personas } from '../plainhand/evaluation/corpus.mjs';
 import { renderPortal } from '../plainhand/evaluation/portals.mjs';
 import { assertProviderUsable, runEvaluation, exitCodeFor, runMetadata, candidatePayload } from '../plainhand/evaluation/runner.mjs';
@@ -306,6 +308,25 @@ test('a borderline job passes only Investigate inside its band, with the below-4
   assert.equal(scoreEvaluation({ evaluation: { score: 4, recommendation: 'Apply', matches }, sources, job: apply }).scoreBandCorrect, true);
 });
 
+test('the offline re-score reads an evidence directory, reproduces it, and never writes into it', async () => {
+  const out = await mkdtemp(path.join(tmpdir(), 'plainhand-rescore-test-'));
+  try {
+    await runEvaluation(['--scenarios', 'mech-resume', '--concurrency', '1', '--out', out]);
+    const before = await readFile(path.join(out, 'results.json'), 'utf8');
+    const beforeStat = (await stat(path.join(out, 'results.json'))).mtimeMs;
+    const run = promisify(execFile);
+    const { stdout } = await run(process.execPath, ['scripts/rescore.mjs', out], { cwd: process.cwd() });
+    assert.match(stdout, /Recorded scorer version: v2/);
+    assert.match(stdout, /\| mech-resume \| PASS \| PASS \|/);
+    assert.match(stdout, /resume-coverage pass → pass/);
+    // Zero model calls and read-only: the recorded evidence is byte-identical.
+    assert.equal(await readFile(path.join(out, 'results.json'), 'utf8'), before);
+    assert.equal((await stat(path.join(out, 'results.json'))).mtimeMs, beforeStat);
+    // The report is never written into the evidence it describes.
+    await assert.rejects(run(process.execPath, ['scripts/rescore.mjs', out, '--out', path.join(out, 'rescore.md')], { cwd: process.cwd() }), /Refusing to write into the evidence directory/);
+  } finally { await rm(out, { recursive: true, force: true }); }
+});
+
 test('packet scoring detects unsupported numbers, absent claims and banned voice', () => {
   const scenario = scenarios.find(item => item.id === 'mech-resume');
   const persona = personaById(scenario.persona), job = jobById(scenario.job);
@@ -362,6 +383,24 @@ test('controlled end-to-end evaluation runs a resume and a submitted application
     assert.match(report.metadata.commit, /^[0-9a-f]{40}$/);
     assert.equal(typeof report.metadata.dirty, 'boolean');
     assert.equal(report.metadata.node, process.version);
+    // The scorer version and the usage fields U14 needs travel with the numbers.
+    assert.equal(report.scorer.version, SCORER_VERSION);
+    assert.equal(report.summary.scorerVersion, SCORER_VERSION);
+    assert.equal(report.results.every(item => item.scorerVersion === SCORER_VERSION), true);
+    const saved = JSON.parse(await readFile(path.join(out, 'results.json'), 'utf8'));
+    assert.equal(saved.scorer.version, 2);
+    for (const scenario of saved.results) {
+      const usage = scenario.usage;
+      assert.equal(typeof usage.promptChars, 'number', 'Plainhand\'s own prompt size is recorded');
+      assert.ok(usage.promptChars > 0);
+      assert.equal(usage.promptCharsPerCall, Math.round(usage.promptChars / usage.calls));
+      // The controlled fixture agent reports no provider telemetry: absent counters
+      // stay null rather than being estimated, and no model is claimed.
+      assert.equal(usage.cachedInputTokens, null);
+      assert.equal(usage.reasoningTokens, null);
+      assert.equal(usage.actualModel, null);
+      assert.match(usage.actualModelReason, /no provider model id/i);
+    }
     assert.equal(submission.application.resumeUploadMatches, true);
     assert.deepEqual(submission.application.readbackMismatches, []);
     assert.deepEqual(submission.application.appOwedRescued, []);
@@ -597,6 +636,64 @@ test('absent claims are judged per sentence and honest negations are not claims'
 test('the CLI exits 0 when only expected controls fail', () => {
   assert.equal(exitCodeFor({ failed: ['profile-effect-mech-minimal'], expectedFailures: ['profile-effect-mech-minimal'], unexpectedFailures: [] }), 0);
   assert.equal(exitCodeFor({ failed: ['mech-lever'], expectedFailures: [], unexpectedFailures: ['mech-lever'] }), 1);
+});
+
+test('an honest zero-match Skip passes; Apply and Investigate with no evidence still fail', () => {
+  // The measured case (finding 7, holdout-mismatch): score 0, Skip, no matches, and the
+  // gaps name both requirements the posting states and the sources do not support.
+  const job = jobById('holdout-job-mismatch');
+  const persona = personaById('holdout-sre-platform');
+  const sources = [{ id: 'profile', text: JSON.stringify(persona.profile) }, { id: 'cv', text: persona.profile.resume }];
+  const gaps = [
+    'FSA fellowship is required but is not evidenced in the supplied sources.',
+    'The required 8+ years of actuarial pricing and loss reserving are not evidenced; the documented work is infrastructure and reliability.',
+  ];
+  const skip = (overrides = {}) => ({ score: 0, recommendation: 'Skip', matches: [], gaps, ...overrides });
+  const score = (evaluation, jobSpec = job) => scoreEvaluation({ evaluation, sources, job: jobSpec, prepareRefusedWithoutOverride: true });
+
+  const honest = score(skip());
+  assert.equal(honest.evidenceValid, true, JSON.stringify(honest));
+  assert.equal(honest.honestZeroMatchSkip, true);
+  assert.equal(honest.pass, true);
+
+  // Apply and Investigate still need a supported match: a refusal to assess is not a pass.
+  assert.equal(score({ ...skip(), score: 4.2, recommendation: 'Apply' }, jobById('fpa-analyst')).evidenceValid, false);
+  assert.equal(score({ ...skip(), score: 4.2, recommendation: 'Apply' }, jobById('fpa-analyst')).pass, false);
+  const borderline = score({ ...skip(), score: 3.4, recommendation: 'Investigate' }, jobById('borderline-swe-job'));
+  assert.equal(borderline.evidenceValid, false);
+  assert.equal(borderline.pass, false, 'Investigate with no evidence is still a failure');
+
+  // The Skip exemption is not a way around the band, the gaps rule or evidence validation.
+  assert.equal(score(skip({ score: 4.2 })).pass, false, 'a Skip above the band is not in band');
+  assert.equal(score(skip({ gaps: [] })).evidenceValid, false, 'no gaps is not a named refusal');
+  assert.equal(score(skip({ gaps: ['Not a fit.'] })).evidenceValid, false, 'a vague gap names no requirement');
+  assert.equal(score(skip({ gaps: ['n/a n/a n/a n/a n/a n/a n/a'] })).evidenceValid, false, 'a placeholder is not a gap');
+  const unsupported = score(skip({ matches: [{ text: 'FSA', evidence: [{ sourceId: 'cv', quote: 'held an FSA fellowship' }] }] }));
+  assert.equal(unsupported.evidenceValid, false, 'a present match is still validated');
+  const missingSource = score(skip({ matches: [{ text: 'FSA', evidence: [{ sourceId: 'writing-samples', quote: persona.profile.resume.slice(0, 20) }] }] }));
+  assert.equal(missingSource.evidenceValid, false, 'a match may not cite a non-factual source');
+});
+
+test('the scorer is versioned and a baseline from another version is never compared', () => {
+  assert.equal(SCORER_VERSION, 2);
+  const holdout = scenarios.find(item => item.id === 'holdout-mismatch');
+  const summary = aggregate([scoreScenario({ scenario: holdout, evaluation: { evaluation: { score: 0, recommendation: 'Skip', matches: [], gaps: ['FSA fellowship is required but is not evidenced in the supplied sources.'] }, sources: [{ id: 'cv', text: personaById('holdout-sre-platform').profile.resume }], prepareRefusedWithoutOverride: true } })]);
+  assert.equal(summary.scorerVersion, SCORER_VERSION);
+  const scored = scoreScenario({ scenario: holdout, evaluation: { evaluation: { score: 0, recommendation: 'Skip', matches: [], gaps: ['FSA fellowship is required but is not evidenced in the supplied sources.'] }, sources: [{ id: 'cv', text: personaById('holdout-sre-platform').profile.resume }], prepareRefusedWithoutOverride: true } });
+  assert.equal(scored.scorerVersion, 2, 'every scored scenario carries its scorer version');
+  // v1 evidence recorded no version; it is never shown as one series with v2.
+  const v1Baseline = { summary: { scenarios: 1, passed: 1 }, results: [{ scenario: { id: 'holdout-mismatch' }, pass: true }] };
+  const mixed = compareToBaseline(summary, v1Baseline, []);
+  assert.equal(mixed.comparable, false);
+  assert.equal(mixed.baselineScorerVersion, 1);
+  assert.equal(mixed.scorerVersion, 2);
+  assert.match(mixed.reason, /not comparable/);
+  assert.equal(mixed.passed, undefined, 'no delta is offered across versions');
+  // The same version still compares.
+  const same = compareToBaseline(summary, { scorerVersion: 2, summary: { scenarios: 1, passed: 0 }, results: [] }, []);
+  assert.equal(same.comparable, true);
+  assert.equal(same.passed.delta, 1);
+  assert.equal(same.scorerVersion, 2);
 });
 
 test('repeated runs compare to the baseline on their base scenario id', () => {

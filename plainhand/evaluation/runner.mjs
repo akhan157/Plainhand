@@ -17,11 +17,39 @@ import { createSandboxBrowser } from './browser.mjs';
 import { controlledAgent, profileFixtureAgent } from './agent.mjs';
 import { scenarios, personaById, jobById, portalById, expectedFor } from './corpus.mjs';
 import { personas as profilePersonas, simulatedCandidate, scoreRun } from '../benchmarks/profile-bench.mjs';
-import { scoreScenario, aggregate, markdownReport, compareToBaseline } from './score.mjs';
+import { scoreScenario, aggregate, markdownReport, compareToBaseline, SCORER_VERSION } from './score.mjs';
 import { pdfEvidence } from './pdf-evidence.mjs';
 
 const option = (argv, name) => { const index = argv.indexOf('--' + name); return index < 0 ? null : argv[index + 1]; };
 const has = (argv, name) => argv.includes('--' + name);
+
+// Why a run records no model. Codex runs under --ignore-user-config, so the model is
+// the CLI's default, and its `exec --json` events (thread.started, turn.completed)
+// state no model id: a null here is measured absence, never an assumed default.
+const ACTUAL_MODEL_UNREPORTED = 'No provider model id was reported for these calls; no model was assumed.';
+
+// The per-scenario usage summary. Cached and reasoning tokens are kept because Codex
+// reports them and the cost figure needs the split (U14); promptChars is the length of
+// what Plainhand itself sent, which separates its context from the CLI's own prompt.
+function usageTotals(usage) {
+  if (!usage) return null;
+  const total = key => usage.totals?.[key]?.value ?? null;
+  const calls = usage.totals?.calls ?? null;
+  const promptChars = total('promptChars');
+  const actualModel = usage.totals?.actualModel ?? null;
+  return {
+    calls,
+    inputTokens: total('inputTokens'),
+    outputTokens: total('outputTokens'),
+    cachedInputTokens: total('cacheReadTokens'),
+    reasoningTokens: total('reasoningTokens'),
+    promptChars,
+    promptCharsPerCall: typeof promptChars === 'number' && calls ? Math.round(promptChars / calls) : null,
+    actualModel,
+    models: usage.totals?.models ?? [],
+    actualModelReason: actualModel ? null : ACTUAL_MODEL_UNREPORTED,
+  };
+}
 
 export const profileScenarios = profilePersonas.map(persona => ({ id: 'profile-' + persona.id, family: 'profile', persona: persona.id }));
 
@@ -121,7 +149,7 @@ async function runProfileScenario(scenario, { live, provider, agentTimeoutMs }) 
       scenario: { ...scenario, job: null, portal: null },
       persona: persona.id,
       profile,
-      usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+      usage: usageTotals(usage),
       durationMs: Date.now() - started,
     };
   } catch (error) {
@@ -254,7 +282,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
         job: jobSpec.id,
         evaluation: evaluationResult,
         durationMs: Date.now() - started,
-        usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+        usage: usageTotals(usage),
       };
     }
 
@@ -301,7 +329,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
         evaluation: evaluationResult,
         packet: packetResult,
         durationMs: Date.now() - started,
-        usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+        usage: usageTotals(usage),
       };
     }
 
@@ -365,7 +393,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       evaluation: evaluationResult,
       packet: packetResult,
       application,
-      usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+      usage: usageTotals(usage),
       durationMs: Date.now() - started,
       retainedWorkspace: retain ? root : null,
     };
@@ -392,7 +420,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       standardApproved,
       evaluation: evaluationResult,
       packet: packetResult,
-      usage: usage ? { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value } : null,
+      usage: usageTotals(usage),
       error: error.message,
       durationMs: Date.now() - started,
     };
@@ -495,7 +523,9 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     comparison = compareToBaseline(summary, baseline, results);
   }
   const metadata = await runMetadata(live ? provider : null);
-  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', metadata, concurrency, agentTimeoutSec, summary, comparison, results };
+  // The scorer version travels with the numbers: v1 evidence and v2 results are never
+  // one series (compareToBaseline refuses a cross-version comparison).
+  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, scorer: { version: SCORER_VERSION }, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', metadata, concurrency, agentTimeoutSec, summary, comparison, results };
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2));
   await writeFile(path.join(out, 'SUMMARY.md'), markdownReport({ evidenceTier: report.evidenceTier, provider: report.provider, summary, results, comparison }));
   console.log(`\n${summary.passed}/${summary.scenarios} scenarios passed (${summary.expectedFailures.length} expected failure${summary.expectedFailures.length === 1 ? '' : 's'}, ${summary.unexpectedFailures.length} unexpected)`);
