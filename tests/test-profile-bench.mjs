@@ -83,3 +83,21 @@ test('a fact saved as a profile field update counts as captured', () => {
   assert.equal(result.captured, 1);
   assert.deepEqual(result.unsupportedUpdates, []);
 });
+
+test('asked where the work just described happened, the simulated candidate names that work and its own role', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const candidate = simulatedCandidate(persona);
+  const first = candidate.reply('What were you responsible for, and what results did you achieve?').text;
+  const answer = candidate.reply('Which employer was this work at, what was your official job title, and when did it start and end?').text;
+  const fact = persona.facts.find(item => item.text === first);
+  assert.ok(fact, 'the first answer is a persona fact');
+  // The persona's resume places this fact under one dated role heading.
+  const lines = persona.profile.resume.split('\n');
+  const at = lines.findIndex(line => line.includes(fact.text.replace(/\.$/, '')));
+  const heading = lines.slice(0, at).reverse().find(line => /—.*(?:19|20)\d{2}/.test(line) && persona.records.some(record => line.startsWith(record.employer)));
+  assert.ok(heading);
+  assert.ok(answer.includes(heading.split(' — ')[0]), `${answer} names ${heading}`);
+  assert.ok(answer.startsWith(first.split(/,|\s+(?:that|which|so|and I)\s+/)[0]), 'and the work it is about');
+});

@@ -124,9 +124,28 @@ function candidateRoles(persona) {
 // general "what did you do in your last job" question asks for work, not a heading.
 const ROLE_QUESTION = /\b(?:employers?|organi[sz]ations?|job titles?|official titles?|date ranges?|dates?|start(?:ed)? and end|which role|what role)\b/i;
 
+// The role a fact sits under in the candidate's own resume: the nearest dated role
+// heading above the fact's line. A real candidate asked "which employer was this at?"
+// answers for the work just described, not for whichever role comes to mind next.
+function roleOfFact(persona, fact, roles) {
+  const lines = String(persona.profile?.resume || '').split('\n').map(line => line.trim());
+  const at = lines.findIndex(line => line && fact?.text && line.includes(fact.text.replace(/\.$/, '')));
+  if (at < 0) return null;
+  for (let index = at - 1; index >= 0; index--) {
+    const role = roles.find(item => lines[index].startsWith(item.employer) && /(?:19|20)\d{2}/.test(lines[index]));
+    if (role) return role;
+    if (/^(?:experience|education|certifications?)$/i.test(lines[index])) break;
+  }
+  return null;
+}
+// "I developed a cell-based potency assay that cut ..." -> "I developed a cell-based
+// potency assay": the work itself, so the answer names what it is about.
+const workOf = text => String(text || '').replace(/\.$/, '').split(/,|\s+(?:that|which|so|and I)\s+/)[0].trim();
+const article = title => /^[aeiou]/i.test(title) ? 'an' : 'a';
+
 export function simulatedCandidate(persona) {
   const said = new Set(), detailed = new Set(), messages = [];
-  const roles = candidateRoles(persona), saidRoles = new Set();
+  const roles = candidateRoles(persona), saidRoles = new Set(), placedFacts = new Set();
   // A role the seeded profile already states is not the answer to "where was the
   // earlier work": the candidate first names a role the conversation has not heard.
   // The minimal seed always states the most recent role, so its employer is enough.
@@ -139,14 +158,22 @@ export function simulatedCandidate(persona) {
       const asks = /\?/.test(question || '');
       const qWords = content(question);
       const overlap = last ? [...content(last.text)].filter(w => qWords.has(w)).length : 0;
-      const role = asks && ROLE_QUESTION.test(question || '')
+      const roleQuestion = asks && ROLE_QUESTION.test(question || '');
+      const placed = roleQuestion && last && !placedFacts.has(last.id) ? roleOfFact(persona, last, roles) : null;
+      if (placed) {
+        placedFacts.add(last.id);
+        saidRoles.add(`${placed.employer}|${placed.title}`);
+        const dates = placed.dates ? ` (${placed.dates})` : '';
+        return say(`${workOf(last.text)} at ${placed.employer} as ${article(placed.title)} ${placed.title}${dates}.`, { factId: null, role: true, onTopic: true });
+      }
+      const role = roleQuestion
         ? roles.find(item => !saidRoles.has(`${item.employer}|${item.title}`) && !seeded.includes(item.employer))
           || roles.find(item => !saidRoles.has(`${item.employer}|${item.title}`))
         : null;
       if (role) {
         saidRoles.add(`${role.employer}|${role.title}`);
         const dates = role.dates ? ` (${role.dates})` : '';
-        return say(`My work was at ${role.employer} as a ${role.title}${dates}.`, { factId: null, role: true, onTopic: true });
+        return say(`My work was at ${role.employer} as ${article(role.title)} ${role.title}${dates}.`, { factId: null, role: true, onTopic: true });
       }
       if (asks && last?.detail && !detailed.has(last.id) && overlap >= 2) { detailed.add(last.id); return say(last.detail, { factId: last.id, detail: true, onTopic: true }); }
       const absent = persona.absent.find(a => !said.has(a.id) && hits(question, a.keywords));
