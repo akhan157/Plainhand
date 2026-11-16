@@ -668,7 +668,9 @@ export class Workflow {
           // No retry is left: a credential the posting needs that the draft still omits
           // is carried from the approved master, row, heading and exact quote as the
           // candidate approved them, rather than shipping a packet without it.
-          if (credentialGaps.length && standard) {
+          // A revision is the candidate's own request ("drop the certificate"); it is never
+          // overridden by the carry.
+          if (credentialGaps.length && standard && !revising) {
             const carried = masterCredentialRows(state.standard?.draft?.resume, credentialGaps)
               .filter(row => hasEvidence(row, context))
               .map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence }));

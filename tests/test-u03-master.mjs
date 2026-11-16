@@ -452,5 +452,12 @@ test('a relevant credential the retry still drops is carried from the approved m
     assert.ok(carried, 'the packet carries the credential');
     assert.deepEqual(carried.evidence, masterRow.evidence, 'with the master row\'s exact quote');
     assert.ok(reviewed.resume.some(entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`)), 'the reviewer saw it');
+    // A revision that asks to remove it is the candidate's choice: nothing is carried back.
+    await h.ui('jobs.approve', { jobId }).catch(() => {});
+    await h.ui('tasks.revise', { jobId, request: 'Remove the Green Belt from the resume.' }); await h.settle();
+    const revised = await h.lastTask();
+    assert.equal(revised.status, 'complete', revised.message);
+    const after = (await h.app.workspace.load()).jobs.find(item => item.id === jobId);
+    assert.ok(!after.packet.resume.some(entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`)), 'the revision keeps it out');
   } finally { await h.close(); }
 });
