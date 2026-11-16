@@ -185,8 +185,9 @@ turns; it is recorded as a failed run, not a product verdict.
 Live variance is from the paired repeats already run: the baseline paired
 directory contains three repetitions of `built`, `seeded` and `minimal` for each
 of the finance, analyst and scientist personas (27 runs). The conversation and
-control rows above are that variance. The fresh-install proof was run separately
-(§4.3); it is one controlled repeat, not a live sample.
+control rows above are that variance. The fresh-install proof was run three times
+on the controlled fixture (§4.3); its counts were identical and only its wall
+time varied.
 
 ### 4.3 Fresh-install onboarding proof
 
@@ -201,20 +202,26 @@ loopback port, and drives the public HTTP API with the controlled fixture agent:
 5. fictional job add, evaluate, select;
 6. prepare and `/api/packet/approve`.
 
-Evidence: `output/onboarding-proof-2026-11-16T04-19-32-408Z/`
-(`report.json`, `REPORT.md`, `transcript.json`, `install.log`, `setup.log`).
+Evidence: three controlled repeats under
+`output/onboarding-proof-2026-11-16T04-26-{19-622,33-612,52-367}Z/`
+(each has `report.json`, `REPORT.md`, `transcript.json`, `install.log`,
+`setup.log`).
 
-| Measurement | Value |
+| Measurement | Value (mean ± sample SD over 3 repeats) |
 |---|---|
-| Clone commit | `e4d166573978757a098d92718e75aa274d38aa43` |
-| `npm ci` | exit 0, 9.7 s |
-| `npm run setup` | exit 0, 2.7 s |
-| Total install | 12.4 s |
-| First reviewed master | 1.3 s from app start, 10 calls, 259,955 prompt characters |
-| First prepared packet | 4.0 s from app start, 14 calls, 329,385 prompt characters |
+| Clone commit | `781fc4c09b24a28081830928b92e8c2f2d934c93` |
+| `npm ci` | exit 0 in all; 8.4 ± 3.4 s |
+| `npm run setup` | exit 0 in all; 1.2 ± 0.7 s |
+| Total install | 9.6 ± 3.8 s |
+| First reviewed master | 0.65 ± 0.43 s from app start, 10 calls, 259,955 prompt characters |
+| First prepared packet | 1.36 ± 0.89 s from app start, 14 calls, 329,385 prompt characters |
 | Tokens | not reported by the controlled fixture (no provider call); prompt characters reported instead |
-| Master completeness | roles 3/3, credentials 1/1, degrees 1/1, results 3/3 (8/8) |
-| Checks | conversation, resume import, understanding, master, evaluation, packet, packet approval all pass |
+| Master completeness | roles 3/3, certifications 1/1, degrees 1/1, results 3/3 (8/8) in every repeat |
+| Checks | conversation, resume import, understanding, master, evaluation, packet, packet approval all pass in every repeat |
+
+Calls, prompt characters and intervention counts were identical across the three
+repeats; only wall time varied (0.16–0.93 s to the master, 0.36–2.09 s to the
+packet), which is local machine scheduling, not a model effect.
 
 Interventions:
 
