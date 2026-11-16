@@ -605,3 +605,41 @@ heading-only rows. It now uses `headingOnlyRow`.
 the controlled gate is re-running on the merged tree.
 
 **Not yet measured.** The quality effect needs the next live run plus the judge.
+
+## U14 merged — 2026-11-16
+
+Lane `a18bb98` (OMP DeepSeek), merged by root.
+
+**Codex call overhead**
+- `codex exec` now runs with:
+  - `model_instructions_file`, which swaps Codex's coding-agent prompt for
+    Plainhand's one-paragraph preamble;
+  - no skills, environment, permissions or collaboration blocks;
+  - no tools.
+- Measured on a loopback mock: request body went from 61,035 B to 18,190 B. Overhead
+  excluding the prompt went from 45,013 B to 2,168 B (−95%).
+- Claude runs with `--system-prompt` (−23%).
+- Projected saving is about 10.7k–17.3k input tokens per call. **Not yet confirmed on
+  live billing.**
+- Residual: a global `$CODEX_HOME/AGENTS.md` is still injected.
+
+**Fewer calls**
+- An evaluate cache keyed by content hash: an unchanged job and context means no
+  call.
+- An opt-in humanizer fold (`PLAINHAND_FOLD_HUMANIZE=1`), **default off**. Root
+  decision: it stays off because CLAUDE.md requires the separate draft→audit→final
+  humanizer pass and the `safeRewrite` check. REVIEW stays independent in both modes.
+- Controlled calls went 5→4 (seeded) and 11→10 (built) with the fold on.
+- The agent loop already uses one call per turn.
+
+**Merge and tests**
+- Root merged four workflow.mjs conflicts. Each one keeps both the evidence-retry
+  feedback and the blank-row protection, and adds the fold switch.
+- Suite 633/633; UI flow passes. The controlled gate was re-run both ways on the
+  merged tree.
+
+**In flight**
+- U15 updates (the owner's deferred row, now started since every other row is done or
+  waiting on quota).
+- U03 master completeness and U01 onboarding metrics.
+- Independent review of root-authored fixes and merge resolutions.
