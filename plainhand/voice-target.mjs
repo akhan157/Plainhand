@@ -50,7 +50,7 @@ function registerPhrasesOf(text, words) {
   return REGISTER_PHRASES.map(([register, phrase]) => {
     const count = (lower.match(new RegExp(`(?<![a-z0-9])${escapePhrase(phrase)}(?![a-z0-9])`, 'g')) || []).length;
     return count ? { phrase, register, count, per100: per100(count, words) } : null;
-  }).filter(Boolean).sort((a, b) => b.count - a.count || a.phrase.localeCompare(b.phrase)).slice(0, PHRASE_LIMIT);
+  }).filter(Boolean).sort((a, b) => b.count - a.count || a.phrase.localeCompare(b.phrase));
 }
 
 export function voiceTargetOf(samples) {
@@ -60,15 +60,24 @@ export function voiceTargetOf(samples) {
   if (features.sentences < MIN_SENTENCES || features.words < MIN_WORDS) return null;
   const sentenceLength = Math.max(1, Math.round(features.meanSentenceLength));
   const phrases = registerPhrasesOf(text, features.words);
+  const register = features.formalityRate >= FORMAL_MARKERS || sentenceLength >= FORMAL_LENGTH ? 'formal'
+    : sentenceLength <= PLAIN_LENGTH ? 'plain' : 'neutral';
+  // The rate counts only the phrases of the register the samples are written in
+  // (casual phrases for a plain or neutral voice), and multi-word casual phrases only,
+  // since one-word fillers ("just", "actually") are what the humanizer cuts. It is
+  // summed over every phrase found, then capped at one phrase per sentence.
+  const own = phrases.filter(item => (register === 'formal' ? item.register === 'formal' : item.register === 'casual' && (item.phrase.includes(' ') || item.phrase.includes("'"))));
+  const rate = Math.min(Math.round(own.reduce((sum, item) => sum + item.per100, 0) * 10) / 10, Math.round(1000 / sentenceLength) / 10);
   return {
     sentenceLength,
     contractions: features.contractionRate >= CONTRACTION_USE ? 'use' : 'avoid',
-    register: features.formalityRate >= FORMAL_MARKERS || sentenceLength >= FORMAL_LENGTH ? 'formal'
-      : sentenceLength <= PLAIN_LENGTH ? 'plain' : 'neutral',
-    registerPhrases: phrases,
+    register,
+    // Only the phrases of the samples' own register, so a formal letter is never
+    // handed casual fillers from a stray informal note.
+    registerPhrases: phrases.filter(item => (register === 'formal') === (item.register === 'formal')).slice(0, PHRASE_LIMIT),
     // Their combined rate, so the drafter has one number to write to rather than a
     // list of small per-phrase rates it tends to undershoot.
-    ...(phrases.length ? { registerRate: Math.round(phrases.reduce((sum, item) => sum + item.per100, 0) * 10) / 10 } : {}),
+    ...(rate > 0 ? { registerRate: rate } : {}),
   };
 }
 

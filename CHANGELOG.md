@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased: fewer false review blocks, and earlier work gets its employer
+
+- **Job titles are not degrees.** "Senior Research Associate" or "Scrum Master" no
+  longer reads as an associate's or master's degree, so a role's dates no longer
+  produce a false "your sources disagree about your degree" question. "Associate in
+  Arts", "Master in Public Health" and dotted forms such as "M.S." still count.
+- **Credential notes match the credential's name.** A tailored resume keeps a
+  credential when it shows the written-out name, or one of its acronyms in a
+  credentials entry. A split CFA line no longer gets a false "Left out" note,
+  "Google Sheets" in Skills no longer passes for the Google Data Analytics
+  Certificate, and "AWS" as a skill no longer passes for an AWS certification.
+  When a needed credential is missing, notes claiming it was kept are dropped.
+- **The interview asks where earlier results happened.** Stated results that no
+  known role can hold keep the roles area open, so the candidate is asked for the
+  employer, title and dates instead of the master inventing a section for them.
+- **The master keeps every stated role and credential.** On its last drafting
+  pass, a role heading or a stated credential the draft left out is added from the
+  candidate's exact words before the factual review, and recorded as a repair.
+- **Conventional section order.** Contact and summary come first, then
+  Experience, then the rest, unless the candidate's saved format sets an order.
+  Lines filed under an "Accomplishments" section move under the only role.
+- **Register phrases.** The voice target lists the phrases the candidate's own
+  samples use in their register, with one combined rate capped at one phrase
+  per sentence.
+
 ## Unreleased: the interview keeps its order, and applications spend fewer calls
 
 - **The interview asks the first open area.** The engine reads the last question

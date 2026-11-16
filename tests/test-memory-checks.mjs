@@ -276,3 +276,11 @@ test('a job title with Associate or Master is not a degree, so its dates never c
   const assoc = findConflicts({ sources: [cvSource("Example College — Associate's degree in Accounting — 2010."), interview("I earned my Associate's degree in Accounting at Example College in 2011.")], profile: {} });
   assert.equal(assoc.filter(item => item.kind === 'degree').length, 1);
 });
+
+test('review 37eb4fd: "in" degree names still count; tool and job phrasing does not', () => {
+  const degreeFindings = sources => findConflicts({ sources, profile: {} }).filter(item => item.kind === 'degree').length;
+  assert.equal(degreeFindings([cvSource('Example College — Associate in Arts — 2012.'), interview('I finished my Associate in Arts at Example College in 2014.')]), 1);
+  assert.equal(degreeFindings([cvSource('Example University — Master in Public Health — 2015.'), interview('I completed my Master in Public Health at Example University in 2016.')]), 1);
+  assert.equal(degreeFindings([cvSource('Example University — Master of Science — 2012.'), interview('I used MS Excel and MS Teams at Example Health from 2018 to 2021.')]), 0);
+  assert.equal(degreeFindings([cvSource('Example University — Master of Science — 2012.'), interview('I was the Scrum Master in the platform team from 2019 to 2021.'), interview('I worked as a Research Associate in Boston from 2014 to 2016.')]), 0);
+});

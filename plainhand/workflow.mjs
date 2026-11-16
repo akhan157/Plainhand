@@ -22,7 +22,7 @@ import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume, repairMisplacedAccomplishments } from './resume-format.mjs';
 import { pluralScopeIssues, scopeRetryFeedback, scopeSuggestions } from './scope-checks.mjs';
-import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion } from './credential-relevance.mjs';
+import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion, credentialName } from './credential-relevance.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -156,12 +156,20 @@ export function dropRepairedOmissions(suggestions, added) {
 // When a credential the posting needs is missing from the final resume, a note that
 // says a credential was kept or included contradicts the note that says it was left
 // out, so it is dropped. Advice and questions are not inclusion claims.
-const CREDENTIAL_MENTION = /\b(?:certif\w*|licen[cs]\w*|credential\w*|[A-Z]{2,6})\b/;
+const CREDENTIAL_NOUN_MENTION = /\b(?:certif\w*|licen[cs]\w*|credentials?)\b/i;
 const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried)\b/i;
-export function dropCredentialInclusionClaims(suggestions) {
+// `missing` holds the missing credentials; a note counts as being about one when it
+// uses a credential noun or names one of those credentials' own acronyms or name
+// words, never merely because it contains some other acronym (US, SQL).
+export function dropCredentialInclusionClaims(suggestions, missing = []) {
+  const names = (Array.isArray(missing) ? missing : []).flatMap(item => {
+    const { acronyms, phrase } = credentialName(item?.text || item?.label || '');
+    return [...acronyms.map(acronym => new RegExp(`\\b${acronym}\\b`)), ...(phrase ? [new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\b`, 'i')] : [])];
+  });
   return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
     const value = String(text ?? '');
-    return !(CREDENTIAL_MENTION.test(value) && INCLUSION_VERB.test(value) && !QUESTION_OR_ADVICE.test(value));
+    const about = CREDENTIAL_NOUN_MENTION.test(value) || names.some(pattern => pattern.test(value));
+    return !(about && INCLUSION_VERB.test(value) && !QUESTION_OR_ADVICE.test(value));
   });
 }
 export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
@@ -692,7 +700,7 @@ export class Workflow {
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
           if (placement.ambiguous) packet.suggestions = [accomplishmentSuggestion(placement), ...packet.suggestions].slice(0, 40);
           if (finalScope.length) packet.suggestions = [...scopeSuggestions(finalScope), ...packet.suggestions].slice(0, 40);
-          if (finalCredentials.length) packet.suggestions = [...finalCredentials.map(credentialSuggestion), ...dropCredentialInclusionClaims(packet.suggestions)].slice(0, 40);
+          if (finalCredentials.length) packet.suggestions = [...finalCredentials.map(credentialSuggestion), ...dropCredentialInclusionClaims(packet.suggestions, finalCredentials)].slice(0, 40);
           await this.progress(id, 'Checking factual claims against the original sources');
           review = await run(REVIEW_INSTRUCTION, { job: providerJob(job), packet, ...lineData });
           if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');

@@ -292,3 +292,31 @@ test('a packet credential is matched by its own name, not by word overlap', asyn
   assert.deepEqual(dropCredentialInclusionClaims(['The certificate is retained because the posting names data work.', 'Consider adding the certificate date.', 'Left out the older role.']),
     ['Consider adding the certificate date.', 'Left out the older role.']);
 });
+
+test('review 37eb4fd: written names, issuer acronyms, tool acronyms, claim notes, register rate', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  const { voiceTargetOf } = await import('../plainhand/voice-target.mjs');
+  const cert = text => [{ section: 'Certifications', heading: null, text }];
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (CSSGB), 2019' }, cert('Lean Six Sigma Green Belt, 2019')), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMP), PMI, 2021' }, cert('PMP, 2021')), true);
+  assert.equal(packetHasCredential({ text: 'Certified Information Systems Security Professional (CISSP), (ISC)2, 2021' }, cert('CISSP, 2021')), true);
+  // A tool acronym in Skills is not the certification.
+  assert.equal(packetHasCredential({ text: 'AWS Certified Solutions Architect – Associate, 2023' }, [{ section: 'Skills', heading: null, text: 'AWS, Terraform, Python' }]), false);
+  const missing = [{ text: 'Google Data Analytics Certificate — 2026' }];
+  assert.deepEqual(dropCredentialInclusionClaims([
+    'Certification is included with its stated year.',
+    'The resume shows US work authorization, so the clearance question applies.',
+    'SQL is listed under Skills with three years of use.',
+    'The Google Data Analytics work is listed first.',
+  ], missing), ['The resume shows US work authorization, so the clearance question applies.', 'SQL is listed under Skills with three years of use.']);
+  // Mixed samples: a formal voice gets only formal phrases, and the rate is capped
+  // at one phrase per sentence.
+  const target = voiceTargetOf([
+    'I am writing regarding the test campaign. Furthermore, the results are approximately consistent with the predictions, and validation shall be required prior to the final report. Please find the documentation attached for your consideration.',
+    "Quick note: I'm just checking in, and it's actually going pretty well, you know.",
+  ]);
+  assert.equal(target.register, 'formal');
+  assert.ok(target.registerPhrases.every(item => item.register === 'formal'));
+  assert.ok(target.registerRate > 0 && target.registerRate <= Math.round(1000 / target.sentenceLength) / 10);
+});

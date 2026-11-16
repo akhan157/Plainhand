@@ -86,7 +86,7 @@ export function relevantMissingCredentials({ master = null, sources = [], packet
 const LEADING_VERB = new Set(['passed', 'earned', 'completed', 'obtained', 'received', 'holds', 'hold', 'have', 'has', 'registered', 'active', 'certified']);
 const NOT_ACRONYM = new Set(['I', 'II', 'III', 'IV', 'US', 'USA', 'UK']);
 const normalizedText = value => ` ${String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
-function credentialName(text) {
+export function credentialName(text) {
   const value = String(text ?? '');
   const acronyms = [...new Set([...value.matchAll(/\b([A-Z]{2,6})\b/g)].map(match => match[1]).filter(word => !NOT_ACRONYM.has(word)))];
   const runs = [...value.matchAll(/\b[A-Z][A-Za-z0-9&+-]*(?:\s+(?:of|and|&|in|for)?\s*[A-Z][A-Za-z0-9&+-]*)*/g)].map(match => match[0]
@@ -97,10 +97,18 @@ function credentialName(text) {
 }
 export function packetHasCredential(item, resume) {
   const entries = Array.isArray(resume) ? resume : [];
-  const text = normalizedText(entries.map(entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ')).join(' | '));
+  const textOf = list => normalizedText(list.map(entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ')).join(' | '));
   const { acronyms, phrase } = credentialName(item?.text);
-  if (acronyms.length) return acronyms.every(acronym => text.includes(` ${acronym.toLowerCase()} `));
-  if (phrase) return text.includes(normalizedText(phrase));
+  // The written-out name anywhere is the credential.
+  if (phrase && textOf(entries).includes(normalizedText(phrase))) return true;
+  // An acronym counts only where credentials are listed: "AWS" in Skills is a tool,
+  // not the AWS certification. Any one of the line's acronyms is enough, since a
+  // master line also names its issuer or exam code (PMP, PMI; CSSGB).
+  if (acronyms.length) {
+    const credentialText = textOf(entries.filter(entry => CREDENTIAL_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test([entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' '))));
+    if (acronyms.some(acronym => credentialText.includes(` ${acronym.toLowerCase()} `))) return true;
+  }
+  if (phrase || acronyms.length) return false;
   return credentialIndex(item, entries) >= 0;
 }
 
