@@ -7,6 +7,9 @@ import { createPlainhand } from '../plainhand-server.mjs';
 import { digest } from '../plainhand/store.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
 import { approveStandard, autoPrepareDecision, compareToStandard, standardInput, standardStatus } from '../plainhand/standard.mjs';
+import { STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
+import { HUMANIZE_INSTRUCTION } from '../plainhand/humanize.mjs';
+import { voiceTargetOf } from '../plainhand/voice-target.mjs';
 
 async function harness(base = fixtureAgent, verify = null) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-standard-'));
@@ -45,6 +48,23 @@ test('the standard is written, fact-checked and graded, and approved only by the
     state = await h.app.workspace.load();
     assert.equal(standardStatus(state, (await h.app.workspace.context(state)).hash), 'stale', 'a profile change makes it out of date');
     await assert.rejects(h.ui('standard.approve', {}), /profile changed/);
+  } finally { await h.close(); }
+});
+
+test('writing samples set INPUT.voiceTarget for the master draft and humanizer', async () => {
+  const h = await harness();
+  try {
+    const samples = [
+      { title: 'Status note', text: 'I am writing to provide a comprehensive update regarding the test campaign, and I would like to explain the methodology that was applied throughout the process. Furthermore, the results obtained thus far are approximately consistent with the initial predictions.' },
+      { title: 'Follow-up', text: 'Please find the relevant documentation attached for your consideration, and do not hesitate to contact me at your earliest convenience should any further information be required.' },
+    ];
+    for (const sample of samples) await h.ui('profile.addWritingSample', sample);
+    await h.ui('tasks.standard', {}); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    const expected = voiceTargetOf(samples);
+    assert.equal(expected.register, 'formal');
+    assert.deepEqual(h.inputs.find(input => input.instruction === STANDARD_INSTRUCTION).data.voiceTarget, expected, 'the master draft receives the target');
+    assert.deepEqual(h.inputs.find(input => input.instruction === HUMANIZE_INSTRUCTION).data.voiceTarget, expected, 'the humanizer receives the target');
   } finally { await h.close(); }
 });
 

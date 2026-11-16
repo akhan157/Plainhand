@@ -17,6 +17,7 @@ import { HUMANIZE_INSTRUCTION } from '../plainhand/humanize.mjs';
 import { standardStatus } from '../plainhand/standard.mjs';
 import { candidate, fixtureAgent, fixtureProviders, scriptedAgent } from '../plainhand/test-fixtures.mjs';
 import { voiceAttribution, voiceDistance, voiceFeatures } from '../plainhand/voice-metrics.mjs';
+import { voiceTargetOf } from '../plainhand/voice-target.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CHASSIS = 'Designed and tested a lightweight chassis for a Formula SAE team.';
@@ -399,6 +400,53 @@ test('an uncited packet entry is retried once with feedback naming it, and a sec
     assert.equal(failed.status, 'failed');
     assert.match(failed.message, /claim without an exact source reference/);
     assert.equal((await h.load()).jobs.find(job => job.id === failedJob).packet, undefined, 'no packet is saved from an uncited draft');
+  } finally { await h.close(); }
+});
+
+const FORMAL_TARGET_SAMPLES = [
+  'I am writing to provide a comprehensive update regarding the test campaign, and I would like to explain the methodology that was applied throughout the process. Furthermore, the results obtained thus far are approximately consistent with the initial predictions.',
+  'Please find the relevant documentation attached for your consideration, and do not hesitate to contact me at your earliest convenience should any further information be required.',
+];
+const TERSE_TARGET_SAMPLES = [
+  "I'm a hands-on engineer. I build test rigs. I break them on purpose. I fix what breaks. Then I write the numbers down.",
+  "Quick update: the upright passed. I'll send the plots tonight. Ask me if anything looks off.",
+];
+
+test('voice targets are measured from fixed samples deterministically', () => {
+  assert.deepEqual(voiceTargetOf(TERSE_TARGET_SAMPLES), { sentenceLength: 5, contractions: 'use', register: 'plain' });
+  assert.deepEqual(voiceTargetOf(FORMAL_TARGET_SAMPLES), { sentenceLength: 22, contractions: 'avoid', register: 'formal' });
+  assert.equal(voiceTargetOf([]), null);
+  assert.equal(voiceTargetOf([{ title: 'Line', text: 'I am writing.' }]), null, 'one short line does not set a target');
+});
+
+test('the packet and standard instructions make INPUT.voiceTarget the register authority', () => {
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) {
+    assert.match(instruction, /When INPUT\.voiceTarget is present/);
+    assert.match(instruction, /authority on register/);
+    assert.match(instruction, /Formal is not stock/);
+    assert.match(instruction, /never force short sentences or an informal register/);
+  }
+});
+
+test('writing samples set INPUT.voiceTarget for the drafting and humanizer calls, and an excluded source sets none', async () => {
+  const h = await harness();
+  try {
+    const samples = FORMAL_TARGET_SAMPLES.map((text, i) => ({ title: `Note ${i + 1}`, text }));
+    for (const sample of samples) await h.ui('profile.addWritingSample', sample);
+    const jobId = await h.addJob('Voice Robotics');
+    assert.equal((await h.evaluate(jobId)).status, 'complete', (await h.lastTask()).message);
+    assert.equal((await h.prepare(jobId)).status, 'complete', (await h.lastTask()).message);
+    const expected = voiceTargetOf(samples);
+    assert.deepEqual(expected, { sentenceLength: 22, contractions: 'avoid', register: 'formal' });
+    assert.deepEqual(h.tags('packet').at(-1).data.voiceTarget, expected, 'the drafter receives the target');
+    assert.deepEqual(h.tags('humanize').at(-1).data.voiceTarget, expected, 'the humanizer receives the target');
+
+    await h.app.workspace.mutate(state => { state.contextPrefs = { excludedSources: ['writing-samples'] }; });
+    const excludedJob = await h.addJob('Excluded Robotics');
+    assert.equal((await h.evaluate(excludedJob)).status, 'complete', (await h.lastTask()).message);
+    assert.equal((await h.prepare(excludedJob)).status, 'complete', (await h.lastTask()).message);
+    assert.equal(h.tags('packet').at(-1).data.voiceTarget, undefined, 'an excluded sample set sets no target');
+    assert.equal(h.tags('humanize').at(-1).data.voiceTarget, undefined);
   } finally { await h.close(); }
 });
 

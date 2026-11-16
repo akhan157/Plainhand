@@ -16,6 +16,7 @@ import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
 import { masterCompleteness } from './master-completeness.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized, aiTells } from './humanize.mjs';
+import { voiceTargetOf } from './voice-target.mjs';
 import { AgentCache } from './agent-cache.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
@@ -249,6 +250,10 @@ export class Workflow {
     const controller = new AbortController(); this.controllers.set(id, controller);
     const check = () => { if (controller.signal.aborted) throw new Error('Task canceled.'); };
     const context = await this.workspace.context(state);
+    // The candidate's own samples set this run's register target. An excluded source
+    // never reaches the provider, so it must not shape the letter either.
+    const voiceSamples = context.sources.some(source => source.id === 'writing-samples') ? state.writingSamples || [] : [];
+    const voiceTarget = voiceTargetOf(voiceSamples);
     const job = task.jobId ? structuredClone(state.jobs.find(j => j.id === task.jobId)) : null;
     const original = job ? structuredClone(job) : null; // to commit only what this task changed
     const originalJobHash = job ? digest([job.url, job.company, job.title, job.description]) : null;
@@ -357,7 +362,7 @@ export class Workflow {
         for (let attempt = 0; attempt < 2; attempt++) {
           const base = attempt ? draft : previous;
           try {
-            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...foldInput(folded), ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
+            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...foldInput(folded), ...(voiceTarget ? { voiceTarget } : {}), ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', MASTER_RESUME_LIMIT);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
             draft.resume = dedupeResume(draft.resume.filter(keepResumeRow));
@@ -379,7 +384,7 @@ export class Workflow {
             if (folded) humanizer = foldedHumanizer({ ...draft, answers: [] });
             else {
               await this.progress(id, 'Removing AI writing patterns');
-              ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
+              ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }), ...(voiceTarget ? { voiceTarget } : {}) }), { voiceTarget, voiceSamples }));
             }
             for (const index of blankRows) if (draft.resume[index]) draft.resume[index].text = '';
             draft.suggestions = guardSuggestions(draft.suggestions, draft.resume, draft.coverLetter);
@@ -426,7 +431,7 @@ export class Workflow {
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         for (let attempt = 0; attempt < 2; attempt++) {
           // roleOrder is the candidate's own order for experience; on a revision their request wins over it.
-          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...foldInput(folded), roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
+          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...foldInput(folded), ...(voiceTarget ? { voiceTarget } : {}), roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
             ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}) });
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
@@ -482,7 +487,7 @@ export class Workflow {
           if (folded) humanizer = foldedHumanizer(packet);
           else {
             await this.progress(id, 'Removing AI writing patterns');
-            ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
+            ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet), ...(voiceTarget ? { voiceTarget } : {}) }), { voiceTarget, voiceSamples }));
           }
           for (const index of blankRows) if (packet.resume[index]) packet.resume[index].text = '';
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);

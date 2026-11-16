@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased: the candidate's writing samples set the register
+
+- **Formal samples stay formal.** The candidate's writing samples are measured
+  deterministically (`plainhand/voice-target.mjs`) into a sentence-length,
+  contraction and register target, passed to the drafting and humanizer calls
+  as `INPUT.voiceTarget`. Plainness rules still remove AI tells and stock
+  phrases, but they no longer force short sentences or an informal register on a
+  candidate who writes formally. A humanized rewrite that moves the cover letter
+  farther from the samples keeps the draft's letter and records the drift in the
+  humanizer report.
+
 ## Unreleased: updates keep the candidate's setup
 
 - **One command to update.** `plainhand update` finds the newest release,
