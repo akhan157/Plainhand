@@ -268,6 +268,15 @@ export function hasEvidence(item, context) {
   return claimEvidenceProblem(item, context) === null;
 }
 
+// The stable key of one saved story, used to edit or delete it later. Each new
+// conversation message carries an id. A message saved before ids existed resolves
+// through a key derived from what is stored, so old data needs no rewrite: when it was
+// said and by whom is its identity, so an edit keeps the same key. A message with no
+// timestamp at all falls back to its text, which is all it has.
+export const storyKey = message => message?.id || `legacy-${message?.at
+  ? digest([message.role || '', message.at]).slice(0, 16)
+  : digest([message?.role || '', '', message?.text || '']).slice(0, 16)}`;
+
 const cell = value => String(value ?? '').replace(/[\t\r\n|]/g, ' ').replace(/\[/g, '(').replace(/\]/g, ')');
 // A status change is recorded, not overwritten: the canonical tracker keeps the
 // current value while the job keeps bounded history for later outcome analysis.
