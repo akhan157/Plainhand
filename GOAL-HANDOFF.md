@@ -872,3 +872,21 @@ The 15/15 above was premature. Corrected, with evidence:
   - an exact-count rule plus a deterministic plural/scope check against the sources;
   - relevant credentials always kept;
   - single heading per role.
+
+## Interview order, master recovery and call log merged — 2026-11-16
+
+Lane `9f593d8` (OMP DeepSeek), reviewed and merged by root. Suite 683/683.
+- **Interview order.** The engine checks that a reply's final question asks the first
+  uncovered area. On a miss it makes one repair; if that also misses, it accepts the
+  reply and records it.
+  - A writing sample is requested only after the areas are covered, and only once.
+- **Master retry.** The first master draft's missing completeness items drive the
+  existing retry. The fallback keeps whichever draft covers more.
+- **Call log.** `job.callLog` records `{purpose, attempt}`. The runner saves it with
+  the packet, so live runs will show retry causes.
+- **Suggestion-only reviews.** A review whose issues target only suggestions drops the
+  suggestions instead of starting a full redraft. The raw verdict is kept. The rule is
+  deliberately conservative: an issue that names a resume, a credential or another
+  document fact still forces a redraft. Saves 3 calls when it applies.
+- **Next lane, in flight.** Exact counts (no "assays" from "assay"), relevant
+  credentials kept, and contiguous sections.
