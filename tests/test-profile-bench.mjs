@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { personas, simulatedCandidate, captured, scoreRun } from '../plainhand/benchmarks/profile-bench.mjs';
+import { holdout2Personas } from '../plainhand/evaluation/corpus-holdout-2.mjs';
 
 const persona = personas.find(p => p.id === 'mech-grad');
 
@@ -10,6 +11,23 @@ test('the simulated candidate answers the best-matching fact once, and says "hav
   assert.equal(c.reply('Any experience with GD&T in production?').factId, 'gdt');
   assert.notEqual(c.reply('What project are you proudest of?').factId, 'fsae', 'a fact is not repeated');
   assert.equal(c.reply('Thanks, that helps.').onTopic, false);
+});
+
+test('a role-details question is answered from the candidate’s records, one role at a time', () => {
+  const hana = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const candidate = simulatedCandidate(hana);
+  const first = candidate.reply('Which employer was the earlier assay work at, with its official job title and dates?');
+  assert.equal(first.role, true);
+  assert.match(first.text, /Example Genomics Lab/, 'a role the seeded resume does not state answers first');
+  assert.match(first.text, /Senior Research Associate/);
+  assert.match(first.text, /2016 to 2023/, 'the dates come from the candidate’s own resume');
+  const second = candidate.reply('Which employer was the other work at, with its title and dates?');
+  assert.match(second.text, /Example Cell Analysis/);
+  assert.match(second.text, /Research Technician/);
+  assert.match(second.text, /2012 to 2016/);
+  // A general work question is not a role-details question.
+  const general = simulatedCandidate(persona).reply('What did you do in your last job?');
+  assert.equal(general.role, undefined);
 });
 
 test('keywords match at a word start only', () => {

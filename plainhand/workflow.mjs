@@ -14,13 +14,13 @@ import { prepareMemoryCheck, recordQuestionChecks } from './memory-checks.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
-import { masterCompleteness } from './master-completeness.mjs';
+import { masterCompleteness, completeMasterResume } from './master-completeness.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized, aiTells } from './humanize.mjs';
 import { voiceTargetOf } from './voice-target.mjs';
 import { AgentCache } from './agent-cache.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
-import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume } from './resume-format.mjs';
+import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume, repairMisplacedAccomplishments } from './resume-format.mjs';
 import { pluralScopeIssues, scopeRetryFeedback, scopeSuggestions } from './scope-checks.mjs';
 import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion } from './credential-relevance.mjs';
 
@@ -59,7 +59,16 @@ export const headingOnlyRow = entry => blankText(entry)
   && CREDENTIAL_SECTION.test(String(entry?.section ?? ''))
   && Boolean(entry?.heading && typeof entry.heading === 'object'
     && String(entry.heading.org ?? '').trim() && String(entry.heading.title ?? '').trim() && String(entry.heading.dates ?? '').trim());
+// The master is the complete record, so a role its sources state appears even when no
+// line is attached to it yet: an Experience heading-only row is legal there only. A
+// packet may never ship one, because a sent resume must say what was done.
+const ROLE_SECTION = /experience|employment|work history/i;
+export const headingOnlyRoleRow = entry => blankText(entry)
+  && ROLE_SECTION.test(String(entry?.section ?? ''))
+  && Boolean(entry?.heading && typeof entry.heading === 'object'
+    && String(entry.heading.org ?? '').trim() && String(entry.heading.dates ?? '').trim());
 export const keepResumeRow = entry => !blankText(entry) || headingOnlyRow(entry);
+export const keepMasterRow = entry => !blankText(entry) || headingOnlyRow(entry) || headingOnlyRoleRow(entry);
 // The same accomplishment written twice under one heading: keep the first line and
 // drop a later line whose normalized text equals or sits inside it.
 const normalizedLine = value => (String(value ?? '').toLowerCase().match(/[a-z0-9]+/g) || []).join(' ');
@@ -89,14 +98,39 @@ const suggestionText = value => String(value ?? '').toLowerCase().replace(/[^a-z
 // "If you have X") never match, so they are never rewritten.
 const SUGGESTION_DOC_CLAIM = /^(?:the\s+)?(?:master(?:\s+resume)?|resume|packet|letter|cover letter|draft|application)\s+(?:also\s+|now\s+)?(?:includes|included|lists|listed|keeps|kept|adds|added|retains|retained|shows|carries|carried)\s+(.+)$/i;
 const SUGGESTION_ENUM_CLAIM = /^(?:every|each|all)\b[^,]*,\s*including\s+(.+?),\s*(?:is|are)\s+(?:listed|included|kept|shown|retained)\b/i;
+// The passive form the reviewer saw: "The certification is included with its stated
+// year." The named item is the sentence's subject, so a generic credential noun is
+// resolved against whether the documents hold any credential at all.
+const SUGGESTION_PASSIVE_CLAIM = /^(?:the\s+)?(.+?)\s+(?:is|was|are|were)\s+(?:also\s+|now\s+)?(?:included|listed|kept|retained|preserved|added|shown|carried)\b/i;
+const CREDENTIAL_NOUN = /^(?:the\s+)?(?:certificat\w*|licen[cs]\w*|credential\w*)$/i;
+const CREDENTIAL_CONTENT = /(?:certif\w*|licen[cs]\w*|credential\w*)/i;
+const QUESTION_OR_ADVICE = /^\s*(?:could|would|can|should|consider|if|whether|please|do|does|is|are|will|may|might|confirm)\b|\bwhether\b|\?\s*$/i;
 function suggestionItem(suggestion) {
   const text = String(suggestion ?? '');
-  const match = text.match(SUGGESTION_CLAIM) || text.match(SUGGESTION_SUBJECT_CLAIM) || text.match(SUGGESTION_DOC_CLAIM) || text.match(SUGGESTION_ENUM_CLAIM);
+  // An enumeration ("Every role, including X, is listed") is read first, so its
+  // subject is not mistaken for a passive claim. A question or conditional is advice,
+  // never an inclusion claim, so the passive form ignores it.
+  const enumerated = text.match(SUGGESTION_ENUM_CLAIM);
+  const passive = !enumerated && !QUESTION_OR_ADVICE.test(text) ? text.match(SUGGESTION_PASSIVE_CLAIM) : null;
+  const match = enumerated || passive || text.match(SUGGESTION_CLAIM) || text.match(SUGGESTION_SUBJECT_CLAIM) || text.match(SUGGESTION_DOC_CLAIM);
   if (!match) return null;
   const item = match[1].replace(SUGGESTION_TAIL, '').replace(/[\s.;:!?]+$/, '').replace(/^(?:the|a|an|my|your|their|his|her|our)\s+/i, '').trim();
   if (!item || item.length > 160 || item.split(/\s+/).length > 18) return null;
+  if (passive && CREDENTIAL_NOUN.test(item)) return { item, named: [], credentialNoun: true };
   const named = item.split(/[\s,();:]+/).filter(word => /^[A-Z0-9]/.test(word) && !SUGGESTION_GENERIC.has(suggestionText(word)) && suggestionText(word).length >= 2);
   return named.length ? { item, named } : null;
+}
+// The lines in a heading-less unknown section cannot be attached to a role when the
+// packet has more than one: the retry names the roles, and the final packet records
+// the placement as a suggestion instead of guessing an employer.
+const headingLabel = heading => [heading?.org, heading?.title, heading?.dates].map(value => String(value ?? '').trim()).filter(Boolean).join(' — ');
+export function accomplishmentRetryFeedback({ roles = [], sections = [] } = {}) {
+  const where = sections.filter(Boolean).map(name => `"${name}"`).join(', ') || 'a heading-less section';
+  return `The resume lines in ${where} are not under any role, and the resume has ${roles.length} Experience roles (${roles.map(headingLabel).join('; ')}), so they cannot be placed automatically. Move each of those lines under the role it belongs to, as lines that share that role's heading.`;
+}
+export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
+  const where = sections.filter(Boolean).join(', ') || 'heading-less sections';
+  return `Check role placement: the resume has ${roles.length} Experience roles, so the lines in ${where} were left where the draft put them. Move each line under the role it belongs to.`;
 }
 export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
   const shown = (Array.isArray(resume) ? resume : []).map(entry => [entry?.section, entry?.heading?.org, entry?.heading?.title, entry?.heading?.location, entry?.heading?.dates, entry?.text].filter(Boolean).join(' ')).join(' ');
@@ -104,6 +138,11 @@ export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
   return (Array.isArray(suggestions) ? suggestions : []).map(suggestion => {
     const claim = suggestionItem(suggestion);
     if (!claim) return suggestion;
+    if (claim.credentialNoun) {
+      // The documents hold no credential mention at all, so the claim is false.
+      if (CREDENTIAL_CONTENT.test(shown)) return suggestion;
+      return `Left out: the ${claim.item.toLowerCase()}.`;
+    }
     const missing = claim.named.filter(word => !haystack.includes(` ${suggestionText(word)} `));
     if (!missing.length) return suggestion;
     // Name only what is actually absent: "includes AWS and Kubernetes" with AWS present
@@ -285,6 +324,9 @@ export class Workflow {
     // never reaches the provider, so it must not shape the letter either.
     const voiceSamples = context.sources.some(source => source.id === 'writing-samples') ? state.writingSamples || [] : [];
     const voiceTarget = voiceTargetOf(voiceSamples);
+    // The candidate's saved resume format owns the section order when it names one;
+    // otherwise normalizeResume applies the conventional resume order.
+    const formatSections = state.resumeFormat?.sections || [];
     const job = task.jobId ? structuredClone(state.jobs.find(j => j.id === task.jobId)) : null;
     const original = job ? structuredClone(job) : null; // to commit only what this task changed
     const originalJobHash = job ? digest([job.url, job.company, job.title, job.description]) : null;
@@ -410,7 +452,7 @@ export class Workflow {
             draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...foldInput(folded), ...(voiceTarget ? { voiceTarget } : {}), ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', MASTER_RESUME_LIMIT);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
-            draft.resume = normalizeResume(dedupeResume(draft.resume.filter(keepResumeRow)));
+            draft.resume = normalizeResume(dedupeResume(draft.resume.filter(keepMasterRow)), { sections: formatSections });
             const uncited = draft.resume.filter(item => !hasEvidence(item, context));
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
             if (uncited.length) {
@@ -422,9 +464,9 @@ export class Workflow {
               await this.progress(id, 'Correcting claims without an exact source reference');
               continue;
             }
-            for (const item of draft.resume) { requireText(item.section, 'resume section', 100); if (!headingOnlyRow(item)) requireText(item.text, 'resume entry', 10000); }
+            for (const item of draft.resume) { requireText(item.section, 'resume section', 100); if (!headingOnlyRow(item) && !headingOnlyRoleRow(item)) requireText(item.text, 'resume entry', 10000); }
             verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
-            draft.resume = normalizeResume(draft.resume.filter(item => !blankText(item) || Boolean(item?.heading)));
+            draft.resume = normalizeResume(draft.resume.filter(item => !blankText(item) || Boolean(item?.heading)), { sections: formatSections });
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
             // A blank education or credential row is legal; the humanizer rewrites lines,
             // so restore its empty text if a pass added filler the renderer would show.
@@ -472,11 +514,22 @@ export class Workflow {
           if (attempt === 0) await this.progress(id, reviewed ? 'Adding resume lines the first draft left out' : 'Correcting unsupported claims using the reviewer’s source checks');
         }
         if (!review.passed || review.issues.length) throw new Error(`The factual review found issues in your master resume: ${review.issues.slice(0, 3).join(' ')}`);
+        // Last resort after the one retry: a credential the candidate stated, or a role
+        // the source resume states, is never lost because the draft omitted it. Each
+        // added row carries its exact source quote; nothing is invented.
+        let repairs = [];
+        if (!request) {
+          const completed = completeMasterResume(context.sources, draft.resume);
+          if (completed.added.length) {
+            repairs = completed.added;
+            draft.resume = normalizeResume(completed.resume, { sections: formatSections });
+          }
+        }
         const clean = { headline: draft.headline, resume: draft.resume.map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence })), coverLetter: draft.coverLetter, suggestions: draft.suggestions };
         const calibration = { ...gradePacket({ ...clean, answers: [] }, context.sources, review.calibration, candidateLine(state)), gradedAt: now() };
         await this.workspace.mutate(async latest => {
           check(); await this.assertContext(latest, context);
-          latest.standard = { kind: 'master', draft: clean, review, reviewAttempts, humanizer, calibration, coverage: masterCoverage(ownResume, clean.resume), completeness: masterCompleteness(context.sources, clean.resume), contextHash: context.hash, createdAt: now(), approvedAt: null, approvedHash: null };
+          latest.standard = { kind: 'master', draft: clean, review, reviewAttempts, humanizer, calibration, coverage: masterCoverage(ownResume, clean.resume), completeness: masterCompleteness(context.sources, clean.resume), ...(repairs.length ? { repairs: repairs.map(({ section, heading, text }) => ({ section, heading, text })) } : {}), contextHash: context.hash, createdAt: now(), approvedAt: null, approvedHash: null };
           if (request) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: null, request }].slice(-200);
           latest.events.unshift({ at: now(), text: request ? 'Master resume revised. Review it before applications use it.' : 'Master resume written. Review it before applications use it.' });
         });
@@ -509,7 +562,7 @@ export class Workflow {
           // dates; that row is legal and renders as the heading alone. The same
           // accomplishment written twice is dropped before humanize, review and
           // calibration, so their resume:<index> keys stay aligned.
-          packet.resume = normalizeResume(dedupeResume(packet.resume.filter(keepResumeRow)));
+          packet.resume = normalizeResume(dedupeResume(packet.resume.filter(keepResumeRow)), { sections: formatSections });
           const uncited = [
             ...packet.resume.map((item, index) => ({ kind: 'Resume entry', index, item })),
             ...packet.answers.map((item, index) => ({ kind: 'Answer', index, item })),
@@ -529,21 +582,32 @@ export class Workflow {
           verifyHeadings(packet.resume, context.sources.map(s => s.text).join('\n'));
           // A heading the sources cannot confirm may lose fields; keep a blank row only
           // while some part of its heading survives, never as an invisible empty line.
-          packet.resume = normalizeResume(packet.resume.filter(item => !blankText(item) || Boolean(item?.heading)));
+          packet.resume = normalizeResume(packet.resume.filter(item => !blankText(item) || Boolean(item?.heading)), { sections: formatSections });
           if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
-          // Two deterministic findings ride the existing one retry, before humanize and
+          // An accomplishment under no role, when the resume has exactly one Experience
+          // role, belongs under it: move it and drop a line that only repeats the title.
+          // With several roles the placement is ambiguous, so the draft is asked once and
+          // the final packet names the problem in suggestions instead of guessing.
+          const placement = repairMisplacedAccomplishments(packet.resume);
+          if (placement.moved || placement.dropped) {
+            packet.resume = normalizeResume(dedupeResume(placement.resume.filter(keepResumeRow)), { sections: formatSections });
+            if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
+          }
+          // Deterministic findings ride the existing one retry, before humanize and
           // review so their resume:<index> keys name the entries that will ship:
-          // a plural the item's own evidence never uses (scope stretch), and a
-          // credential the posting names or relates to that the resume left out.
+          // a misplaced accomplishment section, a plural the item's own evidence never
+          // uses (scope stretch), and a credential the posting names or relates to that
+          // the resume left out.
           scopeGaps = pluralScopeIssues(packet, { sources: context.sources });
           credentialGaps = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
-          if (attempt === 0 && (scopeGaps.length || credentialGaps.length)) {
+          if (attempt === 0 && (placement.ambiguous || scopeGaps.length || credentialGaps.length)) {
             evidencePrompt = [
+              ...(placement.ambiguous ? [accomplishmentRetryFeedback(placement)] : []),
               ...scopeRetryFeedback(scopeGaps),
               ...credentialRetryFeedback(credentialGaps),
               ...letterRetryFeedback(letterOverlaps(packet.coverLetter, packet.resume)),
             ];
-            await this.progress(id, credentialGaps.length ? 'Adding the credential this posting needs' : 'Keeping counts exactly as the sources state');
+            await this.progress(id, placement.ambiguous ? 'Putting each accomplishment under its role' : credentialGaps.length ? 'Adding the credential this posting needs' : 'Keeping counts exactly as the sources state');
             continue;
           }
           // Reuse before humanize and review: an approved factual answer whose quote is in
@@ -579,6 +643,7 @@ export class Workflow {
           const finalScope = pluralScopeIssues(packet, { sources: context.sources });
           const finalCredentials = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
+          if (placement.ambiguous) packet.suggestions = [accomplishmentSuggestion(placement), ...packet.suggestions].slice(0, 40);
           if (finalScope.length) packet.suggestions = [...scopeSuggestions(finalScope), ...packet.suggestions].slice(0, 40);
           if (finalCredentials.length) packet.suggestions = [...finalCredentials.map(credentialSuggestion), ...packet.suggestions].slice(0, 40);
           await this.progress(id, 'Checking factual claims against the original sources');

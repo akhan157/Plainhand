@@ -196,6 +196,79 @@ const placeholderHeading = (heading, sectionHasRealHeading) => {
   return HEADING_FIELDS.some(key => String(next[key] ?? '').trim()) ? next : null;
 };
 
+// Where a section belongs when the draft's own array order disagrees. The observed
+// defect was Skills and a credential-progress section leading the resume. Only the
+// positions every resume convention agrees on are enforced: contact/summary, then
+// Experience, then the supporting sections. Education and Projects share a tier and
+// keep the draft's own order, because their preferred order differs by field (a new
+// graduate leads with education, a designer with projects) and the drafter already
+// follows the field's convention. The candidate's saved format replaces all of it.
+const CONVENTIONAL_SECTIONS = [
+  { rank: 0, pattern: /^(?:contact|summary|profile|objective|headline|about|overview)$/ },
+  { rank: 100, pattern: /^(?:experience|work experience|professional experience|relevant experience|employment(?: history)?|work history|career(?: history)?)$/ },
+  { rank: 200, pattern: /^(?:education|training|education (?:&|and) training|projects?|project experience|portfolio)$/ },
+  { rank: 300, pattern: /^(?:certifications?|licen[cs]es?|licensure|credentials?|certifications? (?:&|and) licen[cs]es?|licenses? (?:&|and) certifications?|professional development)$/ },
+  { rank: 400, pattern: /^(?:skills?|technical skills|core competenc(?:y|ies)|competenc(?:y|ies)|areas of expertise)$/ },
+  { rank: 600, pattern: /^(?:publications?|papers?|presentations?|research(?: experience)?)$/ },
+  { rank: 700, pattern: /^(?:awards?|honou?rs?|achievements?)$/ },
+  { rank: 800, pattern: /^(?:volunteer(?:ing)?|community(?: service)?|service)$/ },
+  { rank: 900, pattern: /^(?:languages?)$/ },
+  { rank: 1000, pattern: /^(?:interests?|hobbies|activities)$/ },
+  { rank: 1100, pattern: /^(?:references?)$/ },
+];
+// An unrecognised section ("CFA Progress", "Research Accomplishments") sits after the
+// supporting sections and before skills, so it never leads the resume.
+const UNKNOWN_SECTION_RANK = 350;
+const sectionName = value => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+const conventionalRank = name => CONVENTIONAL_SECTIONS.find(entry => entry.pattern.test(sectionName(name)))?.rank ?? UNKNOWN_SECTION_RANK;
+// The candidate's saved format wins for the sections it names; anything it does not
+// name follows that section's conventional rank after them.
+function orderedSectionNames(names, formatSections) {
+  const listed = (Array.isArray(formatSections) ? formatSections : []).map(sectionName).filter(Boolean);
+  const rank = listed.length
+    ? name => {
+      const own = sectionName(name);
+      const at = listed.findIndex(item => item === own || own.includes(item) || item.includes(own));
+      return at >= 0 ? at * 10 : 100000 + conventionalRank(name);
+    }
+    : conventionalRank;
+  return names.map((name, index) => ({ name, index })).sort((a, b) => rank(a.name) - rank(b.name) || a.index - b.index).map(({ name }) => name);
+}
+
+// An accomplishment cannot be attached to a role the draft never names. With exactly
+// one Experience role, heading-less lines in a section whose name is none of the other
+// resume categories sit under that role, and a line that only repeats the role's title
+// is dropped. With more than one role nothing moves: the draft is asked to place them.
+const EXPERIENCE_LIKE = /experience|employment|work history|career/i;
+const OTHER_CATEGORY = /contact|progress|exam|course|study|studies|membership|affiliation/i;
+const repeatOfTitle = entry => Boolean(entry?.heading && typeof entry.heading === 'object' && String(entry.heading.title || '').trim())
+  && headingValue(entry.text) === headingValue(entry.heading.title);
+export function repairMisplacedAccomplishments(resume) {
+  const entries = Array.isArray(resume) ? resume.filter(entry => entry && typeof entry === 'object') : [];
+  const experience = entries.filter(entry => EXPERIENCE_LIKE.test(sectionName(entry.section)));
+  const roles = [], seen = new Set();
+  for (const entry of experience) {
+    if (!entry.heading || typeof entry.heading !== 'object') continue;
+    const key = headingKey(entry.heading);
+    if (key === 'null' || seen.has(key)) continue;
+    seen.add(key);
+    roles.push(entry.heading);
+  }
+  const loose = entries.filter(entry => !(entry.heading && typeof entry.heading === 'object')
+    && !EXPERIENCE_LIKE.test(sectionName(entry.section))
+    && conventionalRank(entry.section) === UNKNOWN_SECTION_RANK
+    && !OTHER_CATEGORY.test(sectionName(entry.section)));
+  if (roles.length > 1) return { resume: entries, moved: 0, dropped: 0, ambiguous: loose.length > 0, roles, sections: [...new Set(loose.map(entry => String(entry?.section ?? '')))] };
+  if (!roles.length || (!loose.length && !experience.some(repeatOfTitle))) return { resume: entries, moved: 0, dropped: 0, ambiguous: false, roles, sections: [] };
+  const heading = roles[0];
+  const moved = loose.map(entry => ({ ...entry, section: experience[0].section, heading }));
+  const dropped = experience.filter(repeatOfTitle);
+  return {
+    resume: [...entries.filter(entry => !loose.includes(entry) && !dropped.includes(entry)), ...moved],
+    moved: moved.length, dropped: dropped.length, ambiguous: false, roles, sections: [...new Set(loose.map(entry => String(entry?.section ?? '')))],
+  };
+}
+
 // The renderer groups entries by section, but the packet is reviewed and indexed
 // in its own array order. Make the array match what a reader sees: one contiguous
 // run per section (first appearance wins), and one block per heading inside it, so
@@ -203,8 +276,20 @@ const placeholderHeading = (heading, sectionHasRealHeading) => {
 // Stable throughout; null headings keep their own position instead of being
 // collected across a real heading. Call before humanize and review: their
 // resume:<index> keys then name the same entries the candidate sees.
-export function normalizeResume(resume) {
-  const entries = Array.isArray(resume) ? resume.filter(entry => entry && typeof entry === 'object') : [];
+// `sections` is the candidate's saved format section order, when it has one.
+export function normalizeResume(resume, { sections = [] } = {}) {
+  const raw = Array.isArray(resume) ? resume.filter(entry => entry && typeof entry === 'object') : [];
+  // A section name the model invents to explain an unknown employer ("Experience —
+  // employer and dates not supplied") is not a section at all: those lines go under
+  // Experience with heading null, which is what the draft meant. A real experience
+  // section (the conventional name) and a career break are left alone.
+  const properExperience = raw.map(entry => String(entry.section ?? '')).find(name => conventionalRank(name) === 100);
+  const entries = raw.map(entry => {
+    const name = String(entry?.section ?? '');
+    return /experience|employment|work history/i.test(name) && conventionalRank(name) !== 100
+      ? { ...entry, section: properExperience || 'Experience' }
+      : entry;
+  });
   const sectionOrder = [];
   const bySection = new Map();
   for (const entry of entries) {
@@ -213,7 +298,7 @@ export function normalizeResume(resume) {
     bySection.get(name).push(entry);
   }
   const ordered = [];
-  for (const name of sectionOrder) {
+  for (const name of orderedSectionNames(sectionOrder, sections)) {
     const section = bySection.get(name);
     const hasRealHeading = section.some(entry => realHeading(entry.heading));
     const groups = new Map();

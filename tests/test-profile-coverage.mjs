@@ -67,12 +67,31 @@ test('an area for each role’s employer, title and dates starts open and is cov
   assert.ok(profileCoverage(employerOnly).uncovered.includes(ROLE_LABEL), 'an employer alone does not cover it');
 });
 
+test('a stated result that names no employer keeps the role area open until the candidate says where it happened', () => {
+  const resume = 'Example University — Master of Science, Molecular Biology — 2012. Example Bioinstruments — Applications Scientist — 2025 to 2026.';
+  const assay = { profile: { resume }, conversation: [{ role: 'user', text: 'I developed a cell-based potency assay that cut turnaround from 6 days to 2.' }] };
+  assert.ok(profileCoverage(assay).uncovered.includes(ROLE_LABEL), 'a seeded heading alone does not place the result');
+  const placed = { profile: { resume }, conversation: [...assay.conversation, { role: 'user', text: 'That assay work was at Example Genomics Lab, Senior Research Associate, 2016 to 2023.' }] };
+  assert.ok(!profileCoverage(placed).uncovered.includes(ROLE_LABEL), 'the employer and dates close it');
+  // A result that names where it happened is already placed, and a resume with no
+  // stated results of its own has nothing left to place.
+  const named = { profile: { resume }, conversation: [{ role: 'user', text: 'At Example Bioinstruments I ran demonstrations and cut the setup time by 30%.' }] };
+  assert.ok(!profileCoverage(named).uncovered.includes(ROLE_LABEL));
+  assert.ok(!profileCoverage({ profile: { resume }, conversation: [] }).uncovered.includes(ROLE_LABEL));
+  // An employer-like name in a result counts as naming where it happened, even when
+  // the resume never states it: only the title and dates can still be missing.
+  const team = { profile: { resume }, conversation: [{ role: 'user', text: 'On Formula SAE I redesigned the rear upright and cut its weight by 18%.' }] };
+  assert.ok(!profileCoverage(team).uncovered.includes(ROLE_LABEL));
+});
+
 test('the assistant asks for role facts in the candidate’s own words and never suggests them', () => {
   const rule = AGENT_INSTRUCTION.slice(AGENT_INSTRUCTION.indexOf('Onboarding:'));
   assert.ok(rule.indexOf(ROLE_LABEL) > rule.indexOf('what each role was responsible for'), 'the role facts are listed right after the results area');
   assert.match(rule, /in the candidate's own words/);
   assert.match(rule, /Never suggest or guess an employer, a job title or any dates/);
   assert.match(rule, /save their answer in their exact words with profile\.addStory/);
+  assert.match(rule, /already described results but not where that work happened, ask which employer or organisation the earlier results were at/);
+  assert.match(rule, /never attach their story to a role they did not name/);
   assert.ok(!/\b(?:19|20)\d{2}\b/.test(rule), 'the instruction carries no example year for a model to copy');
 });
 
@@ -227,7 +246,7 @@ test('engine: the digest for the turn that answers "No." already shows that area
     name: candidate.name, email: candidate.email, roles: 'Process engineer',
     graduation: 'B.S. Mechanical Engineering, 2020',
     resume: 'Example Manufacturing — Process Engineer — 2016 to 2020.',
-    story: 'I cut the cycle time by 20% using Excel on a quality audit project, and led two technicians who wrote the SOPs.',
+    story: 'At Example Manufacturing I cut the cycle time by 20% using Excel on a quality audit project, and led two technicians who wrote the SOPs.',
   };
   const h = await harness([
     { match: /^Hi/, reply: { say: 'Welcome. Do you hold any certifications or licences?', actions: [] } },

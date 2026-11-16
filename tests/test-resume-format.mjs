@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
-import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, DEFAULT_FORMAT } from '../plainhand/resume-format.mjs';
+import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, DEFAULT_FORMAT, normalizeResume, repairMisplacedAccomplishments } from '../plainhand/resume-format.mjs';
 import { renderPacket } from '../plainhand/workflow.mjs';
 import { createPlainhand } from '../plainhand-server.mjs';
 
@@ -37,6 +37,41 @@ test('a modern sans resume: A4, 0.75in, 10pt Arial, left name, title-case headin
   assert.deepEqual([f.headings.case, f.headings.size, f.sections], ['title', 13, ['Work Experience', 'Education', 'Technical Skills']]);
   assert.deepEqual([f.entry.datesRight, f.bullet], [false, '–']);
   assert.ok(!JSON.stringify(f).includes('Riley') && !JSON.stringify(f).includes('617'), 'only style is kept, never the resume text');
+});
+
+test('Experience leads the supporting sections; a saved candidate format wins over that order', () => {
+  const role = { org: 'Example Pensions', title: 'Analyst', location: '', dates: '2020 to 2023' };
+  const rows = [
+    { section: 'Skills', heading: null, text: 'Excel' },
+    { section: 'CFA Progress', heading: null, text: 'Level II candidate' },
+    { section: 'Experience', heading: role, text: 'Built the forecast model.' },
+    { section: 'Education', heading: { org: 'Example University', title: 'B.S. Finance', location: '', dates: '2020' }, text: '' },
+  ];
+  assert.deepEqual(normalizeResume(rows).map(entry => entry.section), ['Experience', 'Education', 'CFA Progress', 'Skills'], 'experience first, then the supporting sections');
+  assert.deepEqual(normalizeResume(rows, { sections: ['Skills', 'Experience', 'CFA Progress', 'Education'] }).map(entry => entry.section), ['Skills', 'Experience', 'CFA Progress', 'Education'], 'the candidate’s own order is kept');
+  // A section invented to explain an unknown employer is Experience, heading null.
+  const invented = normalizeResume([{ section: 'Experience — employer and dates not supplied', heading: null, text: 'Built the forecast model.' }]);
+  assert.deepEqual(invented.map(entry => [entry.section, entry.heading]), [['Experience', null]]);
+  // A real experience section's name is kept and receives the heading-less lines.
+  const proper = normalizeResume([{ section: 'Work Experience', heading: role, text: 'Built the model.' }, { section: 'Employment — dates unknown', heading: null, text: 'Ran the close.' }]);
+  assert.deepEqual(proper.map(entry => entry.section), ['Work Experience', 'Work Experience']);
+});
+
+test('a heading-less accomplishment section moves under the only role; a title repeat is dropped', () => {
+  const role = { org: 'Example Bio', title: 'Research Associate II', location: '', dates: '2019 to 2023' };
+  const filler = { section: 'Experience', heading: role, text: 'Research Associate II.' };
+  const accomplishment = { section: 'Research Accomplishments', heading: null, text: 'Developed a potency assay that cut turnaround from 5 days to 2.' };
+  const out = repairMisplacedAccomplishments([filler, accomplishment]);
+  assert.deepEqual([out.moved, out.dropped, out.ambiguous], [1, 1, false]);
+  assert.deepEqual(out.resume.map(entry => [entry.section, entry.heading?.title, entry.text]), [['Experience', 'Research Associate II', accomplishment.text]]);
+  // Two roles: nothing moves, and the caller is told the placement is ambiguous.
+  const two = repairMisplacedAccomplishments([filler, { section: 'Experience', heading: { org: 'Example Two', title: 'Scientist', location: '', dates: '2015 to 2019' }, text: 'Ran screens.' }, accomplishment]);
+  assert.deepEqual([two.moved, two.ambiguous], [0, true]);
+  assert.deepEqual(two.roles.map(heading => heading.org), ['Example Bio', 'Example Two']);
+  assert.deepEqual(two.sections, ['Research Accomplishments']);
+  // A recognised section (Projects) or a credential-progress section never moves.
+  assert.equal(repairMisplacedAccomplishments([filler, { section: 'Projects', heading: null, text: 'Built a dashboard.' }]).moved, 0);
+  assert.equal(repairMisplacedAccomplishments([filler, { section: 'CFA Progress', heading: null, text: 'Level II candidate.' }]).moved, 0);
 });
 
 test('a scanned or empty PDF is refused clearly', async () => {

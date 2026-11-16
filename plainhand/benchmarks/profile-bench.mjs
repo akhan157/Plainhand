@@ -97,8 +97,40 @@ const hits = (question, keywords) => keywords.filter(k => new RegExp('(^|[^a-z])
 // that story's detail; otherwise the best-matching fact not yet said; a question about
 // something the candidate lacks gets an honest "haven't"; an offer of a next step
 // without a question gets one "yes, go ahead".
+// The role facts the candidate can answer from their own records: each record's title,
+// with the dates their resume states for that employer's line. Only what one of those
+// sources says; nothing is inferred from a job posting or a question.
+function candidateRoles(persona) {
+  const lines = String(persona.profile?.resume || '').split('\n').map(line => line.trim()).filter(Boolean);
+  const roles = [];
+  for (const record of Array.isArray(persona.records) ? persona.records : []) {
+    const line = lines.find(item => item.includes(record.employer));
+    if (!line) continue;
+    const parts = line.split(/\s+[—–]\s+/).map(part => part.trim()).filter(Boolean);
+    const dates = parts.length >= 2 && /(?:19|20)\d{2}/.test(parts.at(-1)) ? parts.at(-1) : '';
+    roles.push({ employer: record.employer, title: record.title, dates });
+  }
+  if (roles.length) return roles;
+  // A profile-bench persona has no records; a dated line of its own resume still says
+  // where and when that work was, so it can be repeated as the answer.
+  for (const line of lines) {
+    const parts = line.split(/\s+[—–]\s+/).map(part => part.trim()).filter(Boolean);
+    if (parts.length >= 3 && /(?:19|20)\d{2}/.test(parts.at(-1)) && !/^(?:experience|education|certifications?)$/i.test(parts[0])) roles.push({ employer: parts[0], title: parts[1], dates: parts.at(-1) });
+  }
+  return roles;
+}
+// A question about where a role was, what the title was or when it ran is answered from
+// the candidate's own record, once per role. "job" alone is not enough: the fixture's
+// general "what did you do in your last job" question asks for work, not a heading.
+const ROLE_QUESTION = /\b(?:employers?|organi[sz]ations?|job titles?|official titles?|date ranges?|dates?|start(?:ed)? and end|which role|what role)\b/i;
+
 export function simulatedCandidate(persona) {
   const said = new Set(), detailed = new Set(), messages = [];
+  const roles = candidateRoles(persona), saidRoles = new Set();
+  // A role the seeded profile already states is not the answer to "where was the
+  // earlier work": the candidate first names a role the conversation has not heard.
+  // The minimal seed always states the most recent role, so its employer is enough.
+  const seeded = String(persona.seedProfile?.resume || [persona.employer, persona.title].filter(Boolean).join(' — '));
   let last = null, agreed = false;
   const say = (text, extra) => { messages.push(text); return { text, ...extra }; };
   return {
@@ -107,6 +139,15 @@ export function simulatedCandidate(persona) {
       const asks = /\?/.test(question || '');
       const qWords = content(question);
       const overlap = last ? [...content(last.text)].filter(w => qWords.has(w)).length : 0;
+      const role = asks && ROLE_QUESTION.test(question || '')
+        ? roles.find(item => !saidRoles.has(`${item.employer}|${item.title}`) && !seeded.includes(item.employer))
+          || roles.find(item => !saidRoles.has(`${item.employer}|${item.title}`))
+        : null;
+      if (role) {
+        saidRoles.add(`${role.employer}|${role.title}`);
+        const dates = role.dates ? ` (${role.dates})` : '';
+        return say(`My work was at ${role.employer} as a ${role.title}${dates}.`, { factId: null, role: true, onTopic: true });
+      }
       if (asks && last?.detail && !detailed.has(last.id) && overlap >= 2) { detailed.add(last.id); return say(last.detail, { factId: last.id, detail: true, onTopic: true }); }
       const absent = persona.absent.find(a => !said.has(a.id) && hits(question, a.keywords));
       const open = persona.facts.filter(f => !said.has(f.id));

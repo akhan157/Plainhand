@@ -33,7 +33,7 @@ const PROFILE_RESUME = [
   'B.S. Mechanical Engineering, Example University, 2027.',
 ].join('\n');
 
-async function harness(base = fixtureAgent) {
+async function harness(base = fixtureAgent, profile = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-scope-'));
   const inputs = [];
   const agent = async (id, instruction, data, options) => { inputs.push({ instruction, data }); return base(id, instruction, data, options); };
@@ -43,7 +43,7 @@ async function harness(base = fixtureAgent) {
     renderer: async (workspace, state, job) => { const pdf = `output/test-${job.id}.pdf`; await workspace.write(pdf, 'test-pdf'); return { pdf, pdfHash: digest(Buffer.from('test-pdf')), artifacts: [pdf] }; },
   } });
   const state = await app.workspace.load();
-  await app.workspace.saveProfile({ ...state.profile, ...candidate, resume: PROFILE_RESUME }, state.revision);
+  await app.workspace.saveProfile({ ...state.profile, ...candidate, ...profile, resume: profile.resume || PROFILE_RESUME }, state.revision);
   await app.workspace.mutate(s => { s.provider = 'codex'; });
   const ui = (name, input) => app.registry.run(name, input, { actor: 'ui' });
   const settle = async () => { for (let i = 0; i < 6; i++) await app.workflow.queue; };
@@ -184,6 +184,71 @@ test('the packet array is normalised before humanize and review, so their resume
     assert.deepEqual(humanized, [CHASSIS, SUSPENSION, SOLIDWORKS, MATLAB], 'the humanizer sees the same order');
     const reviewed = h.inputs.filter(call => call.instruction === REVIEW_INSTRUCTION).at(-1).data.packet.resume.map(entry => entry.text);
     assert.deepEqual(reviewed, [CHASSIS, SUSPENSION, SOLIDWORKS, MATLAB], 'review keys name the same entries');
+  } finally { await h.close(); }
+});
+
+test('an accomplishment in a heading-less section moves under the only role, and a title repeat is dropped', async () => {
+  let packetCalls = 0;
+  const agent = async (id, instruction, data, options) => {
+    if (instruction === PACKET_INSTRUCTION) {
+      packetCalls += 1;
+      return {
+        headline: 'Graduate Engineer',
+        resume: [
+          { section: 'Experience', heading: EXPERIENCE, text: 'Product Engineer.', evidence: evidence(ASSAY) },
+          { section: 'Research Accomplishments', heading: null, text: CHASSIS, evidence: evidence(CHASSIS) },
+        ],
+        coverLetter: 'I designed and tested a chassis and want to do that in this engineering role.',
+        answers: [], questions: [], suggestions: [],
+      };
+    }
+    return fixtureAgent(id, instruction, data, options);
+  };
+  const h = await harness(agent);
+  try {
+    const { job } = await h.prepare();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    assert.equal(packetCalls, 1, 'the repair is local and spends no model call');
+    assert.deepEqual(job.packet.resume.map(entry => [entry.section, entry.heading?.title, entry.text]), [['Experience', 'Product Engineer', CHASSIS]]);
+  } finally { await h.close(); }
+});
+
+test('with several roles the placement is named in the one retry instead of guessed', async () => {
+  const resume = `${PROFILE_RESUME}\nSynthetic Analytics, Data Analyst, 2018 to 2020.`;
+  const other = { org: 'Synthetic Analytics', title: 'Data Analyst', location: '', dates: '2018 to 2020' };
+  let packetCalls = 0;
+  const agent = async (id, instruction, data, options) => {
+    if (instruction === PACKET_INSTRUCTION) {
+      packetCalls += 1;
+      const base = { headline: 'Graduate Engineer', coverLetter: 'I designed and tested a chassis for this engineering role.', answers: [], questions: [], suggestions: [] };
+      if (packetCalls === 1) {
+        return { ...base, resume: [
+          { section: 'Experience', heading: EXPERIENCE, text: CHASSIS, evidence: evidence(CHASSIS) },
+          { section: 'Experience', heading: other, text: SUSPENSION, evidence: evidence(SUSPENSION) },
+          { section: 'Research Accomplishments', heading: null, text: SOLIDWORKS, evidence: evidence(SOLIDWORKS) },
+        ] };
+      }
+      return { ...base, resume: [
+        { section: 'Experience', heading: EXPERIENCE, text: CHASSIS, evidence: evidence(CHASSIS) },
+        { section: 'Experience', heading: EXPERIENCE, text: SOLIDWORKS, evidence: evidence(SOLIDWORKS) },
+        { section: 'Experience', heading: other, text: SUSPENSION, evidence: evidence(SUSPENSION) },
+      ] };
+    }
+    return fixtureAgent(id, instruction, data, options);
+  };
+  const h = await harness(agent, { resume });
+  try {
+    const { job } = await h.prepare();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    assert.equal(packetCalls, 2, 'the ambiguous placement costs exactly one retry');
+    const retry = h.inputs.filter(call => call.instruction === PACKET_INSTRUCTION)[1].data;
+    const feedback = retry.reviewFeedback.join(' ');
+    assert.match(feedback, /cannot be placed automatically/);
+    assert.match(feedback, /Synthetic Engineering — Product Engineer/);
+    assert.match(feedback, /Synthetic Analytics — Data Analyst/);
+    const loose = job.packet.resume.find(entry => entry.text === SOLIDWORKS);
+    assert.equal(loose.heading.org, 'Synthetic Engineering', 'the retry placed the line under the role it belongs to');
+    assert.ok(!job.packet.suggestions.some(line => line.startsWith('Check role placement')), 'a corrected draft needs no placement suggestion');
   } finally { await h.close(); }
 });
 

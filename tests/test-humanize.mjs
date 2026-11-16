@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aiTells, safeRewrite, applyHumanized, humanizeItems, HUMANIZE_INSTRUCTION } from '../plainhand/humanize.mjs';
-import { voiceTargetOf } from '../plainhand/voice-target.mjs';
+import { voiceTargetOf, REGISTER_PHRASES } from '../plainhand/voice-target.mjs';
+import { PACKET_INSTRUCTION, STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
 
 const FORMAL_SAMPLES = [
   { title: 'Status note', text: 'I am writing to provide a comprehensive update regarding the test campaign, and I would like to explain the methodology that was applied throughout the process. Furthermore, the results obtained thus far are approximately consistent with the initial predictions.' },
@@ -24,6 +25,21 @@ test('the humanizer matches INPUT.voiceTarget without treating formal writing as
   assert.match(HUMANIZE_INSTRUCTION, /formal is not stock, and "I am writing to apply" stays/);
   assert.match(HUMANIZE_INSTRUCTION, /never force short sentences or an informal register/);
   assert.match(HUMANIZE_INSTRUCTION, /resume entries stay resume lines/);
+});
+
+test('the candidate’s own register phrases are reported, and none is an AI tell', () => {
+  const target = voiceTargetOf(FORMAL_SAMPLES);
+  const phrases = new Map(target.registerPhrases.map(item => [item.phrase, item]));
+  for (const phrase of ['furthermore', 'regarding', 'approximately', 'please find', 'i am writing']) {
+    assert.equal(phrases.get(phrase)?.register, 'formal', `the samples' own "${phrase}" is reported`);
+    assert.ok(phrases.get(phrase).per100 > 0, 'each phrase carries its rate per 100 words');
+  }
+  for (const [phrase] of REGISTER_PHRASES) assert.deepEqual(aiTells(phrase), [], `"${phrase}" is style, never a tell`);
+  assert.match(HUMANIZE_INSTRUCTION, /registerPhrases .*are the candidate's own voice, not AI tells/);
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) {
+    assert.match(instruction, /INPUT\.voiceTarget\.registerPhrases/);
+    assert.match(instruction, /use those phrases, and only those/);
+  }
 });
 
 test('tells: dashes, not-X-but-Y, stock AI words, chatbot residue', () => {

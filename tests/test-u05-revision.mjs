@@ -413,8 +413,11 @@ const TERSE_TARGET_SAMPLES = [
 ];
 
 test('voice targets are measured from fixed samples deterministically', () => {
-  assert.deepEqual(voiceTargetOf(TERSE_TARGET_SAMPLES), { sentenceLength: 5, contractions: 'use', register: 'plain' });
-  assert.deepEqual(voiceTargetOf(FORMAL_TARGET_SAMPLES), { sentenceLength: 22, contractions: 'avoid', register: 'formal' });
+  const terse = voiceTargetOf(TERSE_TARGET_SAMPLES), formal = voiceTargetOf(FORMAL_TARGET_SAMPLES);
+  assert.deepEqual([terse.sentenceLength, terse.contractions, terse.register], [5, 'use', 'plain']);
+  assert.deepEqual([formal.sentenceLength, formal.contractions, formal.register], [22, 'avoid', 'formal']);
+  assert.ok(terse.registerPhrases.some(item => item.phrase === "i'm" && item.register === 'casual'), 'a contraction the samples use is reported as their own casual phrase');
+  for (const phrase of ['furthermore', 'regarding', 'approximately', 'please find', 'i am writing']) assert.ok(formal.registerPhrases.some(item => item.phrase === phrase), `the formal samples' own "${phrase}" is reported`);
   assert.equal(voiceTargetOf([]), null);
   assert.equal(voiceTargetOf([{ title: 'Line', text: 'I am writing.' }]), null, 'one short line does not set a target');
 });
@@ -437,7 +440,8 @@ test('writing samples set INPUT.voiceTarget for the drafting and humanizer calls
     assert.equal((await h.evaluate(jobId)).status, 'complete', (await h.lastTask()).message);
     assert.equal((await h.prepare(jobId)).status, 'complete', (await h.lastTask()).message);
     const expected = voiceTargetOf(samples);
-    assert.deepEqual(expected, { sentenceLength: 22, contractions: 'avoid', register: 'formal' });
+    assert.deepEqual([expected.sentenceLength, expected.contractions, expected.register], [22, 'avoid', 'formal']);
+    assert.ok(expected.registerPhrases.length, 'the samples\' own phrases travel with the target');
     assert.deepEqual(h.tags('packet').at(-1).data.voiceTarget, expected, 'the drafter receives the target');
     assert.deepEqual(h.tags('humanize').at(-1).data.voiceTarget, expected, 'the humanizer receives the target');
 

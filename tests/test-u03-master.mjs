@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { createPlainhand } from '../plainhand-server.mjs';
 import { digest } from '../plainhand/store.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
-import { masterCompleteness } from '../plainhand/master-completeness.mjs';
+import { masterCompleteness, completeMasterResume } from '../plainhand/master-completeness.mjs';
 import { controlledAgent } from '../plainhand/evaluation/agent.mjs';
 import { PACKET_INSTRUCTION, STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
 import { holdoutPersonas } from '../plainhand/evaluation/corpus-holdout.mjs';
@@ -143,6 +143,49 @@ test('common resume section headings are read, not only the persona layout', () 
   assert.equal(result.counts.results.total, 1);
 });
 
+test('both instructions carry the role-heading and placement rules', () => {
+  assert.match(STANDARD_INSTRUCTION, /Every role heading the sources state appears in the master resume/);
+  assert.match(STANDARD_INSTRUCTION, /heading-only Experience entry/);
+  assert.match(STANDARD_INSTRUCTION, /never invent a line of work for it/);
+  assert.match(STANDARD_INSTRUCTION, /never under a made-up section name/);
+  assert.match(STANDARD_INSTRUCTION, /suggestions must ask which role each such line belongs to/);
+  assert.match(PACKET_INSTRUCTION, /never a separate heading-less accomplishments section/);
+  assert.match(PACKET_INSTRUCTION, /never a line that only repeats the role's title/);
+});
+
+test('a resume with no section headers and several packed headings is read; a degree line is not a role', () => {
+  const text = 'Example University — Master of Science, Molecular Biology — 2012. Example Bioinstruments — Applications Scientist — 2025 to 2026.';
+  const parsed = masterCompleteness([{ id: 'cv', text }], []);
+  assert.equal(parsed.counts.roles.total, 1, 'the dated employer — title — dates heading is a role');
+  assert.equal(parsed.roles[0].org, 'Example Bioinstruments');
+  assert.equal(parsed.roles[0].title, 'Applications Scientist');
+  assert.equal(parsed.counts.degrees.total, 1, 'the graduation line is a degree, not a role');
+  assert.equal(parsed.counts.certifications.total, 0);
+  const master = [
+    { section: 'Experience', heading: { org: 'Example Bioinstruments', title: 'Applications Scientist', location: '', dates: '2025 to 2026' }, text: 'Ran demonstrations.' },
+    { section: 'Education', heading: { org: 'Example University', title: 'Master of Science, Molecular Biology', location: '', dates: '2012' }, text: '' },
+  ];
+  assert.deepEqual(masterCompleteness([{ id: 'cv', text }], master).missing, []);
+});
+
+test('the last resort derives a certification heading from the sentence, or falls back to its own clause', () => {
+  const strictSentence = 'I earned a Lean Six Sigma Green Belt certification in 2019.';
+  const strict = completeMasterResume([{ id: 'interview', text: strictSentence }], []);
+  assert.equal(strict.added.length, 1);
+  assert.deepEqual(strict.added[0].heading, { org: 'Lean Six Sigma Green Belt', title: 'Certification', location: '', dates: '2019' });
+  assert.equal(strict.added[0].text, '');
+  assert.deepEqual(strict.added[0].evidence, [{ sourceId: 'interview', quote: strictSentence }]);
+  assert.deepEqual(strict.completeness.missing, []);
+  const looseSentence = 'I am the main contact for our auditors, and I hold an active Colorado CPA license since 2025.';
+  const loose = completeMasterResume([{ id: 'stories', text: looseSentence }], []);
+  assert.equal(loose.added.length, 1);
+  assert.ok(looseSentence.includes(loose.added[0].text), 'the fallback text is a clause of the candidate’s sentence');
+  assert.match(loose.added[0].text, /CPA/);
+  assert.deepEqual(loose.added[0].evidence, [{ sourceId: 'stories', quote: looseSentence }]);
+  // Nothing is added when the quote cannot be found in the source exactly.
+  assert.deepEqual(completeMasterResume([{ id: 'interview', text: 'Different text.' }], []).added, []);
+});
+
 async function harness({ persona, job = jobById('holdout-job-fin-forecast'), agent = null, profile = null, verifier = null }) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-u03-'));
   const base = agent || controlledAgent({ scenario: { id: 'u03', roleOrder: 'recent' }, persona, job });
@@ -170,7 +213,7 @@ async function harness({ persona, job = jobById('holdout-job-fin-forecast'), age
   return { app, ui, settle, addJob, lastTask, close: async () => { await app.close(); await rm(root, { recursive: true, force: true }); } };
 }
 
-test('the master result carries what it missed, and the profile view can list it', async () => {
+test('a role and a credential the retry still leaves out are added by the deterministic last resort', async () => {
   const persona = holdoutPersonas.find(item => item.id === 'holdout-fin-controller');
   const oldest = persona.records.at(-1);
   const credential = persona.facts.find(fact => fact.id === 'cert').text;
@@ -186,10 +229,38 @@ test('the master result carries what it missed, and the profile view can list it
     assert.equal(state.standard.kind, 'master');
     assert.ok(state.standard.completeness, 'the completeness result is stored with the master');
     assert.equal(state.standard.completeness.counts.total, 8);
-    assert.deepEqual(state.standard.completeness.missing.map(item => [item.kind, item.label]), [
-      ['role', `${oldest.employer} — ${oldest.title} — ${persona.profile.resume.split('\n').find(line => line.startsWith(`${oldest.employer} —`)).split(' — ').at(-1)}`],
-      ['credential', credential],
-    ]);
+    assert.deepEqual(state.standard.completeness.missing, [], 'the last resort leaves nothing missing');
+    // The rows it added are heading-only and carry their exact source quote: the
+    // candidate's own heading line for the role, the stated sentence for the credential.
+    assert.deepEqual(state.standard.repairs.map(item => item.section), ['Experience', 'Certifications']);
+    const role = state.standard.draft.resume.find(entry => entry.heading?.org === oldest.employer && entry.heading?.title === oldest.title);
+    assert.ok(role, 'the missing role is in the master');
+    assert.equal(role.text, '');
+    assert.deepEqual(role.evidence.map(e => e.quote), [persona.profile.resume.split('\n').find(line => line.startsWith(`${oldest.employer} —`))]);
+    const found = state.standard.draft.resume.find(entry => entry.evidence?.some(e => e.quote === credential));
+    assert.ok(found, 'the credential is in the master');
+    assert.equal(found.section, 'Certifications');
+    assert.ok(found.text || found.heading, 'either its own clause or its derived heading names it');
+  } finally { await h.close(); }
+});
+
+test('the master keeps a role it has no line for as a heading-only entry', async () => {
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const quote = persona.profile.resume.split('\n').find(line => line.startsWith('Example Cell Analysis —'));
+  const heading = { org: 'Example Cell Analysis', title: 'Research Technician', location: '', dates: '2012 to 2016' };
+  const base = controlledAgent({ scenario: { id: 'u03-heading', roleOrder: 'recent' }, persona, job: jobById('holdout-job-stem-assay') });
+  const agent = async (id, instruction, data, options) => instruction === STANDARD_INSTRUCTION
+    ? { headline: 'Assay development scientist', resume: [{ section: 'Experience', heading, text: '', evidence: [{ sourceId: 'cv', quote }] }], coverLetter: 'I develop assays for the {role} role at {company}.', suggestions: [] }
+    : base(id, instruction, data, options);
+  const h = await harness({ persona, job: jobById('holdout-job-stem-assay'), agent });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    const state = await h.app.workspace.load();
+    const row = state.standard.draft.resume.find(entry => entry.heading?.org === 'Example Cell Analysis');
+    assert.ok(row, 'the role is in the master');
+    assert.equal(row.text, '', 'a role with no stated line stays heading-only');
+    assert.deepEqual(row.heading, heading);
   } finally { await h.close(); }
 });
 
