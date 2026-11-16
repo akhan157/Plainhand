@@ -172,6 +172,11 @@ test('a status change made during an evaluation keeps its history entry', async 
     const id = (await h.request('jobs', { company: 'Test Company', title: 'Graduate Engineer', url: 'https://jobs.lever.co/test/10' })).data.id;
     assert.equal((await h.run('evaluate', id)).status, 'complete');
     assert.equal((await h.request('jobs/update', { id, status: 'Apply' })).status, 200);
+    // U14: re-evaluating an unchanged job is served from the content-hash cache and
+    // makes no provider call. This test needs a real call in flight, so change the
+    // profile first: that is a different question, and the cache correctly misses.
+    const before = (await h.request('state')).data;
+    assert.equal((await h.request('profile', { profile: { ...before.profile, story: `${before.profile.story} I also ran the brake test rig.` }, revision: before.revision })).status, 200);
     let release;
     h.app.workflow.agent = (provider, instruction, data) => new Promise(resolve => { release = () => resolve(fixtureAgent(provider, instruction, data)); });
     const pending = h.request('tasks', { kind: 'evaluate', jobId: id });

@@ -14,7 +14,8 @@ import { prepareMemoryCheck, recordQuestionChecks } from './memory-checks.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
-import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized } from './humanize.mjs';
+import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized, aiTells } from './humanize.mjs';
+import { AgentCache } from './agent-cache.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey } from './resume-format.mjs';
@@ -78,6 +79,28 @@ export function assertPacketFresh(job, context) {
   if (!job?.packet || job.contextHash !== context.hash || job.packetJobHash !== digest([job.url, job.company, job.title, job.description])) throw new Error('This packet needs to be regenerated from the current profile and job.');
 }
 export function packetIdentity(job) { return digest({ contextHash: job.contextHash, packet: job.packet, pdfHash: job.pdfHash, job: [job.url, job.company, job.title, job.description] }); }
+
+// U14: the master and the packet can apply the humanizer rules inside the drafting
+// call instead of spending a second model call on them. The rules travel in the
+// draft's INPUT (humanizeRules), so the instruction text stays the product contract
+// the controlled fixture dispatches on, and the old two-call path stays available.
+// Default off: a folded draft has no pre-rewrite to check, so safeRewrite (numbers
+// and {company}/{role} slots unchanged) cannot run. PLAINHAND_FOLD_HUMANIZE=1/0
+// overrides the setting for one harness run without editing the setting in state.
+export function foldedHumanize(state) {
+  const env = process.env.PLAINHAND_FOLD_HUMANIZE;
+  if (env === '1') return true;
+  if (env === '0') return false;
+  return state?.settings?.foldHumanize === true;
+}
+const foldInput = folded => folded ? { humanizeRules: HUMANIZE_INSTRUCTION } : {};
+// The report the UI and evidence use when no separate rewrite happened. tellsAfter is
+// measured on the final text, so a folded draft that still reads like AI prose is
+// visible instead of being reported as clean.
+const foldedHumanizer = packet => {
+  const tellsAfter = [...new Set(humanizeItems(packet).flatMap(item => aiTells(item.text)))];
+  return { folded: true, changed: 0, kept: [], tellsBefore: tellsAfter.length, tellsAfter, remaining: [] };
+};
 
 export async function renderPacket(workspace, state, job, packet, { renderDocuments } = {}) {
   const identity = `${slug(state.profile.name)}-${slug(job.company)}-${slug(job.title)}-${now().slice(0, 10)}`;
@@ -243,7 +266,19 @@ export class Workflow {
         // Hidden passages only count when this description is the page the verifier read.
         job.integrity = integrityRecord(job.description, job.verification.description === job.description ? job.verification.hidden : []);
         await this.progress(id, 'Matching the role against your evidence');
-        const result = await run(EVALUATE_INSTRUCTION, { job: providerJob(job) });
+        // Re-evaluating the same job against the same profile asks the same question.
+        // The profile context hash and the sanitized posting are that question's
+        // identity; a hit skips the provider call and keeps the stored, validated result.
+        const provider = state.provider || this.defaultProvider;
+        const evaluationData = { job: providerJob(job) };
+        const cache = new AgentCache(this.workspace);
+        // Key on what the judgment actually depends on: the profile context and the
+        // sanitized posting. The rest of providerJob is bookkeeping (verification time,
+        // stage, the previous evaluation) that this task itself changes, so including it
+        // would make an otherwise identical re-evaluation miss its own cache entry.
+        const cacheKey = cache.key({ provider, instruction: EVALUATE_INSTRUCTION, data: { contextHash: context.hash, job: { url: job.url, company: job.company, title: job.title, description: providerDescription(job.description || '') } } });
+        const cached = await cache.get(cacheKey);
+        const result = cached || await run(EVALUATE_INSTRUCTION, evaluationData);
         if (typeof result.score !== 'number' || result.score < 0 || result.score > 5 || !['Apply', 'Investigate', 'Skip'].includes(result.recommendation)) throw new Error('The agent returned an invalid evaluation. Retry.');
         requireText(result.summary, 'evaluation summary');
         for (const key of ['gaps', 'questions', 'legitimacyNotes']) result[key] = strings(result[key], key);
@@ -253,6 +288,9 @@ export class Workflow {
         // The stored label is app policy; keep the model's own label for measurement.
         result.modelRecommendation = result.recommendation;
         if (result.score < 4 && result.recommendation === 'Apply') result.recommendation = 'Investigate';
+        // Only a result that passed every check and policy adjustment is cached, so a
+        // malformed reply is retried against the provider, never replayed.
+        if (!cached) await cache.put(cacheKey, { provider, purpose: 'evaluate', result });
         job.evaluation = result; job.stage = 'evaluated'; job.status = job.status || 'Evaluated'; job.contextHash = context.hash;
         job.reportPath = `reports/hl-${job.id.slice(0, 8)}-${slug(job.company)}-${now().slice(0, 10)}.md`;
         const report = `# ${job.company} — ${job.title}\n\n**Score:** ${result.score}/5\n**URL:** ${job.url}\n**PDF:** pending\n**Legitimacy:** ${job.verification.legitimacy}\n**Verification:** ${job.verification.state}\n\n## A. Role summary\n${result.summary}\n\n## B. Evidence and fit\n${result.matches.map(m => `- ${m.text}\n  Sources: ${m.evidence.map(e => `${e.sourceId}: “${e.quote}”`).join('; ')}`).join('\n')}\n\n## C. Level and gaps\n${result.gaps.map(s => '- ' + s).join('\n')}\n\n## D. Compensation\nCandidate preference: ${state.profile.compensation || 'Not provided; ask the candidate.'}\n\n## E. Personalization\n${state.profile.roles}\n\n## F. Questions and next action\n${result.recommendation}\n${result.questions.map(s => '- ' + s).join('\n')}\n\n## G. Posting legitimacy\n**Posting check:** ${job.integrity.summary}\n${job.integrity.findings.filter(f => f.severity === 'warn').map(f => `- ${f.detail}`).join('\n')}${job.integrity.findings.some(f => f.severity === 'warn') ? '\n' : ''}\n${job.verification.reason}\n${result.legitimacyNotes.map(s => '- ' + s).join('\n')}\n`;
@@ -271,6 +309,7 @@ export class Workflow {
         if (request && !previous) throw new Error('Write your master resume before asking for changes.');
         await this.progress(id, request ? 'Revising your master resume as you asked' : 'Writing your master resume and base cover letter');
         const line = lineInput(state, null), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
+        const folded = foldedHumanize(state);
         let draft, review, humanizer;
         const reviewAttempts = [];
         // The master must cover the candidate's own resume. A first draft that leaves
@@ -281,7 +320,7 @@ export class Workflow {
         for (let attempt = 0; attempt < 2; attempt++) {
           const base = attempt ? draft : previous;
           try {
-            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
+            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...foldInput(folded), ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 150);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
             draft.resume = dedupeResume(draft.resume.filter(keepResumeRow));
@@ -300,8 +339,11 @@ export class Workflow {
             // A blank education or credential row is legal; the humanizer rewrites lines,
             // so restore its empty text if a pass added filler the renderer would show.
             const blankRows = draft.resume.map((item, index) => blankText(item) ? index : -1).filter(index => index >= 0);
-            await this.progress(id, 'Removing AI writing patterns');
-            ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
+            if (folded) humanizer = foldedHumanizer({ ...draft, answers: [] });
+            else {
+              await this.progress(id, 'Removing AI writing patterns');
+              ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
+            }
             for (const index of blankRows) if (draft.resume[index]) draft.resume[index].text = '';
             await this.progress(id, 'Checking factual claims against the original sources');
             review = await run(REVIEW_INSTRUCTION, { job: STANDARD_JOB, packet: { ...draft, answers: [] }, ...lineData });
@@ -338,6 +380,7 @@ export class Workflow {
         if (job.contextHash !== context.hash) throw new Error('Your profile changed. Evaluate this job again first.');
         await this.progress(id, revising ? 'Revising your application as you asked' : 'Writing your resume, cover letter, and answers');
         const standard = standardInput(state, context.hash);
+        const folded = foldedHumanize(state);
         let packet, humanizer, memory = null;
         let review;
         const reviewAttempts = [];
@@ -345,7 +388,7 @@ export class Workflow {
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         for (let attempt = 0; attempt < 2; attempt++) {
           // roleOrder is the candidate's own order for experience; on a revision their request wins over it.
-          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
+          packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...foldInput(folded), roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
             ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}) });
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
@@ -395,11 +438,14 @@ export class Workflow {
             excludedSources: state.contextPrefs?.excludedSources || [],
             bank: reusableAnswers, job, asOf: now().slice(0, 10),
           });
-          await this.progress(id, 'Removing AI writing patterns');
           // The humanizer rewrites lines; a heading-only row that was blank before the
           // pass stays blank, so a rewrite cannot turn it into "Graduated." filler.
           const blankRows = packet.resume.map((item, index) => blankText(item) ? index : -1).filter(index => index >= 0);
-          ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
+          if (folded) humanizer = foldedHumanizer(packet);
+          else {
+            await this.progress(id, 'Removing AI writing patterns');
+            ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
+          }
           for (const index of blankRows) if (packet.resume[index]) packet.resume[index].text = '';
           await this.progress(id, 'Checking factual claims against the original sources');
           review = await run(REVIEW_INSTRUCTION, { job: providerJob(job), packet, ...lineData });
