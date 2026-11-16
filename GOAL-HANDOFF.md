@@ -538,3 +538,44 @@ Residuals:
      some of this is how the judge reads the JSON, but the duplicates are real.
 
   Next: a product lane on these three findings.
+
+## U12 merged — 2026-11-16
+
+Lane `bcf913e` (OMP DeepSeek), merged by root. Root added `conflicts.list` (from M5,
+landed in parallel) to the matrix's state-rendered reads, so the reachability test
+passes. Suite 621/621.
+
+**Reachability matrix.** It is generated from the registry and asserted by a test.
+- 88 actions, none without a surface.
+- 76 MCP tools.
+- Unsupported interfaces are documented.
+
+**Browser review.** Light, dark and 390px mobile, checking overflow, Tab focus
+visibility, console errors and field provenance. Result: 0 defects across 37
+captures.
+
+**CLI smoke.** Six commands. The one with exit 1 is the documented
+fresh-workspace precondition, not a failure.
+
+**Fresh clone.** `git clone`, then `npm ci`, `setup`, `start` and `/api/state` (200).
+Docs were correct as written.
+
+**Export/import.** 3/3, with a key diff. Approvals reset, and there are no secrets.
+
+**VERIFICATION-MATRIX.** 89 rows reconciled:
+- 38 re-run, 1 partial;
+- 47 carried;
+- 2 retired;
+- 1 checked in source.
+
+**Adjacent-work inventory.** Written.
+
+**Two product fixes:**
+- MCP form-panel links;
+- agent/MCP role links now open the role and tab.
+
+**Not done:**
+- `test:full`, which needs Go;
+- hosted Postgres;
+- installers;
+- real sites.
