@@ -16,7 +16,7 @@ import { digest } from '../plainhand/store.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
 import { masterCompleteness } from '../plainhand/master-completeness.mjs';
 import { controlledAgent } from '../plainhand/evaluation/agent.mjs';
-import { STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
+import { PACKET_INSTRUCTION, STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
 import { holdoutPersonas } from '../plainhand/evaluation/corpus-holdout.mjs';
 import { holdout2Personas } from '../plainhand/evaluation/corpus-holdout-2.mjs';
 import { jobById } from '../plainhand/evaluation/corpus.mjs';
@@ -143,7 +143,7 @@ test('common resume section headings are read, not only the persona layout', () 
   assert.equal(result.counts.results.total, 1);
 });
 
-async function harness({ persona, job = jobById('holdout-job-fin-forecast'), agent = null, profile = null }) {
+async function harness({ persona, job = jobById('holdout-job-fin-forecast'), agent = null, profile = null, verifier = null }) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-u03-'));
   const base = agent || controlledAgent({ scenario: { id: 'u03', roleOrder: 'recent' }, persona, job });
   const app = await createPlainhand({
@@ -151,7 +151,7 @@ async function harness({ persona, job = jobById('holdout-job-fin-forecast'), age
     providers: fixtureProviders,
     workflowOptions: {
       agent: base,
-      verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'A finance systems role. '.repeat(20), checkedAt: new Date().toISOString(), reason: 'Fixture.' }),
+      verifier: verifier || (async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'A finance systems role. '.repeat(20), checkedAt: new Date().toISOString(), reason: 'Fixture.' })),
       renderer: async (workspace, state, job) => {
         const pdf = `output/test-${job.id}.pdf`;
         await workspace.write(pdf, 'test-pdf');
@@ -259,5 +259,41 @@ test('the 150-entry cap is gone: a 200-entry master is accepted and stored', asy
     const state = await h.app.workspace.load();
     assert.equal(state.standard.draft.resume.length, 200);
     assert.ok(state.standard.completeness, 'completeness is computed for the long master too');
+  } finally { await h.close(); }
+});
+
+test('a relevant credential dropped from the packet is named in the one retry', async () => {
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const job = jobById('holdout2-job-stem-assay');
+  const base = controlledAgent({ scenario: { id: 'u03-packet-cert', roleOrder: 'recent' }, persona, job });
+  const prompts = [];
+  let packetCalls = 0;
+  const agent = async (id, instruction, data, options) => {
+    const reply = await base(id, instruction, data, options);
+    if (instruction !== PACKET_INSTRUCTION) return reply;
+    packetCalls += 1;
+    prompts.push(data);
+    if (packetCalls > 1) return reply;
+    // A first packet that drops the Green Belt the posting relates to process
+    // improvement, although the approved master keeps it.
+    return { ...reply, resume: reply.resume.filter(entry => !/Green Belt/.test(entry.text)) };
+  };
+  const h = await harness({ persona, job, agent, verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Fixture.' }) });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    await h.ui('standard.approve', {});
+    const jobId = await h.addJob(job);
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    await h.ui('jobs.setContext', { jobId, overrideReason: 'Fixture proceeds to the packet.' });
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    const task = await h.lastTask();
+    assert.equal(task.status, 'complete', task.message);
+    assert.equal(packetCalls, 2, 'the missing relevant credential triggers exactly one retry');
+    assert.match(prompts[1].missingFromResume.join(' '), /Keep the relevant credential: .*Green Belt/, 'the retry carries the credential in missingFromResume');
+    assert.ok(prompts[1].reviewFeedback.some(line => /Keep the relevant credential: .*Green Belt/.test(line)), 'the retry feedback names it too');
+    const prepared = (await h.app.workspace.load()).jobs.find(item => item.id === jobId);
+    assert.ok(prepared.packet.resume.some(entry => /Green Belt/.test(entry.text)), 'the accepted packet keeps the credential');
   } finally { await h.close(); }
 });

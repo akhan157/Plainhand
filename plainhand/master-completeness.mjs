@@ -173,6 +173,13 @@ function sourceCompletenessItems(sources) {
   return items;
 }
 
+// The same credential parser, exposed for the packet check: a certification,
+// license or certificate the candidate's own sources state. Degrees are not
+// credentials for this check (they are a different master-completeness item).
+export function sourceCredentials(sources) {
+  return sourceCompletenessItems(sources).certifications;
+}
+
 const entryHeading = entry => entry?.heading && typeof entry.heading === 'object' ? entry.heading : {};
 const entryText = entry => {
   const heading = entryHeading(entry);
@@ -215,7 +222,11 @@ function resultIndex(result, master) {
   });
 }
 
-function credentialIndex(item, master) {
+export function credentialIdentity(text) {
+  return { tokens: [...new Set(identityTokens(text))], acronyms: acronymsOf(text) };
+}
+
+export function credentialIndex(item, master) {
   const acronyms = acronymsOf(item.text);
   const need = [...new Set(identityTokens(item.text))];
   return master.findIndex(entry => {
