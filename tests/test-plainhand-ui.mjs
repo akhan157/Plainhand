@@ -239,9 +239,11 @@ try {
   await page.getByRole('button', { name: 'Add interview round', exact: true }).click();
   await page.getByRole('textbox', { name: 'Stage', exact: true }).fill('Recruiter screen');
   await page.getByLabel('Date', { exact: true }).fill(interviewDate);
+  await page.getByLabel('Time (optional)', { exact: true }).fill('09:15');
   await page.getByRole('textbox', { name: 'Interviewer', exact: true }).fill('Dana Lee');
   await page.getByRole('button', { name: 'Save interview round', exact: true }).click();
   await panel(page).locator('.record-list strong', { hasText: 'Recruiter screen' }).locator(`time[datetime="${interviewDate}"]`).waitFor();
+  assert.match(await panel(page).locator('.record-list strong', { hasText: 'Recruiter screen' }).innerText(), /09:15/, 'the saved interview time is visible');
   await page.getByRole('button', { name: 'Add contact', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Dana Lee');
   await page.getByRole('textbox', { name: 'Their role', exact: true }).fill('Technical recruiter');
@@ -267,6 +269,9 @@ try {
   assert.equal(await people.count(), 1, 'Every recorded contact appears once on the People card.');
   assert.match(await people.innerText(), /Technical recruiter/);
   assert.match(await people.innerText(), /Test Company/);
+  const peopleGroup = page.locator('.people-group').filter({ has: page.getByRole('heading', { name: /Test Company/ }) });
+  assert.equal(await peopleGroup.count(), 1, 'contacts roll up under their company');
+  assert.match(await peopleGroup.locator('.people-company .board-count').innerText(), /^1$/);
   const csvDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
   const csvFile = await csvDownload;

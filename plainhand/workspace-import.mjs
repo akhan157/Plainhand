@@ -15,6 +15,11 @@ import { isSensitiveLabel } from './field-policy.mjs';
 // quote did not travel is held for the candidate's review instead of filling a field.
 
 export const SOURCE_FILES = Object.freeze(['modes/_profile.md', 'article-digest.md', 'interview-prep/story-bank.md', 'data/resume-source.yml']);
+// The canonical tracker travels with an export so rows that exist only in
+// applications.md are not lost when memory moves to another computer. It is not
+// a context source: it never feeds the model as candidate evidence.
+export const TRACKER_FILE = 'data/applications.md';
+const EXPORT_FILES = [...SOURCE_FILES, TRACKER_FILE];
 export const STRUCTURED_RESUME_FILE = 'data/resume-source.yml';
 export const IMPORT_MARKER = 'data/plainhand/backups/import-marker.json';
 // One source file larger than this is left out of the export and reported, never
@@ -46,7 +51,7 @@ export function validateExport(data) {
   for (const key of ['jobs', 'sources', 'tasks', 'conversation', 'events', 'answerBank', 'corrections', 'writingSamples', 'agentConversation', 'agentUsage', 'agentProposals']) if (data[key] !== undefined && !Array.isArray(data[key])) throw new ImportError(`The export's ${key} are not a list.`);
   for (const key of ['claimLine', 'standard', 'resumeFormat', 'settings', 'understanding', 'files']) if (data[key] !== undefined && data[key] !== null && !object(data[key])) throw new ImportError(`The export's ${key} is not an object.`);
   if (object(data.files)) for (const [file, value] of Object.entries(data.files)) {
-    if (!SOURCE_FILES.includes(file)) continue; // Never write a path outside the allow-list.
+    if (!EXPORT_FILES.includes(file)) continue; // Never write a path outside the allow-list.
     if (typeof value !== 'string') throw new ImportError(`The export's ${file} is not text.`);
     if (Buffer.byteLength(value) > MAX_SOURCE_BYTES) throw new ImportError(`The export's ${file} is too large to import. Export it from the app instead of editing it.`);
   }
@@ -251,7 +256,7 @@ export function cleanCorrections(value, bankAnswers) {
 function prepareImport(data) {
   const profile = Object.fromEntries(Object.keys(emptyProfile()).map(key => [key, cleanText(data.profile[key])]));
   const files = {};
-  if (object(data.files)) for (const file of SOURCE_FILES) if (typeof data.files[file] === 'string' && data.files[file]) files[file] = data.files[file];
+  if (object(data.files)) for (const file of EXPORT_FILES) if (typeof data.files[file] === 'string' && data.files[file]) files[file] = data.files[file];
   if (files[STRUCTURED_RESUME_FILE] && !profile.resume) throw new ImportError('The export has a structured resume but no resume text to mirror it. Export the workspace again from Plainhand.');
   if (!profile.name || !profile.resume) throw new ImportError('The export needs a name and resume.');
   if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) throw new ImportError('The export has an invalid email address.');
@@ -263,7 +268,7 @@ function prepareImport(data) {
     inbox: Array.isArray(data.inbox) ? data.inbox : undefined, skillPlan: object(data.skillPlan) ? data.skillPlan : undefined,
     writingSamples: cleanSamples(data.writingSamples), claimLine: cleanClaimLine(data.claimLine), standard: cleanStandard(data.standard),
     resumeFormat: cleanResumeFormat(data.resumeFormat), settings: cleanSettings(data.settings), understanding: cleanUnderstanding(data.understanding),
-    filesOmitted: Array.isArray(data.filesOmitted) ? data.filesOmitted.filter(file => SOURCE_FILES.includes(file)) : [],
+    filesOmitted: Array.isArray(data.filesOmitted) ? data.filesOmitted.filter(file => EXPORT_FILES.includes(file)) : [],
   };
 }
 
@@ -304,18 +309,19 @@ export function preview(data) {
   validateExport(data);
   return { name: data.profile.name || '', exportedAt: data.exportedAt || null, jobs: (data.jobs || []).length, applied: (data.jobs || []).filter(job => job.submittedAt).length,
     conversation: (data.agentConversation || []).length, sources: (data.sources || []).length, approvalsReset: (data.jobs || []).filter(job => job.approvedHash).length,
-    answerBank: (data.answerBank || []).length, corrections: (data.corrections || []).length, files: Object.keys(object(data.files) ? data.files : {}).filter(file => SOURCE_FILES.includes(file)).length };
+    answerBank: (data.answerBank || []).length, corrections: (data.corrections || []).length, files: Object.keys(object(data.files) ? data.files : {}).filter(file => EXPORT_FILES.includes(file)).length };
 }
 
 // The export allow-list, shared by the local app and the hosted website. Memory travels
-// (state, reusable answers, corrections, the bounded user-layer sources); a connection
-// check, a browser checkpoint and every credential stay on the machine that made them.
+// (state, reusable answers, corrections, the bounded user-layer sources and the
+// canonical tracker); a connection check, a browser checkpoint and every credential
+// stay on the machine that made them.
 export async function exportWorkspace(workspace, extra = {}) {
   const state = structuredClone(await workspace.load());
   delete state.connectionChecks;
   for (const job of state.jobs || []) delete job.browserCheckpoint;
   const files = {}, filesOmitted = [];
-  for (const file of SOURCE_FILES) {
+  for (const file of EXPORT_FILES) {
     const text = await workspace.read(file);
     if (!text) continue;
     if (Buffer.byteLength(text) > MAX_SOURCE_BYTES) filesOmitted.push(file);
@@ -397,6 +403,10 @@ export async function importWorkspace({ workspace, data, busy = false }) {
         // with an empty file and never silently deleted from the destination.
         else if (!prepared.filesOmitted.includes(file)) await workspace.remove(file);
       } else if (!await workspace.read('modes/_profile.md')) await workspace.write('modes/_profile.md', '# Candidate narrative\n\n' + state.profile.story + '\n');
+      // The exported tracker carries rows that exist only in applications.md. Write
+      // it before syncTracker so those rows survive while the imported jobs update
+      // their own rows. An export with no tracker leaves this workspace's file alone.
+      if (prepared.carryFiles && prepared.files[TRACKER_FILE]) await workspace.write(TRACKER_FILE, prepared.files[TRACKER_FILE]);
       if (!await workspace.read('portals.yml')) await workspace.write('portals.yml', 'tracked_companies: []\n');
       // Hold what cannot be verified: the sources here are the imported ones, before
       // sharing exclusions, so a quote is judged on whether its text travelled.

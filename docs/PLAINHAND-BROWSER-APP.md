@@ -182,8 +182,9 @@ the sample workspace or before a provider is connected.
    so you can complete remaining fields and submit yourself. Then confirm the
    submission in Plainhand to record `Applied`.
 10. **Track it:** the role's **Record** tab holds its application record:
-   a dated next action, interview rounds (stage, date, interviewer, preparation,
-   notes, status) and contacts (recruiter, hiring manager, interviewer, referral).
+   a dated next action, interview rounds (stage, date, optional time,
+   interviewer, preparation, notes, status) and contacts (recruiter, hiring
+   manager, interviewer, referral).
    **Applications → Follow-ups** lists next actions, overdue first, then active
    applications that still have none; overdue and upcoming items also appear
    in the Home briefing. Interview rounds and contacts are added from the
@@ -196,6 +197,9 @@ the sample workspace or before a provider is connected.
 
 Once you confirm you submitted an application, the job panel's **Record** tab
 has a **Follow-ups** section. Plainhand drafts the message; it never sends it.
+The submission freezes the exact packet version that was sent (its approval and
+packet hashes), and the follow-up queue item cites that version: revising or
+replacing the stored packet later does not change what the follow-up points to.
 
 - **Draft a follow-up:** choose a **thank-you** (after an interview round), a
   **check-in** (after silence) or a **reply** (paste the recruiter's message),
@@ -247,14 +251,18 @@ order, each with its count. The card heading repeats the counts per stage.
   sideways. Rows that exist only in an existing `applications.md` appear in a
   read-only section under the columns, obeying the same search box as the table;
   they never get a stage column, a card or a write.
-- **People:** a read-only roll-up of every contact recorded on any application
-  (name, role, email, and the role they belong to), newest first. Add and remove
-  contacts on the application's Record tab; the People card never writes.
+- **People:** a read-only roll-up of every contact recorded on any application,
+  grouped by company (name, role, email, and the role they belong to), newest
+  first inside each company. Add and remove contacts on the application's Record
+  tab; the People card never writes.
 - **Deadlines to calendar:** downloads `plainhand-calendar.ics` (RFC 5545) with
-  one all-day event per application next action and per scheduled interview
-  round. Completed rounds and closed applications (Rejected, Discarded, SKIP)
-  are left out. Import it into any calendar app; download a fresh copy after
-  changes. It is a snapshot, not a subscription feed.
+  one event per application next action and per scheduled interview round.
+  Next actions are all-day. An interview round with an optional time is a
+  timed event, written in UTC from your profile time zone (one hour long);
+  without a time it stays all-day. Completed rounds and closed applications
+  (Rejected, Discarded, SKIP) are left out. Import it into any calendar app;
+  download a fresh copy after changes. It is a snapshot, not a subscription
+  feed.
 - **Export CSV:** downloads `plainhand-applications.csv` — the same table, UTF-8
   with a byte-order mark so Excel reads it correctly, columns Company, Role,
   Status, Fit, Next action, Due, Updated, Posting URL, Report. Rows that exist
@@ -318,7 +326,8 @@ of submission status in this release; no submission receipt is inferred.
 
 Exports contain personal information and may include sensitive answers. Store
 them accordingly. Workspace → Import a workspace restores an export on a new computer or into a
-fresh folder. It shows what the export contains, asks for confirmation, and backs
+fresh folder, including the canonical `data/applications.md` rows that exist only
+in your existing tracker. It shows what the export contains, asks for confirmation, and backs
 up the current workspace to `data/plainhand/backups/*-import-*` first. Packet
 approvals are reset because PDFs are not part of an export, and browser sessions
 do not move between computers.
