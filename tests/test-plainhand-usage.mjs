@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { agentUsage, UsageLedger } from '../plainhand/usage.mjs';
+import { agentUsage, UsageLedger, taskPromptChars } from '../plainhand/usage.mjs';
 import { Workspace } from '../plainhand/store.mjs';
-import { executeAgent } from '../plainhand/agents.mjs';
+import { executeAgent, agentTask } from '../plainhand/agents.mjs';
 
 test('Claude usage normalizes cache tokens once; USD remains a reported reference value', () => {
   const u = agentUsage('claude', JSON.stringify({ type: 'result', usage: { input_tokens: 10, output_tokens: 7, cache_read_input_tokens: 40, cache_creation_input_tokens: 20 }, total_cost_usd: 0.012, modelUsage: { 'test-model': {} }, result: '{"ok":true}' }));
@@ -44,6 +44,59 @@ test('ledger preserves concurrent, failed and unreported calls without candidate
     assert.equal((await stat(await workspace.safe(ledger.file(record.id)))).mode & 0o777, 0o600);
     assert.equal((await readFile(await workspace.safe(ledger.file(record.id)), 'utf8')).includes('PRIVATE'), false);
     assert.equal((await new UsageLedger(workspace).summary({ jobs: [] })).totals.calls, 3);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// The exact event shape codex-cli 0.167.1 was observed to emit on `exec --json`:
+// thread.started carries a thread_id, turn.completed carries usage, and neither names a
+// model. Recorded here so a future CLI that starts naming one is visible in the diff.
+const codexEvents = (usage = { input_tokens: 100, cached_input_tokens: 80, cache_write_input_tokens: 0, output_tokens: 20, reasoning_output_tokens: 5 }) => [
+  { type: 'thread.started', thread_id: '01a1e1a9-a1d0-7c73-8392-fe3ed083342c' },
+  { type: 'turn.started' },
+  { type: 'item.completed', item: { id: 'item_1', type: 'agent_message', text: '{"ok":true}' } },
+  { type: 'turn.completed', usage },
+].map(event => JSON.stringify(event)).join('\n');
+
+test('Codex usage keeps cached and reasoning tokens and the prompt length, and records no model it did not state', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'plainhand-usage-')), workspace = new Workspace(root), ledger = new UsageLedger(workspace);
+  try {
+    const instruction = 'Evaluate this job against the candidate evidence.';
+    const data = { job: { title: 'Synthetic role' }, sources: [{ id: 'cv', text: 'Candidate evidence line.' }] };
+    const expected = agentTask(instruction, data).length;
+    assert.equal(taskPromptChars(instruction, data), expected, 'the recorded length is the prompt Plainhand sends');
+    await ledger.track(async (p, i, d, o) => { o.onUsage(agentUsage('codex', codexEvents())); return { ok: true }; }, 'codex', instruction, data);
+    const summary = await ledger.summary({ jobs: [] });
+    assert.equal(summary.totals.calls, 1);
+    assert.equal(summary.totals.cacheReadTokens.value, 80, 'cached input survives the summary');
+    assert.equal(summary.totals.reasoningTokens.value, 5, 'reasoning tokens survive the summary');
+    assert.equal(summary.totals.inputTokens.value, 100);
+    assert.equal(summary.totals.outputTokens.value, 20);
+    assert.equal(summary.totals.promptChars.value, expected, 'the summary sums the characters Plainhand sent');
+    assert.deepEqual(summary.totals.models, [], 'the CLI stated no model');
+    assert.equal(summary.totals.actualModel, null, 'no model is assumed from the CLI default');
+    const [record] = await ledger.records();
+    assert.equal(record.promptChars, expected);
+    assert.equal(record.actualModel, null);
+    const stored = await readFile(await workspace.safe(ledger.file(record.id)), 'utf8');
+    assert.equal(stored.includes('Candidate evidence line'), false, 'the ledger stores the prompt length, never its text');
+    assert.equal(stored.includes('Synthetic role'), false);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('a provider that states its model is recorded per call; several or none stay unresolved', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'plainhand-usage-')), workspace = new Workspace(root), ledger = new UsageLedger(workspace);
+  try {
+    const stated = agentUsage('codex', JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 5, cached_input_tokens: 2, output_tokens: 1, reasoning_output_tokens: 0 }, model: 'reported-model-a' }));
+    assert.deepEqual(stated.models, ['reported-model-a']);
+    await ledger.track(async (p, i, d, o) => { o.onUsage(stated); return { ok: true }; }, 'codex', 'x', {});
+    let summary = await ledger.summary({ jobs: [] });
+    assert.equal(summary.totals.actualModel, 'reported-model-a');
+    assert.equal((await ledger.records())[0].actualModel, 'reported-model-a');
+    // A second call on another model: the run has no single model, so none is claimed.
+    await ledger.track(async (p, i, d, o) => { o.onUsage(agentUsage('codex', JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 5, output_tokens: 1 }, model: 'reported-model-b' }))); return { ok: true }; }, 'codex', 'x', {});
+    summary = await ledger.summary({ jobs: [] });
+    assert.deepEqual(summary.totals.models, ['reported-model-a', 'reported-model-b']);
+    assert.equal(summary.totals.actualModel, null);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

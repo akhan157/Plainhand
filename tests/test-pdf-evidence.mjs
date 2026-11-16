@@ -100,6 +100,38 @@ test('PDF control: reordered lines within a section fail coverage', async () => 
   assert.match(check(evidence, 'resume-coverage').detail, /out of order/);
 });
 
+// Repeated wording: a Skills line that reuses the opening of an earlier Experience
+// bullet was anchored at that bullet and reported out of order (finding 6, measured on
+// holdout-oldrole-fin-systems). It anchors at its own rendered line now, and a line that
+// really did move is still caught.
+test('PDF control: repeated wording in order passes; the same line moved is still out of order', async () => {
+  const repeatedPacket = {
+    ...packet,
+    resume: [
+      { section: 'Experience', heading: null, text: 'Rebuilt the balance sheet reconciliation process for the migration.' },
+      { section: 'Experience', heading: null, text: 'Wrote the controls the auditors tested.' },
+      { section: 'Skills', heading: null, text: 'Finance systems and NetSuite administration.' },
+      // Repeats the opening of the first Experience bullet, as in the measured packet.
+      { section: 'Skills', heading: null, text: 'Balance sheet reconciliation; financial controls documentation.' },
+    ],
+    answers: [],
+    coverLetter: '',
+  };
+  const header = ['Riley Chen', 'riley@example.invalid · +1 617 555 0100'];
+  const experience = ['EXPERIENCE', repeatedPacket.resume[0].text, repeatedPacket.resume[1].text];
+  const skillsInOrder = ['SKILLS', repeatedPacket.resume[2].text, repeatedPacket.resume[3].text];
+  const withLines = lines => ({ packet: repeatedPacket, profile, job, sources, coverBytes: null, extractor: extractor(fakePages([...header, ...lines])) });
+  const inOrder = await pdfEvidence(Buffer.from('resume'), withLines([...experience, ...skillsInOrder]));
+  assert.equal(check(inOrder, 'resume-coverage').status, 'pass', JSON.stringify(inOrder.coverage));
+  assert.equal(check(inOrder, 'reading-order').status, 'pass', JSON.stringify(check(inOrder, 'reading-order')));
+  assert.equal(inOrder.state, 'passed', JSON.stringify(inOrder.checks.filter(item => item.status === 'fail')));
+  // The repeated line really did move: the two Skills lines are rendered swapped.
+  const swapped = await pdfEvidence(Buffer.from('resume'), withLines([...experience, 'SKILLS', repeatedPacket.resume[3].text, repeatedPacket.resume[2].text]));
+  assert.equal(check(swapped, 'resume-coverage').status, 'fail', JSON.stringify(swapped.coverage));
+  assert.match(check(swapped, 'resume-coverage').detail, /out of order/);
+  assert.equal(pdfEvidencePassed(swapped), false);
+});
+
 test('PDF control: interleaved columns fail reading order', async () => {
   // Two lines whose words are staggered: each line's words are not contiguous.
   const interleaved = [

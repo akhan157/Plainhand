@@ -120,7 +120,7 @@ const linesOf = pages => pages.flatMap(linesOfPage);
 // content-token coverage, in monotonic order. Line wrapping does not break a token
 // sequence; a missing or reordered line does. A line with fewer than three content
 // tokens must appear as a normalized substring instead.
-function matchLine(line, textTokens, text) {
+function matchLine(line, textTokens, text, from = 0) {
   const need = contentTokens(line);
   if (need.length < 3) {
     // Fewer than three content tokens: presence as a normalized substring is the
@@ -129,19 +129,29 @@ function matchLine(line, textTokens, text) {
     const found = squashLower(text).includes(squashLower(line));
     return { line, ok: found, coverage: found ? 1 : 0, position: -1, positions: [], run: { from: -1, to: -1 }, short: true };
   }
-  let at = 0, matched = 0;
-  const positions = [];
-  for (const token of need) {
-    const found = textTokens.indexOf(token, at);
-    if (found < 0) continue;
-    positions.push(found);
-    matched++;
-    at = found + 1;
-  }
-  const run = longestRun(positions);
-  // The best contiguous match is the line's anchor: a duplicated first word in the
-  // header ("Example" in an email) must not move the line to the top of the page.
-  return { line, ok: matched / need.length >= 0.90, coverage: Math.round((matched / need.length) * 1000) / 1000, position: run.from, positions, run, short: false };
+  const scan = start => {
+    let at = start, matched = 0;
+    const positions = [];
+    for (const token of need) {
+      const found = textTokens.indexOf(token, at);
+      if (found < 0) continue;
+      positions.push(found);
+      matched++;
+      at = found + 1;
+    }
+    const run = longestRun(positions);
+    // The best contiguous match is the line's anchor: a duplicated first word in the
+    // header ("Example" in an email) must not move the line to the top of the page.
+    return { ok: matched / need.length >= 0.90, coverage: Math.round((matched / need.length) * 1000) / 1000, positions, run };
+  };
+  // Repeated wording is matched to the occurrence that keeps the document order: the
+  // scan starts where the previous line in this section matched, so a Skills line that
+  // repeats an earlier Experience bullet is anchored at its own rendered line. Only
+  // when no later occurrence covers the line does it fall back to the document start;
+  // a line that really is out of order is still anchored (and flagged) there.
+  const later = from > 0 ? scan(from) : null;
+  const match = later?.ok ? later : scan(0);
+  return { line, ...match, position: match.run.from, short: false };
 }
 // The longest run of consecutive token positions: a line is a contiguous stretch of
 // the text stream between its wraps. Repeated words elsewhere in the document can
@@ -183,25 +193,26 @@ function visibleGroups(packet) {
 function coverageCheck(groups, text) {
   const textTokens = contentTokens(text);
   const results = [];
-  for (const group of groups) {
-    const matches = group.parts.map(part => matchLine(part, textTokens, text));
-    results.push({ ...group, matches, ok: matches.every(match => match.ok), position: matches.reduce((low, match) => match.position >= 0 && (low < 0 || match.position < low) ? match.position : low, -1), positions: matches.flatMap(match => match.positions), runs: matches.map(match => match.run).filter(run => run.from >= 0) });
-  }
-  const missing = results.filter(result => !result.ok);
   // The renderer groups entries by section (resume-format.mjs orderSections), so
   // section order in the packet is not the render order. Monotonicity is required
   // inside a section: a reordered line within one section is a rendering defect.
+  // Each line is matched from the position of the line before it in that section, so
+  // repeating earlier wording does not move it backwards in the document.
   const reordered = [];
   const previousBySection = new Map();
-  for (const result of results) {
+  for (const group of groups) {
     // Heading parts are presence-only: the renderer may put them on two rows and an
     // extractor may lay absolutely-positioned spans out of flow (Poppler does), so
-    // their positions are not comparable. Entry lines are order-gated.
+    // their positions are not comparable and they never move the section cursor.
+    const previous = group.heading ? null : previousBySection.get(group.section);
+    const matches = group.parts.map(part => matchLine(part, textTokens, text, previous?.position ?? 0));
+    const result = { ...group, matches, ok: matches.every(match => match.ok), position: matches.reduce((low, match) => match.position >= 0 && (low < 0 || match.position < low) ? match.position : low, -1), positions: matches.flatMap(match => match.positions), runs: matches.map(match => match.run).filter(run => run.from >= 0) };
+    results.push(result);
     if (result.heading) continue;
-    const previous = previousBySection.get(result.section);
     if (previous && previous.position >= 0 && result.position >= 0 && result.position < previous.position) reordered.push(result);
     previousBySection.set(result.section, result);
   }
+  const missing = results.filter(result => !result.ok);
   return {
     ok: missing.length === 0 && reordered.length === 0,
     results,
@@ -262,7 +273,21 @@ function layoutCheck(pages, lines) {
 function readingOrderCheck(lines, text) {
   const hay = ` ${squashLower(text).replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ')} `;
   const probes = probesFor(lines);
-  const positions = probes.map(probe => hay.indexOf(` ${probe} `)).filter(position => position >= 0);
+  // A probe's opening words can appear earlier in the document as another line's
+  // wording. Take the first occurrence at or after the previous probe, and fall back
+  // to an earlier one only when no later occurrence exists: the ratio then still
+  // drops for a line that really was moved, and stops dropping for a line that was
+  // rendered in order after the same words appeared above.
+  const positions = [];
+  let cursor = 0;
+  for (const probe of probes) {
+    const needle = ` ${probe} `;
+    const later = hay.indexOf(needle, cursor);
+    const found = later >= 0 ? later : hay.indexOf(needle);
+    if (found < 0) continue;
+    positions.push(found);
+    cursor = found + needle.length;
+  }
   const foundRatio = probes.length ? positions.length / probes.length : 1;
   let ascending = 0;
   for (let i = 1; i < positions.length; i++) if (positions[i] > positions[i - 1]) ascending++;
@@ -275,6 +300,22 @@ function readingOrderCheck(lines, text) {
     found: positions.length,
     detail: `${positions.length}/${probes.length} line probes found intact, ${positions.length > 1 ? Math.round(orderRatio * 100) : 100}% in ascending document order.`,
   };
+}
+
+// The text-layer checks, computed from an extraction alone. `pdfEvidence` calls this
+// with the lines it parsed; scripts/rescore.mjs calls it with the lines saved in an
+// evidence file, so an offline re-score applies the same order rules to the same text
+// at zero model calls. It parses no PDF and needs no source text.
+export function textLayerChecks({ packet, lines = [] }) {
+  const text = lines.map(line => line.text).join('\n');
+  const groups = visibleGroups(packet);
+  const coverage = coverageCheck(groups, text);
+  const interleaved = interleavedLines(coverage.results);
+  const documentOrderedLines = [...coverage.results.filter(result => !result.heading)]
+    .sort((a, b) => (a.position < 0 ? Number.MAX_SAFE_INTEGER : a.position) - (b.position < 0 ? Number.MAX_SAFE_INTEGER : b.position))
+    .flatMap(result => result.parts);
+  const resumeLines = documentOrderedLines.length ? documentOrderedLines : groups.filter(group => !group.heading).flatMap(group => group.parts);
+  return { text, groups, coverage, interleaved, resumeLines, order: readingOrderCheck(resumeLines, text) };
 }
 
 // ---- Evidence ----
@@ -332,17 +373,11 @@ export async function pdfEvidence(bytes, { packet = null, profile = {}, job = nu
   evidence.textSha256 = sha256(text);
   evidence.textLength = text.length;
 
-  const groups = visibleGroups(packet);
   const posting = String(job?.description || '');
   const supportText = (sources || []).map(source => source.text).filter(Boolean).join('\n');
   // Coverage first: its match positions are also the document's line order, which is
   // the only order a parser sees (the renderer groups sections by format).
-  const coverage = coverageCheck(groups, text);
-  const interleaved = interleavedLines(coverage.results);
-  const documentOrderedLines = [...coverage.results.filter(result => !result.heading)]
-    .sort((a, b) => (a.position < 0 ? Number.MAX_SAFE_INTEGER : a.position) - (b.position < 0 ? Number.MAX_SAFE_INTEGER : b.position))
-    .flatMap(result => result.parts);
-  const resumeLines = documentOrderedLines.length ? documentOrderedLines : groups.filter(group => !group.heading).flatMap(group => group.parts);
+  const { groups, coverage, interleaved, resumeLines, order } = textLayerChecks({ packet, lines });
 
   pass('parse', `pdfjs parsed ${evidence.pageCount} page(s).`, 'PDF parse');
   const emptyPages = parsed.pages.filter(page => !page.items.some(item => item.str.trim())).map(page => page.pageNumber);
@@ -374,7 +409,6 @@ export async function pdfEvidence(bytes, { packet = null, profile = {}, job = nu
     fail('resume-coverage', problems.join('; ') || `Lowest line coverage ${coverage.lowestCoverage}.`, 'Resume coverage');
   }
 
-  const order = readingOrderCheck(resumeLines, text);
   const engineOrder = atsById('order');
   const orderOk = order.ok && !interleaved.length && coverage.reordered.length === 0;
   evidence.checks.push({
