@@ -226,3 +226,35 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
   failures on those two rows as measuring the old expectation.
 - Next live run (after the Codex quota resets): the manifest v2 paired and smoke
   commands on `5e4a000`. The judge then runs on the same subset as at baseline.
+
+## Scorer v3 and held-out set 2 — 2026-11-16
+
+- Lane `1d1485a` (DeepSeek). Root reviewed the gate logic in score.mjs and roles.mjs,
+  then merged it.
+  - Lead share is reported but no longer gates.
+  - Kept experience roles must follow the run's `roleOrder`:
+    - `recent`: newest first by heading dates.
+    - `match`: the required-fact role first, then the rest newest first.
+  - A role that holds a required fact may not be dropped.
+  - The within-role first line is a diagnostic only, because the fixture guarantees
+    it by construction.
+  - The runner seeds `settings.roleOrder`, and the controlled fixture follows it.
+- Held-out set 2 (unseen): 3 personas and 8 rows, covering
+  - fin/tech under `recent` and under `match`,
+  - a newer unrelated role,
+  - a zero-match Skip,
+  - a GMP borderline,
+  - a STEM journey.
+- Gates: suite 559/559; controlled 64/67, 0 unexpected. Four mutation checks each fail
+  their tests when reverted.
+- Offline v3 rescore of the v1 evidence flips stem-automation (its only failure was
+  lead share) and holdout-mismatch. fin-systems and tech-ml now pass order but still
+  fail the poppler cross-check, which cannot be rescored offline.
+- Manifest v3 frozen at `c9e09cb`: 67 scenarios, 24 hashed files. Its smoke run is
+  unseen set 2 plus journey-sci.
+- **Product finding for the next lane:** `verifyHeadings` strips role headings when
+  the sources never state the org, title or dates, which is common for
+  conversation-built profiles. holdout-journey-stem kept lines under `{org:"Automation
+  Scientist"}`, and holdout2-journey-stem lost the Genomics heading entirely. A
+  conversation-built resume then has roles with no employer or dates.
+- Next: the live comparison on `c9e09cb` once the Codex quota resets (about 250 calls).
