@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
-import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, DEFAULT_FORMAT, normalizeResume, repairMisplacedAccomplishments } from '../plainhand/resume-format.mjs';
+import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, DEFAULT_FORMAT, normalizeResume, repairMisplacedAccomplishments, orderRolesNewestFirst } from '../plainhand/resume-format.mjs';
 import { renderPacket } from '../plainhand/workflow.mjs';
 import { createPlainhand } from '../plainhand-server.mjs';
 
@@ -133,4 +133,25 @@ test('the format is the candidate’s to save; packets render in it', async () =
     await app.registry.run('format.save', { reset: true }, { actor: 'ui' });
     assert.equal((await app.workspace.load()).resumeFormat, undefined);
   } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test('newest-first ordering moves whole roles by date and keeps everything else in place', () => {
+  const role = (org, dates) => ({ org, title: 'Scientist', location: '', dates });
+  const resume = [
+    { section: 'Summary', heading: null, text: 'Summary line.' },
+    { section: 'Experience', heading: role('Genomics', '2016 to 2023'), text: 'G1.' },
+    { section: 'Experience', heading: role('Genomics', '2016 to 2023'), text: 'G2.' },
+    { section: 'Experience', heading: role('Bioinstruments', '2025 to 2026'), text: 'B1.' },
+    { section: 'Experience', heading: role('Cell', '2012 to 2016'), text: 'C1.' },
+    { section: 'Experience', heading: role('Startup', '2024 to present'), text: 'S1.' },
+    { section: 'Education', heading: role('University', '2012'), text: '' },
+  ];
+  assert.deepEqual(orderRolesNewestFirst(resume).map(entry => entry.text || entry.section), ['Summary line.', 'S1.', 'B1.', 'G1.', 'G2.', 'C1.', 'Education']);
+});
+
+test('hyphenated words render unbroken so extractors read them whole', () => {
+  const html = renderResumeHtml({}, { name: 'A' }, { resume: [{ section: 'Summary', heading: null, text: 'Built liquid-handling automation & cell-based assays.' }] });
+  assert.match(html, /<span class="nobreak">liquid-handling<\/span>/);
+  assert.match(html, /&amp;/);
+  assert.match(html, /\.nobreak\{white-space:nowrap\}/);
 });

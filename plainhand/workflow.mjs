@@ -20,7 +20,7 @@ import { voiceTargetOf } from './voice-target.mjs';
 import { AgentCache } from './agent-cache.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
-import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume, repairMisplacedAccomplishments } from './resume-format.mjs';
+import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume, repairMisplacedAccomplishments, orderRolesNewestFirst } from './resume-format.mjs';
 import { pluralScopeIssues, scopeRetryFeedback, scopeSuggestions } from './scope-checks.mjs';
 import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion, credentialName, masterCredentialRows, packetHasCredential } from './credential-relevance.mjs';
 
@@ -665,6 +665,9 @@ export class Workflow {
             packet.resume = normalizeResume(dedupeResume(placement.resume.filter(keepResumeRow)), { sections: formatSections });
             if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
           }
+          // The candidate's newest-first setting is a rule, not a hope: the roles are
+          // put in date order here. "match" order and revisions stay as drafted.
+          if (!revising && roleOrderOf(state) === 'recent') packet.resume = orderRolesNewestFirst(packet.resume);
           // Deterministic findings ride the existing one retry, before humanize and
           // review so their resume:<index> keys name the entries that will ship:
           // a misplaced accomplishment section, a plural the item's own evidence never

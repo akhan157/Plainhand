@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { runProcess } from './agents.mjs';
+import { parseDates } from './evaluation/roles.mjs';
 
 export const DEFAULT_FORMAT = {
   source: 'default',
@@ -132,7 +133,7 @@ const headingText = (text, format) => format.headings.case === 'upper' ? text.to
 
 export function formatCss(format) {
   const f = cleanFormat(format), m = f.margins;
-  return `@page{size:${f.page === 'a4' ? 'A4' : 'Letter'};margin:${m.top}in ${m.right}in ${m.bottom}in ${m.left}in}*{box-sizing:border-box;margin:0;padding:0}
+  return `@page{size:${f.page === 'a4' ? 'A4' : 'Letter'};margin:${m.top}in ${m.right}in ${m.bottom}in ${m.left}in}*{box-sizing:border-box;margin:0;padding:0}.nobreak{white-space:nowrap}
 body{font-family:${fontStack(f.font)};font-size:${f.font.size}pt;line-height:${f.font.lineHeight};color:#000}
 h1{font-size:${f.name.size}pt;line-height:1.1;text-align:${f.name.align};margin-bottom:2pt}
 .contact{text-align:${f.contact.align};margin-bottom:6pt}
@@ -332,6 +333,38 @@ function header(profile, format) {
   return `<h1>${esc(profile.name)}</h1><div class="contact">${contact}</div>`;
 }
 
+// A hyphenated word ("liquid-handling", "three-statement") never breaks across lines:
+// a text extractor or an ATS reads a break at its hyphen as "liquid- handling" or
+// "liquidhandling", so the line no longer matches what the candidate approved.
+const HYPHENATED = /[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+/g;
+const prose = text => esc(text).replace(HYPHENATED, word => `<span class="nobreak">${word}</span>`);
+// Newest role first, by the candidate's own dates. Each role keeps its lines together
+// and in their order; roles whose dates cannot be read, and lines with no heading,
+// keep their place after the dated roles. Only the Experience section moves.
+const EXPERIENCE_SECTION = /^(?:experience|work experience|professional experience|relevant experience|employment(?: history)?|work history|career(?: history)?)$/i;
+export function orderRolesNewestFirst(resume) {
+  const entries = Array.isArray(resume) ? resume : [];
+  const isExperience = entry => EXPERIENCE_SECTION.test(String(entry?.section ?? '').trim());
+  const first = entries.findIndex(isExperience);
+  if (first < 0) return entries;
+  const experience = entries.filter(isExperience);
+  const groups = [];
+  for (const entry of experience) {
+    const key = entry?.heading && typeof entry.heading === 'object' ? headingKey(entry.heading) : null;
+    const group = key && groups.find(item => item.key === key);
+    if (group) group.rows.push(entry);
+    else groups.push({ key, rows: [entry], dates: key ? parseDates(entry.heading.dates) : null });
+  }
+  const rank = group => !group.dates ? -Infinity : group.dates.ongoing ? Infinity : Number(group.dates.end ?? group.dates.start ?? -Infinity);
+  const ordered = groups.map((group, index) => ({ group, index })).sort((a, b) => {
+    const dated = Number(Boolean(b.group.dates)) - Number(Boolean(a.group.dates));
+    if (dated) return dated;
+    return rank(b.group) - rank(a.group) || Number(b.group.dates?.start ?? 0) - Number(a.group.dates?.start ?? 0) || a.index - b.index;
+  }).flatMap(({ group }) => group.rows);
+  const rest = entries.filter(entry => !isExperience(entry));
+  return [...rest.slice(0, first), ...ordered, ...rest.slice(first)];
+}
+
 export function renderResumeHtml(format, profile, packet, title = 'Resume') {
   const f = cleanFormat(format);
   const blocks = orderSections(groupEntries(packet.resume), f).map(section => `<h2>${esc(headingText(section.name, f))}</h2>` + section.blocks.map(block => {
@@ -342,7 +375,7 @@ export function renderResumeHtml(format, profile, packet, title = 'Resume') {
     // A heading-only entry (an education or credential row whose heading carries the
     // school or issuer, the credential and the dates) has no line to bullet.
     const lines = block.lines.filter(line => String(line ?? '').trim());
-    const body = !lines.length ? '' : (h || lines.length > 1 ? `<ul>${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : `<p class="line">${esc(lines[0])}</p>`);
+    const body = !lines.length ? '' : (h || lines.length > 1 ? `<ul>${lines.map(l => `<li>${prose(l)}</li>`).join('')}</ul>` : `<p class="line">${prose(lines[0])}</p>`);
     return head + body;
   }).join('')).join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(profile.name)} — ${esc(title)}</title><style>${formatCss(f)}</style></head><body>${header(profile, f)}${blocks}</body></html>`;
@@ -350,7 +383,7 @@ export function renderResumeHtml(format, profile, packet, title = 'Resume') {
 
 export function renderLetterHtml(format, profile, job, letter) {
   const f = cleanFormat(format);
-  const paragraphs = String(letter).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+  const paragraphs = String(letter).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${prose(p)}</p>`).join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(profile.name)} — ${esc(job.title)}</title><style>${formatCss(f)}</style></head><body>${header(profile, f)}<div class="letter">${paragraphs}</div></body></html>`;
 }
 

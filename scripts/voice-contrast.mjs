@@ -100,7 +100,12 @@ export async function preparePersona(provider, label, samples, root, { agent = n
     await app.registry.run('tasks.prepare', { jobId }, { actor: 'ui' });
     for (let i = 0; i < 6; i++) await app.workflow.queue;
     const task = (await app.workspace.load()).tasks[0];
-    if (task?.status !== 'complete') throw new Error(`prepare ${label} ${task?.status || 'did not run'}: ${task?.message || 'no task'}`);
+    if (task?.status !== 'complete') {
+      // Show what blocked it, so a failed run can be diagnosed without a rerun.
+      const blocked = (await app.workspace.load()).jobs.find(j => j.id === jobId);
+      const findings = (blocked?.reviewAttempts || []).flatMap(item => (item.issues || []).map(issue => `attempt ${item.attempt}: ${issue}`));
+      throw new Error(`prepare ${label} ${task?.status || 'did not run'}: ${task?.message || 'no task'}${findings.length ? `\n  ${findings.join('\n  ')}` : ''}`);
+    }
     const job = (await app.workspace.load()).jobs.find(j => j.id === jobId);
     if (!job?.packet?.coverLetter) throw new Error(`prepare ${label} finished without a cover letter.`);
     return { coverLetter: job.packet.coverLetter, reviewPassed: job.review?.passed === true, reviewAttempts: job.reviewAttempts?.length || 0 };
