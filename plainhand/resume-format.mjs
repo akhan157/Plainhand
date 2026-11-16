@@ -146,7 +146,7 @@ p.line{margin:1pt 0}.letter p{margin:0 0 9pt}`;
 // The model may re-type a role's heading for its next line; case and spacing alone do
 // not make it a different role. Every field a heading carries is compared, so two
 // different roles never merge.
-const headingKey = heading => {
+export const headingKey = heading => {
   if (!heading || typeof heading !== 'object') return 'null';
   const norm = value => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
   const fields = ['org', 'title', 'location', 'dates'].map(key => norm(heading[key]));
@@ -186,8 +186,11 @@ export function renderResumeHtml(format, profile, packet, title = 'Resume') {
     const head = h ? (f.entry.datesRight
       ? `<div class="head"><span class="org">${esc(h.org || h.title || '')}</span><span class="where">${esc(h.location || '')}</span></div>${h.org && h.title ? `<div class="head"><span class="title">${esc(h.title)}</span><span class="dates">${esc(h.dates || '')}</span></div>` : h.dates ? `<div class="head"><span></span><span class="dates">${esc(h.dates)}</span></div>` : ''}`
       : `<div class="head"><span><span class="org">${esc(h.org || '')}</span>${h.title ? `, <span class="title">${esc(h.title)}</span>` : ''}${h.location ? `, ${esc(h.location)}` : ''}${h.dates ? ` (${esc(h.dates)})` : ''}</span></div>`) : '';
-    const lines = h || block.lines.length > 1 ? `<ul>${block.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : `<p class="line">${esc(block.lines[0])}</p>`;
-    return head + lines;
+    // A heading-only entry (an education or credential row whose heading carries the
+    // school or issuer, the credential and the dates) has no line to bullet.
+    const lines = block.lines.filter(line => String(line ?? '').trim());
+    const body = !lines.length ? '' : (h || lines.length > 1 ? `<ul>${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : `<p class="line">${esc(lines[0])}</p>`);
+    return head + body;
   }).join('')).join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(profile.name)} — ${esc(title)}</title><style>${formatCss(f)}</style></head><body>${header(profile, f)}${blocks}</body></html>`;
 }

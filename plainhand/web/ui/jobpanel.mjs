@@ -192,7 +192,7 @@ function PacketTab({ job }) {
       <article class="document" aria-label="Resume">
         <h4 class="doc-name">${store.state.profile.name}</h4><p class="doc-contact">${[store.state.profile.email, store.state.profile.location].filter(Boolean).join(' · ')}</p>
         ${packet.resume.map((entry, i) => { const prev = packet.resume[i - 1], h = entry.heading, newHeading = h && (!prev || JSON.stringify(prev.heading || null) !== JSON.stringify(h) || prev.section !== entry.section);
-          return html`${i === 0 || prev.section !== entry.section ? html`<h5>${entry.section}</h5>` : null}${newHeading ? html`<p class="doc-heading"><strong>${h.org || h.title}</strong>${h.org && h.title ? html`, <em>${h.title}</em>` : null}${h.dates ? html`<span>${h.dates}</span>` : null}</p>` : null}<p key=${i} class=${h ? 'doc-bullet' : ''}>${entry.text}</p>`; })}
+          return html`${i === 0 || prev.section !== entry.section ? html`<h5>${entry.section}</h5>` : null}${newHeading ? html`<p class="doc-heading"><strong>${h.org || h.title}</strong>${h.org && h.title ? html`, <em>${h.title}</em>` : null}${h.dates ? html`<span>${h.dates}</span>` : null}</p>` : null}${entry.text ? html`<p key=${i} class=${h ? 'doc-bullet' : ''}>${entry.text}</p>` : null}`; })}
       </article>
       <details class="trace"><summary><${Icon} name="quote" />Trace resume entries to your evidence</summary>${packet.resume.map((e, i) => html`<${Evidence} key=${i} text=${e.text} evidence=${e.evidence} />`)}</details>
     </${Section}>

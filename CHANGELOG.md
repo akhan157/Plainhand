@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased: packet quality (cover letter, education headings, duplicates)
+
+- **The cover letter tells the story behind the resume.** With an approved
+  master resume, its base letter is a voice and tone reference only. Each letter
+  is written fresh around the posting's top two or three requirements, with the
+  situation, how and why it mattered from the candidate's own sources. A
+  deterministic check flags letter sentences that repeat a long run of a resume
+  line; the one existing retry names them, and a remaining overlap is recorded in
+  suggestions, never treated as a factual error.
+- **Education and credential headings can stand alone.** An Education,
+  Certifications or Licenses entry whose heading carries the school or issuer,
+  the credential and the dates has empty text and renders without a bullet. The
+  evidence gate and heading check still apply; Experience still requires a line.
+- **One accomplishment appears once.** A resume line whose normalized text
+  repeats or sits inside an earlier line under the same heading is dropped before
+  humanize, review and calibration.
+
 ## Unreleased: tracking workflow (board, people, deadlines, exports)
 
 - **A board for the whole search.** Applications has a Table / Board switch.
