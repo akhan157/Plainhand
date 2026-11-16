@@ -32,7 +32,7 @@ const list = (value, label, limit = 40) => {
 // response and the 10,000-character cap on each entry's text below, plus the
 // workspace file itself; 200 entries (a long career with projects, education and
 // credentials) are ordinary input, not an error.
-const MASTER_RESUME_LIMIT = 100000;
+const MASTER_RESUME_LIMIT = Number.POSITIVE_INFINITY;
 const strings = (value, label) => list(value, label).map(v => requireText(v, label, 15000));
 const PACKET_EVIDENCE_ERROR = 'The packet contains a claim without an exact source reference. No packet was approved. Check your evidence and retry.';
 const MASTER_EVIDENCE_ERROR = 'The master resume contains a claim without an exact source reference. Check your evidence and retry.';

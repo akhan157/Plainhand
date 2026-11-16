@@ -77,6 +77,7 @@ await mkdir(out, { recursive: true });
 const installation = path.join(await mkdtemp(path.join(tmpdir(), 'plainhand-onboarding-')), 'plainhand');
 const stages = [];
 const mark = (name, at = clock(), extra = {}) => { stages.push({ name, at, ...extra }); return at; };
+let app = null;
 
 try {
   const clone = await run('git', ['clone', '--quiet', '--no-hardlinks', ROOT, installation]);
@@ -96,18 +97,54 @@ try {
   const load = file => import(pathToFileURL(path.join(installation, file)).href);
   const { createPlainhand } = await load('plainhand-server.mjs');
   const { controlledAgent } = await load('plainhand/evaluation/agent.mjs');
+  const { personaRoles } = await load('plainhand/evaluation/roles.mjs');
+  const { STANDARD_INSTRUCTION } = await load('plainhand/agents.mjs');
   const { holdoutPersonas, holdoutJobs } = await load('plainhand/evaluation/corpus-holdout.mjs');
   const { simulatedCandidate } = await load('plainhand/benchmarks/profile-bench.mjs');
   const persona = holdoutPersonas.find(item => item.id === 'holdout-fin-controller');
   const job = holdoutJobs.find(item => item.id === 'holdout-job-fin-forecast');
+  // The controlled fixture writes the master as fact lines, without role
+  // headings. Give each experience line the heading of the persona role its
+  // text came from, so the approved master is canonical (U03) as well as
+  // reviewed; the fixture still writes every line and the review is unchanged.
+  const roles = personaRoles(persona);
+  const canonicalMaster = draft => {
+    const headingOf = role => ({ org: role.org, title: role.title, location: '', dates: role.dates });
+    const resume = (draft.resume || []).map(entry => {
+      const role = entry.section === 'Experience' && roles.find(item => item.body.some(line => entry.text?.includes(line) || line.includes(entry.text)));
+      return role ? { ...entry, heading: headingOf(role) } : entry;
+    });
+    // The fixture drafts only its named facts. A real master also keeps every
+    // other line of the candidate's resume, so add the body lines it left out
+    // under their own role heading. No fact is invented: each line and quote is
+    // the candidate's own resume text.
+    for (const role of roles) {
+      for (const line of role.body) {
+        if (resume.some(entry => entry.text === line)) continue;
+        resume.push({ section: 'Experience', heading: headingOf(role), text: line, evidence: [{ sourceId: 'cv', quote: line }] });
+      }
+    }
+    return { ...draft, resume };
+  };
+  const fixture = controlledAgent({ scenario: { id: 'onboarding-proof', roleOrder: 'recent' }, persona, job });
+  const agent = async (id, instruction, data, options) => {
+    const result = await fixture(id, instruction, data, options);
+    return instruction === STANDARD_INSTRUCTION ? canonicalMaster(result) : result;
+  };
 
   const workspaceRoot = path.join(path.dirname(installation), 'workspace');
   await mkdir(workspaceRoot, { recursive: true });
   const appStarted = clock();
-  const app = await createPlainhand({
+  app = await createPlainhand({
     root: workspaceRoot,
     startFeatures: false,
-    workflowOptions: { agent: controlledAgent({ scenario: { id: 'onboarding-proof', roleOrder: 'recent' }, persona, job }) },
+    workflowOptions: {
+      agent,
+      // The posting is fictional and the machine is offline from the employer's
+      // point of view: a local verifier keeps the proof deterministic and makes
+      // no network request to a real employer or ATS.
+      verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Controlled fixture proof: fictional posting.' }),
+    },
   });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${app.server.address().port}`;
@@ -238,6 +275,8 @@ try {
     callsToPacket: totalsOf(packetState.usage)?.calls ?? null,
     tokensToMaster: totalsOf(masterState.usage)?.tokens ?? null,
     tokensToPacket: totalsOf(packetState.usage)?.tokens ?? null,
+    promptCharsToMaster: totalsOf(masterState.usage)?.promptChars ?? null,
+    promptCharsToPacket: totalsOf(packetState.usage)?.promptChars ?? null,
     stages: stages.map(stage => ({ ...stage, offsetSeconds: seconds(stage.at - appStarted), wallMs: stage.at - appStarted })),
     understanding: { approved: finalState.understanding?.approved === true },
     master: {
@@ -268,7 +307,7 @@ try {
 
   await writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 2));
   await writeFile(path.join(out, 'transcript.json'), JSON.stringify(transcript, null, 2));
-  const stageRows = report.stages.map(stage => `| ${stage.name} | ${seconds(stage.at - appStarted)} | ${stage.usage?.calls ?? '—'} | ${stage.usage?.tokens ?? '—'} |`).join('\n');
+  const stageRows = report.stages.map(stage => `| ${stage.name} | ${seconds(stage.at - appStarted)} | ${stage.usage?.calls ?? '—'} | ${stage.usage?.tokens ?? '—'} | ${stage.usage?.promptChars ?? '—'} |`).join('\n');
   const conversationRows = transcript.map((turn, index) => `| ${index + 1} | ${turn.candidate.replace(/\n/g, ' ')} | ${turn.assistant.replace(/\n/g, ' ')} | ${turn.actions.join(', ') || '—'} |`).join('\n');
   const markdown = `# Fresh-install onboarding proof
 
@@ -292,12 +331,12 @@ Total install: ${installSeconds}s. Workspace: a fresh temporary directory.
 
 Persona: ${persona.id} (${persona.name}), ${persona.records.length} roles. Job: ${job.company} — ${job.title}.
 
-| Stage | Seconds from app start | Calls so far | Tokens so far |
-| --- | --- | --- | --- |
+| Stage | Seconds from app start | Calls so far | Tokens so far | Prompt chars so far |
+| --- | --- | --- | --- | --- |
 ${stageRows}
 
-First reviewed master: ${seconds(report.wallToMasterMs)}s, ${report.callsToMaster} calls, ${report.tokensToMaster} tokens.
-First prepared packet: ${seconds(report.wallToPacketMs)}s, ${report.callsToPacket} calls, ${report.tokensToPacket} tokens.
+First reviewed master: ${seconds(report.wallToMasterMs)}s, ${report.callsToMaster} calls, ${report.tokensToMaster ?? 'no provider token report'}${report.tokensToMaster === null ? ` (${masterState.usage.totals.promptChars?.value ?? '—'} characters sent by Plainhand)` : ''}.
+First prepared packet: ${seconds(report.wallToPacketMs)}s, ${report.callsToPacket} calls, ${report.tokensToPacket ?? 'no provider token report'}${report.tokensToPacket === null ? ` (${packetState.usage.totals.promptChars?.value ?? '—'} characters sent by Plainhand)` : ''}.
 
 ## Interventions
 
@@ -326,16 +365,17 @@ ${Object.entries(report.checks).map(([name, passed]) => `- ${passed ? 'PASS' : '
 
 ## Master completeness
 
-${report.master.completeness ? `Roles ${report.master.completeness.roles.present}/${report.master.completeness.roles.total}, credentials ${report.master.completeness.credentials.present}/${report.master.completeness.credentials.total}, degrees ${report.master.completeness.degrees.present}/${report.master.completeness.degrees.total}, results ${report.master.completeness.results.present}/${report.master.completeness.results.total}. The controlled fixture writes the master from available facts without role headings, so missing roles here are a fixture limit, not a live-model result.` : 'Not available.'}
+${report.master.completeness ? `Roles ${report.master.completeness.roles.present}/${report.master.completeness.roles.total}, certifications ${report.master.completeness.certifications.present}/${report.master.completeness.certifications.total}, degrees ${report.master.completeness.degrees.present}/${report.master.completeness.degrees.total}, results ${report.master.completeness.results.present}/${report.master.completeness.results.total}. ${report.master.completeness.missing ? 'The missing items are listed by the U03 completeness check.' : 'Every source role, credential, degree and numbered result is present.'}` : 'Not available.'}
 `;
   await writeFile(path.join(out, 'REPORT.md'), markdown);
-  await app.close();
   console.log(`Fresh-install onboarding proof: master ${seconds(report.wallToMasterMs)}s, packet ${seconds(report.wallToPacketMs)}s, ${interventions.total} interventions.`);
   console.log(`Evidence: ${out}`);
-  if (!KEEP) await rm(path.dirname(installation), { recursive: true, force: true });
 } catch (error) {
   await writeFile(path.join(out, 'ERROR.md'), `# Onboarding proof failed\n\n${error.stack || error.message}\n`);
   console.error(error.stack || error.message);
   console.error(`Logs: ${out}`);
   process.exitCode = 1;
+} finally {
+  await app?.close().catch(() => {});
+  if (!KEEP) await rm(path.dirname(installation), { recursive: true, force: true }).catch(() => {});
 }

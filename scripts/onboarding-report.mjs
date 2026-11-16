@@ -80,13 +80,18 @@ function runMetrics(result, directory) {
   const rescues = Array.isArray(application?.appOwedRescued) ? application.appOwedRescued.length : null;
   const answered = Array.isArray(application?.candidateAnswered) ? application.candidateAnswered.length : null;
   const manualEdits = answered === null ? null : Math.max(0, answered - (rescues || 0));
-  const appFilledFields = application ? Math.max(0, (application.appOwedFields ?? 0) - (rescues || 0)) : null;
+  const appFilledFields = application
+    ? application.appFilledRate !== null && application.appFilledRate !== undefined && application.appOwedFields !== null && application.appOwedFields !== undefined
+      ? Math.round(application.appFilledRate * application.appOwedFields)
+      : Math.max(0, (application.appOwedFields ?? 0) - (rescues || 0))
+    : null;
   const usage = result.usage || null;
   const standardReached = result.standardApproved === true;
   const packetReached = Boolean(result.packet);
   const masterApplicable = Boolean(scenario.withStandard) || scenario.family === 'journey';
   return {
     directory,
+    evidence: path.basename(directory),
     id: scenario.id || '(unknown)',
     baseId: scenario.baseId || scenario.id || '(unknown)',
     family: scenario.family || null,
@@ -173,14 +178,14 @@ function aggregate(rows) {
 
 function table(rows, { showAggregate = true, title = '' } = {}) {
   if (!rows.length) return `### ${title}\n\nNo runs.\n`;
-  const header = '| run | mode | turns | questions | repeat Q | manual | rescues | app-filled | calls | tokens | wall s | master | packet | pass |';
-  const lines = rows.map(row => `| ${row.id} | ${row.mode} | ${fmt(row.userTurns)} | ${fmt(row.assistantQuestions)} | ${fmt(row.repeatedKnownFactQuestions)} | ${fmt(row.manualEdits)} | ${fmt(row.rescues)} | ${fmt(row.appFilledFields)} | ${fmt(row.calls)} | ${fmt(row.tokens)} | ${fmt(seconds(row.wallMs))} | ${row.masterApplicable ? (row.masterReached ? 'yes' : 'no') : 'n/a'} | ${row.packetReached ? 'yes' : 'no'} | ${row.passed ? 'PASS' : 'fail'} |`);
+  const header = '| evidence | run | mode | turns | questions | repeat Q | manual | rescues | app-filled | calls | tokens | wall s | master | packet | pass |';
+  const lines = rows.map(row => `| ${row.evidence} | ${row.id} | ${row.mode} | ${fmt(row.userTurns)} | ${fmt(row.assistantQuestions)} | ${fmt(row.repeatedKnownFactQuestions)} | ${fmt(row.manualEdits)} | ${fmt(row.rescues)} | ${fmt(row.appFilledFields)} | ${fmt(row.calls)} | ${fmt(row.tokens)} | ${fmt(seconds(row.wallMs))} | ${row.masterApplicable ? (row.masterReached ? 'yes' : 'no') : 'n/a'} | ${row.packetReached ? 'yes' : 'no'} | ${row.passed ? 'PASS' : 'fail'} |`);
   const groups = [...groupBy(rows, row => row.mode).entries()];
   const aggregateLines = showAggregate ? groups.map(([mode, group]) => {
     const stat = aggregate(group);
     return `| ${mode} (${stat.runs}) | ${mode} | ${spread(group.map(r => r.userTurns))} | ${spread(group.map(r => r.assistantQuestions))} | ${spread(group.map(r => r.repeatedKnownFactQuestions))} | ${spread(group.map(r => r.manualEdits))} | ${spread(group.map(r => r.rescues))} | ${spread(group.map(r => r.appFilledFields))} | ${spread(group.map(r => r.calls))} | ${spread(group.map(r => r.tokens))} | ${spread(group.map(r => seconds(r.wallMs)))} | ${stat.masterReached}/${stat.masterRuns} | ${stat.packetReached}/${stat.runs} | ${stat.passed}/${stat.runs} |`;
   }) : [];
-  return [`### ${title}`, '', header, '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...lines, ...(aggregateLines.length ? ['', '| group (runs) | mode | turns | questions | repeat Q | manual | rescues | app-filled | calls | tokens | wall s | master | packet | pass |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...aggregateLines] : []), ''].join('\n');
+  return [`### ${title}`, '', header, '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...lines, ...(aggregateLines.length ? ['', '| group (runs) | mode | turns | questions | repeat Q | manual | rescues | app-filled | calls | tokens | wall s | master | packet | pass |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |', ...aggregateLines] : []), ''].join('\n');
 }
 
 const loaded = [];

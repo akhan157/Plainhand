@@ -107,7 +107,7 @@ function resumeItems(text, sourceId, items) {
       const parts = splitHeading(line);
       const label = parts.length >= 2 ? parts.join(' — ') : line;
       if (DEGREE.test(line) || section === 'education') items.degrees.push({ kind: 'degree', text: line, label, sourceId });
-      else items.credentials.push({ kind: 'credential', text: line, label, sourceId });
+      else items.certifications.push({ kind: 'credential', text: line, label, sourceId });
       continue;
     }
     if (section === 'other' && isNumberBearing(line)) items.results.push({ kind: 'result', text: line, role: null, sourceId });
@@ -132,7 +132,7 @@ function storyItems(text, sourceId, items) {
       } else if (CREDENTIAL_HINT.test(line) && !CONTACT.test(line)) {
         const parts = splitHeading(line);
         const label = parts.length >= 2 ? parts.join(' — ') : line;
-        items.credentials.push({ kind: 'credential', text: line, label, sourceId });
+        items.certifications.push({ kind: 'credential', text: line, label, sourceId });
       }
     }
   }
@@ -155,8 +155,8 @@ function unique(items, key) {
   });
 }
 
-export function sourceCompletenessItems(sources) {
-  const items = { roles: [], credentials: [], degrees: [], results: [] };
+function sourceCompletenessItems(sources) {
+  const items = { roles: [], certifications: [], degrees: [], results: [] };
   for (const source of Array.isArray(sources) ? sources : []) {
     const text = sourceText(source);
     if (!text) continue;
@@ -164,7 +164,7 @@ export function sourceCompletenessItems(sources) {
     else if (STORY_SOURCE_IDS.has(source.id)) storyItems(text, source.id, items);
   }
   items.roles = unique(items.roles, role => `${normalize(role.org)}|${normalize(role.title)}|${role.start}|${role.end ?? 'present'}|${role.ongoing}`);
-  items.credentials = unique(items.credentials, item => normalizedLine(item.text));
+  items.certifications = unique(items.certifications, item => normalizedLine(item.text));
   items.degrees = unique(items.degrees, item => normalizedLine(item.text));
   items.results = unique(items.results, item => normalizedLine(item.text));
   return items;
@@ -247,20 +247,20 @@ export function masterCompleteness(sources, master) {
   const entries = Array.isArray(master) ? master : [];
   const source = sourceCompletenessItems(sources);
   const roles = source.roles.map(item => outcome(item, roleIndex(item, entries)));
-  const credentials = source.credentials.map(item => outcome(item, credentialIndex(item, entries)));
+  const certifications = source.certifications.map(item => outcome(item, credentialIndex(item, entries)));
   const degrees = source.degrees.map(item => outcome(item, degreeIndex(item, entries)));
   const results = source.results.map(item => outcome(item, resultIndex(item, entries)));
-  const items = [...roles, ...credentials, ...degrees, ...results];
+  const items = [...roles, ...certifications, ...degrees, ...results];
   const missing = items.filter(item => !item.present).map(item => ({ ...item, label: item.label || item.text }));
   const count = group => ({ total: group.length, present: group.filter(item => item.present).length, missing: group.filter(item => !item.present).length });
   return {
-    roles, credentials, degrees, results, items, missing,
+    roles, certifications, degrees, results, items, missing,
     counts: {
       total: items.length,
       present: items.length - missing.length,
       missing: missing.length,
       roles: count(roles),
-      credentials: count(credentials),
+      certifications: count(certifications),
       degrees: count(degrees),
       results: count(results),
     },

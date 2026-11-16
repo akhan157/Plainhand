@@ -83,7 +83,7 @@ test('every held-out persona has roles, a credential, a degree and numbered resu
   for (const persona of personas) {
     const result = masterCompleteness(sourcesFor(persona), masterFromResume(persona));
     assert.ok(result.counts.roles.total >= 3, `${persona.id} has at least three roles`);
-    assert.ok(result.counts.credentials.total >= 1, `${persona.id} has a credential`);
+    assert.ok(result.counts.certifications.total >= 1, `${persona.id} has a credential`);
     assert.ok(result.counts.degrees.total >= 1, `${persona.id} has a degree`);
     assert.ok(result.counts.results.total >= 1, `${persona.id} has a numbered result`);
     assert.deepEqual(result.missing, [], `${persona.id}: a full master leaves nothing missing`);
@@ -112,7 +112,7 @@ test('a master that drops one old role and one credential lists exactly those as
       `credential:${credential}`,
     ], persona.id);
     assert.equal(result.counts.roles.missing, 1);
-    assert.equal(result.counts.credentials.missing, 1);
+    assert.equal(result.counts.certifications.missing, 1);
     assert.equal(result.counts.degrees.missing, 0);
     assert.equal(result.counts.results.missing, 0);
   }
