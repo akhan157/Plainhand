@@ -66,6 +66,7 @@ export const UI_AGGREGATE = {
   'line.get': ['Profile & brain'],
   'answers.list': ['Workspace'],
   'context.get': ['Workspace'],
+  'conflicts.list': ['Profile & brain (facts that disagree, from /api/state memory)'],
 };
 
 // A capability with no separate screen control because the screen offers a different
