@@ -859,3 +859,16 @@ The 15/15 above was premature. Corrected, with evidence:
 - **U03 note:** one live candidate counterexample, a dropped stated credential.
 - **Register: 12/15.**
 - Host-specific paths were removed from this file.
+
+## Judge on post-fix live packets — 2026-11-16 (Claude, uncalibrated)
+
+- `3c344da` (4 packets): overall 3.67, honesty 3.50, structure 2.58, cover 3.75.
+- `1691356` (3 packets): overall 4.00, honesty 3.78, structure 4.00. Unsupported claims: 0 in both runs.
+- Honesty did **not** recover. The judge's reasons point to new causes, not the motivation one:
+  1. **Scope stretch to echo the posting.** One potency assay became "assays" (journey-stem and sci-built). Review and calibration passed it. A count or number change in a noun phrase is a stretch the product rules already forbid; it needs an explicit rule and a deterministic check.
+  2. **Credential undersell.** A relevant certification (CKS for a Kubernetes line, the Google certificate, the Green Belt) was left out of the packet or master. This is the same gap as the U03 counterexample.
+  3. **Structure.** The judge reads a placeholder heading repeated across entries, Skills split around Experience, and in tech-match the newer role after the older one. Tech-match is a roleOrder `match` row, where that order is correct. The rubric does not know the candidate's order setting, which is a measurement gap.
+- Next, after the in-flight interview/master/calls lane lands, a follow-up lane:
+  - an exact-count rule plus a deterministic plural/scope check against the sources;
+  - relevant credentials always kept;
+  - single heading per role.
