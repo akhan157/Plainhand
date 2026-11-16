@@ -344,3 +344,8 @@ test('review 79ac588: a later job range never replaces the degree year, on eithe
   assert.equal(degree('Bachelor of Science in Accounting, 2013, then Example Freight Systems 2016 to 2021.', '2013'), 0);
   assert.equal(degree('B.S. Mechanical Engineering, Example University, 2019 – 2021.', 'B.S. Mechanical Engineering, 2019 – 2021'), 0);
 });
+
+test('review e21dd19: the first year on the degree line is its year, lone or a range end', () => {
+  const degree = (text, graduation) => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('I completed my MSc in Data Science from 2019 to 2021, then joined Example Health in 2022.', 'MSc in Data Science, 2021'), 0);
+});

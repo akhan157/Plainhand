@@ -134,6 +134,15 @@ export function credentialName(text) {
   const phrase = runs.sort((a, b) => b.length - a.length)[0] || '';
   return { acronyms, phrase, issuers };
 }
+// Whether a line spells out one of the acronyms: the initials of a capitalised run
+// ("Certified Kubernetes Administrator" is CKA), so a sibling credential from the
+// same issuer ("Certified Kubernetes Administrator" for a CKS) never matches.
+const CONNECTOR = new Set(['of', 'and', 'in', 'for', 'the', '&']);
+function expandsAcronym(line, acronyms) {
+  const runs = [...String(line ?? '').matchAll(/\b[A-Z][a-z][A-Za-z-]*(?:\s+(?:of|and|in|for|the|&)?\s*[A-Z][a-z][A-Za-z-]*)+/g)]
+    .map(match => match[0].split(/\s+/).filter(word => word && !CONNECTOR.has(word.toLowerCase())).map(word => word[0]).join('').toUpperCase());
+  return acronyms.some(acronym => runs.some(initials => initials.includes(acronym.toUpperCase())));
+}
 export function packetHasCredential(item, resume) {
   const entries = Array.isArray(resume) ? resume : [];
   const lines = entries.map(entry => normalizedText(entryLine(entry)));
@@ -150,7 +159,7 @@ export function packetHasCredential(item, resume) {
   // word or another capitalised name: "Certified Kubernetes Administrator, CNCF".
   const { issuers = [] } = credentialName(item?.text);
   if (issuers.length && entries.some((entry, index) => (ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))
-    && /[A-Z][a-z]+\s+[A-Z][a-z]+/.test(entryLine(entry))
+    && expandsAcronym(entryLine(entry), acronyms)
     && issuers.some(issuer => lines[index].includes(` ${issuer.toLowerCase()} `)))) return true;
   if (phrase || acronyms.length) return false;
   // No name could be read: only a credential entry may hold it.

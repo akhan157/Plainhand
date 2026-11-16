@@ -71,16 +71,17 @@ function sentences(text) {
 const YEAR = /(?<![$\d])\b(?:19|20)\d{2}\b(?![%\d])/g;
 const RANGE = /\b((?:19|20)\d{2})\s*(?:[–—-]|to|until)\s*((?:19|20)\d{2}|present|current|now)\b/i;
 const yearOf = text => { const match = String(text || '').match(YEAR); return match ? Number(match[0]) : null; };
-// The graduation year a degree line states: a year standing alone ("MSc in 2018"), and
-// only when every year sits in a range ("2019 – 2021"), that range's end. An unrelated
-// job range later in the sentence never replaces the degree's own year.
+// The graduation year a degree line states: the first year it gives, read as a lone
+// year or as a range's end, so a later job year or range never replaces it.
 const LONE_YEAR = /(?<![$\d]|[–—-]\s*|\bto\s+|\buntil\s+)\b(?:19|20)\d{2}\b(?![%\d])(?!\s*(?:[–—-]|to\b|until\b))/i;
 function graduationYearOf(text) {
   const value = String(text || '');
-  const lone = value.match(LONE_YEAR);
-  if (lone) return Number(lone[0]);
-  const range = value.match(RANGE);
-  return range && /^\d{4}$/.test(range[2]) ? Number(range[2]) : yearOf(value);
+  // Whichever comes first belongs to the degree: "MSc in 2018 ... 2019 to 2021" is
+  // 2018, "MSc from 2019 to 2021, then joined X in 2022" is 2021.
+  const lone = value.match(LONE_YEAR), range = value.match(RANGE);
+  const end = range && /^\d{4}$/.test(range[2]) ? Number(range[2]) : null;
+  if (lone && (end === null || lone.index < range.index)) return Number(lone[0]);
+  return end ?? yearOf(value);
 }
 function rangeOf(text) {
   const match = String(text || '').match(RANGE);

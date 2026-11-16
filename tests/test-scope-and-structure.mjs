@@ -416,3 +416,12 @@ test('review 79ac588: a bare-acronym credential matches its written-out line thr
   assert.equal(packetHasCredential({ text: 'PMP (PMI), 2021' }, r('PMI, 2021')), false);
   assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (ASQ), 2019' }, r('ASQ, 2019')), false);
 });
+
+test('review e21dd19: the issuer fallback needs the written name to spell the acronym', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const r = text => [{ section: 'Certifications', heading: null, text }];
+  assert.equal(packetHasCredential({ text: 'CKS (CNCF), 2022' }, r('Certified Kubernetes Administrator, CNCF, 2022')), false);
+  assert.equal(packetHasCredential({ text: 'PMP (PMI), 2021' }, r('Certified Associate in Project Management, PMI, 2021')), false);
+  assert.equal(packetHasCredential({ text: 'CQE (ASQ), 2019' }, r('Certified Quality Auditor, ASQ, 2019')), false);
+  assert.equal(packetHasCredential({ text: 'CKA (CNCF), 2022' }, r('Certified Kubernetes Administrator, CNCF, 2022')), true);
+});
