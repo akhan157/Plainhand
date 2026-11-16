@@ -579,3 +579,29 @@ Docs were correct as written.
 - hosted Postgres;
 - installers;
 - real sites.
+
+## Packet-quality lane merged — 2026-11-16
+
+Lane `a7c69b7` (OMP DeepSeek), merged by root.
+
+**Cover letter.** The rules come from the judge findings:
+- The base letter is now a voice reference only. The body is written fresh around
+  the posting's top two or three requirements.
+- No sentence may repeat a resume line's wording.
+- No meta disclaimer, and the close must be specific to the role.
+- New `letter-checks.mjs` flags overlaps of 8 or more consecutive content words. It
+  feeds the existing retry, so there is no extra call, and it never blocks.
+
+**Resume.**
+- Education, certification and license entries may be heading-only. They render
+  without a bullet, and evidence and verifyHeadings still apply.
+- Experience entries still cannot be heading-only.
+- Deterministic de-duplication of bullets runs before humanize and review.
+
+**Root fix.** The legacy `plainhand/benchmarks/typed-preparation.mjs` rejected
+heading-only rows. It now uses `headingOnlyRow`.
+
+**Results.** Suite 626/626. The UI flow and simulation (49/49) passed on the lane;
+the controlled gate is re-running on the merged tree.
+
+**Not yet measured.** The quality effect needs the next live run plus the judge.
