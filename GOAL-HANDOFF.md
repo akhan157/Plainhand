@@ -376,3 +376,22 @@ Residuals:
 - Turning autonomy off does not cancel an auto-prepare that is already queued.
 - Queued work is marked interrupted on restart rather than auto-resumed.
 - A failed auto-prepare still uses up its daily slot.
+
+## U10 merged — 2026-11-16
+
+Lane `f8d5499` (OMP DeepSeek), reviewed and merged by root.
+- **Round trip:** export now carries `data/applications.md`, so tracker-only rows
+  survive a round trip. CSV comes back byte-identical.
+- **Calendar:** interviews take an optional time and export as UTC VEVENTs with
+  DST-correct conversion.
+- **Contacts:** a per-company contact roll-up is in the People card.
+- **Submissions:** `jobs.confirmSubmitted` freezes `{approvedHash, packetHash,
+  submittedAt}`. Follow-ups cite it, and a later revision does not change it.
+- **Recommendations:** the existing insights feature was verified. It reports
+  insufficient data below 8 outcomes, is candidate-only, and refuses agent/MCP
+  approval.
+
+Results: suite 601/601; UI flow passes; controlled 64/67, 0 unexpected.
+
+Residuals: hosted browser and cloud tests (no database); interview duration is fixed
+at one hour.
