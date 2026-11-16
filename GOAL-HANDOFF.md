@@ -681,3 +681,41 @@ Lane `a18bb98` (OMP DeepSeek), merged by root.
   4. the judge on the same subset.
 
   The manifest's tree hash will need a re-freeze for product-file changes first.
+
+## Live run on `f8f3663` after the 01:46 quota reset — 2026-11-16 (Codex, scorer v3)
+
+**Unseen held-out set 2 plus journey-sci: 4/9.**
+- Passed: journey-sci, newer-unrelated-stem, skip-aero (honest zero-match Skip),
+  borderline-gmp (Investigate in band).
+- oldrole-fin-recent and fin-match: role order correct (`recent` and `match`), coverage
+  1.0, review passed. They failed only the PDF reading-order check: 100% ascending,
+  but "interleaved", because a summary line shares "revenue systems" with a later
+  heading. This is a measurement false positive of the same class as v2's. A v4 lane
+  is out.
+- oldrole-tech-recent, tech-match and journey-stem: blocked by the REVIEW call, see
+  the product regression below.
+
+**Paired subset (repeat 1): 5/6.** analyst-seeded was blocked by review.
+
+**Product regression found and confirmed live.** The new letter rule ("say why this
+role and this employer") made the model state motivations the sources never give, for
+example "I want to build useful dashboards". Independent review rightly blocked all
+four. Suggestions also misdescribed the packet ("Included the certificate" when it
+was left out). Review catching both shows the safeguard holding. A fix lane is out:
+- motivation only from stated goals, otherwise posting-to-evidence fit with no feelings;
+- a deterministic guard on inclusion claims in suggestions.
+
+**U14 live confirmation.**
+
+| | before | after |
+|---|---|---|
+| input tokens per call | 24.7–25.9k | **14.9–16.4k** (−37 to −40%) |
+
+Billed-token savings are confirmed. Calls per application rose in this run: seeded
+7–8 against 6, built 11–15 against 11.9. That comes from evidence, letter and review
+retries, which the regression fix should reduce. Prompt chars per call were unchanged.
+
+**Voice contrast:** the script failed on a path bug ("Invalid workspace path"), so
+there is no voice result yet. The fix is in the same lane.
+
+The judge on the 6 paired packets is running.
