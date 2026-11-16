@@ -86,7 +86,7 @@ export function relevantMissingCredentials({ master = null, sources = [], packet
 // Professional", abbreviated "PMP"; "PMI" is the issuer and never stands in for it.
 const LEADING_VERB = new Set(['passed', 'earned', 'completed', 'obtained', 'received', 'holds', 'hold', 'have', 'has', 'registered', 'active', 'i', 'a', 'an', 'the', 'my']);
 const TRAILING_GENERIC = new Set(['certificate', 'certificates', 'certification', 'certifications', 'license', 'licence', 'licenses', 'licences', 'credential']);
-const NOT_ACRONYM = new Set(['I', 'II', 'III', 'IV', 'US', 'USA', 'UK']);
+const NOT_ACRONYM = new Set(['I', 'II', 'III', 'IV', 'US', 'USA', 'UK', 'LLC', 'INC', 'LTD', 'PLC', 'LLP', 'GMBH']);
 const ACRONYM_SECTION = /certif|licen[cs]|credential|education|training|professional development/i;
 const normalizedText = value => ` ${String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
 const entryLine = entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ');
@@ -104,11 +104,12 @@ export function credentialName(text) {
   // acronym in a longer name is a prefix ("AWS Certified Solutions Architect"), and an
   // issuer field after a comma ("PMI", "(ISC)2") is never the credential.
   // A parenthesised designation follows a word ("Professional (PMP)", "ASQ (CSSGB)");
-  // a group standing alone in its field ("(ISC)2") is the issuer. In a spaced group
-  // ("ASQ CSSGB") the longest token is the designation, the rest is the issuer.
+  // a group standing alone in its field ("(ISC)2") is the issuer. A spaced group is
+  // written issuer first ("ASQ CSSGB", "IASSC LSSBB", "PMI PMP"): its last token is the
+  // designation.
   const paren = [...value.matchAll(/([A-Za-z])\s*\(([^)]*)\)/g)].flatMap(match => {
     const tokens = match[2].split(/[\s/]+/).filter(isAcronym);
-    return tokens.length ? [tokens.sort((a, b) => b.length - a.length)[0]] : [];
+    return tokens.length ? [tokens.at(-1)] : [];
   });
   const ownIsAcronym = ownWords.length >= 1 && ownWords.every(isAcronym);
   const inner = ownIsAcronym ? ownWords : ownWords.slice(1).filter(isAcronym);

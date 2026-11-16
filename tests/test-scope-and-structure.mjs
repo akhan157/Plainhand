@@ -376,3 +376,14 @@ test('review 0b20f66: issuer fields, issuer-first names, spaced groups, appositi
   assert.equal(packetHasCredential({ text: 'Certified Information Systems Security Professional (CISSP), (ISC)2, 2021' }, r('ISC')), false);
   assert.deepEqual(dropCredentialInclusionClaims(['The PMP, which PMI issues, is included with its year.'], [{ text: 'PMP, 2021' }]), []);
 });
+
+test('review 4695e0d: issuer-first groups take the last token; a later negation never masks an inclusion', async () => {
+  const { packetHasCredential, credentialName } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  const r = text => [{ section: 'Certifications', heading: null, text }];
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Black Belt (IASSC LSSBB), 2020' }, r('LSSBB, 2020')), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMI PMP)' }, r('PMP, 2021')), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMI PMP)' }, r('PMI, 2021')), false);
+  assert.deepEqual(credentialName('Lean Six Sigma Green Belt Acme (LLC)').acronyms, []);
+  assert.deepEqual(dropCredentialInclusionClaims(['The certificate is included with its stated year, the older licence was not added.'], [{ text: 'CPA, 2021' }]), []);
+});

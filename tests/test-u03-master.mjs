@@ -568,3 +568,32 @@ test('two credentials citing one source sentence are each carried and restored t
     } finally { await h.close(); }
   }
 });
+
+test('a credential the master writes two ways is carried once', async () => {
+  const QUOTE = 'Project Management Professional (PMP), 2021.';
+  const basePersona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const persona = { ...basePersona, profile: { ...basePersona.profile, resume: `${basePersona.profile.resume}\n${QUOTE}` } };
+  const baseJob = jobById('holdout2-job-stem-assay');
+  const job = { ...baseJob, description: `${baseJob.description} You will run each project end to end.` };
+  const cert = text => ({ section: 'Certifications', heading: null, text, evidence: [{ sourceId: 'cv', quote: QUOTE }] });
+  const base = controlledAgent({ scenario: { id: 'u03-two-ways', roleOrder: 'recent' }, persona, job });
+  const agent = async (id, instruction, data, options) => {
+    const reply = await base(id, instruction, data, options);
+    if (instruction === STANDARD_INSTRUCTION) return { ...reply, resume: [...reply.resume, cert('PMP, 2021'), cert('Project Management Professional (PMP), 2021')] };
+    if (instruction === PACKET_INSTRUCTION) return { ...reply, resume: reply.resume.filter(entry => !/PMP/.test(entry.text)) };
+    return reply;
+  };
+  const h = await harness({ persona, job, agent, profile: persona.profile, verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Fixture.' }) });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    await h.ui('standard.approve', {});
+    const jobId = await h.addJob(job);
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    await h.ui('jobs.setContext', { jobId, overrideReason: 'Fixture proceeds to the packet.' });
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    const packet = (await h.app.workspace.load()).jobs.find(item => item.id === jobId).packet;
+    assert.equal(packet.resume.filter(entry => /PMP/.test(entry.text)).length, 1, 'one PMP line');
+  } finally { await h.close(); }
+});

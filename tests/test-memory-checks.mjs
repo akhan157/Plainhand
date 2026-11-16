@@ -313,3 +313,10 @@ test('review 0b20f66: a degree abbreviation keeps its field and year in one sent
   assert.equal(degree('I earned my MSc. in Biology at Example University in 2018.'), 1);
   assert.equal(degree('I completed my MSc. I then worked at Example Health from 2013 to 2018.'), 0);
 });
+
+test('review 4695e0d: "M.Sc. In 2019, I moved" ends the degree sentence', () => {
+  const degree = text => findConflicts({ sources: [interview(text)], profile: { graduation: '2012' } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('I earned my M.Sc. In 2019, I moved to Baltimore.'), 0);
+  assert.equal(degree('I earned my B.Sc. In 2019, I moved to Baltimore.'), 0);
+  assert.equal(degree('Example University — M.Sc. Computer Science — 2018.'), 1);
+});

@@ -32,9 +32,10 @@ const MAX_QUOTE = 400;
 // A period after a single capital letter (B.S., Ph.D., U.S.) does not end a sentence;
 // splitting there would hide a degree from the year and institution that qualify it.
 const ABBREVIATION = new Set(['mr', 'mrs', 'ms', 'dr', 'prof', 'inc', 'ltd', 'co', 'vs', 'etc']);
-// A degree abbreviation ends a sentence only before a word that starts a new clause:
-// "M.Sc. Computer Science — 2018" and "MSc. in Biology" continue, "I completed my MSc.
-// I then worked" does not.
+// A degree abbreviation continues its sentence only before a lower-case word ("MSc. in
+// Biology") or a capitalised field that ends a heading field ("M.Sc. Computer Science
+// — 2018"); before anything else ("MSc. I then worked", "M.Sc. In 2019, I moved") it
+// ends the sentence, so the next sentence's year is never read as a graduation year.
 const DEGREE_ABBREVIATION = new Set(['m.sc', 'b.sc', 'ph.d', 'msc', 'bsc']);
 function sentences(text) {
   const source = String(text || '');
@@ -52,7 +53,7 @@ function sentences(text) {
       const before = source.slice(start, index);
       const word = before.match(/([A-Za-z.]+)$/)?.[1] || '';
       if (/\b[A-Z]$/.test(before) || ABBREVIATION.has(word.toLowerCase())) continue;
-      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && !/^\s*(?:I|We|They|It|He|She|My|Our|This|That|Then|After|Later|Next|Since|From)\b/.test(source.slice(index + 1))) continue;
+      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && /^\s*(?:[a-z]|(?:[A-Z][a-z]+\s+){0,5}[A-Z][a-z]+\s*[—–,])/.test(source.slice(index + 1))) continue;
     }
     push(index + 1);
     start = index + 1;

@@ -180,7 +180,11 @@ export function dropCredentialInclusionClaims(suggestions, missing = []) {
     if (QUESTION_OR_ADVICE.test(value)) return true;
     return !value.split(/;|,?\s+(?:but|while|whereas|although)\s+/i).some(clause => {
       const about = CREDENTIAL_NOUN_MENTION.test(clause) || names.some(pattern => pattern.test(clause));
-      return about && INCLUSION_VERB.test(clause) && !NEGATED_INCLUSION.test(clause);
+      // Each inclusion verb is read with the few words before it, so a later "was not
+      // added" never masks an earlier "is included".
+      const claims = [...clause.matchAll(new RegExp(INCLUSION_VERB.source, 'gi'))]
+        .some(match => !NEGATED_INCLUSION.test(clause.slice(Math.max(0, match.index - 30), match.index + match[0].length)));
+      return about && claims;
     });
   });
 }
@@ -686,26 +690,31 @@ export class Workflow {
           // A revision is the candidate's own request ("drop the certificate"); it is never
           // overridden by the carry.
           if (credentialGaps.length && standard && !revising) {
-            const seenCarry = new Set();
-            const carried = masterCredentialRows(state.standard?.draft?.resume, credentialGaps)
+            // One row per credential. Rows with a written name go first and claim
+            // their name and abbreviations; a row with only an abbreviation is then the
+            // same credential when either was claimed ("PMP, 2021" beside "Project
+            // Management Professional (PMP), 2021"). Two written names sharing a family
+            // code (GCP) are two credentials.
+            const candidates = masterCredentialRows(state.standard?.draft?.resume, credentialGaps)
               .filter(row => hasEvidence(row, context))
               .map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence }))
-              .filter(row => {
-                // One row per credential, and none the packet already shows.
-                // The same credential is the same written name or abbreviation; two
-                // credentials that cite one source sentence are still two.
-                const name = credentialName(entryLine(row));
-                // A written name decides on its own; an abbreviation only for a row that
-                // has no written name, so two certificates sharing a family code (GCP)
-                // are both carried.
-                const keys = name.phrase ? [`name:${name.phrase.toLowerCase()}`] : name.acronyms.map(acronym => `abbr:${acronym.toLowerCase()}`);
-                if (!keys.length) keys.push(`line:${entryLine(row).toLowerCase()}`);
-                if (keys.some(key => seenCarry.has(key)) || packetHasCredential({ text: entryLine(row) }, packet.resume)) return false;
-                for (const key of keys) seenCarry.add(key);
-                return true;
-              });
-            // Each carried row is marked so the restore after the humanizer finds that
-            // row and no other; the marker is a symbol, so it is never stored.
+              .filter(row => !packetHasCredential({ text: entryLine(row) }, packet.resume))
+              .map(row => ({ row, name: credentialName(entryLine(row)) }));
+            const seenNames = new Set(), seenAbbr = new Set(), carried = [];
+            for (const { row, name } of [...candidates.filter(item => item.name.phrase), ...candidates.filter(item => !item.name.phrase)]) {
+              const abbrs = name.acronyms.map(acronym => acronym.toLowerCase());
+              if (name.phrase) {
+                const key = name.phrase.toLowerCase();
+                if (seenNames.has(key)) continue;
+                seenNames.add(key);
+              } else {
+                const line = entryLine(row).toLowerCase();
+                if (abbrs.length ? abbrs.some(abbr => seenAbbr.has(abbr)) : seenNames.has(line)) continue;
+                if (!abbrs.length) seenNames.add(line);
+              }
+              for (const abbr of abbrs) seenAbbr.add(abbr);
+              carried.push(row);
+            }
             carriedRows = carried.map(row => ({ text: row.text, heading: row.heading ? { ...row.heading } : null }));
             carried.forEach((row, index) => { row[CARRIED] = index; });
             if (carried.length) {
