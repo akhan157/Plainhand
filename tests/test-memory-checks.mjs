@@ -261,3 +261,18 @@ test('the prepare pre-check never sends an excluded source to the provider', asy
     assert.ok(!job.packet.questions.join(' ').includes('3 contractors'));
   } finally { await h.close(); }
 });
+
+test('a job title with Associate or Master is not a degree, so its dates never conflict with graduation', () => {
+  const sources = [
+    cvSource('Example University — Master of Science, Molecular Biology — 2012.'),
+    interview('My work was at Example Genomics Lab as a Senior Research Associate (2016 to 2023).'),
+    interview('I was the Scrum Master for the platform team from 2019 to 2021.'),
+  ];
+  assert.deepEqual(findConflicts({ sources, profile: { graduation: '2012' } }).filter(item => item.kind === 'degree'), []);
+  // A real second degree with a different year at the same school still conflicts.
+  const real = findConflicts({ sources: [cvSource('Example University — Master of Science — 2012.'), interview('I finished my Master of Science at Example University in 2014.')], profile: {} });
+  assert.equal(real.filter(item => item.kind === 'degree').length, 1);
+  // "Associate's degree" is still a degree.
+  const assoc = findConflicts({ sources: [cvSource("Example College — Associate's degree in Accounting — 2010."), interview("I earned my Associate's degree in Accounting at Example College in 2011.")], profile: {} });
+  assert.equal(assoc.filter(item => item.kind === 'degree').length, 1);
+});

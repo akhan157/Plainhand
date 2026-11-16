@@ -153,6 +153,17 @@ export function dropRepairedOmissions(suggestions, added) {
     });
   });
 }
+// When a credential the posting needs is missing from the final resume, a note that
+// says a credential was kept or included contradicts the note that says it was left
+// out, so it is dropped. Advice and questions are not inclusion claims.
+const CREDENTIAL_MENTION = /\b(?:certif\w*|licen[cs]\w*|credential\w*|[A-Z]{2,6})\b/;
+const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried)\b/i;
+export function dropCredentialInclusionClaims(suggestions) {
+  return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
+    const value = String(text ?? '');
+    return !(CREDENTIAL_MENTION.test(value) && INCLUSION_VERB.test(value) && !QUESTION_OR_ADVICE.test(value));
+  });
+}
 export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
   const where = sections.filter(Boolean).join(', ') || 'heading-less sections';
   return `Check role placement: the resume has ${roles.length} Experience roles, so the lines in ${where} were left where the draft put them. Move each line under the role it belongs to.`;
@@ -681,7 +692,7 @@ export class Workflow {
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
           if (placement.ambiguous) packet.suggestions = [accomplishmentSuggestion(placement), ...packet.suggestions].slice(0, 40);
           if (finalScope.length) packet.suggestions = [...scopeSuggestions(finalScope), ...packet.suggestions].slice(0, 40);
-          if (finalCredentials.length) packet.suggestions = [...finalCredentials.map(credentialSuggestion), ...packet.suggestions].slice(0, 40);
+          if (finalCredentials.length) packet.suggestions = [...finalCredentials.map(credentialSuggestion), ...dropCredentialInclusionClaims(packet.suggestions)].slice(0, 40);
           await this.progress(id, 'Checking factual claims against the original sources');
           review = await run(REVIEW_INSTRUCTION, { job: providerJob(job), packet, ...lineData });
           if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');

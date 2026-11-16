@@ -78,7 +78,10 @@ const normalizePlace = value => {
 const placeMatches = (a, b) => Boolean(a && b) && (a === b || a.includes(b) || b.includes(a));
 
 const NOT_TITLE = new Set(['worked', 'work', 'working', 'served', 'serving', 'employed', 'based', 'located', 'living', 'residing', 'graduated', 'studied', 'interned', 'joined', 'joining', 'left', 'leaving', 'moved', 'moving', 'i', 'we', 'my', 'our']);
-const DEGREE_TOKEN = /\b(Ph\.?\s?D\.?|Doctorate|Doctor of [A-Za-z]+|MBA|M\.?B\.?A\.?|M\.?S\.?|M\.?A\.?|M\.?Eng\.?|Master(?:’s|'s|s)?(?:\s+of\s+[A-Za-z ]+)?|B\.?S\.?|B\.?A\.?|B\.?Eng\.?|Bachelor(?:’s|'s|s)?(?:\s+of\s+[A-Za-z ]+)?|Associate(?:’s|'s|s)?(?:\s+of\s+[A-Za-z ]+)?)\b/i;
+// A bare "Associate" or "Master" is a job title ("Senior Research Associate", "Scrum
+// Master"), not a degree: those words count only as "Associate's", "Master of ..." or
+// "... degree".
+const DEGREE_TOKEN = /\b(Ph\.?\s?D\.?|Doctorate|Doctor of [A-Za-z]+|MBA|M\.?B\.?A\.?|M\.?S\.?|M\.?A\.?|M\.?Eng\.?|Master(?:’s|'s|s)(?:\s+(?:degree|of\s+[A-Za-z ]+))?|Master\s+(?:degree|of\s+[A-Za-z ]+)|B\.?S\.?|B\.?A\.?|B\.?Eng\.?|Bachelor(?:’s|'s|s)?(?:\s+of\s+[A-Za-z ]+)?|Associate(?:’s|'s|s)(?:\s+(?:degree|of\s+[A-Za-z ]+))?|Associate\s+(?:degree|of\s+[A-Za-z ]+))\b/i;
 const INSTITUTION = /\b((?:[A-Z][\w'’.-]*\s+){0,3}(?:University|College|Institute|School|Polytechnic|Academy)(?:\s+of\s+[A-Z][\w'’.-]*(?:\s+[A-Z][\w'’.-]*)*)?)\b/;
 
 function cleanTitle(value) {

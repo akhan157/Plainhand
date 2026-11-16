@@ -275,3 +275,20 @@ test('credential relevance uses the posting words and a small documented associa
   const missing = relevantMissingCredentials({ master, sources: [], packet: { resume: [] }, jobText: 'Process improvement training such as Six Sigma is valued.' });
   assert.deepEqual(missing.map(item => item.label), ['I earned a Lean Six Sigma Green Belt certification in 2019.']);
 });
+
+test('a packet credential is matched by its own name, not by word overlap', async () => {
+  const { packetHasCredential, relevantMissingCredentials } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  // Split across lines: the CFA is still there.
+  const fin = [{ section: 'Certifications', heading: null, text: 'Passed CFA Level I in 2024; registered for Level II.' }, { section: 'Skills', heading: null, text: 'Advanced Excel; SQL; Power Query.' }];
+  assert.equal(packetHasCredential({ text: 'Passed CFA Level I in 2024; registered for Level II. Advanced Excel and SQL.' }, fin), true);
+  // Scattered words are not the certificate.
+  const skills = [{ section: 'Skills', heading: null, text: 'SQL; Google Sheets; data analytics dashboards.' }];
+  assert.equal(packetHasCredential({ text: 'Google Data Analytics Certificate — 2026' }, skills), false);
+  assert.equal(packetHasCredential({ text: 'Google Data Analytics Certificate — 2026' }, [{ section: 'Certifications', heading: { org: 'Google', title: 'Data Analytics Professional Certificate', location: '', dates: '2026' }, text: '' }]), true);
+  const master = { resume: [{ section: 'Certifications', heading: null, text: 'Google Data Analytics Certificate — 2026', evidence: [] }] };
+  assert.equal(relevantMissingCredentials({ master, packet: { resume: skills }, jobText: 'A data analytics role.' }).length, 1);
+  // A note that claims a credential was kept is dropped when one is missing; advice stays.
+  assert.deepEqual(dropCredentialInclusionClaims(['The certificate is retained because the posting names data work.', 'Consider adding the certificate date.', 'Left out the older role.']),
+    ['Consider adding the certificate date.', 'Left out the older role.']);
+});

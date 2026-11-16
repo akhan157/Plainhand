@@ -59,12 +59,16 @@ export function voiceTargetOf(samples) {
   const features = voiceFeatures(text);
   if (features.sentences < MIN_SENTENCES || features.words < MIN_WORDS) return null;
   const sentenceLength = Math.max(1, Math.round(features.meanSentenceLength));
+  const phrases = registerPhrasesOf(text, features.words);
   return {
     sentenceLength,
     contractions: features.contractionRate >= CONTRACTION_USE ? 'use' : 'avoid',
     register: features.formalityRate >= FORMAL_MARKERS || sentenceLength >= FORMAL_LENGTH ? 'formal'
       : sentenceLength <= PLAIN_LENGTH ? 'plain' : 'neutral',
-    registerPhrases: registerPhrasesOf(text, features.words),
+    registerPhrases: phrases,
+    // Their combined rate, so the drafter has one number to write to rather than a
+    // list of small per-phrase rates it tends to undershoot.
+    ...(phrases.length ? { registerRate: Math.round(phrases.reduce((sum, item) => sum + item.per100, 0) * 10) / 10 } : {}),
   };
 }
 

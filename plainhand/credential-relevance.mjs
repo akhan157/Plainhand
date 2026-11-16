@@ -74,7 +74,34 @@ function uniqueCredentials(items) {
 export function relevantMissingCredentials({ master = null, sources = [], packet = null, jobText = '' }) {
   const credentials = uniqueCredentials(master?.resume ? masterCredentials(master.resume) : sourceCredentials(sources));
   const resume = Array.isArray(packet?.resume) ? packet.resume : [];
-  return credentials.filter(item => credentialRelevant(item.text, jobText) && credentialIndex(item, resume) < 0);
+  return credentials.filter(item => credentialRelevant(item.text, jobText) && !packetHasCredential(item, resume));
+}
+
+// Whether a packet's resume names a credential. Word overlap with the master's whole
+// line misreads both ways: a packet that splits "Passed CFA Level I ...; Advanced
+// Excel and SQL" across lines looks like it dropped the CFA, and "Google Sheets" plus
+// "data analytics" in Skills looks like the Google Data Analytics Certificate. So the
+// credential's own name decides: its acronyms (CFA, CPA, CKS) anywhere in the resume,
+// or else its capitalised name, without generic words, as one phrase.
+const LEADING_VERB = new Set(['passed', 'earned', 'completed', 'obtained', 'received', 'holds', 'hold', 'have', 'has', 'registered', 'active', 'certified']);
+const NOT_ACRONYM = new Set(['I', 'II', 'III', 'IV', 'US', 'USA', 'UK']);
+const normalizedText = value => ` ${String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
+function credentialName(text) {
+  const value = String(text ?? '');
+  const acronyms = [...new Set([...value.matchAll(/\b([A-Z]{2,6})\b/g)].map(match => match[1]).filter(word => !NOT_ACRONYM.has(word)))];
+  const runs = [...value.matchAll(/\b[A-Z][A-Za-z0-9&+-]*(?:\s+(?:of|and|&|in|for)?\s*[A-Z][A-Za-z0-9&+-]*)*/g)].map(match => match[0]
+    .split(/\s+/).filter(word => !LEADING_VERB.has(word.toLowerCase()) && !RELEVANCE_GENERIC.has(word.toLowerCase())).join(' '))
+    .filter(run => run.split(' ').length >= 2);
+  const phrase = runs.sort((a, b) => b.length - a.length)[0] || '';
+  return { acronyms, phrase };
+}
+export function packetHasCredential(item, resume) {
+  const entries = Array.isArray(resume) ? resume : [];
+  const text = normalizedText(entries.map(entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ')).join(' | '));
+  const { acronyms, phrase } = credentialName(item?.text);
+  if (acronyms.length) return acronyms.every(acronym => text.includes(` ${acronym.toLowerCase()} `));
+  if (phrase) return text.includes(normalizedText(phrase));
+  return credentialIndex(item, entries) >= 0;
 }
 
 export function credentialRetryFeedback(items) {
