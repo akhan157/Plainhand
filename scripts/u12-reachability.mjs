@@ -174,7 +174,7 @@ export const CLI_SCRIPTS = {
   'lib/check-liveness.mjs': 'npm run liveness',
   'lib/analyze-patterns.mjs': 'npm run patterns',
   'lib/score-calibration.mjs': 'npm run calibrate',
-  'lib/update-system.mjs': 'npm run update:check',
+  'lib/plainhand-update.mjs': 'npm run update:check',
   'demo/run-sample.mjs': 'npm run demo:sample',
 };
 
