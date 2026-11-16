@@ -95,7 +95,7 @@ All are in the queue/autonomy path; the packet answer path was not edited.
 
 | Gate | Result |
 | --- | --- |
-| `npm run test:plainhand -- --test-concurrency=2` | 576 tests, 576 pass, 0 fail (33.3 s on the final commit) |
+| `npm run test:plainhand -- --test-concurrency=2` | 576 tests, 576 pass, 0 fail (33.3 s on the implementation commit; the later docs and live-script commits do not touch tested code) |
 | `node benchmarks/benchmark-eval.mjs --concurrency 2` | 64/67 passed (3 expected failures, 0 unexpected): `profile-effect-fin-minimal`, `profile-effect-analyst-minimal`, `profile-effect-sci-minimal`; evidence `output/evaluation-controlled-2026-11-16T02-33-59-366Z` |
 | `node scripts/queue-vs-single.mjs --self-test --jobs 2` | byte-identical packets, no regression |
 
