@@ -128,6 +128,25 @@ export function accomplishmentRetryFeedback({ roles = [], sections = [] } = {}) 
   const where = sections.filter(Boolean).map(name => `"${name}"`).join(', ') || 'a heading-less section';
   return `The resume lines in ${where} are not under any role, and the resume has ${roles.length} Experience roles (${roles.map(headingLabel).join('; ')}), so they cannot be placed automatically. Move each of those lines under the role it belongs to, as lines that share that role's heading.`;
 }
+// A row the completeness repair added is no longer left out, so a suggestion that says
+// it was ("Left out the Green Belt because ...") would now misdescribe the master. Only
+// an omission note naming the added row's credential or employer is dropped.
+const OMISSION_NOTE = /\b(?:left out|leaves? out|leaving out|omit\w*|not included|missing|absent|excluded?)\b/i;
+export function dropRepairedOmissions(suggestions, added) {
+  const names = (Array.isArray(added) ? added : []).flatMap(row => {
+    const org = String(row?.heading?.org ?? '').trim();
+    if (org) return [org.toLowerCase()];
+    const words = (String(row?.text ?? '').match(/[A-Z][A-Za-z0-9&+-]{2,}/g) || []).filter(word => !/^(?:I|The|A|An|In|My)$/.test(word));
+    return words.length >= 2 ? [words.join(' ').toLowerCase()] : [];
+  });
+  if (!names.length) return suggestions;
+  return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
+    const value = String(text ?? '');
+    if (!OMISSION_NOTE.test(value)) return true;
+    const lower = value.toLowerCase();
+    return !names.some(name => name.split(' ').every(word => lower.includes(word)));
+  });
+}
 export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
   const where = sections.filter(Boolean).join(', ') || 'heading-less sections';
   return `Check role placement: the resume has ${roles.length} Experience roles, so the lines in ${where} were left where the draft put them. Move each line under the role it belongs to.`;
@@ -445,7 +464,7 @@ export class Workflow {
           ...masterCoverage(ownResume, entries).missing,
           ...masterCompleteness(context.sources, entries).missing.map(item => item.label || item.text),
         ])];
-        let missing = [], fallback = null, evidencePrompt = [];
+        let missing = [], fallback = null, evidencePrompt = [], repairs = [];
         for (let attempt = 0; attempt < 2; attempt++) {
           const base = attempt ? draft : previous;
           try {
@@ -468,6 +487,17 @@ export class Workflow {
             verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
             draft.resume = normalizeResume(draft.resume.filter(item => !blankText(item) || Boolean(item?.heading)), { sections: formatSections });
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
+            // On the last drafting pass, a stated credential or source role the draft
+            // still omits is added from its exact quote before the review, so the
+            // reviewer checks the complete master and the suggestions describe it.
+            if (attempt === 1 && !request) {
+              const completed = completeMasterResume(context.sources, draft.resume);
+              repairs = completed.added;
+              if (completed.added.length) {
+                draft.resume = normalizeResume(completed.resume, { sections: formatSections });
+                draft.suggestions = dropRepairedOmissions(draft.suggestions, completed.added);
+              }
+            }
             // A blank education or credential row is legal; the humanizer rewrites lines,
             // so restore its empty text if a pass added filler the renderer would show.
             const blankRows = draft.resume.map((item, index) => blankText(item) ? index : -1).filter(index => index >= 0);
@@ -493,7 +523,7 @@ export class Workflow {
           } catch (error) {
             // A redraft that only added missing lines must not lose the reviewed first draft.
             check(); if (!fallback || error instanceof TaskPaused) throw error;
-            ({ draft, review, humanizer } = fallback); break;
+            ({ draft, review, humanizer } = fallback); repairs = []; break;
           }
           const reviewed = review.passed && !review.issues.length;
           if (attempt === 1 && fallback) {
@@ -502,7 +532,7 @@ export class Workflow {
             // (roles, credentials, degrees, numbered results) parsed from the sources.
             const coverage = entries => masterCoverage(ownResume, entries).covered;
             const gaps = entries => masterCompleteness(context.sources, entries).counts.missing;
-            if (!reviewed || coverage(draft.resume) < coverage(fallback.draft.resume) || gaps(draft.resume) > gaps(fallback.draft.resume)) { ({ draft, review, humanizer } = fallback); break; }
+            if (!reviewed || coverage(draft.resume) < coverage(fallback.draft.resume) || gaps(draft.resume) > gaps(fallback.draft.resume)) { ({ draft, review, humanizer } = fallback); repairs = []; break; }
           }
           // The master must also keep every role, credential, degree and numbered
           // result the candidate's own sources state. Missing items join the resume
@@ -517,12 +547,12 @@ export class Workflow {
         // Last resort after the one retry: a credential the candidate stated, or a role
         // the source resume states, is never lost because the draft omitted it. Each
         // added row carries its exact source quote; nothing is invented.
-        let repairs = [];
         if (!request) {
           const completed = completeMasterResume(context.sources, draft.resume);
           if (completed.added.length) {
-            repairs = completed.added;
+            repairs = [...repairs, ...completed.added];
             draft.resume = normalizeResume(completed.resume, { sections: formatSections });
+            draft.suggestions = dropRepairedOmissions(draft.suggestions, completed.added);
           }
         }
         const clean = { headline: draft.headline, resume: draft.resume.map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence })), coverLetter: draft.coverLetter, suggestions: draft.suggestions };

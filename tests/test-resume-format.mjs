@@ -72,6 +72,9 @@ test('a heading-less accomplishment section moves under the only role; a title r
   // A recognised section (Projects) or a credential-progress section never moves.
   assert.equal(repairMisplacedAccomplishments([filler, { section: 'Projects', heading: null, text: 'Built a dashboard.' }]).moved, 0);
   assert.equal(repairMisplacedAccomplishments([filler, { section: 'CFA Progress', heading: null, text: 'Level II candidate.' }]).moved, 0);
+  // An unrecognised section that is not named for accomplishments is its own entry.
+  assert.equal(repairMisplacedAccomplishments([filler, { section: 'Selected Projects', heading: null, text: 'Built a dashboard.' }]).moved, 0);
+  assert.equal(repairMisplacedAccomplishments([filler, { section: 'Volunteer Leadership', heading: null, text: 'Ran a food bank shift.' }]).moved, 0);
 });
 
 test('a scanned or empty PDF is refused clearly', async () => {

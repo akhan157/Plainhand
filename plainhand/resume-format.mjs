@@ -240,6 +240,9 @@ function orderedSectionNames(names, formatSections) {
 // resume categories sit under that role, and a line that only repeats the role's title
 // is dropped. With more than one role nothing moves: the draft is asked to place them.
 const EXPERIENCE_LIKE = /experience|employment|work history|career/i;
+// Only a section named for accomplishments is read as a role's lines; "Selected
+// Projects" or "Volunteer Leadership" is its own entry and never moved under a job.
+const ACCOMPLISHMENT_SECTION = /accomplishments?|achievements?|responsibilit|highlights?|key results?|contributions?/i;
 const OTHER_CATEGORY = /contact|progress|exam|course|study|studies|membership|affiliation/i;
 const repeatOfTitle = entry => Boolean(entry?.heading && typeof entry.heading === 'object' && String(entry.heading.title || '').trim())
   && headingValue(entry.text) === headingValue(entry.heading.title);
@@ -257,6 +260,7 @@ export function repairMisplacedAccomplishments(resume) {
   const loose = entries.filter(entry => !(entry.heading && typeof entry.heading === 'object')
     && !EXPERIENCE_LIKE.test(sectionName(entry.section))
     && conventionalRank(entry.section) === UNKNOWN_SECTION_RANK
+    && ACCOMPLISHMENT_SECTION.test(sectionName(entry.section))
     && !OTHER_CATEGORY.test(sectionName(entry.section)));
   if (roles.length > 1) return { resume: entries, moved: 0, dropped: 0, ambiguous: loose.length > 0, roles, sections: [...new Set(loose.map(entry => String(entry?.section ?? '')))] };
   if (!roles.length || (!loose.length && !experience.some(repeatOfTitle))) return { resume: entries, moved: 0, dropped: 0, ambiguous: false, roles, sections: [] };

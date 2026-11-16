@@ -368,3 +368,33 @@ test('a relevant credential dropped from the packet is named in the one retry', 
     assert.ok(prepared.packet.resume.some(entry => /Green Belt/.test(entry.text)), 'the accepted packet keeps the credential');
   } finally { await h.close(); }
 });
+
+test('the last-pass repair runs before the review, and an omission note for a repaired row is dropped', async () => {
+  const { dropRepairedOmissions } = await import('../plainhand/workflow.mjs');
+  const added = [{ section: 'Certifications', heading: { org: 'Lean Six Sigma Green Belt', title: 'Certification', location: '', dates: '2019' }, text: '' }];
+  assert.deepEqual(dropRepairedOmissions(['Left out the Lean Six Sigma Green Belt because no issuer is stated.', 'Consider adding the issuer of the Green Belt.', 'Left out compensation.'], added),
+    ['Consider adding the issuer of the Green Belt.', 'Left out compensation.']);
+  assert.deepEqual(dropRepairedOmissions(['Left out X.'], []), ['Left out X.']);
+
+  const persona = holdoutPersonas.find(item => item.id === 'holdout-fin-controller');
+  const credential = persona.facts.find(fact => fact.id === 'cert').text;
+  const base = controlledAgent({ scenario: { id: 'u03', roleOrder: 'recent' }, persona, job: jobById('holdout-job-fin-forecast') });
+  const dropped = masterDraft(persona, { dropOldest: true, dropCredential: true });
+  const reviewed = [];
+  const agent = async (id, instruction, data, options) => {
+    if (instruction === STANDARD_INSTRUCTION) return dropped;
+    if (data?.packet && !data?.items) reviewed.push(data.packet);
+    return base(id, instruction, data, options);
+  };
+  const h = await harness({ persona, agent });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    const task = await h.lastTask();
+    assert.equal(task.status, 'complete', task.message);
+    const last = reviewed.at(-1);
+    assert.ok(last, 'the master was reviewed');
+    assert.ok(last.resume.some(entry => entry.evidence?.some(e => e.quote === credential)), 'the reviewer saw the repaired credential');
+    const state = await h.app.workspace.load();
+    assert.deepEqual(state.standard.repairs.map(item => item.section), ['Experience', 'Certifications']);
+  } finally { await h.close(); }
+});
