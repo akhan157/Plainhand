@@ -17,11 +17,15 @@ import { createSandboxBrowser } from './browser.mjs';
 import { controlledAgent, profileFixtureAgent } from './agent.mjs';
 import { scenarios, personaById, jobById, portalById, expectedFor } from './corpus.mjs';
 import { personas as profilePersonas, simulatedCandidate, scoreRun } from '../benchmarks/profile-bench.mjs';
+import { roleOrderOf } from '../standard.mjs';
 import { scoreScenario, aggregate, markdownReport, compareToBaseline, SCORER_VERSION } from './score.mjs';
 import { pdfEvidence } from './pdf-evidence.mjs';
 
 const option = (argv, name) => { const index = argv.indexOf('--' + name); return index < 0 ? null : argv[index + 1]; };
 const has = (argv, name) => argv.includes('--' + name);
+// A scenario may set roleOrder; anything else is the product default, seeded through
+// the same reading the app uses (roleOrderOf), never a second implementation of it.
+const roleOrderValue = value => roleOrderOf({ settings: { roleOrder: value } });
 
 // Why a run records no model. Codex runs under --ignore-user-config, so the model is
 // the CLI's default, and its `exec --json` events (thread.started, turn.completed)
@@ -234,7 +238,13 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
     const initialProfile = { ...emptyProfile(), ...(profileMode === 'seeded' ? persona.profile : persona.seedProfile) };
     const state = await app.workspace.load();
     await app.workspace.saveProfile(initialProfile, state.revision);
-    await app.workspace.mutate(latest => { latest.provider = live ? provider : 'codex'; });
+    // The candidate's role order reaches the workspace before anything is prepared,
+    // as the settings action would (settings.roleOrder). A scenario that declares one
+    // measures that choice; the default stays the product's own default.
+    await app.workspace.mutate(latest => {
+      latest.provider = live ? provider : 'codex';
+      latest.settings = { ...(latest.settings || {}), roleOrder: roleOrderValue(scenario.roleOrder) };
+    });
 
     if (profileMode === 'conversation') {
       profileResult = await runProfileConversation(app, persona.id, 10, persona);
@@ -315,7 +325,10 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
     // text layer and item geometry of the bytes this run actually produced.
     const evidence = await pdfEvidence(pdfBytes, { packet: prepared.packet, profile: persona.profile, job: jobSpec, sources, coverBytes });
     const pdf = { bytes: pdfBytes, sha: createHash('sha256').update(pdfBytes).digest('hex'), head: pdfBytes.subarray(0, 5).toString(), evidence };
-    packetResult = { packetQuestionsAsked, roleAnswered: Boolean(packetQuestionsAsked.length && persona.roleAnswers), packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
+    // What the workspace said when this packet was prepared: the order the app was
+    // actually asked for, recorded beside the packet it produced.
+    const preparedRoleOrder = roleOrderOf(await app.workspace.load());
+    packetResult = { packetQuestionsAsked, roleAnswered: Boolean(packetQuestionsAsked.length && persona.roleAnswers), packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null, roleOrder: preparedRoleOrder };
 
     if (scenario.family === 'resume') {
       const usage = await app.workflow.usage.summary(await app.workspace.load());

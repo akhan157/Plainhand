@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { validateSubmission } from '../plainhand/evaluation/sandbox.mjs';
-import { scorePacket, scoreApplication, scoreEvaluation, scoreScenario, aggregate, compareToBaseline, markdownReport, SCORER_VERSION } from '../plainhand/evaluation/score.mjs';
-import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord, absentClaimsIn, personas } from '../plainhand/evaluation/corpus.mjs';
+import { scorePacket, scoreApplication, scoreEvaluation, scoreScenario, aggregate, compareToBaseline, markdownReport, tailoringOf, SCORER_VERSION } from '../plainhand/evaluation/score.mjs';
+import { personaById, jobById, portalById, scenarios, expectedFor, fieldOwner, hasWord, absentClaimsIn, personas, captures } from '../plainhand/evaluation/corpus.mjs';
 import { renderPortal } from '../plainhand/evaluation/portals.mjs';
 import { assertProviderUsable, runEvaluation, exitCodeFor, runMetadata, candidatePayload } from '../plainhand/evaluation/runner.mjs';
 
@@ -316,7 +316,7 @@ test('the offline re-score reads an evidence directory, reproduces it, and never
     const beforeStat = (await stat(path.join(out, 'results.json'))).mtimeMs;
     const run = promisify(execFile);
     const { stdout } = await run(process.execPath, ['scripts/rescore.mjs', out], { cwd: process.cwd() });
-    assert.match(stdout, /Recorded scorer version: v2/);
+    assert.match(stdout, new RegExp(`Recorded scorer version: v${SCORER_VERSION}`));
     assert.match(stdout, /\| mech-resume \| PASS \| PASS \|/);
     assert.match(stdout, /resume-coverage pass → pass/);
     // Zero model calls and read-only: the recorded evidence is byte-identical.
@@ -388,7 +388,7 @@ test('controlled end-to-end evaluation runs a resume and a submitted application
     assert.equal(report.summary.scorerVersion, SCORER_VERSION);
     assert.equal(report.results.every(item => item.scorerVersion === SCORER_VERSION), true);
     const saved = JSON.parse(await readFile(path.join(out, 'results.json'), 'utf8'));
-    assert.equal(saved.scorer.version, 2);
+    assert.equal(saved.scorer.version, SCORER_VERSION);
     for (const scenario of saved.results) {
       const usage = scenario.usage;
       assert.equal(typeof usage.promptChars, 'number', 'Plainhand\'s own prompt size is recorded');
@@ -675,25 +675,25 @@ test('an honest zero-match Skip passes; Apply and Investigate with no evidence s
 });
 
 test('the scorer is versioned and a baseline from another version is never compared', () => {
-  assert.equal(SCORER_VERSION, 2);
+  assert.equal(SCORER_VERSION, 3, 'v3 replaces the lead-share gate with the role-order gate');
   const holdout = scenarios.find(item => item.id === 'holdout-mismatch');
   const summary = aggregate([scoreScenario({ scenario: holdout, evaluation: { evaluation: { score: 0, recommendation: 'Skip', matches: [], gaps: ['FSA fellowship is required but is not evidenced in the supplied sources.'] }, sources: [{ id: 'cv', text: personaById('holdout-sre-platform').profile.resume }], prepareRefusedWithoutOverride: true } })]);
   assert.equal(summary.scorerVersion, SCORER_VERSION);
   const scored = scoreScenario({ scenario: holdout, evaluation: { evaluation: { score: 0, recommendation: 'Skip', matches: [], gaps: ['FSA fellowship is required but is not evidenced in the supplied sources.'] }, sources: [{ id: 'cv', text: personaById('holdout-sre-platform').profile.resume }], prepareRefusedWithoutOverride: true } });
-  assert.equal(scored.scorerVersion, 2, 'every scored scenario carries its scorer version');
-  // v1 evidence recorded no version; it is never shown as one series with v2.
+  assert.equal(scored.scorerVersion, SCORER_VERSION, 'every scored scenario carries its scorer version');
+  // v1 evidence recorded no version; it is never shown as one series with the current one.
   const v1Baseline = { summary: { scenarios: 1, passed: 1 }, results: [{ scenario: { id: 'holdout-mismatch' }, pass: true }] };
   const mixed = compareToBaseline(summary, v1Baseline, []);
   assert.equal(mixed.comparable, false);
   assert.equal(mixed.baselineScorerVersion, 1);
-  assert.equal(mixed.scorerVersion, 2);
+  assert.equal(mixed.scorerVersion, SCORER_VERSION);
   assert.match(mixed.reason, /not comparable/);
   assert.equal(mixed.passed, undefined, 'no delta is offered across versions');
   // The same version still compares.
-  const same = compareToBaseline(summary, { scorerVersion: 2, summary: { scenarios: 1, passed: 0 }, results: [] }, []);
+  const same = compareToBaseline(summary, { scorerVersion: SCORER_VERSION, summary: { scenarios: 1, passed: 0 }, results: [] }, []);
   assert.equal(same.comparable, true);
   assert.equal(same.passed.delta, 1);
-  assert.equal(same.scorerVersion, 2);
+  assert.equal(same.scorerVersion, SCORER_VERSION);
 });
 
 test('repeated runs compare to the baseline on their base scenario id', () => {
@@ -837,4 +837,212 @@ test('held-out tailoring: dropping the older relevant role fails a recent-role j
   assert.equal(full.retention.ok, true);
   assert.equal(dropped.retention.ok, false);
   assert.deepEqual(dropped.retention.present, []);
+});
+
+// ---- Scorer v3: the role-order gate ----
+// The owner's decision (2026-11-15): a tailored resume keeps only the roles the job
+// needs, and orders the kept roles by settings.roleOrder — newest first by default, or
+// the role that best matches the job first, then the rest newest first. These tests
+// build the packets by hand so each verdict below has exactly one cause.
+
+const h2Fact = id => personaById('holdout2-fin-close').facts.find(fact => fact.id === id).text;
+const heldout2RolePacket = ({ roles, order, fixDates = null }) => ({
+  resume: order.flatMap(org => {
+    const role = roles.find(item => item.org === org);
+    const heading = { org: role.org, title: role.title, location: '', dates: fixDates && fixDates[org] !== undefined ? fixDates[org] : role.dates };
+    return role.facts.map(id => ({ section: 'Experience', heading, text: h2Fact(id) }));
+  }),
+  answers: [],
+  coverLetter: 'I am applying for the Revenue Systems Manager role.',
+});
+const H2_ROLES = [
+  { org: 'Example Instruments Group', title: 'Divisional Controller', dates: '2021 to 2026', facts: ['close', 'controls', 'team'] },
+  { org: 'Example Freight Systems', title: 'Revenue Systems Manager', dates: '2016 to 2021', facts: ['revrec', 'audit'] },
+  { org: 'Example Distribution Co', title: 'Senior Accountant', dates: '2012 to 2016', facts: ['recon'] },
+];
+const h2Packet = options => heldout2RolePacket({ roles: H2_ROLES, ...options });
+const h2Score = (packet, roleOrder) => scorePacket({
+  packet, persona: personaById('holdout2-fin-close'), job: jobById('holdout2-job-fin-revenue'),
+  sources: [{ id: 'cv', text: personaById('holdout2-fin-close').profile.resume }],
+  review: { passed: true, issues: [] }, pdf: { bytes: pdf, head: '%PDF-' , evidence: PASSED_EVIDENCE }, expectTailoring: true, roleOrder,
+});
+
+test('role order: under `recent` the kept roles are newest first, and a newer role leads', () => {
+  const score = h2Score(h2Packet({ order: ['Example Instruments Group', 'Example Freight Systems', 'Example Distribution Co'] }), 'recent');
+  assert.equal(score.tailoring.roleOrder, 'recent');
+  assert.equal(score.tailoring.roleOrderOk, true, score.tailoring.roleOrderReason);
+  assert.deepEqual(score.tailoring.roles.map(role => role.start), [2021, 2016, 2012]);
+  // This is the case the old gate called a failure: the newer role's lines lead, so only
+  // a third of the leading facts are required. Lead share is reported and does not decide.
+  assert.equal(score.tailoring.leadShare, 0.33);
+  assert.equal(score.pass, true, 'newest first is the `recent` answer, whatever lead share says');
+  // The same packet with the older role first fails: newest first means newest first.
+  const reversed = h2Score(h2Packet({ order: ['Example Freight Systems', 'Example Instruments Group', 'Example Distribution Co'] }), 'recent');
+  assert.equal(reversed.tailoring.roleOrderOk, false);
+  assert.equal(reversed.tailoring.roleOrderReason, 'not-newest-first');
+  assert.equal(reversed.pass, false, 'a resume that buries the newest role is not newest first');
+});
+
+test('role order: under `match` the role holding the required facts leads, then the rest newest first', () => {
+  const score = h2Score(h2Packet({ order: ['Example Freight Systems', 'Example Instruments Group', 'Example Distribution Co'] }), 'match');
+  assert.equal(score.tailoring.roleOrder, 'match');
+  assert.equal(score.tailoring.roleOrderOk, true, score.tailoring.roleOrderReason);
+  assert.equal(score.tailoring.requiredRole.heading, 'Example Freight Systems — Revenue Systems Manager — 2016 to 2021');
+  assert.deepEqual(score.tailoring.roles.map(role => role.start), [2016, 2021, 2012]);
+  assert.equal(score.pass, true);
+  // Newest first is not the match order: the required role must lead it.
+  const wrongFirst = h2Score(h2Packet({ order: ['Example Instruments Group', 'Example Freight Systems', 'Example Distribution Co'] }), 'match');
+  assert.equal(wrongFirst.tailoring.roleOrderOk, false);
+  assert.equal(wrongFirst.tailoring.roleOrderReason, 'required-role-not-first');
+  assert.equal(wrongFirst.pass, false);
+  // Leading with the required role but not newest-first after it also fails.
+  const wrongRest = h2Score(h2Packet({ order: ['Example Freight Systems', 'Example Distribution Co', 'Example Instruments Group'] }), 'match');
+  assert.equal(wrongRest.tailoring.roleOrderReason, 'rest-not-newest-first');
+  assert.equal(wrongRest.pass, false);
+});
+
+test('role order: a role holding a job-required fact is never dropped', () => {
+  // Every required fact is still in the resume, but the role that earned them is gone:
+  // the work is reported under another employer, which is the failure this catches.
+  const orphaned = { resume: [
+    { section: 'Experience', heading: { org: 'Example Instruments Group', title: 'Divisional Controller', location: '', dates: '2021 to 2026' }, text: h2Fact('close') },
+    { section: 'Experience', heading: null, text: h2Fact('revrec') },
+    { section: 'Experience', heading: null, text: h2Fact('audit') },
+    { section: 'Experience', heading: { org: 'Example Distribution Co', title: 'Senior Accountant', location: '', dates: '2012 to 2016' }, text: h2Fact('recon') },
+  ], answers: [], coverLetter: 'I am applying for the Revenue Systems Manager role.' };
+  const score = h2Score(orphaned, 'recent');
+  assert.equal(score.tailoring.requiredInResume, score.tailoring.requiredTotal, 'coverage alone still passes');
+  assert.equal(score.tailoring.roleOrderOk, true, 'the roles that remain are newest first');
+  assert.deepEqual(score.tailoring.droppedRequiredRoles.map(role => role.facts), [['revrec', 'audit']]);
+  assert.equal(score.retention.ok, true, 'the retained fact is present, so retention alone does not catch it');
+  assert.equal(score.pass, false, 'the role that earned the required facts must be kept');
+});
+
+test('role order: a role heading whose dates cannot be read is reported, not ordered', () => {
+  const unreadable = h2Score(h2Packet({ order: ['Example Instruments Group', 'Example Freight Systems', 'Example Distribution Co'], fixDates: { 'Example Freight Systems': 'since we moved to NetSuite' } }), 'recent');
+  assert.deepEqual(unreadable.tailoring.unparseableRoles.map(role => role.heading), ['Example Freight Systems — Revenue Systems Manager — since we moved to NetSuite']);
+  assert.deepEqual(unreadable.tailoring.roles.map(role => role.start), [2021, 2012], 'only the readable roles are compared, in packet order');
+  assert.equal(unreadable.tailoring.roleOrderOk, true, 'the dates it could not read are not counted as out of order');
+  assert.equal(unreadable.tailoring.droppedRequiredRoles.length, 0, 'its org and title still identify the role, so it was not dropped');
+  // The unreadable role is reported in the run summary as well as on the packet.
+  const summary = aggregate([{ scenario: { id: 'x', family: 'resume' }, packet: unreadable, pass: true }]);
+  assert.equal(summary.resume.unparseableRoleHeadings, 1);
+  assert.equal(summary.resume.roleOrderPassed, 1);
+  assert.deepEqual(summary.resume.roleOrders, ['recent']);
+  // A tailoring resume that dates no role at all cannot pass: every comparison would be
+  // vacuous, so the gate fails instead of passing on nothing.
+  const undated = h2Score(h2Packet({ order: ['Example Instruments Group', 'Example Freight Systems', 'Example Distribution Co'], fixDates: { 'Example Instruments Group': '', 'Example Freight Systems': 'n/a', 'Example Distribution Co': '' } }), 'recent');
+  assert.equal(undated.tailoring.roleOrderOk, false);
+  assert.equal(undated.tailoring.roleOrderReason, 'no-role-with-parseable-dates');
+  assert.equal(undated.tailoring.unparseableRoles.length, 3);
+  assert.equal(undated.pass, false, 'nothing readable means nothing proved');
+  // A packet with no role headings at all is reported as such, not as an empty pass.
+  const bare = tailoringOf({ resume: [{ section: 'Experience', heading: null, text: h2Fact('close') }], coverLetter: 'x' }, personaById('holdout2-fin-close'), jobById('holdout2-job-fin-revenue'), { roleOrder: 'recent' });
+  assert.equal(bare.roleOrderOk, false);
+  assert.equal(bare.roleOrderReason, 'no-role-headings');
+});
+
+test('role order: the controlled fixture follows the setting, so the gate is exercised', async () => {
+  const { controlledAgent } = await import('../plainhand/evaluation/agent.mjs');
+  const { PACKET_INSTRUCTION } = await import('../plainhand/agents.mjs');
+  const { tailoringOf } = await import('../plainhand/evaluation/score.mjs');
+  for (const scenario of scenarios.filter(item => item.holdoutSet === 2 && item.withStandard)) {
+    const persona = personaById(scenario.persona), job = jobById(scenario.job);
+    const sources = [{ id: 'cv', text: persona.profile.resume }, { id: 'profile', text: JSON.stringify(persona.profile) }];
+    const agent = controlledAgent({ scenario, persona, job });
+    const packetFor = roleOrder => agent('packet', PACKET_INSTRUCTION, { context: { sources }, roleOrder });
+    const own = tailoringOf(await packetFor(scenario.roleOrder), persona, job, { roleOrder: scenario.roleOrder });
+    assert.equal(own.roleOrderOk, true, `${scenario.id}: ${own.roleOrderReason}`);
+    assert.equal(own.requiredInResume, own.requiredTotal, `${scenario.id} keeps every required fact`);
+    assert.deepEqual(own.droppedRequiredRoles, [], `${scenario.id} keeps the roles that earned them`);
+    // The same packet scored under the other setting fails: the two settings genuinely
+    // disagree on these rows, which is what makes the gate measure the setting.
+    const other = scenario.roleOrder === 'match' ? 'recent' : 'match';
+    const flipped = tailoringOf(await packetFor(scenario.roleOrder), persona, job, { roleOrder: other });
+    assert.equal(flipped.roleOrderOk, false, `${scenario.id}: the packet built for ${scenario.roleOrder} must not pass as ${other}`);
+  }
+});
+
+test('role order: a newer unrelated role leads only when it is kept, and a gap keeps one line', async () => {
+  const { controlledAgent } = await import('../plainhand/evaluation/agent.mjs');
+  const { PACKET_INSTRUCTION } = await import('../plainhand/agents.mjs');
+  const scenario = scenarios.find(item => item.id === 'holdout2-newer-unrelated-stem');
+  const persona = personaById(scenario.persona), job = jobById(scenario.job);
+  const sources = [{ id: 'cv', text: persona.profile.resume }, { id: 'profile', text: JSON.stringify(persona.profile) }];
+  const packet = await controlledAgent({ scenario, persona, job })('packet', PACKET_INSTRUCTION, { context: { sources }, roleOrder: 'recent' });
+  const headings = packet.resume.filter(entry => entry.heading).map(entry => [entry.heading.org, entry.heading.dates]);
+  // The applications role has nothing this job needs, but dropping it would leave the
+  // dates 2023 to 2025 unexplained, so it is kept with exactly one short line.
+  assert.deepEqual(headings.filter(([org]) => org === 'Example Bioinstruments'), [['Example Bioinstruments', '2025 to 2026']]);
+  assert.equal(packet.resume.filter(entry => entry.heading?.org === 'Example Bioinstruments').length, 1, 'a gap-bridging role carries one line');
+  // The oldest role has nothing the job needs and leaves no gap when dropped.
+  assert.equal(packet.resume.some(entry => entry.heading?.org === 'Example Cell Analysis'), false);
+  const score = scorePacket({
+    packet, persona, job, sources,
+    review: { passed: true, issues: [] }, pdf: { bytes: pdf, head: '%PDF-', evidence: PASSED_EVIDENCE }, expectTailoring: true, roleOrder: 'recent',
+  });
+  assert.equal(score.tailoring.roleOrderOk, true, score.tailoring.roleOrderReason);
+  assert.equal(score.tailoring.droppedRequiredRoles.length, 0);
+  assert.equal(score.pass, true);
+});
+
+test('corpus: roleOrder, holdout sets and the role each required fact belongs to', async () => {
+  const { personaRoles } = await import('../plainhand/evaluation/roles.mjs');
+  const { ROLE_ORDERS } = await import('../plainhand/standard.mjs');
+  const ids = new Set();
+  for (const scenario of scenarios) {
+    assert.equal(ids.has(scenario.id), false, `duplicate scenario id ${scenario.id}`);
+    ids.add(scenario.id);
+    if (scenario.roleOrder !== undefined) assert.ok(ROLE_ORDERS.includes(scenario.roleOrder), `${scenario.id} has an unknown roleOrder ${scenario.roleOrder}`);
+    if (scenario.holdoutSet !== undefined) {
+      assert.ok(Number.isInteger(scenario.holdoutSet) && scenario.holdoutSet >= 1, `${scenario.id} holdoutSet must be a set number`);
+      assert.equal(scenario.holdout, true, `${scenario.id} belongs to a held-out set, so it must be marked holdout`);
+    }
+    // A tailoring row must keep the required facts' roles knowable, or "the role holding
+    // a required fact was dropped" could never be decided for that row. A summary line
+    // (the candidate's own prose above the Experience heading) belongs to no role and no
+    // section, which is honest: it is not a role, so it cannot be dropped as one.
+    if (!scenario.withStandard) continue;
+    const persona = personaById(scenario.persona), job = jobById(scenario.job), roles = personaRoles(persona);
+    const facts = [...job.requiredFactIds, ...(job.retainFactIds || [])];
+    const mapped = facts.filter(id => {
+      const fact = persona.facts.find(item => item.id === id);
+      assert.ok(fact, `${job.id} names unknown fact ${id}`);
+      return roles.some(role => role.body.some(line => captures(fact.text, line)));
+    });
+    assert.ok(mapped.length >= 1, `${scenario.id}: no required fact belongs to a master role`);
+    // The rows that exist to measure role order state every needed fact on a dated role.
+    if (scenario.holdoutSet === 2) assert.equal(mapped.length, facts.length, `${scenario.id}: every needed fact belongs to a master role`);
+    assert.ok(roles.length >= 1, `${scenario.id}: the persona must state at least one dated role`);
+    for (const role of roles) assert.ok(role.start <= (role.end ?? role.start), `${role.label}: dates must run forward`);
+  }
+  // Set 2 exists because set 1 is seen: four old-role rows split across both orders.
+  const set2 = scenarios.filter(item => item.holdoutSet === 2);
+  assert.ok(set2.length >= 8, `set 2 must cover the row kinds, got ${set2.length}`);
+  assert.deepEqual([...new Set(set2.map(item => item.roleOrder).filter(Boolean))].sort(), ['match', 'recent']);
+  assert.equal(set2.filter(item => item.withStandard && item.roleOrder === 'recent').length >= 2, true);
+  assert.equal(set2.filter(item => item.withStandard && item.roleOrder === 'match').length >= 2, true);
+});
+
+test('role dates: every form the sources use is read, and an unreadable one is null', async () => {
+  const { parseDates, roleLabel, newestFirstOrder } = await import('../plainhand/evaluation/roles.mjs');
+  const shapes = {
+    '2019 to 2026': [2019, 2026], '2014 - 2018': [2014, 2018], '2018–2019': [2018, 2019],
+    '2020-2026': [2020, 2026], 'Jun 2026 to Aug 2026': [2026, 2026], '2019 until 2021': [2019, 2021],
+    '2025': [2025, 2025], 'May 2019 – Present': [2019, null],
+  };
+  for (const [text, [start, end]] of Object.entries(shapes)) {
+    const parsed = parseDates(text);
+    assert.ok(parsed, `${text} must parse`);
+    assert.equal(parsed.start, start, text);
+    assert.equal(parsed.end, end, text);
+  }
+  // A heading with no year, an impossible range, or several separators states nothing
+  // this gate can order by, and is reported instead of guessed at.
+  for (const text of ['', '   ', 'since we moved to NetSuite', '2026 to 2019', '2019 to 2020 to 2021', '3 years', '2025 - present - 2026']) {
+    assert.equal(parseDates(text), null, `${JSON.stringify(text)} must not parse`);
+  }
+  assert.equal(roleLabel({ org: 'Example Co', title: 'Controller', location: '', dates: '2021 to 2026' }), 'Example Co — Controller — 2021 to 2026');
+  assert.equal(newestFirstOrder([{ start: 2021 }, { start: 2016 }, { start: 2016 }, { start: 2012 }]), true, 'a tie in one year is in either order');
+  assert.equal(newestFirstOrder([{ start: 2016 }, { start: 2021 }]), false);
 });

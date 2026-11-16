@@ -1,8 +1,10 @@
 // Scores a completed scenario from recorded evidence, never from the model's own
 // claim that it did well. Ground truth is the fictional persona and job corpus.
 import { hasEvidence } from '../store.mjs';
+import { ROLE_ORDERS, DEFAULT_ROLE_ORDER } from '../standard.mjs';
 import { captures, expectedFor, fieldOwner, hasWord, absentClaimsIn, personaById, jobById, portalById } from './corpus.mjs';
 import { splitSentences, coverLetterClaims, headingText, jobSource } from './claims.mjs';
+import { packetRoles, personaRoles, newestFirstOrder } from './roles.mjs';
 import { pdfEvidencePassed, pdfEvidenceSummary } from './pdf-evidence.mjs';
 
 // The scorer's version. A check that changes what a pass means is a new version, and a
@@ -10,7 +12,15 @@ import { pdfEvidencePassed, pdfEvidenceSummary } from './pdf-evidence.mjs';
 // evidence (which recorded no version) is reported beside v2, never mixed with it.
 // v2: an honest zero-match Skip is valid (the PDF line-order rule is unchanged in
 // meaning but its occurrence choice was corrected; see pdf-evidence.mjs).
-export const SCORER_VERSION = 2;
+// v3: the lead-share gate is replaced by a role-order gate keyed on the run's
+// roleOrder. Lead share encoded one expectation, "the old relevant role leads",
+// which the owner's default (settings.roleOrder: recent, kept roles newest first)
+// contradicts by design whenever a newer role is kept. The gate now reads the dates
+// in the role headings and checks the order the candidate asked for; a role holding
+// a job-required fact may never be dropped, and whether the required role's first
+// line is a required fact is reported as within-role curation, not gated.
+export const SCORER_VERSION = 3;
+const roleOrderValue = value => ROLE_ORDERS.includes(value) ? value : DEFAULT_ROLE_ORDER;
 
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const numberTokens = text => (String(text || '').match(/\d(?:[\d.,]*\d)?%?|\d%?/g) || []);
@@ -290,8 +300,11 @@ export function numericGrounding({ packet, persona, job, sources }) {
 }
 
 // Tailoring: the facts this job needs must be in the resume itself (a cover letter
-// mention does not count) and must lead the resume's fact-bearing entries.
-export function tailoringOf(packet, persona, job) {
+// mention does not count), every role holding one of them must be kept, and the kept
+// roles must be in the order the candidate's setting asks for. Lead share is still
+// reported, but it no longer decides: under `recent` a newer kept role leads, which
+// is correct, so "the old role's facts lead" cannot be a pass condition.
+export function tailoringOf(packet, persona, job, { roleOrder } = {}) {
   const entries = (packet?.resume || []).map(entry => String(entry.text || ''));
   const all = entries.join('\n');
   // A fact may be split across bullets ("Taught ... 150 students." / "Built the
@@ -306,10 +319,72 @@ export function tailoringOf(packet, persona, job) {
   const inResume = job.requiredFactIds.filter(id => ranked.some(fact => fact.id === id));
   const lead = ranked.slice(0, inResume.length);
   const leadShare = inResume.length ? Math.round(lead.filter(fact => requiredIds.has(fact.id)).length / inResume.length * 100) / 100 : null;
-  return { requiredInResume: inResume.length, requiredTotal: job.requiredFactIds.length, missingFromResume: job.requiredFactIds.filter(id => !inResume.includes(id)), leadShare, order: ranked.map(fact => fact.id) };
+
+  // The order gate. Roles come from the heading dates (roles.mjs), never from the
+  // order of the bullets: a heading whose dates cannot be read is reported and left
+  // out of the comparison instead of being counted as ordered.
+  const requested = roleOrderValue(roleOrder);
+  const experience = packetRoles(packet);
+  const factsOf = ids => ids.map(id => persona.facts.find(fact => fact.id === id)).filter(Boolean);
+  const rolesHolding = ids => experience.roles
+    .map(role => ({ role, facts: ids.filter(id => { const fact = persona.facts.find(item => item.id === id); return Boolean(fact) && captures(fact.text, role.text); }) }))
+    .filter(item => item.facts.length > 0);
+  // Under `match` the first role is the one holding the job's required facts (the old
+  // relevant role on an old-role row). Ties go to the earlier role, so the answer is
+  // read from the packet and never from a job's expected outcome.
+  const holding = rolesHolding(job.requiredFactIds);
+  const requiredRole = holding.reduce((best, item) => item.facts.length > (best?.facts.length || 0) ? item : best, null);
+  const restNewestFirst = newestFirstOrder(experience.roles.slice(1));
+  let roleOrderOk, roleOrderReason;
+  if (!experience.roles.length) {
+    roleOrderOk = false;
+    roleOrderReason = experience.unparseable.length ? 'no-role-with-parseable-dates' : 'no-role-headings';
+  } else if (requested === 'match') {
+    const requiredFirst = requiredRole ? requiredRole.role.key === experience.roles[0].key : true;
+    roleOrderOk = requiredFirst && restNewestFirst;
+    roleOrderReason = !requiredFirst ? 'required-role-not-first' : restNewestFirst ? 'match-first' : 'rest-not-newest-first';
+  } else {
+    roleOrderOk = newestFirstOrder(experience.roles);
+    roleOrderReason = roleOrderOk ? 'newest-first' : 'not-newest-first';
+  }
+  // The master's own roles are the ground truth for "was that role kept". A role the
+  // job needs may lose lines, but never its identity: keeping the fact while dropping
+  // the role that earned it reports the work under the wrong employer. A role whose
+  // dates could not be read still counts as kept when its org and title say so.
+  const sameRole = (role, master) => (role.start === master.start && (role.end === null || master.end === null || role.end === master.end))
+    || (norm(role.heading?.org) === norm(master.org) && norm(role.heading?.title) === norm(master.title));
+  const droppedRequiredRoles = personaRoles(persona)
+    .map(master => ({ master, facts: job.requiredFactIds.filter(id => { const fact = persona.facts.find(item => item.id === id); return Boolean(fact) && captures(fact.text, master.body.join('\n')); }) }))
+    .filter(item => item.facts.length > 0 && !experience.groups.some(role => sameRole(role, item.master)))
+    .map(item => ({ heading: item.master.label, dates: item.master.dates, facts: item.facts }));
+  // Within-role curation, reported and not gated: inside the role that holds the
+  // required facts, the first line should be one of them. The controlled fixture
+  // guarantees this by construction, so it is not evidence that a real model does.
+  const firstLine = requiredRole ? (requiredRole.role.entries[0] ?? '') : '';
+  const curation = requiredRole ? {
+    heading: requiredRole.role.label,
+    firstLine,
+    requiredFirst: factsOf(requiredRole.facts).some(fact => captures(fact.text, firstLine)),
+  } : null;
+  return {
+    requiredInResume: inResume.length,
+    requiredTotal: job.requiredFactIds.length,
+    missingFromResume: job.requiredFactIds.filter(id => !inResume.includes(id)),
+    leadShare,
+    order: ranked.map(fact => fact.id),
+    roleOrder: requested,
+    roles: experience.roles.map(role => ({ heading: role.label, dates: role.dates, start: role.start, end: role.end, gap: role.gap, lines: role.entries.length })),
+    unparseableRoles: experience.unparseable,
+    excludedHeadings: experience.excluded,
+    roleOrderOk,
+    roleOrderReason,
+    requiredRole: requiredRole ? { heading: requiredRole.role.label, dates: requiredRole.role.dates, facts: requiredRole.facts } : null,
+    curation,
+    droppedRequiredRoles,
+  };
 }
 
-export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false, expectTailoring = false }) {
+export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false, expectTailoring = false, roleOrder = DEFAULT_ROLE_ORDER }) {
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
   // The candidate's own phone is contact detail, not a claim; any other phone stays checked.
   const ownPhone = String(persona.profile?.phone || '').replace(/\D/g, '').slice(-10);
@@ -334,8 +409,13 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const pdfState = pdf?.evidence?.state || 'absent';
   const coverage = required.length ? Math.round(covered.length / required.length * 100) / 100 : null;
   const atsCoverage = job.atsTerms.length ? Math.round(atsCovered.length / job.atsTerms.length * 100) / 100 : null;
-  const tailoring = tailoringOf(packet, persona, job);
-  const tailored = tailoring.requiredInResume === tailoring.requiredTotal && tailoring.leadShare !== null && tailoring.leadShare >= 0.67;
+  const tailoring = tailoringOf(packet, persona, job, { roleOrder });
+  // A tailored resume keeps every required fact, keeps the roles that earned them,
+  // and orders the kept roles the way the candidate asked. Lead share is reported
+  // beside this, not gated (see tailoringOf).
+  const tailored = tailoring.requiredInResume === tailoring.requiredTotal
+    && tailoring.roleOrderOk === true
+    && tailoring.droppedRequiredRoles.length === 0;
   // A job that needs the recent role first still needs the older relevant role kept.
   const resumeText = (packet?.resume || []).map(entry => String(entry.text || '')).join('\n');
   const retainIds = job.retainFactIds || [];
@@ -623,7 +703,11 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
 }
 
 export function scoreScenario(result) {
-  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job), expectTailoring: Boolean(result.scenario.withStandard) }) : null;
+  // The role order the run actually used travels with the packet (the runner seeds
+  // settings.roleOrder before prepare); a scenario that declares one is the fallback
+  // for evidence recorded before the field existed.
+  const roleOrder = roleOrderValue(result.packet?.roleOrder ?? result.scenario.roleOrder);
+  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job), expectTailoring: Boolean(result.scenario.withStandard), roleOrder }) : null;
   const application = result.application ? scoreApplication({ ...result.application, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const evaluation = result.evaluation ? scoreEvaluation({ ...result.evaluation, job: jobById(result.scenario.job) }) : null;
   const family = result.scenario.family;
@@ -778,6 +862,14 @@ export function aggregate(results) {
       bannedWords: packets.reduce((n, item) => n + (item.bannedWords?.length || 0), 0),
       firstPerson: packets.filter(item => item.voiceFirstPerson).length,
       atsCoverage: avg(packets.map(item => item.atsCoverage)),
+      // The v3 role-order gate and its two supporting facts, so a reviewer can see
+      // which order each run was scored under and what could not be read.
+      roleOrderPassed: packets.filter(item => item.tailoring?.roleOrderOk).length,
+      roleOrders: [...new Set(packets.map(item => item.tailoring?.roleOrder).filter(Boolean))].sort(),
+      unparseableRoleHeadings: packets.reduce((n, item) => n + (item.tailoring?.unparseableRoles?.length || 0), 0),
+      droppedRequiredRoles: packets.reduce((n, item) => n + (item.tailoring?.droppedRequiredRoles?.length || 0), 0),
+      requiredRoleFirstLine: packets.filter(item => item.tailoring?.curation?.requiredFirst).length,
+      curatedRoles: packets.filter(item => item.tailoring?.curation).length,
       // Per-mention numeric evidence and the rendered-PDF tier, so a reviewer can
       // see whether a posting number was used legitimately or a candidate claim was
       // laundered, and whether the PDF tier actually ran.
@@ -883,7 +975,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
     const reasons = [];
     if (result.error) reasons.push(result.error);
     if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}${result.evaluation.modelRecommendation && result.evaluation.modelRecommendation !== result.evaluation.recommendation ? ` (model said ${result.evaluation.modelRecommendation})` : ''}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
-    if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}${result.packet.numericUncertainty?.length ? ` (${result.packet.numericUncertainty.length} uncertain)` : ''}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}, pdf ${result.packet.pdfState}`);
+    if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}${result.packet.numericUncertainty?.length ? ` (${result.packet.numericUncertainty.length} uncertain)` : ''}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}, pdf ${result.packet.pdfState}${result.packet.tailoring ? `, role order ${result.packet.tailoring.roleOrderOk ? 'ok' : result.packet.tailoring.roleOrderReason} (${result.packet.tailoring.roleOrder})${result.packet.tailoring.droppedRequiredRoles.length ? `, dropped required roles: ${result.packet.tailoring.droppedRequiredRoles.map(role => role.heading).join('; ')}` : ''}` : ''}`);
     if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, app-owed rescued ${result.application.appOwedRescued?.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, readback ${result.application.readbackMismatches?.join(', ') || 'ok'}, upload ${result.application.resumeUploadMatches === false || result.application.coverUploadMatches === false ? 'mismatch' : 'ok'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}${result.application.warning ? `, warning: ${result.application.warning}` : ''}`);
     if ((result.scenario.portal && !result.application) && !result.error) reasons.push('application stage did not run');
     return `- **${result.scenario.id}**${result.expectedFail ? ' (expected lower-bound control)' : ''} — ${reasons.join('; ')}`;
@@ -899,6 +991,10 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Scenarios passed | ${summary.passed}/${summary.scenarios} |
 | Evaluations passed | ${summary.evaluation?.passed ?? 0}/${summary.evaluation?.runs ?? 0} |
 | Resume fact coverage | ${summary.resume?.factCoverage ?? 'n/a'} |
+| Roles in the requested order (roleOrder) | ${summary.resume?.roleOrderPassed ?? 0}/${summary.resume?.runs ?? 0} (${(summary.resume?.roleOrders || []).join(', ') || 'n/a'}) |
+| Role headings whose dates could not be read | ${summary.resume?.unparseableRoleHeadings ?? 0} |
+| Roles holding a required fact that were dropped | ${summary.resume?.droppedRequiredRoles ?? 0} |
+| Required-fact role whose first line is a required fact (diagnostic, not gated) | ${summary.resume?.requiredRoleFirstLine ?? 0}/${summary.resume?.curatedRoles ?? 0} |
 | Resume unsupported numbers | ${summary.resume?.unsupportedNumbers ?? 'n/a'} |
 | Resume numeric mentions (posting-only, uncertain) | ${summary.resume?.numberMentions ?? 'n/a'} (${summary.resume?.numericPostingOnly ?? 0} posting-only, ${summary.resume?.numericUncertain ?? 0} uncertain) |
 | PDF evidence passed (blocked on extraction) | ${summary.resume?.pdfPassed ?? 0}/${summary.resume?.runs ?? 0} (${summary.resume?.pdfBlocked ?? 0} blocked) |
