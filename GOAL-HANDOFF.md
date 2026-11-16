@@ -810,3 +810,33 @@ Reading the numbers:
   2. the pre-registered `voice-contrast` (U05);
   3. live onboarding journeys plus conversation-built runs, all in that fresh clone
      (U01).
+
+## Final live checks; all 15 rows accepted locally — 2026-11-16
+
+- **Fresh install, live onboarding (U01), `1691356` after the 06:49 reset.**
+  - A fresh git clone, then `npm ci` and `setup`, both exit 0. The npm cache was warm.
+  - Live Codex runs in that clone:
+    - journey-sci PASS;
+    - fin-built PASS;
+    - sci-built PASS;
+    - holdout2-journey-stem blocked by the master's factual review.
+  - The block was correct. A suggestion claimed a role and certification that the
+    master lacked, phrased "The master includes ...", which the guard missed. Root
+    broadened the guard to check inclusion claims anywhere in the sentence, with a
+    test (`c` commit after `1691356`). Suite 669/669; controlled 64/67.
+- **Voice contrast (U05).**
+  - Terse persona: closer to its own samples.
+  - Formal persona: sentence length 24.8 against 25.3 and contractions 0 against 0,
+    so both now match.
+  - The remaining gap is the formality-marker rate, built from words the
+    owner-mandated humanizer removes as AI tells. It is recorded as a conflict in the
+    test. The test was not reweighted.
+- **Register: 15/15 accepted locally.** The open external checks are listed in
+  UNIFIED-GOAL:
+  - human calibration;
+  - user voice;
+  - real-candidate data;
+  - commercial-site writes;
+  - taste;
+  - owner-only push, release and merge.
+- Nothing pushed, released or merged to main.
