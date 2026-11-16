@@ -119,12 +119,12 @@ test('an external agent uses Plainhand through MCP without bypassing its rules',
     const approve = await h.call('plainhand_packet_approve', { jobId });
     assert.ok(!approve.isError, 'a candidate step is a normal answer');
     const approveText = h.textOf(approve);
-    assert.ok(approveText.includes(`http://127.0.0.1:${h.port}/#applications`), approveText);
+    assert.ok(approveText.includes(`http://127.0.0.1:${h.port}/?job=${jobId}&tab=packet#applications`), approveText);
     assert.match(approveText, /Acme Robotics — Graduate Engineer/);
     assert.match(approveText, /nothing was changed/);
     const submitted = await h.call('plainhand_jobs_confirmSubmitted', { jobId });
     assert.ok(!submitted.isError);
-    assert.match(h.textOf(submitted), /#applications/);
+    assert.match(h.textOf(submitted), new RegExp(`\\?job=${jobId}#applications`));
     const applied = await h.call('plainhand_jobs_setStatus', { jobId, status: 'Applied' });
     assert.ok(!applied.isError, 'Applied through the status tool is also reserved for the candidate');
     assert.match(h.textOf(applied), /127\.0\.0\.1/);
