@@ -395,3 +395,36 @@ Results: suite 601/601; UI flow passes; controlled 64/67, 0 unexpected.
 
 Residuals: hosted browser and cloud tests (no database); interview duration is fixed
 at one hour.
+
+## Live comparison, paired part — 2026-11-16 (`0f5cfe8`, Codex, scorer v3)
+
+Paired: 16/27, with 9 expected minimal-control failures and 2 unexpected failures.
+Baseline v1 was 11/27 with 7 unexpected.
+
+| Mode | fin | analyst | sci |
+|---|---|---|---|
+| seeded | 3/3 | 3/3 | 3/3 |
+| conversation-built | 3/3 (baseline 2/3) | 2/3 (0/3) | 2/3 (0/3) |
+| minimal (control) | 0/3 | 0/3 | 0/3 |
+
+Other results:
+- Role order was correct in 19/19 runs, with 0 required roles dropped.
+- Unsupported numbers: 0.
+- PDF evidence passed 19/19.
+- False-ready: 0. Sensitive auto-fills: 0.
+- The required-fact role put a required fact on its first line in 10/15 runs. This is a
+  diagnostic only.
+- Calls: 203 in total. The profile conversation took 6 to 7 calls.
+
+Caveat: scorer versions differ (v1 for the baseline, v3 here). Paired rows have no
+tailoring gate, so the deterministic pass rule for them is the same in both versions.
+
+The two unexpected failures are product findings:
+1. **analyst-built-r1:** prepare failed with "claim without an exact source reference".
+   The evidence check throws at once and does not retry with feedback. It should
+   retry once and name the uncited entries.
+2. **sci-built-r1:** the packet raised a blocking question asking whether the research
+   experience totals five years. That is a fit question, not a fact the documents
+   need, so it belongs in evaluation gaps, not in blocking packet questions.
+
+The smoke run (unseen set 2) is running.
