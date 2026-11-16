@@ -258,3 +258,11 @@ test('the Claude model and effort come from PLAINHAND_CLAUDE_MODEL and PLAINHAND
   assert.deepEqual(claudeModelArgs({}), []);
   assert.deepEqual(claudeModelArgs({ PLAINHAND_CLAUDE_MODEL: 'sonnet; rm -rf', PLAINHAND_CLAUDE_EFFORT: 'turbo' }), []);
 });
+
+test('a JSON reply wrapped in prose or a fenced block is still read; prose alone is not', async () => {
+  const { parseAgentJson } = await import('../plainhand/agents.mjs');
+  const envelope = result => JSON.stringify({ type: 'result', result });
+  assert.deepEqual(parseAgentJson(envelope('Here is the reply:\n```json\n{"say":"Hi {there}","actions":[]}\n```\nThanks.')), { say: 'Hi {there}', actions: [] });
+  assert.deepEqual(parseAgentJson(envelope('{"a":1}')), { a: 1 });
+  assert.throws(() => parseAgentJson(envelope('no json here')), /unreadable result/);
+});

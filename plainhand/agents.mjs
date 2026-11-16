@@ -155,7 +155,33 @@ export function parseAgentJson(text) {
     else return envelope;
   } catch (error) { if (error.message === 'Agent did not finish successfully.') throw error; }
   raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  try { return JSON.parse(raw); } catch { throw new Error('The agent returned an unreadable result. Retry; no profile facts or approvals were changed.'); }
+  try { return JSON.parse(raw); } catch {}
+  // A model sometimes wraps the object in a sentence or a fenced block mid-reply.
+  // The first complete top-level JSON object is the answer; strings are respected,
+  // so a brace inside a quoted value never ends it early.
+  const embedded = firstJsonObject(raw);
+  if (embedded !== undefined) return embedded;
+  throw new Error('The agent returned an unreadable result. Retry; no profile facts or approvals were changed.');
+}
+function firstJsonObject(text) {
+  for (let start = text.indexOf('{'); start >= 0; start = text.indexOf('{', start + 1)) {
+    let depth = 0, inString = false, escaped = false;
+    for (let index = start; index < text.length; index++) {
+      const char = text[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === '"') inString = false;
+        continue;
+      }
+      if (char === '"') inString = true;
+      else if (char === '{') depth++;
+      else if (char === '}' && --depth === 0) {
+        try { return JSON.parse(text.slice(start, index + 1)); } catch { break; }
+      }
+    }
+  }
+  return undefined;
 }
 
 export function parseAntigravityStream(text) {
