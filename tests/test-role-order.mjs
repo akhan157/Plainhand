@@ -10,10 +10,10 @@ import { DEFAULT_ROLE_ORDER, roleOrderOf } from '../plainhand/standard.mjs';
 import { PACKET_INSTRUCTION, STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
 import { groupEntries, renderResumeHtml, DEFAULT_FORMAT } from '../plainhand/resume-format.mjs';
 
-async function harness() {
+async function harness({ wrap = out => out } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'plainhand-role-order-'));
   const inputs = [];
-  const agent = async (id, instruction, data, options) => { inputs.push({ instruction, data }); return fixtureAgent(id, instruction, data, options); };
+  const agent = async (id, instruction, data, options) => { inputs.push({ instruction, data }); return wrap(await fixtureAgent(id, instruction, data, options), instruction); };
   const app = await createPlainhand({ root, providers: fixtureProviders, workflowOptions: { agent,
     verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'This is an engineering role designing and testing hardware. '.repeat(10), checkedAt: new Date().toISOString(), reason: 'Fixture.' }),
     renderer: async (workspace, state, job) => { const pdf = `output/test-${job.id}.pdf`; await workspace.write(pdf, 'test-pdf'); return { pdf, pdfHash: digest(Buffer.from('test-pdf')), artifacts: [pdf] }; } } });
@@ -100,7 +100,7 @@ test('both instructions carry the new rules, and the replaced wording is gone', 
   assert.match(PACKET_INSTRUCTION, /Keep a role only when at least one of its lines matches a requirement the posting states/);
   assert.match(PACKET_INSTRUCTION, /when in doubt, keep it/);
   assert.match(PACKET_INSTRUCTION, /never leave out experience that matches one/);
-  assert.match(PACKET_INSTRUCTION, /keep that role as a heading-only entry/);
+  assert.match(PACKET_INSTRUCTION, /keep that role with its heading \(org, title and dates\) and exactly one short line/);
   assert.match(PACKET_INSTRUCTION, /In suggestions, name every role you left out, with the reason/);
   assert.ok(!PACKET_INSTRUCTION.includes('Relevant Experience'), 'the “Relevant Experience” grouping advice is replaced');
   assert.ok(!PACKET_INSTRUCTION.includes('keep each recent role with at least one line'), 'the old gap rule is replaced');
@@ -147,4 +147,20 @@ test('one role written with differently typed headings groups as one entry; diff
   const html = renderResumeHtml(DEFAULT_FORMAT, { name: 'Riley Example' }, { resume });
   assert.equal((html.match(/<li>/g) || []).length, 6, 'every line is still rendered');
   assert.equal((html.match(/Engineering Intern/g) || []).length, 2, 'the re-typed heading renders once, not twice');
+});
+
+test('a heading-only resume row from the model is dropped, not a failed application', async () => {
+  const wrap = (out, instruction) => {
+    if (instruction !== PACKET_INSTRUCTION || !Array.isArray(out?.resume)) return out;
+    const first = out.resume.find(item => item.heading) || out.resume[0];
+    return { ...out, resume: [...out.resume, { section: first.section, heading: first.heading, text: '', evidence: [] }] };
+  };
+  const h = await harness({ wrap });
+  try {
+    const jobId = await h.addJob();
+    await h.prepared(jobId);
+    const job = (await h.app.workspace.load()).jobs.find(j => j.id === jobId);
+    assert.ok(job.packet, `the packet was prepared: ${JSON.stringify({ keys: Object.keys(job), tasks: (await h.app.workspace.load()).tasks.slice(0, 3) }).slice(0, 1500)}`);
+    assert.ok(job.packet.resume.every(item => item.text.trim()), 'no empty line survives');
+  } finally { await h.close(); }
 });

@@ -168,3 +168,30 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
 - Scorer v2 and U14 usage fields: delegated to DeepSeek. Scope is the PDF order
   probe, zero-match Skip, cached and reasoning tokens, model identity, Plainhand
   prompt size, and an offline rescore script. That work needs a re-freeze before use.
+
+## Comparison run blocked: provider quota; regression found and fixed — 2026-11-16
+
+- The live comparison on `1bd7205` is **blocked: provider-quota**. Codex reported a usage
+  limit after 114 calls of the paired run, and the smoke run never started. Following the
+  manifest rule, no aggregate is reported. Partial evidence is in
+  `output/live-1bd7205/` (git-ignored).
+- **Real regression, caught by the run before the quota stop:** 17 unexpected fails,
+  most at prepare with "resume entry must contain 1–10000 characters", including seeded
+  runs that passed at baseline.
+  - Cause: the tailoring lane told the model to keep gap roles as "heading-only
+    entries", so Codex returned empty-text rows and validation rejected the whole
+    application.
+  - Root fix:
+    - the instruction now asks for exactly one short line and no heading-only entries;
+    - `workflow.mjs` drops empty-text rows before the evidence check, for both the
+      packet and the master.
+  - Regression test added (`tests/test-role-order.mjs`), mutation-checked: it fails
+    without the workflow fix.
+  - The controlled gate could not catch this, because the fixture agent ignores the
+    instruction text.
+  - Suite 545/545; controlled gate 56/59, 0 unexpected.
+- U14 data point (rough, window boundaries unknown): the owner's Codex plan ran out
+  after about 264 baseline calls plus 114 calls on the same day, about 378 `codex exec`
+  calls. At the baseline means (5 to 15 calls per application), that is about 25 to 75
+  applications per window if nothing else used the plan.
+- Next: rerun the comparison once the quota resets.

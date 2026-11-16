@@ -240,6 +240,7 @@ export class Workflow {
             draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 150);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
+            draft.resume = draft.resume.filter(item => typeof item?.text !== 'string' || item.text.trim());
             if (!draft.resume.length || draft.resume.some(item => !hasEvidence(item, context))) throw new Error('The master resume contains a claim without an exact source reference. Check your evidence and retry.');
             for (const item of draft.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
             verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
@@ -291,6 +292,9 @@ export class Workflow {
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
           packet.suggestions = strings(packet.suggestions || [], 'optional suggestions');
+          // A line with no text carries no claim and renders as an empty bullet: drop it
+          // instead of failing the whole application (a model may emit a heading-only row).
+          packet.resume = packet.resume.filter(item => typeof item?.text !== 'string' || item.text.trim());
           if (!packet.resume.length || [...packet.resume, ...packet.answers].some(item => !hasEvidence(item, context))) throw new Error('The packet contains a claim without an exact source reference. No packet was approved. Check your evidence and retry.');
           for (const item of packet.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
           for (const item of packet.answers) { requireText(item.question, 'question', 2000); requireText(item.answer, 'answer', 15000); }
