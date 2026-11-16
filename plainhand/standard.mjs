@@ -113,6 +113,6 @@ export function autoPrepareDecision(state, job, contextHash, today) {
   if (job.packet || job.submittedAt) return { prepare: false, reason: 'already prepared' };
   if (standardStatus(state, contextHash) !== 'approved') return { prepare: false, reason: 'no approved standard' };
   const done = state.jobs.filter(j => j.autoSelectedAt?.startsWith(today)).length;
-  if (done >= a.perDay) return { prepare: false, reason: 'daily limit reached' };
+  if (done >= a.perDay) return { prepare: false, reason: 'daily limit reached', done, perDay: a.perDay };
   return { prepare: true };
 }
