@@ -25,7 +25,6 @@ import { approveStandard } from '../plainhand/standard.mjs';
 import { executeAgent, inspectProviders } from '../plainhand/agents.mjs';
 import { personaById, jobById } from '../plainhand/evaluation/corpus.mjs';
 import { scorePacket } from '../plainhand/evaluation/score.mjs';
-import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
 
 const CLI = fileURLToPath(import.meta.url);
 
@@ -75,10 +74,34 @@ function canonical(value) {
 const canonicalJson = value => JSON.stringify(canonical(value));
 const sha256 = value => digest(canonicalJson(value));
 
+const SELF_TEST_RESUME = 'Designed and tested a lightweight chassis for a Formula SAE team. B.S. Mechanical Engineering, Example University, 2027.';
+const selfTestEvidence = [{ sourceId: 'cv', quote: 'Designed and tested a lightweight chassis for a Formula SAE team.' }];
+// Deterministic stand-in for a provider: only the calls preparation makes.
+async function selfTestAgent(id, instruction, data) {
+  if (instruction.includes('Prepare a')) return {
+    headline: 'Mechanical Engineering Graduate',
+    resume: [
+      { section: 'Projects', text: 'Designed and tested a lightweight chassis for a Formula SAE team.', evidence: selfTestEvidence },
+      { section: 'Education', text: 'B.S. Mechanical Engineering, Example University, 2027.', evidence: [{ sourceId: 'cv', quote: 'B.S. Mechanical Engineering, Example University, 2027.' }] },
+    ],
+    coverLetter: 'I would like to bring my design and testing experience to this engineering role.',
+    answers: [{ question: 'Describe a relevant project.', answer: 'I designed and tested a lightweight chassis for a Formula SAE team.', evidence: selfTestEvidence }],
+    questions: [],
+  };
+  if (instruction.includes('Apply the humanizer rules')) return { items: data.items.map(item => ({ id: item.id, text: item.text })), remaining: [] };
+  if (instruction.includes('Review this')) return { passed: true, issues: [] };
+  throw new Error('The self-test agent only answers prepare, humanize and review.');
+}
+
 const selfTestScenario = () => ({
   persona: {
     id: 'queue-single-self-test',
-    profile: { ...emptyProfile(), ...candidate },
+    profile: {
+      ...emptyProfile(),
+      name: 'Test Graduate', email: 'graduate@example.invalid', location: 'Boston, US', timezone: 'America/New_York',
+      roles: 'Mechanical Engineer', graduation: '2027', resume: SELF_TEST_RESUME,
+      story: 'I owned the design and testing work.', voice: 'Clear, direct, specific.', constraints: 'Entry-level roles.',
+    },
     facts: [{ id: 'fsae', section: 'Projects', text: 'Designed and tested a lightweight chassis for a Formula SAE team.' }],
     educationEvidence: 'B.S. Mechanical Engineering, Example University, 2027.',
     voice: { banned: [] },
@@ -125,7 +148,7 @@ const slug = value => String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g
 async function seedWorkspace(root, scenario, provider) {
   const app = await createPlainhand({
     root,
-    providers: fixtureProviders,
+    providers: async () => [],
     startFeatures: false,
     workflowOptions: {
       agent: () => { throw new Error('The seed writes state directly; it never calls a model.'); },
@@ -206,7 +229,7 @@ async function settle(app, timeoutMs = 900000) {
 async function prepareRun(root, agent, ids, timeoutSec) {
   const app = await createPlainhand({
     root,
-    providers: fixtureProviders,
+    providers: async () => [],
     startFeatures: false,
     workflowOptions: {
       agent: (id, instruction, data, options) => agent(id, instruction, data, { ...options, timeout: timeoutSec * 1000 }),
@@ -335,7 +358,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === CLI) {
     if (options.selfTest) {
       provider = 'fixture';
       scenario = selfTestScenario();
-      agent = fixtureAgent;
+      agent = selfTestAgent;
     } else {
       provider = options.provider;
       if (provider === 'chatgpt') throw new Error('Sign in with ChatGPT runs in-process; use codex, claude or antigravity for this script.');
