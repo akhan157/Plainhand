@@ -70,14 +70,28 @@ function sectionOf(line) {
 const stripLine = line => clean(line).replace(/^[#>\s*•·\-–—▪◦]+/, '').trim();
 const splitHeading = line => line.split(SEPARATOR).map(part => part.trim()).filter(Boolean);
 
-function roleItem(parts, sourceId) {
-  const dates = parts.at(-1);
+// A packed heading keeps the period of its sentence; the date field is the date only.
+const dateField = value => String(value ?? '').replace(/[.,;]+$/, '');
+function roleItem(parts, sourceId, line = '') {
+  const dates = dateField(parts.at(-1));
   const parsed = parseDates(dates);
   if (!parsed) return null;
   const org = parts[0] || '';
   const title = parts.length >= 3 ? parts[1] : '';
   if (GAP_HEADING.test(org) || GAP_HEADING.test(title)) return { gap: true };
-  return { kind: 'role', org, title, dates, start: parsed.start, end: parsed.end, ongoing: parsed.ongoing, label: parts.join(' — '), sourceId };
+  return { kind: 'role', org, title, dates, start: parsed.start, end: parsed.end, ongoing: parsed.ongoing, label: [...parts.slice(0, -1), dates].join(' — '), line, sourceId };
+}
+
+// A pasted or seeded resume can carry no section headers at all and pack several
+// headings into one line ("Example University — Master of Science, Molecular Biology
+// — 2012. Example Bioinstruments — Applications Scientist — 2025 to 2026."). Split it
+// at sentence ends only when a segment reads as a dated heading, so ordinary prose is
+// never cut into headings.
+function headingSegments(line) {
+  const segments = clean(line).split(/(?<=\.)\s+/).map(part => part.trim()).filter(Boolean);
+  if (segments.length < 2) return [line];
+  const dated = segment => { const parts = splitHeading(segment); return parts.length >= 2 && Boolean(parseDates(dateField(parts.at(-1)))); };
+  return segments.some(dated) ? segments : [line];
 }
 
 // The roles, credentials, degrees and numbered results the candidate's own
@@ -91,29 +105,41 @@ function resumeItems(text, sourceId, items) {
     if (!line) continue;
     const next = sectionOf(line);
     if (next) { section = next; role = null; continue; }
-    if (section === 'experience') {
-      const parts = splitHeading(line);
-      const heading = parts.length >= 2 ? roleItem(parts, sourceId) : null;
-      if (heading) {
-        role = heading.gap ? null : heading;
-        if (role) items.roles.push(role);
+    // Without a section header, only a dated heading line is readable; the same
+    // line may hold several of them.
+    const lines = section ? [line] : headingSegments(line);
+    for (const entry of lines) {
+      if (section === 'experience') {
+        const parts = splitHeading(entry);
+        const heading = parts.length >= 2 ? roleItem(parts, sourceId, entry) : null;
+        if (heading) {
+          role = heading.gap ? null : heading;
+          if (role) items.roles.push(role);
+          continue;
+        }
+        if (role && isNumberBearing(entry)) items.results.push({ kind: 'result', text: entry, role: role.label, sourceId });
         continue;
       }
-      if (role && isNumberBearing(line)) items.results.push({ kind: 'result', text: line, role: role.label, sourceId });
-      continue;
+      if (section === 'education' || section === 'credentials') {
+        const parts = splitHeading(entry);
+        const label = parts.length >= 2 ? parts.join(' — ') : entry;
+        // A certifications section is a list of credentials by definition. An
+        // education section may also carry coursework, so only a degree word or an
+        // institution — programme — date line is a degree item.
+        if (section === 'education' && !DEGREE.test(entry) && !(parts.length >= 2 && parseDates(parts.at(-1)))) continue;
+        if (DEGREE.test(entry)) items.degrees.push({ kind: 'degree', text: entry, label, sourceId });
+        else items.certifications.push({ kind: 'credential', text: entry, label, sourceId });
+        continue;
+      }
+      if (section === 'other' && isNumberBearing(entry)) { items.results.push({ kind: 'result', text: entry, role: null, sourceId }); continue; }
+      if (section) continue;
+      // No headers: a dated "institution — degree — year" line is a degree, a dated
+      // "employer — title — dates" line is a role. Nothing else is claimed.
+      const parts = splitHeading(entry);
+      if (parts.length < 2 || !parseDates(dateField(parts.at(-1)))) continue;
+      if (DEGREE.test(entry)) items.degrees.push({ kind: 'degree', text: entry, label: [...parts.slice(0, -1), dateField(parts.at(-1))].join(' — '), sourceId });
+      else { const heading = roleItem(parts, sourceId, entry); if (heading && !heading.gap) items.roles.push(heading); }
     }
-    if (section === 'education' || section === 'credentials') {
-      const parts = splitHeading(line);
-      const label = parts.length >= 2 ? parts.join(' — ') : line;
-      // A certifications section is a list of credentials by definition. An
-      // education section may also carry coursework, so only a degree word or an
-      // institution — programme — date line is a degree item.
-      if (section === 'education' && !DEGREE.test(line) && !(parts.length >= 2 && parseDates(parts.at(-1)))) continue;
-      if (DEGREE.test(line)) items.degrees.push({ kind: 'degree', text: line, label, sourceId });
-      else items.certifications.push({ kind: 'credential', text: line, label, sourceId });
-      continue;
-    }
-    if (section === 'other' && isNumberBearing(line)) items.results.push({ kind: 'result', text: line, role: null, sourceId });
   }
 }
 
@@ -279,4 +305,64 @@ export function masterCompleteness(sources, master) {
       results: count(results),
     },
   };
+}
+
+// The deterministic last resort after the one retry: a credential the candidate's
+// sources state, and a source role heading, are added to the master with their exact
+// source sentence. The credential becomes a heading-only row when the sentence names
+// the credential and its year in a strict pattern; otherwise its text is the shortest
+// clause that names it. A role becomes a heading-only Experience row (the master may
+// state a role it has no line for; a packet may not). Nothing is invented: a row is
+// only added when a source contains its quote exactly.
+const CREDENTIAL_NAME = /\b(?:earned|completed|obtained|received|holds?|has|have)\s+(?:an?\s+|my\s+|the\s+)?(.+?)\s+(certification|certificate|licen[cs]e)\s+(?:in|since|during)\s+((?:19|20)\d{2})\b/i;
+const shortestClause = text => {
+  const clauses = String(text || '').split(/[,;]|\s+(?:and|but|while|whereas|so)\s+/i).map(clause => clause.trim()).filter(Boolean);
+  return clauses.filter(clause => CREDENTIAL_HINT.test(clause)).sort((a, b) => a.length - b.length)[0] || clean(text);
+};
+function exactQuote(sources, sourceId, candidate) {
+  const wanted = clean(candidate);
+  if (wanted.length < 8) return null;
+  // The workflow's evidence gate checks the raw source text, so only a quote that
+  // appears in it exactly can ground an added row.
+  const source = (Array.isArray(sources) ? sources : []).find(item => item?.id === sourceId && String(item.text || '').includes(wanted));
+  return source ? { sourceId, quote: wanted } : null;
+}
+
+// The same sentence may be deduped onto the resume because that source came first; a
+// credential the candidate also told the app still counts as stated in a story.
+function storyQuote(sources, candidate) {
+  const wanted = clean(candidate);
+  if (wanted.length < 8) return null;
+  const source = (Array.isArray(sources) ? sources : []).find(item => STORY_SOURCE_IDS.has(item?.id) && String(item.text || '').includes(wanted));
+  return source ? { sourceId: source.id, quote: wanted } : null;
+}
+
+export function completeMasterResume(sources, master) {
+  const entries = Array.isArray(master) ? [...master] : [];
+  const report = masterCompleteness(sources, entries);
+  const added = [];
+  for (const item of report.missing) {
+    if (item.kind === 'credential') {
+      // The sentence may be attributed to the resume after dedupe; it is still the
+      // candidate's statement, and the exact quote is what makes the row safe.
+      const stated = exactQuote(sources, item.sourceId, item.text) || exactQuote(sources, item.sourceId, item.label)
+        || storyQuote(sources, item.text) || storyQuote(sources, item.label);
+      if (!stated) continue;
+      const named = stated.quote.match(CREDENTIAL_NAME);
+      // A heading-only row only when the sentence names the credential cleanly: its
+      // name starts with a capital, not a leading adjective such as "active".
+      const cleanName = named && /^[A-Z0-9]/.test(named[1].trim()) ? named[1].trim() : '';
+      const noun = named ? named[2].charAt(0).toUpperCase() + named[2].slice(1).toLowerCase() : '';
+      entries.push(cleanName
+        ? { section: 'Certifications', heading: { org: cleanName, title: noun, location: '', dates: named[3] }, text: '', evidence: [stated] }
+        : { section: 'Certifications', heading: null, text: shortestClause(stated.quote), evidence: [stated] });
+      added.push(entries.at(-1));
+    } else if (item.kind === 'role') {
+      const stated = exactQuote(sources, item.sourceId, item.line) || exactQuote(sources, item.sourceId, item.label);
+      if (!stated) continue;
+      entries.push({ section: 'Experience', heading: { org: item.org, title: item.title, location: '', dates: item.dates }, text: '', evidence: [stated] });
+      added.push(entries.at(-1));
+    }
+  }
+  return { resume: entries, added, completeness: masterCompleteness(sources, entries) };
 }

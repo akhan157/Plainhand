@@ -13,7 +13,7 @@ import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fix
 import { PACKET_INSTRUCTION, REVIEW_INSTRUCTION, STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
 import { HUMANIZE_INSTRUCTION } from '../plainhand/humanize.mjs';
 import { MIN_OVERLAP_WORDS, letterOverlaps, letterRetryFeedback, overlapSuggestion } from '../plainhand/letter-checks.mjs';
-import { dedupeResume, guardSuggestions, headingOnlyRow, keepResumeRow } from '../plainhand/workflow.mjs';
+import { dedupeResume, guardSuggestions, headingOnlyRow, keepResumeRow, keepMasterRow, headingOnlyRoleRow } from '../plainhand/workflow.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml } from '../plainhand/resume-format.mjs';
 
 const ATLAS = 'Built the Atlas reporting tool at Synthetic Engineering and cut report preparation time from three days to four hours for the finance team.';
@@ -146,6 +146,16 @@ test('a heading-only education row survives, renders without a bullet and passes
     assert.equal(keepResumeRow({ ...educationRow(), section: 'Experience' }), false);
     assert.equal(keepResumeRow({ ...educationRow(), heading: { ...EDUCATION_HEADING, dates: '' } }), false);
   } finally { await h.close(); }
+});
+
+test('a heading-only Experience row is legal in the master only', () => {
+  const role = { section: 'Experience', heading: EXPERIENCE_HEADING, text: '' };
+  assert.equal(headingOnlyRoleRow(role), true);
+  assert.equal(keepMasterRow(role), true, 'the master keeps a role it has no line for');
+  assert.equal(keepResumeRow(role), false, 'a packet never ships one');
+  assert.equal(keepMasterRow({ ...role, heading: { ...EXPERIENCE_HEADING, org: '' } }), false, 'the employer and dates are required');
+  assert.equal(keepMasterRow({ ...role, text: 'Built the reporting tool.' }), true);
+  assert.equal(keepMasterRow({ ...role, section: 'Skills' }), false);
 });
 
 test('the one evidence retry carries the repeated letter sentences, and the final packet keeps the overlap as a suggestion', async () => {
@@ -282,6 +292,18 @@ test('suggestion guard leaves advice, questions and conditionals alone', async (
   const { guardSuggestions } = await import('../plainhand/workflow.mjs');
   const resume = [{ section: 'Experience', heading: { org: 'Fictional Biologics', title: 'Scientist', location: '', dates: '2021 to 2026' }, text: 'Ran potency assays.' }];
   for (const note of ['Consider adding AWS if your resume lists it.', 'If you have Python experience, it appears relevant.', 'The posting lists Kubernetes; your sources do not show it.', 'Could you confirm whether SQL is listed elsewhere?']) assert.deepEqual(guardSuggestions([note], resume, ''), [note]);
+});
+
+test('a passive inclusion claim is corrected when the documents do not hold the item', async () => {
+  const { guardSuggestions } = await import('../plainhand/workflow.mjs');
+  const resume = [{ section: 'Experience', heading: { org: 'Fictional Biologics', title: 'Scientist', location: '', dates: '2021 to 2026' }, text: 'Ran potency assays.' }];
+  assert.deepEqual(guardSuggestions(['The certification is included with its stated year.'], resume, ''), ['Left out: the certification.']);
+  assert.deepEqual(guardSuggestions(['The CKS certification is included.'], resume, ''), ['Left out: CKS certification.']);
+  const withCredential = [...resume, { section: 'Certifications', heading: null, text: 'CKS, 2023.' }];
+  assert.deepEqual(guardSuggestions(['The certification is included with its stated year.'], withCredential, ''), ['The certification is included with its stated year.'], 'a credential the documents hold keeps the note');
+  assert.deepEqual(guardSuggestions(['The CKS certification is included.'], withCredential, ''), ['The CKS certification is included.']);
+  // Advice and questions never match the passive form.
+  for (const note of ['Consider adding the AWS certification.', 'Is the AWS certification listed anywhere?', 'Could you confirm whether the certification is included?']) assert.deepEqual(guardSuggestions([note], resume, ''), [note]);
 });
 
 test('suggestion guard names only the absent items of a mixed inclusion claim', async () => {

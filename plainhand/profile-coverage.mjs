@@ -30,6 +30,30 @@ const EMPLOYER_LIKE = /\b[A-Z][\w&'’.+-]*(?:\s+(?:[A-Z][\w&'’.+-]*|of|&|and)
 // A resume the candidate uploaded or pasted counts once a line reads as a role heading:
 // an employer-like name and role dates on the same line.
 const datedRoleLines = resume => String(resume || '').split('\n').some(line => EMPLOYER_LIKE.test(line) && ROLE_DATES.test(line));
+// The employer and title a dated role heading names. A seeded resume can pack several
+// headings into one line ("... 2012. Example Bioinstruments — Applications Scientist —
+// 2025 to 2026."), so each sentence is read on its own; only a segment ending in role
+// dates is a heading, which keeps a bare graduation year out.
+const resumeRoleNames = resume => String(resume || '').split('\n')
+  .flatMap(line => line.split(/(?<=\.)\s+/))
+  .flatMap(segment => {
+    const parts = segment.split(/\s+[—–]\s+|\s+-\s+/).map(part => part.trim()).filter(Boolean);
+    if (parts.length < 2 || !ROLE_DATES.test(parts.at(-1))) return [];
+    return [parts[0], parts.length >= 3 ? parts[1] : ''].filter(Boolean);
+  });
+// Results the conversation states but cannot place: each bears a number and a result
+// verb but names no employer or organisation at all, and none of the resume's dated
+// role names. Seeded headings alone are not an answer to "where did that happen?"; the
+// interview has to ask before it can attach an older story to a role.
+const unplacedResults = (texts, profile) => {
+  const roles = resumeRoleNames(profile.resume);
+  return texts.filter(text => {
+    const value = String(text || '');
+    if (!NUMBER.test(value) || !RESULT_VERB.test(value)) return false;
+    if (EMPLOYER_LIKE.test(value)) return false;
+    return !roles.some(role => value.toLowerCase().includes(role.toLowerCase()));
+  });
+};
 
 // Order matters only for what the interview asks first: the work itself comes before
 // the details around it, and each role's employer, title and dates come straight after
@@ -38,7 +62,8 @@ const datedRoleLines = resume => String(resume || '').split('\n').some(line => E
 // project, not a job, and a role question lands oddly before any work has been told.
 export const PROFILE_AREAS = [
   { id: 'results', asked: /\b(responsib\w*|results?|achiev\w*|accomplish\w*|impact)\b/i, label: 'what each role was responsible for and the results, with numbers', covered: texts => texts.some(text => NUMBER.test(text) && RESULT_VERB.test(text)) },
-  { id: 'roles', asked: /\b(employers?|compan(?:y|ies)|organi[sz]ations?|job titles?|official titles?|dates?|date ranges?|start(?:ing|ed)? (?:and|to) end\w*)\b/i, label: "each role's employer, official job title and dates", covered: (texts, profile) => texts.some(text => EMPLOYER_LIKE.test(text) && ROLE_DATES.test(text)) || datedRoleLines(profile.resume) },
+  { id: 'roles', asked: /\b(employers?|compan(?:y|ies)|organi[sz]ations?|job titles?|official titles?|dates?|date ranges?|start(?:ing|ed)? (?:and|to) end\w*)\b/i, label: "each role's employer, official job title and dates", covered: (texts, profile) => texts.some(text => EMPLOYER_LIKE.test(text) && ROLE_DATES.test(text))
+    || (datedRoleLines(profile.resume) && unplacedResults(texts, profile).length === 0) },
   { id: 'tools', asked: /\b(tools?|software|systems?|platforms?)\b/i, label: 'the tools, software and systems they use', covered: texts => any(texts, /\b(tools?|software|systems?|platforms?|excel|spreadsheets?|sql|python|pandas|tableau|power ?bi|power query|netsuite|quickbooks|sap|cad|solidworks|ansys|matlab|labview|figma|jira|salesforce|typescript|javascript|java|aws|azure|docker|git|sas|stata|rstudio|rmarkdown)\b/i) },
   { id: 'credentials', asked: /\b(certificat\w*|licen[cs]\w*|credential\w*)\b/i, label: 'certifications and licences', covered: texts => any(texts, /\b(certificat\w*|licen[cs]e[ds]?|certified|credential\w*|cpa|cfa|pmp|exam|registered for|series \d)\b/i) },
   { id: 'education', asked: /\b(education|degree|studied|study|training|school|university|college)\b/i, label: 'education and training', covered: (texts, profile) => filled(profile.graduation) || any(texts, /\b(degree|b\.?s\.?|m\.?s\.?|bachelor\w*|master'?s?|ph\.?d|doctorate|university|college|graduat\w*|diploma|coursework|minor|gpa|school|apprentice\w*|bootcamp)\b/i) },
