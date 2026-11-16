@@ -3,7 +3,7 @@ import { digest, now, requireText, cleanText, syncTracker, recordStatusChange, s
 import { jobUrl, isBoardUrl } from './jobs.mjs';
 import { assertPacketFresh, packetIdentity } from './workflow.mjs';
 import { Corrections } from './corrections.mjs';
-import { AnswerBank } from './answer-bank.mjs';
+import { AnswerBank, quoteInSources } from './answer-bank.mjs';
 import { AuditLog } from './audit.mjs';
 import { FEATURES } from './features/index.mjs';
 import { addContact, addInterview, setInterviewStatus, removeEntry, setNextAction, followUpQueue, upcomingInterview, recordOf } from './application-record.mjs';
@@ -291,12 +291,45 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
     } });
   define({ name: 'answers.list', tier: 'read', title: 'Reusable answers', description: 'Approved reusable answers with their source quote, scope, review date and expiry.', input: {},
     run: async () => new AnswerBank(workspace).load() });
-  define({ name: 'answers.update', tier: 'candidate', title: 'Edit a reusable answer', description: 'The candidate edits an approved reusable answer or its expiry; the source quote is kept.', input: { id: 'string', answer: 'string?', reviewBy: 'date?' }, panel: () => ({ type: 'workspace' }),
+  define({ name: 'answers.update', tier: 'candidate', title: 'Edit a reusable answer', description: 'The candidate edits an approved reusable answer, its expiry or its scope. Editing the answer keeps the quote for display but clears its verification, so it is not reused until the candidate re-approves it or attaches a current quote.', input: { id: 'string', answer: 'string?', reviewBy: 'date?', scope: 'enum:global|job|company?', jobId: 'string?', company: 'string?', evidence: 'array?' }, panel: () => ({ type: 'workspace' }),
     run: async (ctx, input) => {
       const bank = new AnswerBank(workspace), entry = (await bank.load()).find(item => item.id === input.id);
       if (!entry) throw new ActionError('failed', 'Reusable answer not found.');
-      const updated = await bank.add({ ...entry, answer: input.answer ?? entry.answer, reviewBy: input.reviewBy ?? entry.reviewBy, reviewedAt: now().slice(0, 10) }, { id: entry.id });
+      const answer = input.answer ?? entry.answer;
+      const changed = String(answer).trim() !== String(entry.answer).trim();
+      const today = now().slice(0, 10);
+      let scope = entry.scope;
+      if (input.scope === 'global') scope = 'global';
+      else if (input.scope === 'job') {
+        if (!input.jobId) throw new ActionError('invalid_input', 'Name the role for job-scoped reuse.');
+        scope = { jobs: [String(input.jobId)], companies: [] };
+      } else if (input.scope === 'company') {
+        if (!input.company) throw new ActionError('invalid_input', 'Name the employer for company-scoped reuse.');
+        scope = { jobs: [], companies: [String(input.company).toLowerCase()] };
+      }
+      let evidence = entry.evidence, base = entry;
+      if (input.evidence !== undefined) {
+        if (!Array.isArray(input.evidence) || !input.evidence.length) throw new ActionError('invalid_input', 'Attach at least one source quote.');
+        evidence = input.evidence.slice(0, 12).map(item => ({ sourceId: String(item?.sourceId || ''), quote: String(item?.quote || '') }));
+        const context = await workspace.context(await workspace.load());
+        if (!quoteInSources(evidence, context.sources)) throw new ActionError('failed', 'That quote does not appear word for word in a source you currently share.');
+        // A current quote re-verifies the entry and lifts an import hold.
+        base = { ...entry }; delete base.status; delete base.needsReview;
+      }
+      const verified = input.evidence !== undefined;
+      const updated = await bank.add({ ...base, answer, evidence, scope, reviewBy: input.reviewBy ?? entry.reviewBy,
+        reviewedAt: verified ? today : entry.reviewedAt,
+        verifiedAt: verified ? today : changed ? null : entry.verifiedAt,
+        needsReview: verified ? false : changed ? true : entry.needsReview }, { id: entry.id });
       return { result: updated };
+    } });
+  define({ name: 'answers.approve', tier: 'candidate', title: 'Re-approve a reusable answer', description: 'The candidate confirms an edited or imported reusable answer is accurate again. It is reused only while its quote is still in the current sources.', input: { id: 'string' }, panel: () => ({ type: 'workspace' }),
+    run: async (ctx, input) => {
+      const bank = new AnswerBank(workspace), entry = (await bank.load()).find(item => item.id === input.id);
+      if (!entry) throw new ActionError('failed', 'Reusable answer not found.');
+      const base = { ...entry }; delete base.status; delete base.needsReview;
+      const today = now().slice(0, 10);
+      return { result: await bank.add({ ...base, reviewedAt: today, verifiedAt: today, needsReview: false }, { id: entry.id }) };
     } });
   define({ name: 'answers.remove', tier: 'candidate', title: 'Remove a reusable answer', description: 'The candidate removes a reusable answer.', input: { id: 'string' }, panel: () => ({ type: 'workspace' }),
     run: async (ctx, input) => {

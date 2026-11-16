@@ -299,6 +299,11 @@ export class Workflow {
           for (const item of packet.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
           for (const item of packet.answers) { requireText(item.question, 'question', 2000); requireText(item.answer, 'answer', 15000); }
           verifyHeadings(packet.resume, context.sources.map(s => s.text).join('\n'));
+          // Reuse before humanize and review: an approved factual answer whose quote is in
+          // the current shared sources replaces the draft and carries its provenance. Held,
+          // expired, out-of-scope or unproved entries and every candidate assertion stay out,
+          // and the answer records why, so review still sees the sentence that will ship.
+          applyReusableAnswers(packet, { answers: await new AnswerBank(this.workspace).load(), job, sources: context.sources, asOf: now().slice(0, 10) });
           await this.progress(id, 'Removing AI writing patterns');
           ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
           await this.progress(id, 'Checking factual claims against the original sources');
@@ -366,6 +371,28 @@ export class Workflow {
   async assertContext(state, context) { if ((await this.workspace.context(state)).hash !== context.hash) throw new Error('Your profile changed during this task. Retry with the current profile.'); }
 }
 function cleanEntry(value) { return typeof value === 'string' && value.length > 0 && value.length < 20000; }
+
+// Reuses candidate-approved answers in a new packet. Only a factual entry whose quote is
+// in the current shared sources and whose scope, expiry and review state still hold may
+// replace a drafted answer; assertions are never packet evidence. A matching entry that
+// cannot be used leaves a reason on the answer instead of silently falling back.
+export function applyReusableAnswers(packet, { answers = [], job = null, sources = [], asOf } = {}) {
+  let reused = 0, notReused = 0;
+  for (const item of packet.answers || []) {
+    const { entry, reason } = AnswerBank.reuse(answers, { label: item.question, job, asOf, sources });
+    if (entry) {
+      item.answer = entry.answer;
+      item.evidence = entry.evidence.map(({ sourceId, quote }) => ({ sourceId, quote }));
+      item.reuse = { kind: 'reusable-answer', id: entry.id, reviewedAt: entry.reviewedAt };
+      delete item.notReused;
+      reused++;
+    } else if (reason) {
+      item.notReused = { kind: 'reusable-answer', reason };
+      notReused++;
+    }
+  }
+  return { reused, notReused };
+}
 
 export function suggestFormAnswers(fields, profile, packet, options = {}) {
   const answers = defaultFieldAnswers(fields, profile);
