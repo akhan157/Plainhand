@@ -315,3 +315,20 @@ running. U15 stays deferred by the owner until the rest is done.
 - Not done: hosted fill-path tests.
 - M5 (contradictions, settled-fact lookup, repeat-question counter) and M6 (memory
   probe) delegated together.
+
+## U11 merged — 2026-11-16
+
+- Lane `51c5a5e` (OMP DeepSeek) adds tests only, with no product change:
+  - adversarial postings and notes;
+  - five stale-approval cases;
+  - candidate-tier refusal derived from the registry (23 actions; mutation shows the
+    guard is load-bearing);
+  - provider payload shapes;
+  - a tracked-file personal-data scan.
+- Root fix `3958509`: once its file was tracked, the scanner flagged its own planted
+  fixtures. It now skips that one file.
+- Root decision on the lane's open point: the candidate's email and phone currently
+  travel to the provider in the profile source until excluded. Planned change: keep
+  contact fields local (rendering and form fill only) and out of provider context by
+  default. This changes the context hash once, so approvals reset. Queued as a small
+  product lane after the workflow lanes land.
