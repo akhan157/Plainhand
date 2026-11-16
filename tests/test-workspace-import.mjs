@@ -178,3 +178,23 @@ test('a workspace migrated to the current state version still exports and import
     } finally { await target.close(); }
   } finally { for (const root of roots) await rm(root, { recursive: true, force: true }); }
 });
+
+test('a version-1 export without the newer keys imports with the migration defaults and keeps the target version', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'plainhand-v1-import-'));
+  try {
+    const app = await createPlainhand({ root, providers: fixtureProviders });
+    try {
+      const { importWorkspace } = await import('../plainhand/workspace-import.mjs');
+      const { STATE_VERSION } = await import('../plainhand/migrations.mjs');
+      const data = { version: 1, profile: { ...candidate }, jobs: [], sources: [], tasks: [], conversation: [], events: [] };
+      await importWorkspace({ workspace: app.workspace, data, busy: false });
+      const state = await app.workspace.load();
+      assert.equal(state.version, STATE_VERSION);
+      assert.equal(state.settings.autonomy.enabled, false);
+      assert.equal(state.settings.roleOrder, 'recent');
+      assert.deepEqual(state.claimLine, { decisions: [], statements: [] });
+      assert.deepEqual(state.conflictReview, { decisions: [], questionChecks: [] });
+      assert.deepEqual(state.inbox, []);
+    } finally { await app.close(); }
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

@@ -102,7 +102,11 @@ export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
   return (Array.isArray(suggestions) ? suggestions : []).map(suggestion => {
     const claim = suggestionItem(suggestion);
     if (!claim) return suggestion;
-    if (claim.named.every(word => haystack.includes(` ${suggestionText(word)} `))) return suggestion;
+    const missing = claim.named.filter(word => !haystack.includes(` ${suggestionText(word)} `));
+    if (!missing.length) return suggestion;
+    // Name only what is actually absent: "includes AWS and Kubernetes" with AWS present
+    // becomes "Left out: Kubernetes", never a false omission of AWS.
+    if (missing.length < claim.named.length) return `Left out: ${missing.join(' ')}.`;
     const item = claim.item.charAt(0).toUpperCase() + claim.item.slice(1);
     return `Left out: ${item}.`;
   });

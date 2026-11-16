@@ -282,3 +282,9 @@ test('suggestion guard leaves advice, questions and conditionals alone', async (
   const resume = [{ section: 'Experience', heading: { org: 'Fictional Biologics', title: 'Scientist', location: '', dates: '2021 to 2026' }, text: 'Ran potency assays.' }];
   for (const note of ['Consider adding AWS if your resume lists it.', 'If you have Python experience, it appears relevant.', 'The posting lists Kubernetes; your sources do not show it.', 'Could you confirm whether SQL is listed elsewhere?']) assert.deepEqual(guardSuggestions([note], resume, ''), [note]);
 });
+
+test('suggestion guard names only the absent items of a mixed inclusion claim', async () => {
+  const { guardSuggestions } = await import('../plainhand/workflow.mjs');
+  const resume = [{ section: 'Skills', heading: null, text: 'AWS, Terraform' }];
+  assert.deepEqual(guardSuggestions(['The resume includes AWS and Kubernetes.'], resume, ''), ['Left out: Kubernetes.']);
+});

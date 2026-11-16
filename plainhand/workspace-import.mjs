@@ -294,10 +294,10 @@ function prepareImport(data) {
     provider: typeof data.provider === 'string' ? data.provider.slice(0, 100) : undefined, jobs: Array.isArray(data.jobs) ? data.jobs : [], sources: Array.isArray(data.sources) ? data.sources : [],
     tasks: Array.isArray(data.tasks) ? data.tasks : [], conversation: Array.isArray(data.conversation) ? data.conversation : [],
     events: Array.isArray(data.events) ? data.events : [], contextPrefs: object(data.contextPrefs) ? data.contextPrefs : undefined,
-    inbox: Array.isArray(data.inbox) ? data.inbox : undefined, skillPlan: object(data.skillPlan) ? data.skillPlan : undefined,
-    writingSamples: cleanSamples(data.writingSamples), claimLine: cleanClaimLine(data.claimLine), standard: cleanStandard(data.standard),
-    resumeFormat: cleanResumeFormat(data.resumeFormat), settings: cleanSettings(data.settings), understanding: cleanUnderstanding(data.understanding),
-    conflictReview: cleanConflictReview(data.conflictReview),
+    inbox: Array.isArray(data.inbox) ? data.inbox : [], skillPlan: object(data.skillPlan) ? data.skillPlan : undefined,
+    writingSamples: cleanSamples(data.writingSamples), claimLine: cleanClaimLine(data.claimLine) || { decisions: [], statements: [] }, standard: cleanStandard(data.standard),
+    resumeFormat: cleanResumeFormat(data.resumeFormat), settings: cleanSettings(data.settings) || cleanSettings({}), understanding: cleanUnderstanding(data.understanding),
+    conflictReview: cleanConflictReview(data.conflictReview) || { decisions: [], questionChecks: [] },
     filesOmitted: Array.isArray(data.filesOmitted) ? data.filesOmitted.filter(file => EXPORT_FILES.includes(file)) : [],
   };
 }
@@ -402,6 +402,9 @@ export async function importWorkspace({ workspace, data, busy = false }) {
     const summary = await workspace.mutate(async state => {
       if (state.tasks.some(task => ['queued', 'running'].includes(task.status))) throw new ImportError('Wait for the running tasks to finish, then import.');
       for (const key of Object.keys(state)) if (!['version', 'revision'].includes(key)) delete state[key];
+      // Every imported key is cleaned to the current shape and approvals are reset, so the
+      // result is a current-version workspace whatever version wrote the export.
+      state.version = STATE_VERSION;
       state.profile = prepared.profile;
       for (const key of STATE_KEYS) if (key !== 'profile' && prepared[key] !== undefined) state[key] = prepared[key];
       state.jobs ||= []; state.sources ||= []; state.tasks ||= []; state.conversation ||= []; state.events ||= [];

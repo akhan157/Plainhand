@@ -518,6 +518,11 @@ test('tracked files hold no real personal data, and a planted file is caught', a
   const real = scanTracked(entries);
   assert.deepEqual(real, [], 'the current tree has no personal data in tracked files');
 
+  // The scan covers this file too: its own text is scanned and comes back clean, so a
+  // re-added skip or a literal planted address here would be caught.
+  const self = (await trackedText(process.cwd())).find(entry => entry.file === 'tests/test-u11-safety.mjs');
+  assert.ok(self, 'this suite is among the scanned tracked files');
+  assert.deepEqual(scanTracked([self]), [], 'this suite holds no literal planted data');
   // A planted file staged in a real git repository fails the same scan.
   const planted = await mkdtemp(path.join(tmpdir(), 'plainhand-u11-plant-'));
   try {

@@ -11,7 +11,8 @@ export async function writeManualKit({ workspace, state, job }) {
   if (!job) throw new Error('Job not found.');
   if (!job.packet) throw new Error('Prepare this application packet first; the kit needs the reviewed documents.');
   // The kit is what the candidate submits by hand, so it carries only documents they
-  // approved, in exactly the version they approved.
+  // approved: the resume PDF is verified against the approved hash; the cover-letter PDF
+  // is copied from the prepared artifacts, whose hash the approval does not cover.
   if (!job.approvedHash || job.approvedHash !== packetIdentity(job)) throw new Error('Approve this application first; the kit carries only the version you approved.');
   const directory = kitDirectory(job);
   const link = job.applyUrl || job.url;
