@@ -251,6 +251,16 @@ export function codexExecArgs({ resultFile, instructionsFile }) {
   ];
 }
 
+// The Claude model and effort for each call: PLAINHAND_CLAUDE_MODEL (an alias such as
+// "sonnet", or a full id) and PLAINHAND_CLAUDE_EFFORT (low, medium, high, xhigh, max).
+// Unset keeps the CLI's own default. A smaller model at medium effort costs the
+// candidate's subscription far less per application.
+const CLAUDE_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+export function claudeModelArgs(env = process.env) {
+  const model = String(env?.PLAINHAND_CLAUDE_MODEL ?? '').trim();
+  const effort = String(env?.PLAINHAND_CLAUDE_EFFORT ?? '').trim().toLowerCase();
+  return [...(/^[A-Za-z0-9._\[\]-]{1,80}$/.test(model) ? ['--model', model] : []), ...(CLAUDE_EFFORTS.has(effort) ? ['--effort', effort] : [])];
+}
 export async function executeAgent(id, instruction, data, { signal, runner = runProcess, onUsage, onText, chatgpt, timeout = 180000 } = {}) {
   const p = providerById(id);
   // Sign in with ChatGPT runs in-process; the caller supplies the agent bound to its token store.
@@ -271,7 +281,7 @@ export async function executeAgent(id, instruction, data, { signal, runner = run
       args = codexExecArgs({ resultFile: path.join(cwd, 'result.json'), instructionsFile });
     }
     const streaming = id === 'claude' && typeof onText === 'function';
-    if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence', '--system-prompt', CLI_INSTRUCTIONS];
+    if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence', ...claudeModelArgs(env), '--system-prompt', CLI_INSTRUCTIONS];
     if (id === 'antigravity') args = ['--input-format', 'stream-json', '--output-format', 'stream-json', '--mode', 'plan', '--sandbox', '--print-timeout', `${Math.ceil(timeout / 1000)}s`];
     const input = id === 'antigravity' ? JSON.stringify({ event: 'user', message: { content: prompt } }) + '\n' : prompt;
     const cmd = providerCommand(p);

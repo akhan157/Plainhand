@@ -251,3 +251,10 @@ test('a factual review issue still redrafts, and the log shows the second attemp
     assert.deepEqual(job.callLog.filter(entry => entry.attempt === 2).map(entry => entry.purpose), ['prepare', 'humanize', 'review']);
   } finally { await h.close(); }
 });
+
+test('the Claude model and effort come from PLAINHAND_CLAUDE_MODEL and PLAINHAND_CLAUDE_EFFORT', async () => {
+  const { claudeModelArgs } = await import('../plainhand/agents.mjs');
+  assert.deepEqual(claudeModelArgs({ PLAINHAND_CLAUDE_MODEL: 'sonnet', PLAINHAND_CLAUDE_EFFORT: 'medium' }), ['--model', 'sonnet', '--effort', 'medium']);
+  assert.deepEqual(claudeModelArgs({}), []);
+  assert.deepEqual(claudeModelArgs({ PLAINHAND_CLAUDE_MODEL: 'sonnet; rm -rf', PLAINHAND_CLAUDE_EFFORT: 'turbo' }), []);
+});
