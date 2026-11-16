@@ -212,6 +212,7 @@ function RequestBox({ id, label, placeholder, onSubmit, disabled }) {
   return html`<form class="request-box" onSubmit=${submit}><${Field} form=${id} name="request" label=${label} value=${draft || ''} onInput=${setDraft} placeholder=${placeholder} disabled=${disabled} /><${Button} type="submit" icon="edit" disabled=${disabled || !(draft || '').trim()}>Ask for this change</${Button}></form>`;
 }
 const STANDARD_PILL = { approved: ['success', 'Approved'], draft: ['warn', 'Awaiting your review'], stale: ['danger', 'Out of date'] };
+const MASTER_ITEM_KIND = { role: 'Role', credential: 'Certification', degree: 'Degree', result: 'Result' };
 function Standard() {
   const state = store.state;
   const s = state.standard, status = state.standardStatus || 'none';
@@ -224,6 +225,7 @@ function Standard() {
         ? html`<${Notice} tone="danger" title="Your profile changed">Rewrite your master resume so it reflects what you've added.</${Notice}>`
         : html`<${Notice} tone="danger" title="Write your master resume">Plainhand now keeps a master resume with everything you have done, and picks from it for each job. Rewrite this once to replace your old standard resume.</${Notice}>`) : null}
       ${s.coverage?.missing?.length ? html`<${Notice} tone="warn" title=${`Covers ${s.coverage.covered} of ${s.coverage.lines} lines from your resume`}>These lines from your resume aren't in it yet. Ask for them below, or rewrite it.<ul>${s.coverage.missing.map((line, i) => html`<li key=${i}>${line}</li>`)}</ul></${Notice}>` : null}
+      ${s.completeness?.missing?.length ? html`<${Notice} tone="warn" title=${`${s.completeness.missing.length} ${s.completeness.missing.length === 1 ? 'item is' : 'items are'} missing from your sources`}>Your master resume is meant to hold everything you have done. ${s.completeness.counts?.present ?? 0} of ${s.completeness.counts?.total ?? s.completeness.missing.length} roles, credentials, degrees and numbered results were found in it. Ask for these below, or rewrite it.<ul>${s.completeness.missing.slice(0, 10).map((item, i) => html`<li key=${i}><strong>${MASTER_ITEM_KIND[item.kind] || 'Item'}:</strong> ${String(item.label || item.text || '').slice(0, 300)}</li>`)}</ul></${Notice}>` : null}
       <article class="document" aria-label="Master resume"><h4 class="doc-name">${s.draft.headline}</h4>
         ${s.draft.resume.map((entry, i) => { const prev = s.draft.resume[i - 1], h = entry.heading, newHeading = h && (!prev || JSON.stringify(prev.heading || null) !== JSON.stringify(h) || prev.section !== entry.section);
           // The heading is part of what is approved and of what each application receives, so show it.

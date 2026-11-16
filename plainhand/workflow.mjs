@@ -14,6 +14,7 @@ import { prepareMemoryCheck, recordQuestionChecks } from './memory-checks.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
+import { masterCompleteness } from './master-completeness.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized, aiTells } from './humanize.mjs';
 import { AgentCache } from './agent-cache.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
@@ -26,6 +27,12 @@ const list = (value, label, limit = 40) => {
   if (!Array.isArray(value) || value.length > limit) throw new Error(`The agent returned invalid ${label}. Retry the task.`);
   return value;
 };
+// The master resume has no length limit: "nothing is left out for space". There is
+// deliberately no entry-count cap here. What bounds memory is the provider's own
+// response and the 10,000-character cap on each entry's text below, plus the
+// workspace file itself; 200 entries (a long career with projects, education and
+// credentials) are ordinary input, not an error.
+const MASTER_RESUME_LIMIT = Number.POSITIVE_INFINITY;
 const strings = (value, label) => list(value, label).map(v => requireText(v, label, 15000));
 const PACKET_EVIDENCE_ERROR = 'The packet contains a claim without an exact source reference. No packet was approved. Check your evidence and retry.';
 const MASTER_EVIDENCE_ERROR = 'The master resume contains a claim without an exact source reference. Check your evidence and retry.';
@@ -321,7 +328,7 @@ export class Workflow {
           const base = attempt ? draft : previous;
           try {
             draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...foldInput(folded), ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
-            requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 150);
+            requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', MASTER_RESUME_LIMIT);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
             draft.resume = dedupeResume(draft.resume.filter(keepResumeRow));
             const uncited = draft.resume.filter(item => !hasEvidence(item, context));
@@ -367,7 +374,7 @@ export class Workflow {
         const calibration = { ...gradePacket({ ...clean, answers: [] }, context.sources, review.calibration, candidateLine(state)), gradedAt: now() };
         await this.workspace.mutate(async latest => {
           check(); await this.assertContext(latest, context);
-          latest.standard = { kind: 'master', draft: clean, review, reviewAttempts, humanizer, calibration, coverage: masterCoverage(ownResume, clean.resume), contextHash: context.hash, createdAt: now(), approvedAt: null, approvedHash: null };
+          latest.standard = { kind: 'master', draft: clean, review, reviewAttempts, humanizer, calibration, coverage: masterCoverage(ownResume, clean.resume), completeness: masterCompleteness(context.sources, clean.resume), contextHash: context.hash, createdAt: now(), approvedAt: null, approvedHash: null };
           if (request) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: null, request }].slice(-200);
           latest.events.unshift({ at: now(), text: request ? 'Master resume revised. Review it before applications use it.' : 'Master resume written. Review it before applications use it.' });
         });
