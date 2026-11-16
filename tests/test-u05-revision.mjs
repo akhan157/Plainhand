@@ -364,6 +364,50 @@ test('several writing samples reach the drafter and humanizer, cannot ground a c
   } finally { await h.close(); }
 });
 
+// A missing source quote is a drafting error the model can fix: the first attempt
+// gets feedback naming the entry and the quote it gave, and only the final attempt
+// fails the task. Both the application and the master resume use this path.
+test('an uncited packet entry is retried once with feedback naming it, and a second uncited draft still fails', async () => {
+  const h = await harness();
+  const UNCITED_TEXT = 'Led the chassis program and cut build time by 40%.';
+  const UNCITED_QUOTE = 'I led the chassis program and cut build time by 40%.';
+  const badEntry = { section: 'Projects', text: UNCITED_TEXT, evidence: evidence(UNCITED_QUOTE) };
+  try {
+    const fixedJob = await h.addJob('Retry Robotics');
+    assert.equal((await h.evaluate(fixedJob)).status, 'complete', (await h.lastTask()).message);
+    let drafts = 0;
+    h.ctl.packet = () => {
+      drafts += 1;
+      return drafts === 1 ? { ...basePacket(), resume: [...basePacket().resume, badEntry] } : basePacket();
+    };
+    const prepared = await h.prepare(fixedJob);
+    assert.equal(prepared.status, 'complete', prepared.message);
+    assert.equal(drafts, 2, 'the uncited first draft was retried');
+    const packetInputs = h.tags('packet');
+    assert.equal(packetInputs.length, 2);
+    const retried = packetInputs[1].data;
+    assert.ok(retried.previousPacket, 'the retry carries the previous packet');
+    const feedback = retried.reviewFeedback;
+    assert.ok(feedback.some(line => line.includes(UNCITED_TEXT)), `the feedback names the entry: ${JSON.stringify(feedback)}`);
+    assert.ok(feedback.some(line => line.includes(UNCITED_QUOTE)), 'the feedback names the quote that was given');
+    assert.match(feedback[0], /quote the source exactly or remove the entry/);
+
+    const failedJob = await h.addJob('Still Uncited Robotics');
+    assert.equal((await h.evaluate(failedJob)).status, 'complete', (await h.lastTask()).message);
+    h.ctl.packet = () => ({ ...basePacket(), resume: [...basePacket().resume, badEntry] });
+    const failed = await h.prepare(failedJob);
+    assert.equal(failed.status, 'failed');
+    assert.match(failed.message, /claim without an exact source reference/);
+    assert.equal((await h.load()).jobs.find(job => job.id === failedJob).packet, undefined, 'no packet is saved from an uncited draft');
+  } finally { await h.close(); }
+});
+
+test('the packet instruction keeps fit questions out of the blocking list', () => {
+  assert.match(PACKET_INSTRUCTION, /include only a fact without which a required document or a job-specific answer cannot be written truthfully/);
+  assert.match(PACKET_INSTRUCTION, /Whether the candidate meets a requirement \(years, degree level, a skill\) is never a packet question/);
+  assert.match(PACKET_INSTRUCTION, /put the doubt in suggestions/);
+});
+
 test('voice metrics rank terse and formal samples deterministically; the contrast script makes no call without a provider', () => {
   const terse = "I'm a test engineer. I build rigs. I break them on purpose. I fix what breaks.";
   const formal = 'Furthermore, I am writing to express my interest in the position, and I would like to explain how my experience in designing and validating mechanical systems could contribute to the continued success of your organisation. I shall follow up at your earliest convenience.';

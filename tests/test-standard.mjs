@@ -48,6 +48,27 @@ test('the standard is written, fact-checked and graded, and approved only by the
   } finally { await h.close(); }
 });
 
+test('an uncited master entry is retried once with feedback naming it', async () => {
+  let drafts = 0;
+  const base = (id, instruction, data, options) => {
+    const result = fixtureAgent(id, instruction, data, options);
+    if (!instruction.startsWith("Write the candidate's master resume")) return result;
+    drafts += 1;
+    if (drafts === 1) result.resume = [...result.resume, { section: 'Projects', text: 'Supervised the chassis program.', evidence: [{ sourceId: 'cv', quote: 'Supervised the chassis program.' }] }];
+    return result;
+  };
+  const h = await harness(base);
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    const task = await h.lastTask();
+    assert.equal(task.status, 'complete', task.message);
+    assert.equal(drafts, 2, 'the uncited first draft was retried');
+    const standardInputs = h.inputs.filter(input => input.instruction.startsWith("Write the candidate's master resume"));
+    assert.ok(standardInputs[1].data.reviewFeedback.some(line => line.includes('Supervised the chassis program.')), 'the feedback names the entry');
+    assert.equal((await h.app.workspace.load()).standard.kind, 'master');
+  } finally { await h.close(); }
+});
+
 test('applications start from the approved standard and show what changed; revisions use the candidate’s request', async () => {
   const h = await harness();
   try {

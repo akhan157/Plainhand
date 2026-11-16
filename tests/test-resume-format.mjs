@@ -66,8 +66,9 @@ test('lines group under their heading, sections follow the candidate’s order, 
   assert.deepEqual(sections.map(s => [s.name, s.blocks.length, s.blocks[0].lines.length]), [['Skills', 1, 1], ['Experience', 1, 2]]);
   const format = cleanFormat({ font: { family: 'serif', name: 'Garamond', size: 11 }, headings: { case: 'upper' }, sections: ['Experience', 'Skills'], entry: { datesRight: true }, bullet: '▪', page: 'a4' });
   assert.deepEqual(orderSections(sections, format).map(s => s.name), ['Experience', 'Skills']);
-  const html = renderResumeHtml(format, { name: 'Riley Example', email: 'r@example.invalid', location: 'Boston' }, { resume });
+  const html = renderResumeHtml(format, { name: 'Riley Example', email: 'r@example.invalid', phone: '+1 617 555 0100', location: 'Boston' }, { resume });
   assert.match(html, /size:A4/); assert.match(html, /'Garamond', 'Times New Roman'/); assert.match(html, /content:"▪"/);
+  assert.ok(html.includes('r@example.invalid') && html.includes('+1 617 555 0100'), 'the contact header renders email and phone locally');
   assert.ok(html.indexOf('EXPERIENCE') < html.indexOf('SKILLS'));
   assert.match(html, /<span class="title">Engineering Intern<\/span><span class="dates">Summer 2026<\/span>/);
   assert.equal((html.match(/<li>/g) || []).length, 2);

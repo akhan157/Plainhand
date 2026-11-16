@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { digest, now, requireText, cleanText, syncTracker, recordStatusChange, storyKey } from './store.mjs';
+import { digest, now, requireText, cleanText, syncTracker, recordStatusChange, storyKey, PRIVATE_PROFILE_FIELDS } from './store.mjs';
 import { jobUrl, isBoardUrl } from './jobs.mjs';
 import { assertPacketFresh, packetIdentity } from './workflow.mjs';
 import { Corrections } from './corrections.mjs';
@@ -254,7 +254,7 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       const full = await workspace.context({ ...state, contextPrefs: {} });
       return { provider: state.provider || null,
         sources: full.sources.map(source => ({ id: source.id, label: SOURCE_LABELS[source.id] || source.id, characters: source.text.length, included: source.id === 'profile' || !excluded.has(source.id), excludable: source.id !== 'profile' })),
-        fields: EXCLUDABLE_FIELDS.map(name => ({ name, included: !excludedFields.has(name), present: Boolean(String(state.profile?.[name] || '').trim()) })) };
+        fields: EXCLUDABLE_FIELDS.map(name => ({ name, included: !PRIVATE_PROFILE_FIELDS.includes(name) && !excludedFields.has(name), neverShared: PRIVATE_PROFILE_FIELDS.includes(name), present: Boolean(String(state.profile?.[name] || '').trim()) })) };
     } });
 
   // ── write (reversible where possible) ───────────────────────────────────

@@ -195,7 +195,7 @@ function SharingCard() {
     <h3 class="sub-heading">Sources</h3>
     <ul class="share-list">${view.sources.map(s => row('sources', s.id, s.label, s.included, s.excludable ? `${s.characters.toLocaleString()} characters` : 'Always shared; exclude individual fields below', !s.excludable))}</ul>
     <h3 class="sub-heading">Profile fields</h3>
-    <ul class="share-list">${view.fields.map(f => row('fields', f.name, FIELD_LABELS[f.name] || f.name, f.included, f.present ? (f.included ? 'Shared' : 'Not shared') : 'Empty in your profile'))}</ul>
+    <ul class="share-list">${view.fields.map(f => row('fields', f.name, FIELD_LABELS[f.name] || f.name, f.included, f.neverShared ? 'Never shared with your agent; used only in your documents and forms' : f.present ? (f.included ? 'Shared' : 'Not shared') : 'Empty in your profile', f.neverShared))}</ul>
   </div>`;
 }
 

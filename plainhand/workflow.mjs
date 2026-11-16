@@ -24,6 +24,18 @@ const list = (value, label, limit = 40) => {
   return value;
 };
 const strings = (value, label) => list(value, label).map(v => requireText(v, label, 15000));
+const PACKET_EVIDENCE_ERROR = 'The packet contains a claim without an exact source reference. No packet was approved. Check your evidence and retry.';
+const MASTER_EVIDENCE_ERROR = 'The master resume contains a claim without an exact source reference. Check your evidence and retry.';
+// The evidence gate's retry feedback: each failing entry by kind and index, its text,
+// and the quote the model gave, so the redraft can quote a source exactly or drop it.
+const condensed = (value, max) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+function evidenceRetryFeedback(entries) {
+  return ['These entries cite a quote that is not in the sources; quote the source exactly or remove the entry:', ...entries.map(({ kind, index, item }) => {
+    const quotes = (Array.isArray(item?.evidence) ? item.evidence : []).map(entry => condensed(entry?.quote, 120)).filter(Boolean);
+    const cited = quotes.length ? `cites "${quotes.join('" and "')}", which ${quotes.length === 1 ? 'is' : 'are'} not in the sources` : 'cites no source quote';
+    return `${kind} ${index} ("${condensed(item?.text ?? item?.answer, 160)}") ${cited}.`;
+  })];
+}
 function ready(state, fallbackProvider = null) {
   if (!state.provider && !fallbackProvider) throw new Error('Connect and select an agent first.');
   if (!state.profile.name || !state.profile.resume || !state.profile.roles || !state.profile.location) throw new Error('Save your name, resume, target roles, and location in My profile first.');
@@ -240,15 +252,22 @@ export class Workflow {
         // lines out gets one more pass with those lines named; a revision the
         // candidate asked for is not second-guessed.
         const ownResume = context.sources.find(source => source.id === 'cv')?.text || '';
-        let missing = [], fallback = null;
+        let missing = [], fallback = null, evidencePrompt = [];
         for (let attempt = 0; attempt < 2; attempt++) {
           const base = attempt ? draft : previous;
           try {
-            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
+            draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 150);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
             draft.resume = draft.resume.filter(item => typeof item?.text !== 'string' || item.text.trim());
-            if (!draft.resume.length || draft.resume.some(item => !hasEvidence(item, context))) throw new Error('The master resume contains a claim without an exact source reference. Check your evidence and retry.');
+            const uncited = draft.resume.filter(item => !hasEvidence(item, context));
+            if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
+            if (uncited.length) {
+              if (attempt === 1) throw new Error(MASTER_EVIDENCE_ERROR);
+              evidencePrompt = evidenceRetryFeedback(uncited.map((item, index) => ({ kind: 'Resume entry', index, item })));
+              await this.progress(id, 'Correcting claims without an exact source reference');
+              continue;
+            }
             for (const item of draft.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
             verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
             await this.progress(id, 'Removing AI writing patterns');
@@ -291,18 +310,29 @@ export class Workflow {
         let packet, humanizer;
         let review;
         const reviewAttempts = [];
+        let evidencePrompt = [];
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         for (let attempt = 0; attempt < 2; attempt++) {
           // roleOrder is the candidate's own order for experience; on a revision their request wins over it.
           packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
-            ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: review.issues } : {}) });
+            ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}) });
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
           packet.suggestions = strings(packet.suggestions || [], 'optional suggestions');
           // A line with no text carries no claim and renders as an empty bullet: drop it
           // instead of failing the whole application (a model may emit a heading-only row).
           packet.resume = packet.resume.filter(item => typeof item?.text !== 'string' || item.text.trim());
-          if (!packet.resume.length || [...packet.resume, ...packet.answers].some(item => !hasEvidence(item, context))) throw new Error('The packet contains a claim without an exact source reference. No packet was approved. Check your evidence and retry.');
+          const uncited = [
+            ...packet.resume.map((item, index) => ({ kind: 'Resume entry', index, item })),
+            ...packet.answers.map((item, index) => ({ kind: 'Answer', index, item })),
+          ].filter(({ item }) => !hasEvidence(item, context));
+          if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
+          if (uncited.length) {
+            if (attempt === 1) throw new Error(PACKET_EVIDENCE_ERROR);
+            evidencePrompt = evidenceRetryFeedback(uncited);
+            await this.progress(id, 'Correcting claims without an exact source reference');
+            continue;
+          }
           for (const item of packet.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
           for (const item of packet.answers) { requireText(item.question, 'question', 2000); requireText(item.answer, 'answer', 15000); }
           verifyHeadings(packet.resume, context.sources.map(s => s.text).join('\n'));
