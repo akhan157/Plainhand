@@ -31,9 +31,9 @@ test('candidateSaid accepts exact words regardless of case, spacing and curly qu
 
 test('a new candidate builds their profile by conversation, ending in their own approval', async () => {
   const h = await harness([
-    { match: /start/, reply: data => ({ say: `Welcome. You still need ${data.digest.profile.missing.join(', ')}. What project are you proudest of?`, actions: [] }) },
-    { match: /Formula SAE/, reply: { say: 'That is worth keeping. Save it to your story?', actions: [{ name: 'profile.addStory', input: { text: STORY, topic: 'Formula SAE' } }] } },
-    { match: /Boston/, reply: { say: 'Shall I note your targets?', actions: [{ name: 'profile.update', input: { location: 'Boston, MA', roles: 'Mechanical engineer, design engineer' } }] } },
+    { match: /start/, reply: data => ({ say: `Welcome. You still need ${data.digest.profile.missing.join(', ')}. What result did the chassis work have, with numbers?`, actions: [] }) },
+    { match: /Formula SAE/, reply: { say: 'That is worth keeping. Save it to your story? Which employer or organisation was that at, what was the official job title, and when did it start and end?', actions: [{ name: 'profile.addStory', input: { text: STORY, topic: 'Formula SAE' } }] } },
+    { match: /Boston/, reply: { say: 'Shall I note your targets? Which tools, software and systems do you use?', actions: [{ name: 'profile.update', input: { location: 'Boston, MA', roles: 'Mechanical engineer, design engineer' } }] } },
     { match: /build my understanding/, reply: { say: 'I can rebuild your understanding now.', actions: [{ name: 'tasks.interview', input: {} }] } },
     { match: /approve/, reply: { say: 'Review it in your profile and approve it there.', actions: [{ name: 'understanding.approve', input: {} }, { name: 'ui.openPanel', input: { type: 'profile' } }] } },
   ]);
@@ -71,7 +71,7 @@ test('a new candidate builds their profile by conversation, ending in their own 
 
 test('the agent cannot save a paraphrase or invented detail as the candidate story', async () => {
   const h = await harness([
-    { reply: { say: 'Save it?', actions: [{ name: 'profile.addStory', input: { text: 'I led a team of 20 engineers and cut chassis weight by 40%.' } }] } },
+    { reply: { say: 'Save it? What result did the chassis work have, with numbers?', actions: [{ name: 'profile.addStory', input: { text: 'I led a team of 20 engineers and cut chassis weight by 40%.' } }] } },
     { reply: { say: 'I can only save your own words. Could you tell me the details yourself?', actions: [] } },
   ]);
   try {
@@ -87,7 +87,7 @@ test('sensitive profile fields are not agent-editable, and preference changes un
   const h = await harness([
     { match: /visa/, reply: { say: 'Noting it.', actions: [{ name: 'profile.update', input: { eligibility: 'US citizen', compensation: '$120k' } }] } },
     { reply: { say: 'Those are yours to set on the profile screen.', actions: [{ name: 'ui.openPanel', input: { type: 'profile' } }] } },
-    { match: /voice/, reply: { say: 'Update your voice?', actions: [{ name: 'profile.update', input: { voice: 'Direct and specific.' } }] } },
+    { match: /voice/, reply: { say: 'Update your voice? What result did the chassis work have, with numbers?', actions: [{ name: 'profile.update', input: { voice: 'Direct and specific.' } }] } },
   ], { name: candidate.name, email: candidate.email, resume: candidate.resume, voice: 'Warm.' });
   try {
     await h.say('I do not need a visa');
@@ -98,5 +98,90 @@ test('sensitive profile fields are not agent-editable, and preference changes un
     assert.equal((await h.app.workspace.load()).profile.voice, 'Direct and specific.');
     await h.app.agent.undo(undoToken);
     assert.equal((await h.app.workspace.load()).profile.voice, 'Warm.');
+  } finally { await h.close(); }
+});
+
+// The interview's next question is enforced, not just requested in the instruction:
+// the engine reads the reply's last question and repairs one miss. A miss that the
+// repair does not fix is accepted and recorded, so a turn never loops on it.
+const ROLE_QUESTION = 'Which employer or organisation was that at, what was the official job title, and when did it start and end?';
+const ROLE_LABEL = "each role's employer, official job title and dates";
+// Results and tools are already in the candidate's own words, so the first open area
+// is the role heading.
+const rolesOpen = { name: candidate.name, email: candidate.email, resume: 'Designed and tested a lightweight chassis.', story: 'I cut the cycle time by 20% using Excel.' };
+
+test('an interview reply asking a later area gets one repair naming the first open area', async () => {
+  const h = await harness([
+    { reply: { say: 'What project are you proudest of?', actions: [] } },
+    { reply: { say: ROLE_QUESTION, actions: [] } },
+  ], rolesOpen);
+  try {
+    const reply = await h.say('Tell me what to ask next.');
+    assert.equal(h.agent.calls.length, 2, 'one reply, one repair');
+    assert.ok(h.agent.calls[1].repair.includes(`End with one question about: ${ROLE_LABEL}`), h.agent.calls[1].repair);
+    assert.equal(h.agent.calls[1].message, 'Tell me what to ask next.', 'the same turn is repaired, not restarted');
+    assert.equal(reply.text, ROLE_QUESTION);
+    assert.equal(reply.status, 'complete');
+  } finally { await h.close(); }
+});
+
+test('an interview reply asking the first open area is not repaired', async () => {
+  const h = await harness([{ reply: { say: ROLE_QUESTION, actions: [] } }], rolesOpen);
+  try {
+    const reply = await h.say('Tell me what to ask next.');
+    assert.equal(h.agent.calls.length, 1);
+    assert.equal(h.agent.calls[0].repair, null);
+    assert.equal(reply.text, ROLE_QUESTION);
+    assert.equal(reply.interview, undefined, 'no miss to record');
+  } finally { await h.close(); }
+});
+
+test('a second miss after the repair is accepted and recorded instead of looping', async () => {
+  const h = await harness([
+    { reply: { say: 'What project are you proudest of?', actions: [] } },
+    { reply: { say: 'Do you hold any certifications or licences?', actions: [] } },
+  ], rolesOpen);
+  try {
+    const reply = await h.say('Tell me what to ask next.');
+    assert.equal(h.agent.calls.length, 2, 'the repair is not repeated');
+    assert.equal(reply.text, 'Do you hold any certifications or licences?');
+    assert.equal(reply.status, 'complete');
+    assert.deepEqual(reply.interview, { kind: 'interview-question', expected: ROLE_LABEL, asked: 'Do you hold any certifications or licences', repaired: false });
+  } finally { await h.close(); }
+});
+
+test('a writing-sample request waits for the areas and is asked at most once', async () => {
+  const h = await harness([
+    { reply: { say: 'Could you share a writing sample?', actions: [] } },
+    { reply: { say: ROLE_QUESTION, actions: [] } },
+  ], rolesOpen);
+  try {
+    const reply = await h.say('Tell me what to ask next.');
+    assert.equal(h.agent.calls.length, 2);
+    assert.match(h.agent.calls[1].repair, /Do not ask for a writing sample yet/);
+    assert.match(h.agent.calls[1].repair, new RegExp(ROLE_LABEL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.equal(reply.text, ROLE_QUESTION);
+  } finally { await h.close(); }
+});
+
+test('a repeated writing-sample request after the areas are covered is repaired once', async () => {
+  const covered = {
+    name: candidate.name, email: candidate.email, roles: 'Process engineer', graduation: '2020',
+    resume: 'Example Manufacturing — Process Engineer — 2016 to 2020.',
+    story: 'I cut the cycle time by 20% using Excel, earned a Lean Six Sigma certification, led two technicians on a quality audit project, and wrote the SOPs.',
+  };
+  const h = await harness([
+    { reply: { say: 'Could you share a writing sample?', actions: [] } },
+    { reply: { say: 'Could you share a writing sample?', actions: [] } },
+    { reply: { say: 'What should I do next?', actions: [] } },
+  ], covered);
+  try {
+    const first = await h.say('Hello.');
+    assert.equal(first.text, 'Could you share a writing sample?', 'the first request is allowed once the areas are covered');
+    assert.equal(h.agent.calls[0].repair, null);
+    const second = await h.say('Hello again.');
+    assert.equal(h.agent.calls.length, 3);
+    assert.match(h.agent.calls[2].repair, /Do not ask for a writing sample again/);
+    assert.equal(second.text, 'What should I do next?');
   } finally { await h.close(); }
 });

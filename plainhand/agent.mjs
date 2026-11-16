@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { now, digest } from './store.mjs';
 import { ActionError, validateInput } from './actions.mjs';
-import { canOfferSummary, profileCoverage } from './profile-coverage.mjs';
+import { canOfferSummary, finalQuestion, profileCoverage, PROFILE_AREAS, uncoveredAreas } from './profile-coverage.mjs';
 
 // The conversational layer: the provider chooses registry actions, Plainhand runs them.
 // Reads run immediately; writes and tasks become proposals the candidate confirms.
@@ -30,6 +30,9 @@ const HISTORY_FILE = 'data/plainhand/conversation.jsonl';
 const PROPOSALS_FILE = 'data/plainhand/agent-proposals.json';
 const UNDO_TTL_MS = 10 * 60 * 1000; // matches the registry's undo window
 const HISTORY_LIMIT = 500, CONTEXT_MESSAGES = 20, RESULT_CHARS = 20000, SAY_CHARS = 4000, KEEP_PROPOSALS = 100;
+// A request for a writing sample is a question, not a save: it waits for every
+// interview area and is asked at most once.
+const WRITING_SAMPLE = /\bwriting samples?\b/i;
 const PANEL_TYPES = 'job|packet|record|form|profile|applications|discover|campaigns|insights|workspace';
 const OPEN_PANEL = { name: 'ui.openPanel', tier: 'read', title: 'Open a panel', description: 'Show the candidate a Plainhand screen: job (role & fit), packet, record (timeline, contacts, interviews, follow-ups), form, profile, applications, discover, campaigns, insights or workspace. id is a job id where relevant.', input: { type: `enum:${PANEL_TYPES}`, id: 'string?' } };
 
@@ -147,9 +150,10 @@ export class AgentEngine {
 
   async run(turnId, signal, provider, message, history) {
     const results = [], taintSources = [];
-    let actionsUsed = 0, repairNote = null;
+    let actionsUsed = 0, repairNote = null, interviewRepair = false, interviewNote = null;
     const finish = async (status, say, extra = {}) => {
-      if (say) await this.append({ id: randomUUID(), turnId, role: 'assistant', text: say, at: now(), status, ...extra });
+      const details = interviewNote ? { interview: interviewNote, ...extra } : extra;
+      if (say) await this.append({ id: randomUUID(), turnId, role: 'assistant', text: say, at: now(), status, ...details });
       this.emit('agent.done', { turnId, status });
       return status;
     };
@@ -174,6 +178,46 @@ export class AgentEngine {
         }
         const reads = [], proposed = [], before = results.length;
         let panel = null;
+        // The interview has one deterministic next question. When a reply is part of the
+        // interview (it proposes a profile change, asks about a profile area, follows an
+        // area question, or asks for a writing sample), its last question must be about
+        // the first uncovered area; a miss costs one repair, then the reply is accepted
+        // and the miss is recorded instead of looping.
+        if (!interviewRepair) {
+          const question = finalQuestion(reply.say);
+          const writingSampleAsk = Boolean(question) && WRITING_SAMPLE.test(question);
+          const openAreas = uncoveredAreas(snapshot, spoken);
+          const asksArea = Boolean(question) && PROFILE_AREAS.some(area => area.asked.test(question));
+          const prior = [...history].reverse().find(item => item?.role === 'assistant');
+          const followsArea = Boolean(prior) && PROFILE_AREAS.some(area => area.asked.test(finalQuestion(prior.text)));
+          const interviewReply = reply.actions.some(action => action.name.startsWith('profile.')) || asksArea || followsArea || writingSampleAsk;
+          let miss = null;
+          if (interviewReply && openAreas.length) {
+            const area = openAreas[0];
+            if (writingSampleAsk) miss = { label: area.label, note: `Do not ask for a writing sample yet. End with one question about: ${area.label}.` };
+            else if (question && !area.asked.test(question)) miss = { label: area.label, note: `End with one question about: ${area.label}.` };
+          } else if (interviewReply && writingSampleAsk) {
+            // The candidate was already asked once: the conversation may request a sample
+            // only once, so a repeated request is rejected and the reply is accepted as is.
+            const askedBefore = (await this.messages()).some(item => item.role === 'assistant' && item.turnId !== turnId && WRITING_SAMPLE.test(item.text));
+            if (askedBefore) miss = { label: null, note: 'Do not ask for a writing sample again: it was already requested once in this conversation.' };
+          }
+          if (miss) {
+            interviewRepair = true;
+            repairNote = miss.note;
+            continue;
+          }
+        } else {
+          // The repair already ran. A second miss is accepted, not repaired again; the
+          // turn records what was asked so the digests can show the engine had to step in.
+          const openAreas = uncoveredAreas(snapshot, spoken);
+          const question = finalQuestion(reply.say);
+          const expected = openAreas[0]?.label || null;
+          const writingSample = Boolean(question) && WRITING_SAMPLE.test(question);
+          if (expected ? writingSample || (question && !openAreas[0].asked.test(question)) : writingSample) {
+            interviewNote = { kind: 'interview-question', expected, asked: question || null, repaired: false };
+          }
+        }
         // A reply that would pass the action budget is not run at all, so a group is never proposed in part.
         if (actionsUsed + reply.actions.length > BUDGET.actions) return await finish('budget', 'That needs more steps than I take in one go. Ask for a smaller piece and I will continue.');
         actionsUsed += reply.actions.length;

@@ -50,6 +50,18 @@ export const PROFILE_AREAS = [
 
 // How far the interview has got, in the shape the agent digest sends and the engine
 // enforces. `uncovered` is the list the next question should come from.
+// The last question in a reply: the text after the final sentence end, up to the
+// final question mark. Empty when the reply asks no question. The engine uses this
+// to check the question against the first uncovered area, and askedAndAnswered uses
+// it so both read a reply's question the same way.
+export function finalQuestion(text = '') {
+  const value = String(text || '');
+  const end = value.lastIndexOf('?');
+  if (end < 0) return '';
+  const start = Math.max(value.lastIndexOf('.', end - 1), value.lastIndexOf('!', end - 1), value.lastIndexOf('?', end - 1));
+  return value.slice(start + 1, end).trim();
+}
+
 // An area also counts once the assistant asked about it and the candidate answered,
 // even with "no" or "I don't have any": a candidate without a licence must not be asked
 // about licences forever. `history` is the agent conversation ({role, text}).
@@ -57,19 +69,22 @@ export function askedAndAnswered(history = []) {
   const done = new Set();
   history.forEach((message, index) => {
     if (message?.role !== 'assistant' || !history.slice(index + 1).some(next => next?.role === 'user')) return;
-    const text = String(message.text || '');
-    const question = text.slice(Math.max(text.lastIndexOf('.', text.lastIndexOf('?')), 0));
-    if (!question.includes('?')) return;
+    const question = finalQuestion(message.text);
+    if (!question) return;
     for (const area of PROFILE_AREAS) if (area.asked.test(question)) done.add(area.id);
   });
   return done;
 }
 
-export function profileCoverage(state = {}, history = []) {
+export function uncoveredAreas(state = {}, history = []) {
   const profile = state.profile || {};
   const texts = candidateStatements(state);
   const asked = askedAndAnswered(history);
-  const uncovered = PROFILE_AREAS.filter(area => !asked.has(area.id) && !area.covered(texts, profile));
+  return PROFILE_AREAS.filter(area => !asked.has(area.id) && !area.covered(texts, profile));
+}
+
+export function profileCoverage(state = {}, history = []) {
+  const uncovered = uncoveredAreas(state, history);
   return { covered: PROFILE_AREAS.length - uncovered.length, total: PROFILE_AREAS.length, complete: uncovered.length === 0, uncovered: uncovered.map(area => area.label) };
 }
 
