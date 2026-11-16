@@ -10,6 +10,7 @@ import { AnswerBank } from './answer-bank.mjs';
 import { providerJob } from './application-record.mjs';
 import { integrityRecord, providerDescription } from './posting-integrity.mjs';
 import { logUnderstanding } from './profile-strength.mjs';
+import { prepareMemoryCheck, recordQuestionChecks } from './memory-checks.mjs';
 import { gradePacket } from './claim-calibration.mjs';
 import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
@@ -281,7 +282,7 @@ export class Workflow {
         if (job.contextHash !== context.hash) throw new Error('Your profile changed. Evaluate this job again first.');
         await this.progress(id, revising ? 'Revising your application as you asked' : 'Writing your resume, cover letter, and answers');
         const standard = standardInput(state, context.hash);
-        let packet, humanizer;
+        let packet, humanizer, memory = null;
         let review;
         const reviewAttempts = [];
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
@@ -303,7 +304,20 @@ export class Workflow {
           // the current shared sources replaces the draft and carries its provenance. Held,
           // expired, out-of-scope or unproved entries and every candidate assertion stay out,
           // and the answer records why, so review still sees the sentence that will ship.
-          applyReusableAnswers(packet, { answers: await new AnswerBank(this.workspace).load(), job, sources: context.sources, asOf: now().slice(0, 10) });
+          const reusableAnswers = await new AnswerBank(this.workspace).load();
+          applyReusableAnswers(packet, { answers: reusableAnswers, job, sources: context.sources, asOf: now().slice(0, 10) });
+          // Deterministic memory pre-check: a question the profile, bank or this packet
+          // already answers is not asked again, and a contradiction blocks only when this
+          // packet cites one of its sources. Excluded sources are compared locally; their
+          // text never enters a question.
+          memory = prepareMemoryCheck({
+            packet,
+            sources: (await this.workspace.context({ ...state, contextPrefs: {} })).sources,
+            profile: state.profile,
+            decisions: state.conflictReview?.decisions || [],
+            excludedSources: state.contextPrefs?.excludedSources || [],
+            bank: reusableAnswers, job, asOf: now().slice(0, 10),
+          });
           await this.progress(id, 'Removing AI writing patterns');
           ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
           await this.progress(id, 'Checking factual claims against the original sources');
@@ -337,6 +351,7 @@ export class Workflow {
           check();
           const atsCheck = await this.atsCheck(artifacts, latest.profile, packet, job, context);
           Object.assign(current, taskChanges(original, job), artifacts, { atsCheck, approvedHash: null, stage: packet.questions.length ? 'awaiting-answer' : 'packet-ready', status: current.status === 'Evaluated' ? 'Apply' : current.status });
+          recordQuestionChecks(latest, memory?.settled, { jobId: job.id });
           markApplied(latest, job.id, draftStarted);
           if (revising) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: job.id, request }].slice(-200);
           await this.workspace.write(`output/packet-${job.id}.json`, JSON.stringify({ jobId: job.id, company: job.company, role: job.title, contextHash: context.hash, packet, review, reviewAttempts, calibration: job.calibration, ...artifacts }, null, 2));

@@ -916,6 +916,14 @@ tbody tr:last-child th[scope="row"] { border-bottom: 0; }
   .campaign-form.form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Facts that disagree */
+.conflict-list { margin-bottom: var(--sp-4); }
+.conflict-item { display: grid; gap: var(--sp-2); }
+.conflict-item > p { margin: 0; }
+.conflict-quote { margin: 0; padding: var(--sp-2) var(--sp-3); border-left: 3px solid var(--border-strong); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; display: grid; gap: var(--sp-1); justify-items: start; }
+.conflict-quote p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conflict-quote footer { color: var(--text-3); font-size: var(--fs-sm); }
+
 /* Profile strength */
 .strength-rows { list-style: none; padding: 0; display: grid; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .strength-rows li { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); }

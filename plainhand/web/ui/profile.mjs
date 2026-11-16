@@ -143,6 +143,39 @@ function Understanding() {
   </${Card}>`;
 }
 
+// Contradictions between sources (plainhand/memory-checks.mjs, computed by the server).
+// Deterministic only: the card shows both exact quotes and lets the candidate edit a
+// source or say which one is right. It never chooses.
+const CONFLICT_KIND = { employer: 'Job title', dates: 'Dates', degree: 'Education', number: 'Team size', location: 'Location', eligibility: 'Work authorization' };
+const CONFLICT_SOURCE = { profile: 'Profile details', cv: 'Resume', interview: 'Your interview answers and stories', 'structured-resume': 'Structured resume', narrative: 'Career narrative', 'proof-points': 'Proof points', stories: 'Story bank' };
+function Conflicts() {
+  const conflicts = store.state.memoryConflicts || [];
+  if (!conflicts.length) return null;
+  const edit = item => {
+    const sourceId = item.quotes[0]?.sourceId;
+    const story = sourceId === 'interview', basics = sourceId === 'profile' || sourceId === 'cv';
+    navigate(story || basics ? 'profile' : 'workspace');
+    const target = story ? 'interview-title' : basics ? 'foundation-title' : 'files-title';
+    requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const record = async (item, sourceId) => {
+    await api('conflicts/record', { id: item.id, sourceId });
+    toast('Recorded which source is right.');
+    refresh();
+  };
+  return html`<${Card} title="Facts that disagree" icon="alert" id="conflicts-title" subtitle="Your sources say different things. Plainhand will not choose for you: correct the source, or record which one is right.">
+    <ul class="plain-list conflict-list">${conflicts.map(item => html`<li key=${item.id} class="conflict-item">
+      <p><strong>${CONFLICT_KIND[item.kind] || 'Disagreement'}:</strong> ${item.topic}.</p>
+      ${item.quotes.map((quote, i) => html`<blockquote key=${i} class="conflict-quote">
+        <p>“${quote.quote}”</p>
+        <footer>${CONFLICT_SOURCE[quote.sourceId] || quote.sourceId}${(item.excluded || []).includes(quote.sourceId) ? html` · <span class="muted-text">not shared with your agent</span>` : null}</footer>
+        <${ActionButton} class="small" aria-label=${`Record that “${quote.quote.slice(0, 80)}” is right`} onClick=${() => record(item, quote.sourceId)}>This is right</${ActionButton}>
+      </blockquote>`)}
+      <div class="action-row"><${Button} class="link-button small" icon="edit" onClick=${() => edit(item)}>Edit a source</${Button}></div>
+    </li>`)}</ul>
+  </${Card}>`;
+}
+
 // Profile strength (plainhand/profile-strength.mjs, computed by the server): what Plainhand
 // counted for each dimension and the weakest spots, never a single grade.
 const LEVEL = { strong: ['success', 'Strong'], good: ['info', 'Good'], thin: ['warn', 'Thin'], 'not-enough-data': ['neutral', 'Not enough data'] };
@@ -164,6 +197,7 @@ function Strength() {
   const s = store.state.profileStrength;
   if (!s) return null;
   return html`<${Card} title="Profile strength" icon="layers" id="strength-title" subtitle="How well your agent knows you, counted from what you’ve shared. Not a grade.">
+    ${s.questions?.repeated ? html`<p class="muted-text">${s.questions.repeated} ${s.questions.repeated === 1 ? 'question was' : 'questions were'} asked again even though your sources already answered ${s.questions.repeated === 1 ? 'it' : 'them'}.</p>` : null}
     <ul class="strength-rows">${strengthRows(s).map(([name, level, detail]) => html`<li key=${name}><div><strong>${name}</strong><span>${detail}</span></div><${Pill} tone=${LEVEL[level][0]}>${LEVEL[level][1]}</${Pill}></li>`)}</ul>
     ${s.next.length ? html`<h4>What would help most</h4><ol class="plain-list strength-next">${s.next.map((n, i) => html`<li key=${i}>${n.text}</li>`)}</ol>
       ${agentAvailable() ? html`<${ActionButton} class="ghost wide" icon="spark" onClick=${async () => { navigate('home'); await agentClient.send('Help me strengthen my profile'); }}>Work on this with your agent</${ActionButton}>` : null}`
@@ -335,6 +369,6 @@ export function ProfilePage() {
       <${Meter} value=${done} max=${steps.length} label="Setup progress" />
     </section>
     <${Steps} />
-    ${started ? html`<h2 class="section-heading">Keep improving</h2><${Strength} /><${Line} />` : null}
+    ${started ? html`<h2 class="section-heading">Keep improving</h2><${Conflicts} /><${Strength} /><${Line} />` : null}
     ${store.demo ? null : html`<p class="footnote">Profile facts are saved to <code>config/profile.yml</code> and <code>cv.md</code>. <${Button} class="link-button inline" onClick=${() => navigate('workspace')}>See your files</${Button}></p>`}`;
 }

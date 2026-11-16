@@ -14,6 +14,7 @@ import { followUpQueue } from './plainhand/application-record.mjs';
 import { providerDescription } from './plainhand/posting-integrity.mjs';
 import { createRegistry, STATUS_VALUES, CORE_ATTENTION } from './plainhand/actions.mjs';
 import { profileStrength } from './plainhand/profile-strength.mjs';
+import { memoryReport } from './plainhand/memory-checks.mjs';
 import { currentCalibration } from './plainhand/claim-calibration.mjs';
 import { candidateLine } from './plainhand/claim-line.mjs';
 import { presubmitCheck } from './plainhand/presubmit.mjs';
@@ -156,7 +157,11 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         for (const job of state.jobs) markStalePrep(job);
         // Calibration as seen through the candidate's current line and choices.
         for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
-        return json(res, 200, { ...state,
+        // Detection reads every local source, including excluded ones; only the card
+        // receives it. The provider context above still honours the exclusions.
+        const fullContext = await workspace.context({ ...state, contextPrefs: {} });
+        const memory = memoryReport(state, fullContext.sources);
+        return json(res, 200, { ...state, memory: { conflicts: memory.conflicts, questions: memory.questions }, memoryConflicts: memory.open,
           // Each story carries the key the edit and delete routes accept, including an
           // older message that has no id of its own.
           conversation: (state.conversation || []).map(message => ({ ...message, key: storyKey(message) })),
@@ -416,6 +421,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       if (url.pathname === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/story/edit') return json(res, 200, await ui('profile.editStory', { key: input.key, text: input.text }));
       if (url.pathname === '/api/story/remove') { await ui('profile.removeStory', { key: input.key }); return json(res, 200, { ok: true }); }
+      if (url.pathname === '/api/conflicts/record') return json(res, 200, await ui('conflicts.record', { id: input.id, sourceId: input.sourceId }));
       if (url.pathname === '/api/calibration/decide') { return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true }); }
       if (url.pathname === '/api/line/remove') { await ui('line.removeStatement', { index: input.index }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/packet/approve') { await ui('packet.approve', { jobId: input.id }); return json(res, 200, { ok: true }); }
