@@ -291,3 +291,11 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
 - Residual: two legacy messages sharing a millisecond timestamp would share a key.
   The first one wins, so this is low risk.
 - Next memory packets: M4 (approved-correction reuse), then M5.
+
+## Full-goal push started — 2026-11-16
+
+Owner set the goal: finish the full goal. Authors moved from Pi to OMP
+(`deepseek/deepseek-flash`, same model) after the Pi instance was disabled; owner
+approved the switch. Lanes in flight: M4 reusable answers (U06/U02), U11 safety, U09
+queues and autonomy, U05 revision and voice. The live v3 comparison on `0f5cfe8` is
+running. U15 stays deferred by the owner until the rest is done.
