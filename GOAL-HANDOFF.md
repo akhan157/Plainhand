@@ -299,3 +299,19 @@ Owner set the goal: finish the full goal. Authors moved from Pi to OMP
 approved the switch. Lanes in flight: M4 reusable answers (U06/U02), U11 safety, U09
 queues and autonomy, U05 revision and voice. The live v3 comparison on `0f5cfe8` is
 running. U15 stays deferred by the owner until the rest is done.
+
+## M4 merged — 2026-11-16
+
+- Lane `b1a55b8` (OMP DeepSeek), reviewed by root and merged.
+  - Answers record `sourceKind`, computed from their evidence. Answers based on
+    `candidate-answer` are assertions and never ground a packet.
+  - Editing an answer's text clears `verifiedAt` and sets `needsReview`.
+  - Typed form answers are offered with job and company scope by default.
+  - `applyReusableAnswers` runs before humanize and review. It records `reuse` or
+    `notReused` with the reason, and the bank stays out of context.
+  - The UI shows a "Needs review" badge and a Re-approve button.
+- Seven mutation checks, one per safeguard: each made its test fail.
+- Suite 575/575; UI flow passes; controlled 64/67, 0 unexpected.
+- Not done: hosted fill-path tests.
+- M5 (contradictions, settled-fact lookup, repeat-question counter) and M6 (memory
+  probe) delegated together.
