@@ -284,3 +284,13 @@ test('review 37eb4fd: "in" degree names still count; tool and job phrasing does 
   assert.equal(degreeFindings([cvSource('Example University — Master of Science — 2012.'), interview('I used MS Excel and MS Teams at Example Health from 2018 to 2021.')]), 0);
   assert.equal(degreeFindings([cvSource('Example University — Master of Science — 2012.'), interview('I was the Scrum Master in the platform team from 2019 to 2021.'), interview('I worked as a Research Associate in Boston from 2014 to 2016.')]), 0);
 });
+
+test('review cec2918: lowercase "ms in" and "BA, pilot" are not degrees; M.Sc., MSc and BSc are', () => {
+  const degree = (text, graduation = '2012') => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('We got the response down to 50 ms in 2018.'), 0);
+  assert.equal(degree('I ran the BA, pilot study in 2019.'), 0);
+  assert.equal(degree('Example University — M.Sc. in Biology — 2018.'), 1);
+  assert.equal(degree('Example University — MSc Biology — 2018.'), 1);
+  assert.equal(degree('I hold a BSc in Physics from 2018.'), 1);
+  assert.equal(degree('Example University — BS, Biology — 2018.'), 1);
+});

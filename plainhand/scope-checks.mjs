@@ -154,18 +154,25 @@ export function pluralScopeIssues(packet, { sources = [] } = {}) {
 }
 
 const label = issue => issue.kind === 'cover' ? 'Cover letter sentence' : issue.kind === 'answer' ? `Answer ${issue.index + 1}` : `Resume entry ${issue.index + 1}`;
-const excerpt = text => String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, 180);
+// The part of the line around the flagged word, so a quoted line always contains it.
+function around(text, word) {
+  const value = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (value.length <= 180) return value;
+  const at = Math.max(0, value.toLowerCase().indexOf(String(word ?? '').toLowerCase()));
+  const from = Math.max(0, Math.min(at - 80, value.length - 180));
+  return `${from > 0 ? '…' : ''}${value.slice(from, from + 180)}${from + 180 < value.length ? '…' : ''}`;
+}
 
 export function scopeRetryFeedback(issues) {
   if (!issues.length) return [];
   return [
     'Keep counts and number exactly as the sources state: a plural the evidence does not use is a scope stretch.',
-    ...issues.map(issue => `${label(issue)}: "${issue.word}" must stay "${issue.singular}" unless the evidence states a count; the cited evidence says "${issue.singular}". Sentence: "${excerpt(issue.text)}"`),
+    ...issues.map(issue => `${label(issue)}: "${issue.word}" must stay "${issue.singular}" unless the evidence states a count; the cited evidence says "${issue.singular}". Sentence: "${around(issue.text, issue.word)}"`),
   ];
 }
 
 export function scopeSuggestions(issues) {
   // Quote the line, never an index: a reviewer counting entries from zero would read
   // "Resume entry 2" as a different line and reject the note as false.
-  return issues.map(issue => `Scope check (not a factual issue): ${issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line'} "${excerpt(issue.text)}" says "${issue.word}" where its cited evidence says "${issue.singular}". Keep the singular or add evidence for more than one.`);
+  return issues.map(issue => `Scope check (not a factual issue): ${issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line'} "${around(issue.text, issue.word)}" says "${issue.word}" where its cited evidence says "${issue.singular}". Keep the singular or add evidence for more than one.`);
 }

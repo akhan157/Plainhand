@@ -77,37 +77,55 @@ export function relevantMissingCredentials({ master = null, sources = [], packet
   return credentials.filter(item => credentialRelevant(item.text, jobText) && !packetHasCredential(item, resume));
 }
 
-// Whether a packet's resume names a credential. Word overlap with the master's whole
-// line misreads both ways: a packet that splits "Passed CFA Level I ...; Advanced
-// Excel and SQL" across lines looks like it dropped the CFA, and "Google Sheets" plus
-// "data analytics" in Skills looks like the Google Data Analytics Certificate. So the
-// credential's own name decides: its acronyms (CFA, CPA, CKS) anywhere in the resume,
-// or else its capitalised name, without generic words, as one phrase.
-const LEADING_VERB = new Set(['passed', 'earned', 'completed', 'obtained', 'received', 'holds', 'hold', 'have', 'has', 'registered', 'active', 'certified']);
+// Whether a packet's resume names a credential, decided by the credential's own
+// name, not word overlap with the master's whole line. Overlap misread both ways: a
+// split "Passed CFA Level I ...; Advanced Excel and SQL" line looked dropped, and
+// "Google Sheets" plus "data analytics" looked like the Google Data Analytics
+// Certificate. The own name is the line before its first comma, parenthesis or dash:
+// "Project Management Professional (PMP), PMI, 2021" is "Project Management
+// Professional", abbreviated "PMP"; "PMI" is the issuer and never stands in for it.
+const LEADING_VERB = new Set(['passed', 'earned', 'completed', 'obtained', 'received', 'holds', 'hold', 'have', 'has', 'registered', 'active', 'i', 'a', 'an', 'the', 'my']);
+const TRAILING_GENERIC = new Set(['certificate', 'certificates', 'certification', 'certifications', 'license', 'licence', 'licenses', 'licences', 'credential']);
 const NOT_ACRONYM = new Set(['I', 'II', 'III', 'IV', 'US', 'USA', 'UK']);
+const ACRONYM_SECTION = /certif|licen[cs]|credential|education|training|professional development/i;
 const normalizedText = value => ` ${String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()} `;
+const entryLine = entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ');
 export function credentialName(text) {
-  const value = String(text ?? '');
-  const acronyms = [...new Set([...value.matchAll(/\b([A-Z]{2,6})\b/g)].map(match => match[1]).filter(word => !NOT_ACRONYM.has(word)))];
-  const runs = [...value.matchAll(/\b[A-Z][A-Za-z0-9&+-]*(?:\s+(?:of|and|&|in|for)?\s*[A-Z][A-Za-z0-9&+-]*)*/g)].map(match => match[0]
-    .split(/\s+/).filter(word => !LEADING_VERB.has(word.toLowerCase()) && !RELEVANCE_GENERIC.has(word.toLowerCase())).join(' '))
-    .filter(run => run.split(' ').length >= 2);
+  const value = clean(text);
+  const own = value.split(/\s*[,(;]\s*|\s+[—–-]\s+/)[0] || value;
+  // Its abbreviation: a parenthesised acronym right after the name, or a name that
+  // is itself an acronym ("PMP, 2021"). An acronym inside a longer name ("AWS" in
+  // "AWS Certified Solutions Architect") is a prefix, not the credential.
+  const paren = [...value.matchAll(/\(([A-Z][A-Z0-9-]{1,7})\)/g)].map(match => match[1]);
+  const ownWords = own.split(/\s+/).filter(Boolean);
+  const ownIsAcronym = ownWords.length >= 1 && ownWords.every(word => /^[A-Z][A-Z0-9-]{1,7}$/.test(word) && !NOT_ACRONYM.has(word));
+  const acronyms = [...new Set([...paren, ...(ownIsAcronym ? ownWords : [])])];
+  // Its written-out name: the longest capitalised run of the own name, without a
+  // leading verb or a trailing generic word, matched as one contiguous phrase within
+  // a single resume line ("Google Data Analytics Professional Certificate" holds
+  // "Google Data Analytics"; "led project management" does not hold "Project
+  // Management Professional").
+  const runs = [...own.matchAll(/\b[A-Z][A-Za-z0-9&+-]*(?:\s+(?:of|and|&|in|for)?\s*[A-Z][A-Za-z0-9&+-]*)*/g)].map(match => {
+    const words = match[0].split(/\s+/);
+    while (words.length && LEADING_VERB.has(words[0].toLowerCase())) words.shift();
+    while (words.length && TRAILING_GENERIC.has(words.at(-1).toLowerCase())) words.pop();
+    return words.join(' ');
+  }).filter(run => run.split(' ').length >= 2 && !(ownIsAcronym && run === own));
   const phrase = runs.sort((a, b) => b.length - a.length)[0] || '';
-  return { acronyms, phrase };
+  return { acronyms: acronyms.filter(word => !NOT_ACRONYM.has(word)), phrase };
 }
 export function packetHasCredential(item, resume) {
   const entries = Array.isArray(resume) ? resume : [];
-  const textOf = list => normalizedText(list.map(entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ')).join(' | '));
+  const lines = entries.map(entry => normalizedText(entryLine(entry)));
+  // The same line, copied.
+  const whole = normalizedText(item?.text);
+  if (whole.trim() && lines.some(line => line.includes(whole))) return true;
   const { acronyms, phrase } = credentialName(item?.text);
-  // The written-out name anywhere is the credential.
-  if (phrase && textOf(entries).includes(normalizedText(phrase))) return true;
-  // An acronym counts only where credentials are listed: "AWS" in Skills is a tool,
-  // not the AWS certification. Any one of the line's acronyms is enough, since a
-  // master line also names its issuer or exam code (PMP, PMI; CSSGB).
-  if (acronyms.length) {
-    const credentialText = textOf(entries.filter(entry => CREDENTIAL_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test([entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' '))));
-    if (acronyms.some(acronym => credentialText.includes(` ${acronym.toLowerCase()} `))) return true;
-  }
+  if (phrase && lines.some(line => line.includes(normalizedText(phrase)))) return true;
+  // Its own abbreviation counts where credentials or schooling are listed: "AWS" or
+  // "PMP" in a Skills list is a keyword, not the credential.
+  if (acronyms.length && entries.some((entry, index) => (ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))
+    && acronyms.some(acronym => lines[index].includes(` ${acronym.toLowerCase()} `)))) return true;
   if (phrase || acronyms.length) return false;
   return credentialIndex(item, entries) >= 0;
 }

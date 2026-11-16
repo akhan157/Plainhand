@@ -22,7 +22,7 @@ import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume, repairMisplacedAccomplishments } from './resume-format.mjs';
 import { pluralScopeIssues, scopeRetryFeedback, scopeSuggestions } from './scope-checks.mjs';
-import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion, credentialName, masterCredentialRows } from './credential-relevance.mjs';
+import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion, credentialName, masterCredentialRows, packetHasCredential } from './credential-relevance.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -132,13 +132,17 @@ export function accomplishmentRetryFeedback({ roles = [], sections = [] } = {}) 
 // it was ("Left out the Green Belt because ...") would now misdescribe the master. Only
 // an omission note naming the added row's credential or employer is dropped.
 // Row absence only: "missing the issuing body" is advice about a field of the row.
+const entryLine = entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ');
 const OMISSION_NOTE = /\b(?:left out|leaves? out|leaving out|omitted|omits?|omission|not included|absent from|excluded|excluding|missing from)\b/i;
 export function dropRepairedOmissions(suggestions, added) {
   const names = (Array.isArray(added) ? added : []).flatMap(row => {
     const org = String(row?.heading?.org ?? '').trim();
-    if (org) return [org.toLowerCase()];
     const words = (String(row?.text ?? '').match(/[A-Z][A-Za-z0-9&+-]{2,}/g) || []).filter(word => !/^(?:I|The|A|An|In|My)$/.test(word));
-    return words.length >= 2 ? [words.join(' ').toLowerCase()] : [];
+    // A credential row is also named by its own abbreviation or written-out name
+    // ("PMP, 2021"; "Project Management Professional (PMP)").
+    const own = credentialName(entryLine(row));
+    return [...(org ? [org.toLowerCase()] : []), ...(words.length >= 2 ? [words.join(' ').toLowerCase()] : []),
+      ...own.acronyms.map(acronym => acronym.toLowerCase()), ...(own.phrase ? [own.phrase.toLowerCase()] : [])];
   });
   if (!names.length) return suggestions;
   return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
@@ -157,6 +161,8 @@ export function dropRepairedOmissions(suggestions, added) {
 // says a credential was kept or included contradicts the note that says it was left
 // out, so it is dropped. Advice and questions are not inclusion claims.
 const CREDENTIAL_NOUN_MENTION = /\b(?:certif\w*|licen[cs]\w*|credentials?)\b/i;
+// "was not added" reports an omission, not an inclusion.
+const NEGATED_INCLUSION = /\b(?:not|never|no longer)\s+(?:been\s+)?(?:kept|retained|included|listed|shown|preserved|carried|added)\b/i;
 const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried|added|adds)\b/i;
 // `missing` holds the missing credentials; a note counts as being about one when it
 // uses a credential noun or names one of those credentials' own acronyms or name
@@ -164,12 +170,12 @@ const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|s
 export function dropCredentialInclusionClaims(suggestions, missing = []) {
   const names = (Array.isArray(missing) ? missing : []).flatMap(item => {
     const { acronyms, phrase } = credentialName(item?.text || item?.label || '');
-    return [...acronyms.map(acronym => new RegExp(`\\b${acronym}\\b`)), ...(phrase ? [new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\b`, 'i')] : [])];
+    return [...acronyms.map(acronym => new RegExp(`\\b${acronym}\\b`, 'i')), ...(phrase ? [new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\b`, 'i')] : [])];
   });
   return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
     const value = String(text ?? '');
     const about = CREDENTIAL_NOUN_MENTION.test(value) || names.some(pattern => pattern.test(value));
-    return !(about && INCLUSION_VERB.test(value) && !QUESTION_OR_ADVICE.test(value));
+    return !(about && INCLUSION_VERB.test(value) && !NEGATED_INCLUSION.test(value) && !QUESTION_OR_ADVICE.test(value));
   });
 }
 export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
@@ -599,12 +605,13 @@ export class Workflow {
         const standard = standardInput(state, context.hash);
         const folded = foldedHumanize(state);
         let packet, humanizer, memory = null;
-        let review, scopeGaps = [], credentialGaps = [];
+        let review, scopeGaps = [], credentialGaps = [], carriedRows = [];
         const reviewAttempts = [];
         let evidencePrompt = [];
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
         const jobText = `${job.title}\n${providerDescription(job.description || '')}`;
         for (let attempt = 0; attempt < 2; attempt++) {
+          carriedRows = [];
           // roleOrder is the candidate's own order for experience; on a revision their request wins over it.
           packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...foldInput(folded), ...(voiceTarget ? { voiceTarget } : {}), roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
             ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}),
@@ -654,7 +661,9 @@ export class Workflow {
           // uses (scope stretch), and a credential the posting names or relates to that
           // the resume left out.
           scopeGaps = pluralScopeIssues(packet, { sources: context.sources });
-          credentialGaps = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
+          // On a revision the candidate's request decides what the resume keeps, so a
+          // credential they asked to remove is never asked back, carried or noted.
+          credentialGaps = revising ? [] : relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
           if (attempt === 0 && (placement.ambiguous || scopeGaps.length || credentialGaps.length)) {
             evidencePrompt = [
               ...(placement.ambiguous ? [accomplishmentRetryFeedback(placement)] : []),
@@ -671,9 +680,19 @@ export class Workflow {
           // A revision is the candidate's own request ("drop the certificate"); it is never
           // overridden by the carry.
           if (credentialGaps.length && standard && !revising) {
+            const seenCarry = new Set();
             const carried = masterCredentialRows(state.standard?.draft?.resume, credentialGaps)
               .filter(row => hasEvidence(row, context))
-              .map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence }));
+              .map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence }))
+              .filter(row => {
+                // One row per credential, and none the packet already shows.
+                // Same written name, or the same source quote, is the same credential.
+                const keys = [credentialName(entryLine(row)).phrase.toLowerCase() || entryLine(row).toLowerCase(), ...(row.evidence || []).map(item => `quote:${item?.quote}`)];
+                if (keys.some(key => seenCarry.has(key)) || packetHasCredential({ text: entryLine(row) }, packet.resume)) return false;
+                for (const key of keys) seenCarry.add(key);
+                return true;
+              });
+            carriedRows = carried.map(row => ({ ...row, heading: row.heading ? { ...row.heading } : null }));
             if (carried.length) {
               packet.resume = normalizeResume([...packet.resume, ...carried], { sections: formatSections });
               packet.suggestions = dropRepairedOmissions(packet.suggestions, carried);
@@ -707,11 +726,19 @@ export class Workflow {
             ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet), ...(voiceTarget ? { voiceTarget } : {}) }), { voiceTarget, voiceSamples }));
           }
           for (const index of blankRows) if (packet.resume[index]) packet.resume[index].text = '';
+          // A carried credential keeps the wording the candidate approved in the master;
+          // the humanizer has no AI tell to remove there, and a reworded name would read
+          // as missing to the final check.
+          for (const row of carriedRows) {
+            const quote = JSON.stringify(row.evidence);
+            const target = packet.resume.find(entry => entry.section === row.section && JSON.stringify(entry.evidence) === quote);
+            if (target) { target.text = row.text; target.heading = row.heading; }
+          }
           // The final attempt never blocks on these quality findings; it records them
           // for the candidate. Recomputed on the rewritten text, so a humanizer pass
           // cannot hide a count or credential finding behind changed wording.
           const finalScope = pluralScopeIssues(packet, { sources: context.sources });
-          const finalCredentials = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
+          const finalCredentials = revising ? [] : relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
           if (placement.ambiguous) packet.suggestions = [accomplishmentSuggestion(placement), ...packet.suggestions].slice(0, 40);
           if (finalScope.length) packet.suggestions = [...scopeSuggestions(finalScope), ...packet.suggestions].slice(0, 40);

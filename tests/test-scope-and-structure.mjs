@@ -320,3 +320,28 @@ test('review 37eb4fd: written names, issuer acronyms, tool acronyms, claim notes
   assert.ok(target.registerPhrases.every(item => item.register === 'formal'));
   assert.ok(target.registerRate > 0 && target.registerRate <= Math.round(1000 / target.sentenceLength) / 10);
 });
+
+test('review cec2918: own-name credential matching, carried-row notes, negated notes, scope quotes', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const { dropRepairedOmissions, dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  const { scopeSuggestions } = await import('../plainhand/scope-checks.mjs');
+  const row = (section, text) => ({ section, heading: null, text });
+  // A bullet with the field words is not the credential.
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMP), PMI, 2021' }, [row('Summary', 'Led project management for a 12-person team')]), false);
+  assert.equal(packetHasCredential({ text: 'Certified Information Systems Security Professional (CISSP), (ISC)2, 2021' }, [row('Experience', 'Owned information systems security for the division')]), false);
+  // Another credential from the same issuer is not this one.
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMP), PMI, 2021' }, [row('Certifications', 'Certified Associate in Project Management (CAPM), PMI, 2022')]), false);
+  assert.equal(packetHasCredential({ text: 'AWS Certified Solutions Architect – Associate, 2023' }, [row('Certifications', 'AWS Certified Cloud Practitioner, 2022')]), false);
+  // The same line under Education is present.
+  assert.equal(packetHasCredential({ text: 'PMP, 2021' }, [row('Education', 'PMP, 2021')]), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMP), PMI, 2021' }, [row('Certifications', 'PMP, 2021')]), true);
+  // An acronym-only carried row still drops the omission note about it.
+  assert.deepEqual(dropRepairedOmissions(['Left out the PMP because the role does not name it.', 'Left out the older role.'], [row('Certifications', 'PMP, 2021')]), ['Left out the older role.']);
+  // Case-insensitive acronym; a negated inclusion reports an omission and stays.
+  assert.deepEqual(dropCredentialInclusionClaims(['The pmp is included with its year.', 'The certificate was not added because no date is stated.'], [{ text: 'PMP, 2021' }]),
+    ['The certificate was not added because no date is stated.']);
+  // A long line is quoted around the flagged word.
+  const long = `${'Ran the weekly quality control panel and maintained the cell culture lines for the group, '.repeat(3)}and validated two assays.`;
+  const [note] = scopeSuggestions([{ kind: 'resume', index: 0, text: long, word: 'assays', singular: 'assay' }]);
+  assert.match(note, /"[^"]*assays[^"]*" says "assays"/);
+});

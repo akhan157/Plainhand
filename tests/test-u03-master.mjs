@@ -461,3 +461,71 @@ test('a relevant credential the retry still drops is carried from the approved m
     assert.ok(!after.packet.resume.some(entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`)), 'the revision keeps it out');
   } finally { await h.close(); }
 });
+
+test('a revision that removes a credential is not asked to keep it, even by a drafter that obeys the retry', async () => {
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const job = jobById('holdout2-job-stem-assay');
+  const base = controlledAgent({ scenario: { id: 'u03-revise-obey', roleOrder: 'recent' }, persona, job });
+  const greenBelt = entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`);
+  const revisionPrompts = [];
+  const agent = async (id, instruction, data, options) => {
+    const reply = await base(id, instruction, data, options);
+    if (instruction !== PACKET_INSTRUCTION || !data?.revisionRequest) return reply;
+    revisionPrompts.push(data);
+    // A drafter that removes the credential as asked, but restores it if told to keep it.
+    const keep = (data.missingFromResume || []).some(line => /Green Belt/.test(line));
+    return keep ? reply : { ...reply, resume: reply.resume.filter(entry => !greenBelt(entry)) };
+  };
+  const h = await harness({ persona, job, agent, verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Fixture.' }) });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    await h.ui('standard.approve', {});
+    const jobId = await h.addJob(job);
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    await h.ui('jobs.setContext', { jobId, overrideReason: 'Fixture proceeds to the packet.' });
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    await h.ui('tasks.revise', { jobId, request: 'Remove the Green Belt from the resume.' }); await h.settle();
+    const revised = await h.lastTask();
+    assert.equal(revised.status, 'complete', revised.message);
+    assert.ok(revisionPrompts.length >= 1);
+    assert.ok(revisionPrompts.every(data => !(data.missingFromResume || []).length), 'no keep-the-credential instruction on a revision');
+    const after = (await h.app.workspace.load()).jobs.find(item => item.id === jobId);
+    assert.ok(!after.packet.resume.some(greenBelt), 'the revised packet leaves it out');
+    assert.ok(!after.packet.suggestions.some(text => /Left out: .*Green Belt/.test(text)), 'and does not note it as missing');
+  } finally { await h.close(); }
+});
+
+test('a carried credential keeps its master wording through the humanizer, and is carried once', async () => {
+  const { HUMANIZE_INSTRUCTION } = await import('../plainhand/humanize.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const job = jobById('holdout2-job-stem-assay');
+  const base = controlledAgent({ scenario: { id: 'u03-carry-humanize', roleOrder: 'recent' }, persona, job });
+  const greenBelt = entry => /Green Belt/i.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`);
+  let preparing = false;
+  const agent = async (id, instruction, data, options) => {
+    const reply = await base(id, instruction, data, options);
+    if (instruction === PACKET_INSTRUCTION) { preparing = true; return { ...reply, resume: reply.resume.filter(entry => !greenBelt(entry)) }; }
+    // A humanizer that rewords the credential line.
+    if (instruction === HUMANIZE_INSTRUCTION && preparing) return { ...reply, items: reply.items.map(item => /Green Belt/.test(item.text) ? { ...item, text: item.text.replace(/Lean Six Sigma Green Belt/, 'six sigma green-belt') } : item) };
+    return reply;
+  };
+  const h = await harness({ persona, job, agent, verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Fixture.' }) });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    await h.ui('standard.approve', {});
+    const jobId = await h.addJob(job);
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    await h.ui('jobs.setContext', { jobId, overrideReason: 'Fixture proceeds to the packet.' });
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    const state = await h.app.workspace.load();
+    const masterRow = state.standard.draft.resume.find(greenBelt);
+    const rows = state.jobs.find(item => item.id === jobId).packet.resume.filter(greenBelt);
+    assert.equal(rows.length, 1, 'carried once');
+    assert.equal(rows[0].text, masterRow.text, 'with the approved wording');
+    assert.ok(!state.jobs.find(item => item.id === jobId).packet.suggestions.some(text => /Left out: .*Green Belt/.test(text)), 'and no false omission note');
+  } finally { await h.close(); }
+});
