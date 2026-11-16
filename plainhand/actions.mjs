@@ -8,6 +8,7 @@ import { AuditLog } from './audit.mjs';
 import { FEATURES } from './features/index.mjs';
 import { addContact, addInterview, setInterviewStatus, removeEntry, setNextAction, followUpQueue, upcomingInterview, recordOf } from './application-record.mjs';
 import { profileStrength, logUnderstanding } from './profile-strength.mjs';
+import { memoryReport, conflictDecision } from './memory-checks.mjs';
 import { profileCoverage } from './profile-coverage.mjs';
 import { currentCalibration } from './claim-calibration.mjs';
 import { candidateLine, recordDecision } from './claim-line.mjs';
@@ -103,10 +104,12 @@ export function buildDigest(state, { features = FEATURES } = {}) {
   const understanding = !state.understanding ? 'none' : state.understanding.approved ? 'approved' : 'needs-review';
   if (missing.length) attention.unshift({ kind: 'profile', jobId: null, text: `Profile: still missing ${missing.join(', ')}` });
   else if (understanding === 'needs-review') attention.unshift({ kind: 'profile', jobId: null, text: 'Profile: your understanding summary is ready for review' });
+  const memory = memoryReport(state);
   return {
     profile: { name: profile.name || '', roles: profile.roles || '', ready: Boolean(profile.name && profile.resume), missing, understanding, interview: profileCoverage(state), next: profileStrength(state).next.filter(n => !n.fromModel).map(n => n.text) },
     provider: state.provider || null,
     counts: { jobs: jobs.length, selected: jobs.filter(j => j.selected).length, prepared: state.jobs.filter(j => j.packet).length, applied: state.jobs.filter(j => j.submittedAt).length },
+    memory: { conflicts: memory.conflicts, questions: memory.questions },
     jobs, followUps, tasks, attention: attention.slice(0, 12),
   };
 }
@@ -179,6 +182,24 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       return { result, taintSources: result.coverage.recurringGaps.length ? [{ kind: 'evaluation-gaps', id: 'profile-strength', label: 'Gaps from evaluated postings' }] : [] };
     } });
 
+  define({ name: 'conflicts.list', tier: 'read', title: 'Facts that disagree', description: 'Unresolved contradictions between the candidate’s factual sources, with the shared quotes and the source ids involved, plus how many questions the sources already settled were asked again.', input: {},
+    run: async () => {
+      const state = await workspace.load();
+      // Detection compares every local source, including excluded ones. The action is
+      // read by the agent and MCP, so text from an excluded source is never returned;
+      // the local profile card uses the server's own state view instead.
+      const full = await workspace.context({ ...state, contextPrefs: {} });
+      const excluded = new Set(state.contextPrefs?.excludedSources || []);
+      const report = memoryReport(state, full.sources);
+      return {
+        ...report,
+        open: report.open.map(item => ({
+          ...item,
+          quotes: item.quotes.filter(quote => !excluded.has(quote.sourceId)),
+          redacted: item.quotes.some(quote => excluded.has(quote.sourceId)),
+        })),
+      };
+    } });
   define({ name: 'standard.approve', tier: 'candidate', title: 'Approve your master resume', description: 'The candidate approves their master resume and base cover letter: the complete record every application selects from.', input: {}, panel: () => ({ type: 'profile' }),
     run: async () => {
       await workspace.mutate(async state => {
@@ -392,6 +413,22 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
         state.understanding = null; for (const j of state.jobs) j.approvedHash = null;
       });
       return { result: { removed: true } };
+    } });
+  define({ name: 'conflicts.record', tier: 'candidate', title: 'Record which source is right', description: 'The candidate resolves one contradiction by naming the source that is right. The decision stores source ids and quote digests, never the fact text. Editing the source is the other way to resolve it.', input: { id: 'string', sourceId: 'string' }, panel: () => ({ type: 'profile' }),
+    run: async (ctx, input) => {
+      let decision = null;
+      await workspace.mutate(async state => {
+        const full = await workspace.context({ ...state, contextPrefs: {} });
+        const item = memoryReport(state, full.sources).open.find(conflict => conflict.id === input.id);
+        if (!item) throw new ActionError('failed', 'That conflict is no longer open. Reload and try again.');
+        if (!item.sourceIds.includes(input.sourceId)) throw new ActionError('invalid_input', 'Choose one of the sources in this conflict.');
+        decision = conflictDecision(item, input.sourceId);
+        const review = state.conflictReview && typeof state.conflictReview === 'object' ? state.conflictReview : {};
+        const decisions = Array.isArray(review.decisions) ? review.decisions : [];
+        state.conflictReview = { ...review, decisions: [...decisions, decision].slice(-200) };
+        state.events.unshift({ at: now(), text: 'Recorded which source is right for one disagreement between your sources.' });
+      });
+      return { result: decision };
     } });
   define({ name: 'profile.update', tier: 'write', title: 'Update your profile', description: `Change profile preferences: ${AGENT_PROFILE_FIELDS.join(', ')}. Use what the candidate stated; never infer. Work authorization, compensation, name, email and resume are edited by the candidate on the profile screen. Saving clears packet approvals.`,
     input: Object.fromEntries(AGENT_PROFILE_FIELDS.map(key => [key, 'string?'])),

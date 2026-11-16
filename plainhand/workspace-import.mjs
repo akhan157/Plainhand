@@ -25,7 +25,7 @@ export const IMPORT_MARKER = 'data/plainhand/backups/import-marker.json';
 // One source file larger than this is left out of the export and reported, never
 // truncated silently; the import then counts the claims whose quote did not travel.
 export const MAX_SOURCE_BYTES = 1024 * 1024;
-const STATE_KEYS = ['profile', 'provider', 'jobs', 'sources', 'tasks', 'conversation', 'events', 'contextPrefs', 'inbox', 'skillPlan'];
+const STATE_KEYS = ['profile', 'provider', 'jobs', 'sources', 'tasks', 'conversation', 'events', 'contextPrefs', 'inbox', 'skillPlan', 'conflictReview'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const HISTORY_FILE = 'data/plainhand/conversation.jsonl', PROPOSALS_FILE = 'data/plainhand/agent-proposals.json';
 const MAX_SAMPLES = 10, MAX_SAMPLE_TEXT = 8000, MAX_SAMPLE_TITLE = 120;
@@ -49,7 +49,7 @@ export function validateExport(data) {
   if (data.version !== 1) throw new ImportError('This export is from an unknown Plainhand version.');
   if (!data.profile || typeof data.profile !== 'object') throw new ImportError('The export has no profile.');
   for (const key of ['jobs', 'sources', 'tasks', 'conversation', 'events', 'answerBank', 'corrections', 'writingSamples', 'agentConversation', 'agentUsage', 'agentProposals']) if (data[key] !== undefined && !Array.isArray(data[key])) throw new ImportError(`The export's ${key} are not a list.`);
-  for (const key of ['claimLine', 'standard', 'resumeFormat', 'settings', 'understanding', 'files']) if (data[key] !== undefined && data[key] !== null && !object(data[key])) throw new ImportError(`The export's ${key} is not an object.`);
+  for (const key of ['claimLine', 'standard', 'resumeFormat', 'settings', 'understanding', 'conflictReview', 'files']) if (data[key] !== undefined && data[key] !== null && !object(data[key])) throw new ImportError(`The export's ${key} is not an object.`);
   if (object(data.files)) for (const [file, value] of Object.entries(data.files)) {
     if (!EXPORT_FILES.includes(file)) continue; // Never write a path outside the allow-list.
     if (typeof value !== 'string') throw new ImportError(`The export's ${file} is not text.`);
@@ -164,6 +164,28 @@ export function cleanUnderstanding(value) {
   };
 }
 
+// The conflict ledger holds decisions, not facts: a conflict id, the sources involved,
+// quote digests and the source the candidate chose. A malformed or older entry is
+// dropped; nothing here can introduce a fact or an approval.
+export function cleanConflictReview(value) {
+  if (!object(value)) return null;
+  const decisions = (Array.isArray(value.decisions) ? value.decisions : []).slice(-200).flatMap(entry => {
+    if (!object(entry)) return [];
+    const id = textWithin(entry.id, 200);
+    const sourceId = textWithin(entry?.disposition?.sourceId, 100);
+    const sourceIds = (Array.isArray(entry.sourceIds) ? entry.sourceIds : []).filter(item => typeof item === 'string' && item.trim()).map(item => item.slice(0, 100)).slice(0, 10);
+    const quoteDigests = (Array.isArray(entry.quoteDigests) ? entry.quoteDigests : []).filter(item => typeof item === 'string' && /^[0-9a-f]{64}$/.test(item)).slice(0, 10);
+    if (!id || !sourceId || !sourceIds.includes(sourceId) || !quoteDigests.length) return [];
+    return [{ id, kind: bounded(entry.kind, 40) || 'other', sourceIds, quoteDigests, disposition: { sourceId }, at: isoish(entry.at) || now() }];
+  });
+  const questionChecks = (Array.isArray(value.questionChecks) ? value.questionChecks : []).slice(-200).flatMap(entry => {
+    const digestValue = textWithin(entry?.digest, 100);
+    if (!digestValue || !/^[0-9a-f]{64}$/.test(digestValue)) return [];
+    return [{ digest: digestValue, by: bounded(entry.by, 40) || 'unknown', at: isoish(entry.at) || now(), jobId: bounded(entry.jobId, 100) || null }];
+  });
+  return { decisions, questionChecks };
+}
+
 function cleanScope(scope) {
   if (scope == null || scope === 'global') return 'global';
   if (!object(scope)) return 'global';
@@ -268,6 +290,7 @@ function prepareImport(data) {
     inbox: Array.isArray(data.inbox) ? data.inbox : undefined, skillPlan: object(data.skillPlan) ? data.skillPlan : undefined,
     writingSamples: cleanSamples(data.writingSamples), claimLine: cleanClaimLine(data.claimLine), standard: cleanStandard(data.standard),
     resumeFormat: cleanResumeFormat(data.resumeFormat), settings: cleanSettings(data.settings), understanding: cleanUnderstanding(data.understanding),
+    conflictReview: cleanConflictReview(data.conflictReview),
     filesOmitted: Array.isArray(data.filesOmitted) ? data.filesOmitted.filter(file => EXPORT_FILES.includes(file)) : [],
   };
 }
@@ -443,6 +466,7 @@ export async function importWorkspace({ workspace, data, busy = false }) {
       await syncTracker(workspace, state);
       return { jobs: state.jobs.length, approvalsReset, answerBank: { stored: bank.answers.length, held: bank.held, sensitiveDropped: bank.sensitiveDropped, invalidDropped: bank.invalidDropped },
         corrections: { stored: corrections.corrections.length, held: corrections.held, sensitiveDropped: corrections.sensitiveDropped, invalidDropped: corrections.invalidDropped },
+        conflicts: { decisions: (state.conflictReview?.decisions || []).length, questions: (state.conflictReview?.questionChecks || []).length },
         unresolvedClaims, sourceFiles: Object.keys(prepared.files).length, filesOmitted: prepared.filesOmitted,
         standard: state.standard ? (state.standard.kind === 'master' ? 'draft' : 'stale') : 'none', understanding: state.understanding ? 'needs-review' : 'none',
         backup: `data/plainhand/backups/${stamp}-import-*` };

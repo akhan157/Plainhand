@@ -445,11 +445,27 @@ try {
   assert.equal(await privatePage.locator('html').getAttribute('data-theme'), 'light', 'Theme remains usable when browser storage is blocked.');
   await privateContext.close();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+  // Facts that disagree: two factual file sources put different team sizes on the same
+  // programme. The card shows both exact quotes and the candidate resolves it; the
+  // conflict must disappear from the live state, not stay as a dismissed husk.
+  await app.workspace.write('modes/_profile.md', '# Candidate narrative\n\nI coordinated 3 contractors on the chassis programme.\n');
+  await app.workspace.write('interview-prep/story-bank.md', 'STAR: I led a team of 5 engineers on the chassis programme.\n');
+  await page.goto(base + '#profile');
+  await page.getByRole('heading', { name: 'Facts that disagree', exact: true }).waitFor();
+  const conflictCard = page.locator('section[aria-labelledby="conflicts-title"]');
+  assert.equal(await conflictCard.locator('blockquote.conflict-quote').count(), 2, 'the card lists both quotes');
+  assert.match(await conflictCard.innerText(), /3 contractors/);
+  assert.match(await conflictCard.innerText(), /5 engineers/);
+  assert.equal(await conflictCard.getByRole('button', { name: 'Edit a source', exact: true }).count(), 1);
+  await conflictCard.getByRole('button', { name: /Record that .*5 engineers.* is right/ }).click();
+  await page.getByRole('status').filter({ hasText: 'Recorded which source is right.' }).waitFor();
+  await page.getByRole('heading', { name: 'Facts that disagree', exact: true }).waitFor({ state: 'detached' });
+  assert.equal((await app.workspace.load()).conflictReview.decisions.length, 1);
   await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
   await shot(page, '14-mobile-profile-light.png');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.deepEqual(errors, [], 'No browser or CSP errors');
-  await writeFile(path.join(shots, 'workflow-proof.json'), JSON.stringify({ checkedAt: new Date().toISOString(), theme: 'light/dark/system, preference persistence, OS change, cross-tab sync, blocked storage, unsaved form preservation, dark secondary text AA contrast', audited, workflow: ['profile persisted', 'candidate interview reviewed', 'source discovery', 'evaluation', 'role selected', 'real PDF downloaded', 'packet approved', 'form inspected', 'evidence-backed answer generated', 'real resume uploaded', 'sensitive answers left blank', 'browser handed to candidate', 'candidate confirmation simulated', 'tracker persisted'], automatedSubmissions: 0, model: 'explicit synthetic fixture', employer: 'explicit local browser fixture', browserErrors: errors }, null, 2));
+  await writeFile(path.join(shots, 'workflow-proof.json'), JSON.stringify({ checkedAt: new Date().toISOString(), theme: 'light/dark/system, preference persistence, OS change, cross-tab sync, blocked storage, unsaved form preservation, dark secondary text AA contrast', audited, workflow: ['profile persisted', 'candidate interview reviewed', 'source discovery', 'evaluation', 'role selected', 'real PDF downloaded', 'packet approved', 'form inspected', 'evidence-backed answer generated', 'real resume uploaded', 'sensitive answers left blank', 'browser handed to candidate', 'candidate confirmation simulated', 'conflict card shown with both quotes and resolved', 'tracker persisted'], automatedSubmissions: 0, model: 'explicit synthetic fixture', employer: 'explicit local browser fixture', browserErrors: errors }, null, 2));
   console.log('Plainhand full browser workflow passed: themes, persistence, interview, discovery, evaluation, real PDFs/downloads, approval, real browser form filling/upload, handoff, confirmed tracking, and mobile layouts.');
   console.log(`Screenshots: ${shots}`);
 } catch (error) {
