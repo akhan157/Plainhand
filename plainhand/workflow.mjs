@@ -89,11 +89,12 @@ export class TaskPaused extends Error {}
 export class Workflow {
   // defaultProvider: the provider id used when the candidate has not selected one (the
   // hosted connector, where the chat app itself does the model work). null locally.
-  constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket, textExtractor = extractPdfText } = {}) {
+  // clock returns an ISO timestamp; tests replace it to drive the autonomy day limit.
+  constructor(workspace, { agent = executeAgent, verifier = verifyJob, scanner = discover, renderer = renderPacket, textExtractor = extractPdfText, clock = now } = {}) {
     this.workspace = workspace; this.usage = new UsageLedger(workspace);
     this.agent = (...args) => this.usage.track(agent, ...args);
-    this.verifier = verifier; this.scanner = scanner; this.renderer = renderer; this.textExtractor = textExtractor;
-    this.controllers = new Map(); this.queue = Promise.resolve();
+    this.verifier = verifier; this.scanner = scanner; this.renderer = renderer; this.textExtractor = textExtractor; this.clock = clock;
+    this.controllers = new Map(); this.queue = Promise.resolve(); this.stopped = false;
     this.handlers = new Map(); this.defaultProvider = null;
   }
   // Feature task kinds (plainhand/features). The handler gets the same tools the built-in
@@ -104,7 +105,13 @@ export class Workflow {
   }
   async recover() {
     await this.usage.recover();
-    await this.workspace.mutate(state => { for (const task of state.tasks) if (['queued', 'running'].includes(task.status)) { task.status = 'interrupted'; task.message = 'Plainhand restarted. Retry this task to continue from saved work.'; task.finishedAt = now(); } });
+    await this.workspace.mutate(state => { for (const task of state.tasks) if (['queued', 'running'].includes(task.status)) { task.message = task.status === 'queued' ? 'Plainhand restarted before this task started. Start it again.' : 'Plainhand restarted. Retry this task to continue from saved work.'; task.status = 'interrupted'; task.finishedAt = now(); } });
+  }
+  // Closing the app stops the queue: the running call is aborted, and queued work is
+  // left for the next start to mark interrupted instead of running after shutdown.
+  stop() {
+    this.stopped = true;
+    for (const controller of this.controllers.values()) controller.abort();
   }
   async enqueue(kind, jobId, input = {}) {
     const id = randomUUID();
@@ -141,7 +148,7 @@ export class Workflow {
   async run(id) {
     const state = await this.workspace.load();
     const task = state.tasks.find(t => t.id === id);
-    if (!task || task.status === 'canceled') return;
+    if (!task || task.status === 'canceled' || this.stopped) return;
     const controller = new AbortController(); this.controllers.set(id, controller);
     const check = () => { if (controller.signal.aborted) throw new Error('Task canceled.'); };
     const context = await this.workspace.context(state);
@@ -331,6 +338,8 @@ export class Workflow {
           const artifacts = await this.renderer(this.workspace, latest, job, packet);
           check();
           const atsCheck = await this.atsCheck(artifacts, latest.profile, packet, job, context);
+          // Canceling during the check must not leave a packet that can be approved.
+          check();
           Object.assign(current, taskChanges(original, job), artifacts, { atsCheck, approvedHash: null, stage: packet.questions.length ? 'awaiting-answer' : 'packet-ready', status: current.status === 'Evaluated' ? 'Apply' : current.status });
           markApplied(latest, job.id, draftStarted);
           if (revising) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: job.id, request }].slice(-200);
@@ -355,11 +364,18 @@ export class Workflow {
   }
   async autoPrepare(jobId, contextHash) {
     let queue = false;
+    const at = this.clock();
     await this.workspace.mutate(state => {
       const job = state.jobs.find(j => j.id === jobId);
-      if (!autoPrepareDecision(state, job, contextHash, now().slice(0, 10)).prepare) return;
-      job.selected = true; job.autoSelectedAt = now(); queue = true;
-      state.events.unshift({ at: now(), text: `Preparing ${job.company} — ${job.title} on its own (fit ${job.evaluation.score}/5). Nothing is sent; review it when it's ready.` });
+      const decision = autoPrepareDecision(state, job, contextHash, at.slice(0, 10));
+      if (!decision.prepare) {
+        // A role refused only because today's limit is used up is recorded, so the
+        // candidate can tell why it was left alone.
+        if (decision.reason === 'daily limit reached') state.events.unshift({ at, text: `Not preparing ${job.company} — ${job.title} on its own: the daily limit is used up (${decision.done} of ${decision.perDay} today). Nothing was sent.` });
+        return;
+      }
+      job.selected = true; job.autoSelectedAt = at; queue = true;
+      state.events.unshift({ at, text: `Preparing ${job.company} — ${job.title} on its own (fit ${job.evaluation.score}/5). Nothing is sent; review it when it's ready.` });
     });
     if (queue) await this.enqueue('prepare', jobId).catch(() => {});
   }

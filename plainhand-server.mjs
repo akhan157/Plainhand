@@ -523,7 +523,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
   server.on('listening', () => { workspace.write(LOCAL_API_FILE, JSON.stringify({ port: server.address().port, mcpToken, pid: process.pid, startedAt: now() }) + '\n').catch(() => {}); });
   server.headersTimeout = 15000;
   const close = async () => {
-    for (const controller of workflow.controllers.values()) controller.abort();
+    workflow.stop();
     agent.turn?.controller.abort();
     cancelVercelLogin();
     for (const controller of loginControllers.values()) controller.abort();
