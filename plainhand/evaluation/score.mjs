@@ -19,7 +19,12 @@ import { pdfEvidencePassed, pdfEvidenceSummary } from './pdf-evidence.mjs';
 // in the role headings and checks the order the candidate asked for; a role holding
 // a job-required fact may never be dropped, and whether the required role's first
 // line is a required fact is reported as within-role curation, not gated.
-export const SCORER_VERSION = 3;
+// v4: the PDF interleaved-line gate compares each line's own contiguous runs, not a
+// span merged across a heading's separate parts. A heading title anchored at an
+// earlier duplicate of its opening words no longer makes that duplicate's line look
+// interleaved with the heading; a shared word elsewhere in the document is not a
+// reading-order defect. No other check changes meaning.
+export const SCORER_VERSION = 4;
 const roleOrderValue = value => ROLE_ORDERS.includes(value) ? value : DEFAULT_ROLE_ORDER;
 
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');

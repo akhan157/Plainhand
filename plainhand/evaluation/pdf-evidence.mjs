@@ -222,20 +222,27 @@ function coverageCheck(groups, text) {
   };
 }
 // Interleaved columns split a line's tokens across another line's tokens. Two
-// visible lines whose matched token spans partially overlap are interleaved;
-// containment (a line wrapped inside nothing) is not an overlap.
+// runs belonging to different visible lines that partially overlap are
+// interleaved; containment (one line's wording repeated inside another line's
+// run) is not an overlap. Each run is a contiguous stretch on its own: a group
+// whose parts matched in different places (a heading's title, org and dates, or
+// a title anchored at an earlier duplicate of its opening words) must not be
+// merged into one span, because the text between its parts belongs to whatever
+// is rendered there, not to that group.
 function interleavedLines(results) {
-  const spans = results.filter(result => result.runs.length && result.runs.some(run => run.to > run.from))
-    .map(result => ({ label: result.label, from: Math.min(...result.runs.map(run => run.from)), to: Math.max(...result.runs.map(run => run.to)) }));
-  const overlapped = [];
+  const spans = results.flatMap(result => result.runs
+    .filter(run => run.to > run.from)
+    .map(run => ({ label: result.label, from: run.from, to: run.to })));
+  const overlapped = new Set();
   for (let i = 0; i < spans.length; i++) {
     for (let j = i + 1; j < spans.length; j++) {
       const a = spans[i], b = spans[j];
+      if (a.label === b.label) continue;
       const partial = (a.from < b.from && b.from <= a.to && a.to < b.to) || (b.from < a.from && a.from <= b.to && b.to < a.to);
-      if (partial) overlapped.push(`${a.label} / ${b.label}`);
+      if (partial) overlapped.add(`${a.label} / ${b.label}`);
     }
   }
-  return overlapped;
+  return [...overlapped];
 }
 
 // ---- Layout ----

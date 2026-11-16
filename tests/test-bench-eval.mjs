@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -325,6 +325,29 @@ test('the offline re-score reads an evidence directory, reproduces it, and never
     // The report is never written into the evidence it describes.
     await assert.rejects(run(process.execPath, ['scripts/rescore.mjs', out, '--out', path.join(out, 'rescore.md')], { cwd: process.cwd() }), /Refusing to write into the evidence directory/);
   } finally { await rm(out, { recursive: true, force: true }); }
+});
+
+test('the offline re-score reports an unscorable row when a run stopped before its packet', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'plainhand-rescore-blocked-'));
+  try {
+    await writeFile(path.join(dir, 'results.json'), JSON.stringify({
+      scorer: { version: SCORER_VERSION },
+      results: [{
+        scenario: { id: 'blocked-row', family: 'resume' },
+        pass: false,
+        expectedFail: false,
+        blocked: { stage: 'evaluated' },
+        error: 'prepare: Your provider reported a usage or billing limit.',
+        evaluation: { pass: true, score: 4.7, recommendation: 'Apply', matches: 6 },
+        packet: null,
+      }],
+    }));
+    const run = promisify(execFile);
+    const { stdout } = await run(process.execPath, ['scripts/rescore.mjs', dir], { cwd: process.cwd() });
+    assert.match(stdout, /\| blocked-row \| FAIL \| UNSCORABLE \|/);
+    assert.match(stdout, /packet \(all gates\) fail → UNSCORABLE/);
+    assert.match(stdout, /Rows whose verdict changed \| 0/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
 test('packet scoring detects unsupported numbers, absent claims and banned voice', () => {
@@ -675,7 +698,7 @@ test('an honest zero-match Skip passes; Apply and Investigate with no evidence s
 });
 
 test('the scorer is versioned and a baseline from another version is never compared', () => {
-  assert.equal(SCORER_VERSION, 3, 'v3 replaces the lead-share gate with the role-order gate');
+  assert.equal(SCORER_VERSION, 4, 'v4 judges interleaving on each line\'s own runs, not a span merged across a heading\'s parts');
   const holdout = scenarios.find(item => item.id === 'holdout-mismatch');
   const summary = aggregate([scoreScenario({ scenario: holdout, evaluation: { evaluation: { score: 0, recommendation: 'Skip', matches: [], gaps: ['FSA fellowship is required but is not evidenced in the supplied sources.'] }, sources: [{ id: 'cv', text: personaById('holdout-sre-platform').profile.resume }], prepareRefusedWithoutOverride: true } })]);
   assert.equal(summary.scorerVersion, SCORER_VERSION);
