@@ -111,6 +111,24 @@ export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
     return `Left out: ${item}.`;
   });
 }
+// A suggestion is optional advice to the candidate, not a factual claim in the resume,
+// letter or answers. When the reviewer's only blocking issues target a suggestion or
+// note, dropping those notes resolves them without another drafting pass. The test is
+// deliberately narrow: an issue that mentions a document fact still goes to the redraft.
+const SUGGESTION_ISSUE = /\b(?:suggestions?|notes?)\b/i;
+const DOCUMENT_ISSUE = /\b(?:resume|cv|cover letter|letter|answers?|bullets?|claims?|employers?|job titles?|dates?|degrees?|certifications?|licen[cs]es?|numbers?|salary|compensation)\b/i;
+export function dropSuggestionIssues(packet, review) {
+  const issues = Array.isArray(review?.issues) ? review.issues : [];
+  const suggestions = Array.isArray(packet?.suggestions) ? packet.suggestions : [];
+  if (!issues.length || !suggestions.length) return null;
+  const onlySuggestions = issues.every(issue => {
+    const text = String(issue || '');
+    return SUGGESTION_ISSUE.test(text) && !DOCUMENT_ISSUE.test(text.replace(SUGGESTION_ISSUE, ' '));
+  });
+  if (!onlySuggestions) return null;
+  packet.suggestions = [];
+  return { dropped: suggestions, reviewerIssues: [...issues] };
+}
 function ready(state, fallbackProvider = null) {
   if (!state.provider && !fallbackProvider) throw new Error('Connect and select an agent first.');
   if (!state.profile.name || !state.profile.resume || !state.profile.roles || !state.profile.location) throw new Error('Save your name, resume, target roles, and location in My profile first.');
@@ -270,10 +288,18 @@ export class Workflow {
     const originalJobHash = job ? digest([job.url, job.company, job.title, job.description]) : null;
     const assertJob = current => { if (!current || digest([current.url, current.company, current.title, current.description]) !== originalJobHash) throw new Error('The job changed during this task. Retry with the current description.'); };
     const attempts = new Map();
+    // Per-purpose, per-attempt recording on the job: a live run's calls can then show
+    // whether a preparation needed a second draft (prepare 2 / humanize 2 / review 2)
+    // and which purpose caused it. `attempt` is the ordinal within this task.
+    const recordCall = (purpose, attempt) => {
+      if (!job) return;
+      job.callLog = [...(job.callLog || []), { purpose, attempt }].slice(-60);
+    };
     const run = async (instruction, extra) => {
       check();
       const purpose = instruction === REVIEW_INSTRUCTION ? 'review' : instruction === HUMANIZE_INSTRUCTION ? 'humanize' : task.kind;
       const attempt = (attempts.get(purpose) || 0) + 1; attempts.set(purpose, attempt);
+      recordCall(purpose, attempt);
       const result = await this.agent(state.provider || this.defaultProvider, instruction, { context, ...extra }, { signal: controller.signal, usageContext: { taskId: id, jobId: task.jobId, retryOf: task.retryOf, purpose, attempt } });
       check(); return result;
     };
@@ -369,6 +395,12 @@ export class Workflow {
         // lines out gets one more pass with those lines named; a revision the
         // candidate asked for is not second-guessed.
         const ownResume = context.sources.find(source => source.id === 'cv')?.text || '';
+        // The candidate's own resume lines and every role, credential, degree and
+        // numbered result in the sources: the two views of what a master must keep.
+        const missingItems = entries => [...new Set([
+          ...masterCoverage(ownResume, entries).missing,
+          ...masterCompleteness(context.sources, entries).missing.map(item => item.label || item.text),
+        ])];
         let missing = [], fallback = null, evidencePrompt = [];
         for (let attempt = 0; attempt < 2; attempt++) {
           const base = attempt ? draft : previous;
@@ -381,6 +413,9 @@ export class Workflow {
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
             if (uncited.length) {
               if (attempt === 1) throw new Error(MASTER_EVIDENCE_ERROR);
+              // This redraft is happening for the evidence failure; name the completeness
+              // gaps in the same pass so they never cost a second retry of their own.
+              missing = request ? [] : missingItems(draft.resume);
               evidencePrompt = evidenceRetryFeedback(uncited.map((item, index) => ({ kind: 'Resume entry', index, item })));
               await this.progress(id, 'Correcting claims without an exact source reference');
               continue;
@@ -404,14 +439,32 @@ export class Workflow {
             if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
             review.issues = strings(review.issues, 'review issues');
             reviewAttempts.push({ attempt: attempt + 1, ...review });
+            // A note-only finding never redrafts the master; the notes are dropped and
+            // the reviewer's original issues stay in reviewAttempts for the record.
+            const suggestionOnly = dropSuggestionIssues(draft, review);
+            if (suggestionOnly) {
+              review = { ...review, passed: true, issues: [], resolved: { kind: 'dropped-suggestions', ...suggestionOnly } };
+              break;
+            }
           } catch (error) {
             // A redraft that only added missing lines must not lose the reviewed first draft.
             check(); if (!fallback || error instanceof TaskPaused) throw error;
             ({ draft, review, humanizer } = fallback); break;
           }
           const reviewed = review.passed && !review.issues.length;
-          if (attempt === 1 && fallback && (!reviewed || masterCoverage(ownResume, draft.resume).covered < masterCoverage(ownResume, fallback.draft.resume).covered)) { ({ draft, review, humanizer } = fallback); break; }
-          missing = attempt === 0 && !request ? masterCoverage(ownResume, draft.resume).missing : [];
+          if (attempt === 1 && fallback) {
+            // Keep the first reviewed draft when the redraft is worse by either
+            // measure: the candidate's own resume lines, or the completeness items
+            // (roles, credentials, degrees, numbered results) parsed from the sources.
+            const coverage = entries => masterCoverage(ownResume, entries).covered;
+            const gaps = entries => masterCompleteness(context.sources, entries).counts.missing;
+            if (!reviewed || coverage(draft.resume) < coverage(fallback.draft.resume) || gaps(draft.resume) > gaps(fallback.draft.resume)) { ({ draft, review, humanizer } = fallback); break; }
+          }
+          // The master must also keep every role, credential, degree and numbered
+          // result the candidate's own sources state. Missing items join the resume
+          // lines in the same one retry, so a dropped credential or old role costs no
+          // extra drafting pass and is never silently absent (U03).
+          missing = attempt === 0 && !request ? missingItems(draft.resume) : [];
           if (reviewed && !missing.length) break;
           if (reviewed) fallback = { draft, review, humanizer };
           if (attempt === 0) await this.progress(id, reviewed ? 'Adding resume lines the first draft left out' : 'Correcting unsupported claims using the reviewer’s source checks');
@@ -507,10 +560,20 @@ export class Workflow {
           if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
           review.issues = strings(review.issues, 'review issues');
           reviewAttempts.push({ attempt: attempt + 1, ...review });
+          // A review issue that clearly targets a suggestion or note is fixed by
+          // dropping the notes, not by spending a full draft+humanize+review cycle.
+          // Any issue naming a document fact still goes to the redraft.
+          const suggestionOnly = dropSuggestionIssues(packet, review);
+          if (suggestionOnly) {
+            review = { ...review, passed: true, issues: [], resolved: { kind: 'dropped-suggestions', ...suggestionOnly } };
+            break;
+          }
           if (review.passed && !review.issues.length) break;
           if (attempt === 0) {
             // The reviewer's own retry already re-runs the drafter; name any repeated
             // resume sentences there too instead of spending another call on them.
+            // Letter overlap alone never starts a retry: it rides on this one, and
+            // after the loop it becomes a suggestion only.
             evidencePrompt = [...evidencePrompt, ...letterRetryFeedback(letterOverlaps(packet.coverLetter, packet.resume))];
             await this.progress(id, 'Correcting unsupported claims using the reviewer’s source checks');
           }
@@ -522,7 +585,7 @@ export class Workflow {
         job.review = review;
         job.reviewAttempts = reviewAttempts;
         if (!review.passed || review.issues.length) {
-          await this.workspace.mutate(latest => { const current = latest.jobs.find(j => j.id === job.id); current.review = review; current.reviewAttempts = reviewAttempts; current.stage = 'review-blocked'; current.approvedHash = null; });
+          await this.workspace.mutate(latest => { const current = latest.jobs.find(j => j.id === job.id); current.review = review; current.reviewAttempts = reviewAttempts; if (job.callLog) current.callLog = job.callLog; current.stage = 'review-blocked'; current.approvedHash = null; });
           throw new Error('The factual review found issues. Review the findings in the application and add missing evidence before retrying.');
         }
         // How each claim compares with its evidence: undersold, balanced, stretched or unsupported.
@@ -531,6 +594,9 @@ export class Workflow {
         job.calibration = { ...gradePacket(packet, context.sources, review.calibration, candidateLine(state), { jobText: providerDescription(job.description || '') }), gradedAt: now(), line: Boolean(line) };
         job.fromStandard = compareToStandard(packet, standard);
         job.humanizer = humanizer;
+        // The evaluation runner persists the packet, not the job: carry the call log on
+        // the packet so a live run shows which purpose produced a second attempt.
+        packet.callLog = job.callLog;
         job.packet = packet; job.packetJobHash = digest([job.url, job.company, job.title, job.description]);
         await this.progress(id, 'Rendering your application documents');
         await this.workspace.mutate(async latest => {
@@ -547,7 +613,7 @@ export class Workflow {
           recordQuestionChecks(latest, memory?.settled, { jobId: job.id });
           markApplied(latest, job.id, draftStarted);
           if (revising) latest.revisions = [...(latest.revisions || []), { at: now(), jobId: job.id, request }].slice(-200);
-          await this.workspace.write(`output/packet-${job.id}.json`, JSON.stringify({ jobId: job.id, company: job.company, role: job.title, contextHash: context.hash, packet, review, reviewAttempts, calibration: job.calibration, ...artifacts }, null, 2));
+          await this.workspace.write(`output/packet-${job.id}.json`, JSON.stringify({ jobId: job.id, company: job.company, role: job.title, contextHash: context.hash, packet, review, reviewAttempts, calibration: job.calibration, callLog: job.callLog, ...artifacts }, null, 2));
           const report = await this.workspace.read(job.reportPath);
           await this.workspace.write(job.reportPath, report.replace('**PDF:** pending', '**PDF:** ' + artifacts.pdf));
           await syncTracker(this.workspace, latest);
@@ -562,7 +628,13 @@ export class Workflow {
       await this.workspace.mutate(latest => {
         const t = latest.tasks.find(t => t.id === id);
         if (t.status !== 'canceled') Object.assign(t, { status: 'failed', message: error.message, finishedAt: now() });
-        if (job?.verification) latest.jobs.find(j => j.id === job.id).verification = job.verification;
+        // A failed preparation keeps its call log too: the attempt ordinals are the
+        // evidence for why a live run spent a second draft cycle.
+        const current = job ? latest.jobs.find(j => j.id === job.id) : null;
+        if (current) {
+          if (job.callLog) current.callLog = job.callLog;
+          if (job.verification) current.verification = job.verification;
+        }
       });
     } finally { this.controllers.delete(id); }
   }

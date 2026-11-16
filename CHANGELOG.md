@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased: the interview keeps its order, and applications spend fewer calls
+
+- **The interview asks the first open area.** The engine reads the last question
+  in an interview reply and checks it against the first uncovered profile area
+  (`plainhand/profile-coverage.mjs`). A later-area or off-area question gets one
+  repair naming the area to ask; a miss the repair does not fix is accepted and
+  recorded on the turn instead of looping. A writing-sample request waits until
+  every area is covered and is asked at most once per conversation.
+- **A stated credential is never silently dropped from the master.** When the
+  master draft leaves out a role, credential, degree or numbered result the
+  candidate's own sources state, those items join the candidate's resume lines in
+  the existing one-retry channel (`missingFromResume`), so the redraft adds them.
+- **Fewer calls per application.** A review issue that clearly targets a
+  suggestion or note drops the note instead of a full draft+humanize+review
+  cycle; any issue naming a resume, letter or answer fact still redrafts. Each
+  job records `callLog: [{purpose, attempt}]` and the packet carries it, so a
+  live run shows which purpose caused a second attempt.
+
 ## Unreleased: the candidate's writing samples set the register
 
 - **Formal samples stay formal.** The candidate's writing samples are measured

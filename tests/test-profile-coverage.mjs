@@ -117,16 +117,16 @@ async function harness(steps, profile = { name: candidate.name, email: candidate
 
 test('a volunteered summary while areas are uncovered is refused, and the same turn asks the next question', async () => {
   const h = await harness([
-    { match: /Formula SAE/, reply: { say: 'That is worth keeping. Save it to your story?', actions: [{ name: 'profile.addStory', input: { text: STORY } }] } },
+    { match: /Formula SAE/, reply: { say: 'That is worth keeping. Save it to your story? What result did the chassis work have, with numbers?', actions: [{ name: 'profile.addStory', input: { text: STORY } }] } },
     { match: /go ahead/, reply: { say: 'I propose I rebuild your understanding now.', actions: [{ name: 'tasks.interview', input: {} }] } },
-    { match: /go ahead/, reply: { say: 'I propose I save that first. What result did the chassis work have, with numbers?', actions: [] } },
+    { match: /go ahead/, reply: { say: 'I propose I save that first. Which employer or organisation was that at, what was the official job title, and when did it start and end?', actions: [] } },
   ]);
   try {
     const saved = await h.say(STORY);
     await h.accept(saved);
     const reply = await h.say('Yes, go ahead.');
     assert.match(reply.text, /\?/, 'the turn ends with a question instead of a summary offer');
-    assert.match(reply.text, /with numbers/, 'the question is about the first uncovered area');
+    assert.match(reply.text, /official job title/, 'the question is about the first uncovered area');
     assert.ok(h.agent.calls.at(-1).results.some(r => r.name === 'tasks.interview' && /Do not offer to rebuild the profile yet/.test(r.error)), 'the summary proposal was refused');
     assert.equal(h.agent.calls.at(-1).digest.profile.interview.complete, false, 'the digest tells the model the interview is open');
     assert.ok(h.agent.calls.at(-1).digest.profile.interview.uncovered.includes('certifications and licences'));
@@ -221,10 +221,18 @@ test('the engine counts the current answer: a plain "no" closes the area on the 
 });
 
 test('engine: the digest for the turn that answers "No." already shows that area closed', async () => {
+  // Every other area is settled by the profile or the story, so the certifications
+  // question is the first uncovered one and the test isolates the "No." accounting.
+  const profile = {
+    name: candidate.name, email: candidate.email, roles: 'Process engineer',
+    graduation: 'B.S. Mechanical Engineering, 2020',
+    resume: 'Example Manufacturing — Process Engineer — 2016 to 2020.',
+    story: 'I cut the cycle time by 20% using Excel on a quality audit project, and led two technicians who wrote the SOPs.',
+  };
   const h = await harness([
     { match: /^Hi/, reply: { say: 'Welcome. Do you hold any certifications or licences?', actions: [] } },
-    { match: /^No\.$/, reply: { say: 'Understood. What tools do you use?', actions: [] } },
-  ]);
+    { match: /^No\.$/, reply: { say: 'Understood. What project are you proudest of?', actions: [] } },
+  ], profile);
   try {
     await h.say('Hi there, I want to set up my profile.');
     assert.ok(h.agent.calls.at(-1).digest.profile.interview.uncovered.includes('certifications and licences'));

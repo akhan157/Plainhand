@@ -193,6 +193,32 @@ test('the master result carries what it missed, and the profile view can list it
   } finally { await h.close(); }
 });
 
+test('a stated credential dropped from the first master draft is named in the one retry', async () => {
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const credential = persona.facts.find(fact => fact.id === 'cert').text;
+  const base = controlledAgent({ scenario: { id: 'u03-cert', roleOrder: 'recent' }, persona, job: jobById('holdout-job-fin-forecast') });
+  const prompts = [];
+  const agent = async (id, instruction, data, options) => {
+    const reply = await base(id, instruction, data, options);
+    if (instruction !== STANDARD_INSTRUCTION) return reply;
+    prompts.push(data);
+    if (prompts.length > 1) return reply;
+    // A first draft that silently drops the credential the candidate stated.
+    return { ...reply, resume: reply.resume.filter(entry => entry.text !== credential) };
+  };
+  const h = await harness({ persona, agent });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    const task = await h.lastTask();
+    assert.equal(task.status, 'complete', task.message);
+    assert.equal(prompts.length, 2, 'the missing credential triggers exactly one retry');
+    assert.match(prompts[1].missingFromResume.join(' '), /Lean Six Sigma Green Belt/, 'the retry names the credential');
+    const state = await h.app.workspace.load();
+    assert.ok(state.standard.draft.resume.some(entry => entry.text === credential), 'the credential is in the accepted master');
+    assert.equal(state.standard.completeness.missing.some(item => item.text === credential), false, 'the credential is no longer listed as missing');
+  } finally { await h.close(); }
+});
+
 test('preparing two tailored packets leaves the stored master byte-identical', async () => {
   const persona = holdoutPersonas.find(item => item.id === 'holdout-sre-platform');
   const job = jobById('holdout-job-tech-reliability');

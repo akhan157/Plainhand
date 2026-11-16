@@ -173,3 +173,81 @@ test('both drafting instructions say what to do with INPUT.humanizeRules in fold
   const { PACKET_INSTRUCTION, STANDARD_INSTRUCTION } = await import('../plainhand/agents.mjs');
   for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /When INPUT\.humanizeRules is present, apply those rules/);
 });
+
+// U14: a live application rose from 5 to 7.7-8 calls because one extra
+// prepare+humanize+review cycle ran, and the saved evidence could not say why.
+// The packet record now carries the purpose and attempt of every call.
+test('the packet record logs each call by purpose and attempt', async () => {
+  const h = await harness();
+  try {
+    const jobId = await h.addJob();
+    assert.equal((await h.runTask('evaluate', { jobId })).status, 'complete');
+    await h.ui('jobs.select', { jobId, selected: true });
+    assert.equal((await h.runTask('prepare', { jobId })).status, 'complete');
+    const job = (await h.app.workspace.load()).jobs.find(item => item.id === jobId);
+    assert.deepEqual(job.callLog.map(entry => [entry.purpose, entry.attempt]), [
+      ['evaluate', 1], ['prepare', 1], ['humanize', 1], ['review', 1],
+    ]);
+    assert.deepEqual(job.packet.callLog, job.callLog, 'the runner saves the packet, so the log rides on it');
+    assert.deepEqual(JSON.parse(await h.app.workspace.read(`output/packet-${jobId}.json`)).callLog, job.callLog);
+  } finally { await h.close(); }
+});
+
+test('a review issue that clearly targets a suggestion drops the note instead of redrafting', async () => {
+  let packets = 0, reviews = 0;
+  const h = await harness((id, instruction, data, options) => {
+    if (instruction === PACKET_INSTRUCTION) {
+      packets++;
+      return { ...fixtureAgent(id, instruction, data, options), suggestions: ['Add the SOC 2 audit to the resume.'] };
+    }
+    if (instruction === REVIEW_INSTRUCTION) {
+      reviews++;
+      return { passed: false, issues: ['The suggestion about the SOC 2 audit is not supported by the sources.'] };
+    }
+    return fixtureAgent(id, instruction, data, options);
+  });
+  try {
+    const jobId = await h.addJob();
+    assert.equal((await h.runTask('evaluate', { jobId })).status, 'complete');
+    await h.ui('jobs.select', { jobId, selected: true });
+    const before = h.calls.length;
+    const task = await h.runTask('prepare', { jobId });
+    assert.equal(task.status, 'complete', task.message);
+    assert.equal(packets, 1, 'no second draft');
+    assert.equal(reviews, 1, 'no second review');
+    assert.equal(h.calls.length - before, 3, 'packet, humanize and review only');
+    const job = (await h.app.workspace.load()).jobs.find(item => item.id === jobId);
+    assert.deepEqual(job.packet.suggestions, [], 'the note was dropped');
+    assert.equal(job.review.passed, true);
+    assert.equal(job.review.resolved.kind, 'dropped-suggestions');
+    assert.match(job.review.resolved.reviewerIssues[0], /SOC 2/);
+    assert.deepEqual(job.callLog.filter(entry => entry.attempt > 1), [], 'the log shows one attempt');
+  } finally { await h.close(); }
+});
+
+test('a factual review issue still redrafts, and the log shows the second attempt', async () => {
+  let packets = 0, reviews = 0;
+  const h = await harness((id, instruction, data, options) => {
+    if (instruction === PACKET_INSTRUCTION) { packets++; return fixtureAgent(id, instruction, data, options); }
+    if (instruction === REVIEW_INSTRUCTION) {
+      reviews++;
+      return reviews === 1
+        ? { passed: false, issues: ['The resume states a certification the sources do not mention.'] }
+        : fixtureAgent(id, instruction, data, options);
+    }
+    return fixtureAgent(id, instruction, data, options);
+  });
+  try {
+    const jobId = await h.addJob();
+    assert.equal((await h.runTask('evaluate', { jobId })).status, 'complete');
+    await h.ui('jobs.select', { jobId, selected: true });
+    const task = await h.runTask('prepare', { jobId });
+    assert.equal(task.status, 'complete', task.message);
+    assert.equal(packets, 2, 'a document-fact issue still gets a full redraft');
+    assert.equal(reviews, 2);
+    const job = (await h.app.workspace.load()).jobs.find(item => item.id === jobId);
+    assert.equal(job.review.passed, true);
+    assert.equal(job.review.resolved, undefined, 'only notes are resolved without review');
+    assert.deepEqual(job.callLog.filter(entry => entry.attempt === 2).map(entry => entry.purpose), ['prepare', 'humanize', 'review']);
+  } finally { await h.close(); }
+});
