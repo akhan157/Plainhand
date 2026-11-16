@@ -264,7 +264,7 @@ function markdown(matrix) {
   lines.push('| Conversation | `plainhand/agent.mjs` | Every action is in the model’s catalogue. Read and write run as tools; writes need the candidate’s confirmation; tasks need confirmation and run in Plainhand; candidate-tier actions return a panel link and change nothing. |');
   lines.push('| MCP local | `plainhand-mcp.mjs` → `/api/mcp/actions` | Read, write and candidate actions. Task-tier actions are not tools: the agent is told to run them in Plainhand. Candidate actions return a link and steps. |');
   lines.push('| MCP hosted | `plainhand/cloud/mcp.mjs` | Same set as the local bridge, over the hosted connector. |');
-  lines.push('| CLI | `bin/plainhand.mjs`, `package.json` | The launcher starts the app (screen and HTTP API); `plainhand-mcp.mjs` is the stdio MCP server. Scripted career-ops commands exist for some areas (`npm run doctor`, `verify`, `resume:*`, `scan`, `liveness`, `patterns`, `calibrate`, `update:check`, `demo:sample`). |');
+  lines.push('| CLI | `bin/plainhand.mjs`, `package.json` | The launcher starts the app (screen and HTTP API); `plainhand-mcp.mjs` is the stdio MCP server. Scripted career-ops commands exist for some areas (`npm run doctor`, `verify`, `resume:*`, `scan`, `liveness`, `patterns`, `calibrate`, `demo:sample`), and Plainhand release commands are reachable as `update`, `rollback`, `update:check` and `status`. |');
   lines.push('');
   lines.push('Tier rules are enforced once, in `registry.run`: candidate actions only from the screen; agent writes and tasks need explicit confirmation; MCP cannot run tasks. No surface can widen them.');
   lines.push('');
