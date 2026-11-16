@@ -488,6 +488,9 @@ async function trackedText(cwd) {
   const entries = [];
   for (const file of files) {
     if (BINARY.test(file) || /(?:^|\/)package-lock\.json$/.test(file)) continue; // generated dependency metadata
+    // This suite holds the planted personal data the scanner must catch, so it is never
+    // scanned itself; every other file, including other tests, is.
+    if (file === 'tests/test-u11-safety.mjs') continue;
     try { if ((await stat(path.join(cwd, file))).size > 2 * 1024 * 1024) continue; } catch { continue; }
     let text;
     try { text = await readFile(path.join(cwd, file), 'utf8'); } catch { continue; }
