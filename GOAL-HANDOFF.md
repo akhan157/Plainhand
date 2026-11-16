@@ -464,3 +464,34 @@ Residuals:
 - Evaluation and understanding question channels are not counted.
 - Conflicts found only in source files appear on the card but are not in the digest
   counts.
+
+## U08 merged; smoke run blocked by quota — 2026-11-16
+
+- **U08 lane `4626dd8`** (OMP DeepSeek), merged by root.
+  - Local HTTPS portals on the real ATS hostnames and paths, mapped through Chromium
+    host-resolver rules, so production host logic runs unchanged.
+  - Greenhouse, Lever and Ashby each fill the form, read it back, check the upload
+    hash, record field provenance, end at user review, and make 0 POSTs.
+  - Workday fills step one, then hands off at login.
+  - LinkedIn, Indeed and an unknown host each save, prepare, write the manual kit
+    (`jobs.manualKit`, `output/manual-kit/`) and stay tracked.
+  - Three detectors are tested against planted failures: false-ready, sensitive, and
+    unauthorized submit.
+  - Product fix: SSN and social security fields are now sensitive.
+  - All runs record their tier as `local-fixture`. The real-site read-only tier is
+    unverified by design.
+- **Root fix:** the manual kit now refuses an unapproved or stale packet. The kit is
+  what the candidate submits by hand. Tests updated, with a refusal assertion added.
+  - `test:u08-sites` 10/10, suite 612/612, and the UI flow pass.
+- **Smoke run (unseen set 2): blocked by provider quota.**
+  - `journey-sci` passed.
+  - All 8 holdout2 rows stopped at the Codex usage limit.
+  - No aggregate is reported. Set 2 stays unseen, so it can run on the next reset.
+- **U14 data point:** one fully reset Codex window covered about 225 `codex exec`
+  calls (203 paired, plus journey-sci, plus the start of set 2). That is roughly 15
+  to 45 applications per window at 5 to 15 calls each.
+  - This is the owner's "not 1 or 2" bar in the worst case. It falls short of "many"
+    for conversation-heavy use.
+  - Cutting calls per application is the U14 lever.
+- **Judge:** Claude is running on the same paired subset as the baseline (built and
+  seeded, r1 and r2, 12 packets).
