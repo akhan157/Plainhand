@@ -72,6 +72,7 @@ export function candidateSteps(panelType, where = 'the role') {
     profile: 'Open My profile, read your profile understanding and approve it there yourself.',
     workspace: 'Open Workspace and make this change there yourself.',
     record: `Open Applications, select ${where}, open its Record tab and do it there yourself.`,
+    form: `Open Applications, select ${where}, open its Apply tab and do it there yourself.`,
     insights: 'Open Insights and approve, reject or defer the suggestion yourself.',
     campaigns: 'Open Campaigns and do it there yourself.',
     inbox: 'Open Applications, find the email under Emails about your applications, read the quote and apply it there yourself.',
