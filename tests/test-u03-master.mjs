@@ -398,3 +398,21 @@ test('the last-pass repair runs before the review, and an omission note for a re
     assert.deepEqual(state.standard.repairs.map(item => item.section), ['Experience', 'Certifications']);
   } finally { await h.close(); }
 });
+
+test('the repair is idempotent for a credential sentence with context words, and field advice survives', async () => {
+  const { dropRepairedOmissions } = await import('../plainhand/workflow.mjs');
+  const sentence = 'I earned a Lean Six Sigma Green Belt certification in 2019 after leading the plant process-improvement program.';
+  const sources = [{ id: 'interview', text: sentence }];
+  const once = completeMasterResume(sources, []);
+  assert.equal(once.added.length, 1);
+  assert.deepEqual(once.completeness.missing, [], 'the added row satisfies its own item');
+  const twice = completeMasterResume(sources, once.resume);
+  assert.equal(twice.added.length, 0, 'a second pass adds nothing');
+  const added = once.added;
+  assert.deepEqual(dropRepairedOmissions([
+    'Left out the Green Belt because no issuer is stated.',
+    'Omission: Lean Six Sigma Green Belt.',
+    'Lean Six Sigma Green Belt is missing the issuing body.',
+    'Consider adding the missing issuer of the Lean Six Sigma Green Belt.',
+  ], added), ['Lean Six Sigma Green Belt is missing the issuing body.', 'Consider adding the missing issuer of the Lean Six Sigma Green Belt.']);
+});

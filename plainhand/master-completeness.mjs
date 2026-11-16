@@ -252,12 +252,24 @@ export function credentialIdentity(text) {
   return { tokens: [...new Set(identityTokens(text))], acronyms: acronymsOf(text) };
 }
 
+// The credential's own name in a stated sentence ("I earned a Lean Six Sigma Green
+// Belt certification in 2019 after ..." names "Lean Six Sigma Green Belt"), or its
+// shortest credential clause. A master entry holding every identity word of that name
+// holds the credential, whatever context the sentence adds around it, so the
+// deterministic repair's own row always satisfies the item it was added for.
+function credentialNameTokens(text) {
+  const named = String(text || '').match(CREDENTIAL_NAME);
+  const name = named && /^[A-Z0-9]/.test(named[1].trim()) ? named[1].trim() : shortestClause(text);
+  return [...new Set(identityTokens(name))];
+}
 export function credentialIndex(item, master) {
   const acronyms = acronymsOf(item.text);
   const need = [...new Set(identityTokens(item.text))];
+  const name = credentialNameTokens(item.text);
   return master.findIndex(entry => {
     const text = entryText(entry), have = new Set(identityTokens(text));
     if (acronyms.length && acronyms.every(acronym => have.has(acronym))) return true;
+    if (name.length >= 2 && name.every(token => have.has(token))) return true;
     return need.length ? need.filter(token => have.has(token)).length / need.length >= 0.7 : false;
   });
 }

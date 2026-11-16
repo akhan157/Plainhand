@@ -131,7 +131,8 @@ export function accomplishmentRetryFeedback({ roles = [], sections = [] } = {}) 
 // A row the completeness repair added is no longer left out, so a suggestion that says
 // it was ("Left out the Green Belt because ...") would now misdescribe the master. Only
 // an omission note naming the added row's credential or employer is dropped.
-const OMISSION_NOTE = /\b(?:left out|leaves? out|leaving out|omit\w*|not included|missing|absent|excluded?)\b/i;
+// Row absence only: "missing the issuing body" is advice about a field of the row.
+const OMISSION_NOTE = /\b(?:left out|leaves? out|leaving out|omitted|omits?|omission|not included|absent from|excluded|excluding|missing from)\b/i;
 export function dropRepairedOmissions(suggestions, added) {
   const names = (Array.isArray(added) ? added : []).flatMap(row => {
     const org = String(row?.heading?.org ?? '').trim();
@@ -144,7 +145,12 @@ export function dropRepairedOmissions(suggestions, added) {
     const value = String(text ?? '');
     if (!OMISSION_NOTE.test(value)) return true;
     const lower = value.toLowerCase();
-    return !names.some(name => name.split(' ').every(word => lower.includes(word)));
+    // The full name, or its last two words ("Green Belt" for "Lean Six Sigma Green Belt").
+    return !names.some(name => {
+      const words = name.split(' ');
+      const tail = words.length > 2 ? words.slice(-2) : words;
+      return words.every(word => lower.includes(word)) || new RegExp(`\\b${tail.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+')}\\b`).test(lower);
+    });
   });
 }
 export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
