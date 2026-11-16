@@ -416,3 +416,41 @@ test('the repair is idempotent for a credential sentence with context words, and
     'Consider adding the missing issuer of the Lean Six Sigma Green Belt.',
   ], added), ['Lean Six Sigma Green Belt is missing the issuing body.', 'Consider adding the missing issuer of the Lean Six Sigma Green Belt.']);
 });
+
+test('a relevant credential the retry still drops is carried from the approved master', async () => {
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const job = jobById('holdout2-job-stem-assay');
+  const base = controlledAgent({ scenario: { id: 'u03-packet-carry', roleOrder: 'recent' }, persona, job });
+  let packetCalls = 0, reviewed = null;
+  const agent = async (id, instruction, data, options) => {
+    const reply = await base(id, instruction, data, options);
+    if (instruction === PACKET_INSTRUCTION) {
+      packetCalls += 1;
+      // Both drafts drop the Green Belt and claim it was added.
+      return { ...reply, resume: reply.resume.filter(entry => !/Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`)), suggestions: ['Added the Lean Six Sigma Green Belt to the resume.'] };
+    }
+    if (data?.packet && !data?.items && data?.job) reviewed = data.packet;
+    return reply;
+  };
+  const h = await harness({ persona, job, agent, verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Fixture.' }) });
+  try {
+    await h.ui('tasks.standard', {}); await h.settle();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    await h.ui('standard.approve', {});
+    const jobId = await h.addJob(job);
+    await h.ui('tasks.evaluate', { jobId }); await h.settle();
+    await h.ui('jobs.setContext', { jobId, overrideReason: 'Fixture proceeds to the packet.' });
+    await h.ui('jobs.select', { jobId, selected: true });
+    await h.ui('tasks.prepare', { jobId }); await h.settle();
+    const task = await h.lastTask();
+    assert.equal(task.status, 'complete', task.message);
+    assert.equal(packetCalls, 2);
+    const state = await h.app.workspace.load();
+    const prepared = state.jobs.find(item => item.id === jobId);
+    const masterRow = state.standard.draft.resume.find(entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`));
+    const carried = prepared.packet.resume.find(entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`));
+    assert.ok(carried, 'the packet carries the credential');
+    assert.deepEqual(carried.evidence, masterRow.evidence, 'with the master row\'s exact quote');
+    assert.ok(reviewed.resume.some(entry => /Green Belt/.test(`${entry.text} ${entry.heading?.org || ''} ${entry.heading?.title || ''}`)), 'the reviewer saw it');
+  } finally { await h.close(); }
+});

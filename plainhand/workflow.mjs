@@ -22,7 +22,7 @@ import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume, repairMisplacedAccomplishments } from './resume-format.mjs';
 import { pluralScopeIssues, scopeRetryFeedback, scopeSuggestions } from './scope-checks.mjs';
-import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion, credentialName } from './credential-relevance.mjs';
+import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion, credentialName, masterCredentialRows } from './credential-relevance.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -157,7 +157,7 @@ export function dropRepairedOmissions(suggestions, added) {
 // says a credential was kept or included contradicts the note that says it was left
 // out, so it is dropped. Advice and questions are not inclusion claims.
 const CREDENTIAL_NOUN_MENTION = /\b(?:certif\w*|licen[cs]\w*|credentials?)\b/i;
-const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried)\b/i;
+const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried|added|adds)\b/i;
 // `missing` holds the missing credentials; a note counts as being about one when it
 // uses a credential noun or names one of those credentials' own acronyms or name
 // words, never merely because it contains some other acronym (US, SQL).
@@ -664,6 +664,19 @@ export class Workflow {
             ];
             await this.progress(id, placement.ambiguous ? 'Putting each accomplishment under its role' : credentialGaps.length ? 'Adding the credential this posting needs' : 'Keeping counts exactly as the sources state');
             continue;
+          }
+          // No retry is left: a credential the posting needs that the draft still omits
+          // is carried from the approved master, row, heading and exact quote as the
+          // candidate approved them, rather than shipping a packet without it.
+          if (credentialGaps.length && standard) {
+            const carried = masterCredentialRows(state.standard?.draft?.resume, credentialGaps)
+              .filter(row => hasEvidence(row, context))
+              .map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence }));
+            if (carried.length) {
+              packet.resume = normalizeResume([...packet.resume, ...carried], { sections: formatSections });
+              packet.suggestions = dropRepairedOmissions(packet.suggestions, carried);
+              credentialGaps = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
+            }
           }
           // Reuse before humanize and review: an approved factual answer whose quote is in
           // the current shared sources replaces the draft and carries its provenance. Held,

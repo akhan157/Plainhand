@@ -165,5 +165,7 @@ export function scopeRetryFeedback(issues) {
 }
 
 export function scopeSuggestions(issues) {
-  return issues.map(issue => `Scope check (not a factual issue): ${label(issue)} says "${issue.word}" where the cited evidence says "${issue.singular}". Keep the singular or add evidence for more than one.`);
+  // Quote the line, never an index: a reviewer counting entries from zero would read
+  // "Resume entry 2" as a different line and reject the note as false.
+  return issues.map(issue => `Scope check (not a factual issue): ${issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line'} "${excerpt(issue.text)}" says "${issue.word}" where its cited evidence says "${issue.singular}". Keep the singular or add evidence for more than one.`);
 }

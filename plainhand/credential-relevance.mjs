@@ -112,6 +112,17 @@ export function packetHasCredential(item, resume) {
   return credentialIndex(item, entries) >= 0;
 }
 
+// The approved master's own rows for the given missing credentials, matched by the
+// same text masterCredentials reads, so the packet can carry the row (with its
+// heading and exact source quote) instead of shipping without a needed credential.
+export function masterCredentialRows(masterResume, items) {
+  const wanted = new Set((Array.isArray(items) ? items : []).map(item => clean(item?.text).toLowerCase()));
+  return (Array.isArray(masterResume) ? masterResume : []).filter(entry => {
+    const found = masterCredentials([entry])[0];
+    return found && wanted.has(clean(found.text).toLowerCase());
+  });
+}
+
 export function credentialRetryFeedback(items) {
   if (!items.length) return [];
   return [
