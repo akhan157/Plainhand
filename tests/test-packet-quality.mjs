@@ -247,7 +247,8 @@ test('the suggestion guard runs before review and keeps a true inclusion note', 
     assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
     const reviewCall = h.calls.filter(call => call.instruction === REVIEW_INSTRUCTION).at(-1);
     assert.ok(reviewCall, 'the reviewer ran');
-    assert.deepEqual(reviewCall.data.packet.suggestions, [
+    assert.ok(reviewCall.data.packet.suggestions.some(line => line.startsWith('Scope check')), 'the letter’s unsupported plural is a suggestion, not a gate');
+    assert.deepEqual(reviewCall.data.packet.suggestions.filter(line => !line.startsWith('Scope check')), [
       'Left out: Google Data Analytics Certificate.',
       'Included the Atlas reporting tool in Projects.',
     ], 'the reviewer sees the corrected note and the true one');

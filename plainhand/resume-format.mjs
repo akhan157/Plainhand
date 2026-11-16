@@ -166,6 +166,70 @@ export function groupEntries(resume) {
   return sections;
 }
 
+// A heading whose only non-empty fields are structural words ("Experience",
+// "Role") is a placeholder: it repeats the section label instead of naming an
+// employer or title. It is dropped when the same section already has a real
+// heading, because the section heading already says where the line belongs.
+const STRUCTURAL_HEADING = new Set([
+  'experience', 'work experience', 'professional experience', 'relevant experience',
+  'employment', 'employment history', 'work history', 'career', 'career history',
+  'role', 'roles', 'position', 'positions', 'job', 'jobs', 'work',
+  'project', 'projects', 'education', 'training', 'education and training',
+  'certification', 'certifications', 'certificate', 'certificates', 'license',
+  'licenses', 'licence', 'licences', 'licenses and certifications',
+  'skills', 'publication', 'publications', 'summary', 'profile', 'volunteer',
+  'volunteering', 'research', 'award', 'awards', 'honor', 'honors', 'honour',
+  'honours', 'interest', 'interests', 'language', 'languages', 'reference', 'references',
+]);
+const headingValue = value => String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const genericHeadingField = value => STRUCTURAL_HEADING.has(headingValue(value));
+const realHeadingField = value => Boolean(String(value ?? '').trim()) && !genericHeadingField(value);
+const HEADING_FIELDS = ['org', 'title', 'location', 'dates'];
+const realHeading = heading => Boolean(heading && typeof heading === 'object' && HEADING_FIELDS.some(key => realHeadingField(heading[key])));
+const placeholderHeading = (heading, sectionHasRealHeading) => {
+  if (!heading || typeof heading !== 'object' || !sectionHasRealHeading) return heading;
+  if (HEADING_FIELDS.some(key => key !== 'org' && key !== 'title' && String(heading[key] ?? '').trim())) return heading;
+  if (!genericHeadingField(heading.org) && !genericHeadingField(heading.title)) return heading;
+  const next = { ...heading };
+  if (genericHeadingField(next.org)) next.org = '';
+  if (genericHeadingField(next.title)) next.title = '';
+  return HEADING_FIELDS.some(key => String(next[key] ?? '').trim()) ? next : null;
+};
+
+// The renderer groups entries by section, but the packet is reviewed and indexed
+// in its own array order. Make the array match what a reader sees: one contiguous
+// run per section (first appearance wins), and one block per heading inside it, so
+// a heading repeated around an intervening entry cannot split or repeat.
+// Stable throughout; null headings keep their own position instead of being
+// collected across a real heading. Call before humanize and review: their
+// resume:<index> keys then name the same entries the candidate sees.
+export function normalizeResume(resume) {
+  const entries = Array.isArray(resume) ? resume.filter(entry => entry && typeof entry === 'object') : [];
+  const sectionOrder = [];
+  const bySection = new Map();
+  for (const entry of entries) {
+    const name = String(entry.section ?? '');
+    if (!bySection.has(name)) { bySection.set(name, []); sectionOrder.push(name); }
+    bySection.get(name).push(entry);
+  }
+  const ordered = [];
+  for (const name of sectionOrder) {
+    const section = bySection.get(name);
+    const hasRealHeading = section.some(entry => realHeading(entry.heading));
+    const groups = new Map();
+    let nullGroup = 0;
+    for (const entry of section) {
+      const heading = placeholderHeading(entry.heading, hasRealHeading);
+      const next = heading === entry.heading ? entry : { ...entry, heading };
+      const key = heading ? headingKey(heading) : `\u0000null:${nullGroup++}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(next);
+    }
+    for (const group of groups.values()) ordered.push(...group);
+  }
+  return ordered;
+}
+
 // Sections in the candidate's order, matched by name; others keep their draft order.
 export function orderSections(sections, format) {
   const order = (format.sections || []).map(s => s.toLowerCase());

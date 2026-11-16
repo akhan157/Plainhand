@@ -20,7 +20,9 @@ import { voiceTargetOf } from './voice-target.mjs';
 import { AgentCache } from './agent-cache.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
 import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
-import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey } from './resume-format.mjs';
+import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey, normalizeResume } from './resume-format.mjs';
+import { pluralScopeIssues, scopeRetryFeedback, scopeSuggestions } from './scope-checks.mjs';
+import { relevantMissingCredentials, credentialRetryFeedback, credentialSuggestion } from './credential-relevance.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -408,7 +410,7 @@ export class Workflow {
             draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...foldInput(folded), ...(voiceTarget ? { voiceTarget } : {}), ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', MASTER_RESUME_LIMIT);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
-            draft.resume = dedupeResume(draft.resume.filter(keepResumeRow));
+            draft.resume = normalizeResume(dedupeResume(draft.resume.filter(keepResumeRow)));
             const uncited = draft.resume.filter(item => !hasEvidence(item, context));
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
             if (uncited.length) {
@@ -422,7 +424,7 @@ export class Workflow {
             }
             for (const item of draft.resume) { requireText(item.section, 'resume section', 100); if (!headingOnlyRow(item)) requireText(item.text, 'resume entry', 10000); }
             verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
-            draft.resume = draft.resume.filter(item => !blankText(item) || Boolean(item?.heading));
+            draft.resume = normalizeResume(draft.resume.filter(item => !blankText(item) || Boolean(item?.heading)));
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
             // A blank education or credential row is legal; the humanizer rewrites lines,
             // so restore its empty text if a pass added filler the renderer would show.
@@ -489,14 +491,16 @@ export class Workflow {
         const standard = standardInput(state, context.hash);
         const folded = foldedHumanize(state);
         let packet, humanizer, memory = null;
-        let review;
+        let review, scopeGaps = [], credentialGaps = [];
         const reviewAttempts = [];
         let evidencePrompt = [];
         const draftStarted = now(), line = lineInput(state, job.id), lineData = { ...(line ? { candidateLine: line } : {}), ...(state.resumeFormat?.sections?.length ? { format: { sections: state.resumeFormat.sections } } : {}) };
+        const jobText = `${job.title}\n${providerDescription(job.description || '')}`;
         for (let attempt = 0; attempt < 2; attempt++) {
           // roleOrder is the candidate's own order for experience; on a revision their request wins over it.
           packet = await run(PACKET_INSTRUCTION, { job: providerJob(job), roleAnswers: job.roleAnswers || '', ...lineData, ...foldInput(folded), ...(voiceTarget ? { voiceTarget } : {}), roleOrder: roleOrderOf(state), ...(standard && !revising ? { master: standard } : {}),
-            ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}) });
+            ...(revising ? { revisionRequest: request, previousPacket: attempt ? packet : job.packet } : attempt ? { previousPacket: packet } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}),
+            ...(attempt && credentialGaps.length ? { missingFromResume: credentialGaps.map(item => `Keep the relevant credential: ${item.label || item.text}`) } : {}) });
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
           packet.suggestions = strings(packet.suggestions || [], 'optional suggestions');
@@ -505,7 +509,7 @@ export class Workflow {
           // dates; that row is legal and renders as the heading alone. The same
           // accomplishment written twice is dropped before humanize, review and
           // calibration, so their resume:<index> keys stay aligned.
-          packet.resume = dedupeResume(packet.resume.filter(keepResumeRow));
+          packet.resume = normalizeResume(dedupeResume(packet.resume.filter(keepResumeRow)));
           const uncited = [
             ...packet.resume.map((item, index) => ({ kind: 'Resume entry', index, item })),
             ...packet.answers.map((item, index) => ({ kind: 'Answer', index, item })),
@@ -525,8 +529,23 @@ export class Workflow {
           verifyHeadings(packet.resume, context.sources.map(s => s.text).join('\n'));
           // A heading the sources cannot confirm may lose fields; keep a blank row only
           // while some part of its heading survives, never as an invisible empty line.
-          packet.resume = packet.resume.filter(item => !blankText(item) || Boolean(item?.heading));
+          packet.resume = normalizeResume(packet.resume.filter(item => !blankText(item) || Boolean(item?.heading)));
           if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
+          // Two deterministic findings ride the existing one retry, before humanize and
+          // review so their resume:<index> keys name the entries that will ship:
+          // a plural the item's own evidence never uses (scope stretch), and a
+          // credential the posting names or relates to that the resume left out.
+          scopeGaps = pluralScopeIssues(packet, { sources: context.sources });
+          credentialGaps = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
+          if (attempt === 0 && (scopeGaps.length || credentialGaps.length)) {
+            evidencePrompt = [
+              ...scopeRetryFeedback(scopeGaps),
+              ...credentialRetryFeedback(credentialGaps),
+              ...letterRetryFeedback(letterOverlaps(packet.coverLetter, packet.resume)),
+            ];
+            await this.progress(id, credentialGaps.length ? 'Adding the credential this posting needs' : 'Keeping counts exactly as the sources state');
+            continue;
+          }
           // Reuse before humanize and review: an approved factual answer whose quote is in
           // the current shared sources replaces the draft and carries its provenance. Held,
           // expired, out-of-scope or unproved entries and every candidate assertion stay out,
@@ -554,7 +573,14 @@ export class Workflow {
             ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet), ...(voiceTarget ? { voiceTarget } : {}) }), { voiceTarget, voiceSamples }));
           }
           for (const index of blankRows) if (packet.resume[index]) packet.resume[index].text = '';
+          // The final attempt never blocks on these quality findings; it records them
+          // for the candidate. Recomputed on the rewritten text, so a humanizer pass
+          // cannot hide a count or credential finding behind changed wording.
+          const finalScope = pluralScopeIssues(packet, { sources: context.sources });
+          const finalCredentials = relevantMissingCredentials({ master: standard, sources: context.sources, packet, jobText });
           packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
+          if (finalScope.length) packet.suggestions = [...scopeSuggestions(finalScope), ...packet.suggestions].slice(0, 40);
+          if (finalCredentials.length) packet.suggestions = [...finalCredentials.map(credentialSuggestion), ...packet.suggestions].slice(0, 40);
           await this.progress(id, 'Checking factual claims against the original sources');
           review = await run(REVIEW_INSTRUCTION, { job: providerJob(job), packet, ...lineData });
           if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
