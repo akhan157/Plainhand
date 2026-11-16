@@ -178,3 +178,11 @@ test('review 97f3a7e: roles are ordered across experience sections, and candidat
   assert.deepEqual(out.map(entry => `${entry.text}:${entry.section}`), ['s:Summary', 'b:Experience', 'c:Experience', 'a:Experience']);
   assert.deepEqual(orderRolesNewestFirst([row('Old', '2016 to 2020', 'old', 'Professional Roles'), row('New', '2025 to 2026', 'new', 'Professional Roles')]).map(entry => entry.text), ['new', 'old']);
 });
+
+test('review 983c762: volunteer and board sections are never merged; apart employment sections stay in place', () => {
+  const role = (org, dates) => ({ org, title: 'T', location: '', dates });
+  const out = orderRolesNewestFirst([{ section: 'Experience', heading: role('Acme', '2016 to 2020'), text: 'a' }, { section: 'Volunteer Roles', heading: role('Food bank', '2025 to present'), text: 'v' }]);
+  assert.deepEqual(out.map(entry => `${entry.text}:${entry.section}`), ['a:Experience', 'v:Volunteer Roles']);
+  const apart = orderRolesNewestFirst([{ section: 'Summary', heading: null, text: 's' }, { section: 'Experience', heading: role('A', '2016 to 2020'), text: 'a' }, { section: 'Education', heading: role('U', '2012'), text: 'u' }, { section: 'Professional Roles', heading: role('B', '2025 to 2026'), text: 'b' }]);
+  assert.deepEqual(apart.map(entry => `${entry.text}:${entry.section}`), ['s:Summary', 'a:Experience', 'u:Education', 'b:Professional Roles']);
+});

@@ -342,9 +342,12 @@ const prose = text => esc(text).replace(HYPHENATED, word => `<span class="nobrea
 // roles that start the same year may go either way). A draft already in that order
 // is left exactly as drafted. Otherwise dated roles are sorted among the slots dated
 // roles occupy; a role whose dates cannot be read keeps its slot; a line with no
-// heading travels with the role above it. Every section named like experience
-// counts ("Professional Roles", "Work History").
-const EXPERIENCE_NAME = /experience|employment|work history|career|professional history|\broles\b|\bpositions\b|appointments/i;
+// heading travels with the role above it. Every employment section counts
+// ("Experience", "Work History", "Professional Roles"); they are one section.
+// Employment sections only. "Volunteer Roles", "Teaching Positions", "Board
+// Appointments", Projects and Research are their own sections, never merged into
+// Experience; a role-like name counts only when it says professional.
+const EXPERIENCE_NAME = /^(?:(?:relevant |professional |work |industry )?experience|employment(?: history)?|work history|career(?: history)?|professional (?:history|roles|positions))$/i;
 export function orderRolesNewestFirst(resume) {
   const entries = Array.isArray(resume) ? resume : [];
   const isExperience = entry => EXPERIENCE_NAME.test(String(entry?.section ?? '').trim());
@@ -353,6 +356,18 @@ export function orderRolesNewestFirst(resume) {
   // A resume has one experience section; a draft that drifts to a second name
   // ("Experience" then "Work History") is one section under the first name, and all
   // its roles are ordered together, as the scorer reads them.
+  // Employment sections apart from each other (Education between them) keep their
+  // own place: each is ordered where it stands, and nothing is moved across.
+  const contiguous = slots.every((index, at) => !at || index === slots[at - 1] + 1);
+  if (!contiguous) {
+    let out = [...entries];
+    for (const name of [...new Set(slots.map(index => entries[index].section))]) {
+      const own = out.map((entry, index) => (entry.section === name ? index : -1)).filter(index => index >= 0);
+      const ordered = orderRolesNewestFirst(own.map(index => out[index]));
+      own.forEach((index, at) => { out[index] = ordered[at]; });
+    }
+    return out;
+  }
   const sectionName = entries[slots[0]].section;
   const run = slots.map(index => ({ ...entries[index], section: sectionName }));
   const groups = [];
@@ -372,7 +387,7 @@ export function orderRolesNewestFirst(resume) {
   let next = 0;
   const ordered = groups.map(group => (dated.includes(group) ? sorted[next++] : group)).flatMap(group => group.rows);
   const out = entries.filter((entry, index) => !slots.includes(index));
-  out.splice(slots[0] - slots.filter(index => index < slots[0]).length, 0, ...ordered);
+  out.splice(slots[0], 0, ...ordered);
   return out;
 }
 

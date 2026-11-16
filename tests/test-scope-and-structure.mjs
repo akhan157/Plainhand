@@ -80,7 +80,7 @@ test('the plural check flags only a plural the item evidence never uses', () => 
 });
 
 test('both instructions state the exact-count rule; the packet keeps relevant credentials', () => {
-  const rule = 'Keep counts and number exactly as the sources state. One assay stays "an assay" or "a potency assay", never "assays". A single project, system or team is never pluralised. The job\'s vocabulary may name the kind of work, but it never changes how many.';
+  const rule = 'Keep counts and number exactly as the sources state, and never write a number, including a number word such as "one" or "two", that the sources or the posting do not state; write "a" or "a single" instead. One assay stays "an assay" or "a potency assay", never "assays". A single project, system or team is never pluralised. The job\'s vocabulary may name the kind of work, but it never changes how many.';
   assert.ok(PACKET_INSTRUCTION.includes(rule));
   assert.ok(STANDARD_INSTRUCTION.includes(rule));
   assert.ok(PACKET_INSTRUCTION.includes('A credential the posting names or relates to is always kept in the resume.'));
@@ -454,4 +454,30 @@ test('review 97f3a7e: raised verbs only in verb position, present tense counts, 
   assert.deepEqual(flagged('Mechanical engineer who built a lightweight chassis.', 'Designed and tested a lightweight chassis.'), ['built']);
   const letter = pluralScopeIssues({ resume: [], coverLetter: 'I built the chassis program from scratch.', answers: [] }, { sources: [{ id: 'cv', text: 'Designed and tested a chassis.' }, { id: 'writing-samples', text: 'we build things carefully.' }] });
   assert.deepEqual(letter.filter(issue => issue.verb).map(issue => issue.word), ['built']);
+});
+
+test('a number word no source or posting states is a scope stretch; a stated one is not', () => {
+  const sources = [{ id: 'cv', text: 'I developed a cell-based potency assay that cut turnaround from 6 days to 2 and is used in three programmes.' }];
+  const packet = {
+    resume: [{ section: 'Experience', heading: null, text: 'Developed a potency assay used in three programmes.', evidence: [{ sourceId: 'cv', quote: 'used in three programmes' }] }],
+    coverLetter: 'Your posting combines the potency assay, sample automation and the LIMS in one Raleigh role. It cut turnaround from six days to two.',
+    answers: [],
+  };
+  const issues = pluralScopeIssues(packet, { sources, jobText: 'Senior Assay Development Scientist in Raleigh.' });
+  assert.deepEqual(issues.map(issue => [issue.kind, issue.word]), [['cover', 'one']]);
+  assert.match(scopeRetryFeedback(issues).join('\n'), /"one" states a number \(1\) no source gives/);
+  // The posting stating it is enough.
+  assert.deepEqual(pluralScopeIssues(packet, { sources, jobText: 'One Raleigh role covers assay, automation and LIMS.' }).filter(issue => issue.number), []);
+  assert.match(PACKET_INSTRUCTION, /never write a number, including a number word such as "one"/);
+});
+
+test('review 983c762: list nouns are not verbs; contractions, adverbs and co- prefixes still count', () => {
+  const resumeFlags = (text, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  const letterFlags = text => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: 'Designed and tested a chassis.' }] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(resumeFlags('Owned CI/CD, build tooling, and release automation.', 'Owned CI/CD pipelines and release automation.'), []);
+  assert.deepEqual(resumeFlags('Build tooling ownership: Bazel, Gradle and CI for 40 engineers.', 'Owned Bazel, Gradle and CI tooling for 40 engineers.'), []);
+  assert.deepEqual(resumeFlags('Co-founded a design studio serving regional utilities.', 'Consulted for regional utilities on design work.'), ['founded']);
+  assert.deepEqual(letterFlags("I've built the chassis program from scratch."), ['built']);
+  assert.deepEqual(letterFlags('I single-handedly built the chassis program.'), ['built']);
+  assert.deepEqual(letterFlags('We co-led the chassis program.'), ['led']);
 });
