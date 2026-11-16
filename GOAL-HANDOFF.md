@@ -964,3 +964,53 @@ holdout2-journey-stem fails again, the same way.
   `~/.cache/plainhand-recheck` (script `recheck2-live.sh`). Reviewers get a
   private probe folder.
 - **Next.** Live run after the 4:54 PM Codex reset on HEAD.
+
+## Live run on `6f1e14d` — 2026-11-16 evening (fresh clone, Codex)
+
+- **Root review loop:** commits `e03f483` through `6f1e14d` fixed seven rounds of
+  OMP DeepSeek review on root's own code. Findings covered:
+  - Node 22 regex support;
+  - carried-row identity and dedupe;
+  - credential own-name and issuer parsing;
+  - degree token and degree year;
+  - revisions never re-adding a removed credential.
+  Each round passed suite, controlled gate 64/67 (expected) and simulation 49/49.
+- **Applications: 5/6 pass live.** Passing: fin-seeded, analyst-built,
+  analyst-seeded, journey-sci, sci-built.
+  - Every analyst and sci row failed earlier today; all now pass.
+  - holdout2-journey-stem passes the master and the factual review (attempt 2). It
+    stops at approval on a packet question: which work belongs to which role.
+- **Cause of the holdout2 stop.** The interview asks the role question after each
+  result, as designed. The simulated candidate answered each one with the next
+  unnamed role, not the role of the work just described, and then ran out of roles.
+  - `131bdad` makes it answer from its own resume: the work, its employer, title
+    and dates.
+  - This changes `plainhand/benchmarks/profile-bench.mjs`, a file in the frozen
+    manifest, so it is a **measurement change**. It is disclosed here, and holdout2
+    results after `131bdad` are not comparable with earlier holdout2 runs.
+- **Judge (Claude, uncalibrated, 5 packets):**
+
+  | Metric | Value |
+  | --- | --- |
+  | Overall | 3.80 |
+  | Honesty | 4.13 |
+  | Structure | 3.27 |
+  | Cover letter | 3.27 |
+  | Unsupported claims | 0 |
+
+- **Calls and tokens per application (U14):**
+
+  | Row | Calls | Input tokens |
+  | --- | --- | --- |
+  | Seeded | 6 | ~90k (baseline 5 calls / 121k) |
+  | Conversation-built | 14–15 | 237–256k (baseline 11 / 280k) |
+  | Journey | 21 | 353k |
+
+  Quality is not at parity (overall 3.80 against 4.03 at baseline), so U14 stays
+  open.
+- **Voice (U05): still fails.**
+  - Terse: own 0.04 against other 2.65.
+  - Formal: own 1.344 against other 1.335, so it misses by 0.009. Its letter now
+    has 3.8 formal markers per 100 words (0.8 this morning), at the
+    one-phrase-per-sentence cap root set to avoid phrase stuffing. The cap is not
+    raised to clear the frozen measure.
