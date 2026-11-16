@@ -129,7 +129,7 @@ Top product gaps: (1) profile assistant moves to summarizing after 2-4 stories; 
 not lead with an old relevant role; (3) resume structure and (4) cover letters are the
 weakest judged dimensions. Two scorer defects (PDF order false positive, zero-match
 Skip) need a different-family-authored scorer v2, re-freeze, and offline re-score (0 calls).
-Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
+Frozen worktree: <scratch worktree> (remove when done).
 
 ## Owner decisions: tailoring order, cover letters, updates — 2026-11-15
 
@@ -163,7 +163,7 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
   check flags only `agents.mjs` and `workflow.mjs`, the product files under test.
   Scoring files are unchanged.
 - Live comparison: the manifest's paired and smoke commands, run on Codex in a clean
-  worktree `/home/ak/.cache/plainhand-live-1bd7205`. They are scored with the frozen
+  worktree `<scratch worktree>`. They are scored with the frozen
   v1 scorer, so the comparison with baseline `00ce1bf` is direct.
 - Scorer v2 and U14 usage fields: delegated to DeepSeek. Scope is the PDF order
   probe, zero-match Skip, cached and reasoning tokens, model identity, Plainhand
@@ -840,3 +840,22 @@ Reading the numbers:
   - taste;
   - owner-only push, release and merge.
 - Nothing pushed, released or merged to main.
+
+## Correction after an advisor check — 2026-11-16
+
+The 15/15 above was premature. Corrected, with evidence:
+- **Bug found and fixed (`a06242e`):** after the automatic state migration, a workspace's
+  export was refused by import, which accepted only version 1. Import now accepts any
+  migratable version and refuses a newer one. Test added and mutation-checked.
+- **Root's broadened suggestion guard** rewrote advice ("Consider adding AWS") as false
+  omissions. It is now narrowed to explicit inclusion claims, with tests.
+- **U05 withdrawn.** The formal markers are not humanizer tells; a grep of the rule text
+  finds none.
+- **U01 withdrawn.** The live interview skipped the roles area. The journey has never
+  passed.
+- **U14 withdrawn.** Seeded cost per application is flat. The quota window holds about
+  the same number of calls after the token cut, so calls are the binding cost.
+- **U04 note:** the tech rows were re-runs of seen rows.
+- **U03 note:** one live candidate counterexample, a dropped stated credential.
+- **Register: 12/15.**
+- Host-specific paths were removed from this file.
