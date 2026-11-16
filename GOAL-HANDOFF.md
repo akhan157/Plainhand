@@ -794,3 +794,19 @@ Reading the numbers:
     stays listed.
   - Open: U01 (a single-sequence live fresh-install onboarding) and U05 (the voice
     contrast). Both need quota. A voice-strength fix lane is next.
+
+## Voice-target lane merged; final live checks scheduled — 2026-11-16
+
+- **Lane `55163c7` (OMP DeepSeek), merged.**
+  - `voice-target.mjs` measures the candidate's own samples (sentence length,
+    contractions, register) using the pre-registered metric functions, which were not
+    modified.
+  - The target reaches drafting and humanize. Instructions say formal is not stock.
+  - Deterministic drift check: if humanize moves the letter away from the samples, the
+    drafted letter is restored and recorded in `report.voice`.
+  - Suite 668/668. Lane gates: UI pass, controlled 64/67, simulation 49/49.
+- **Codex limit until 06:49.** `final-live.sh` runs after the reset:
+  1. a fresh `git clone` of HEAD, then `npm ci` and `setup` (timed);
+  2. the pre-registered `voice-contrast` (U05);
+  3. live onboarding journeys plus conversation-built runs, all in that fresh clone
+     (U01).
