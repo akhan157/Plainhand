@@ -6,8 +6,9 @@ self-accepted, and no acceptance row was marked PASS.
 - **Branch:** `t3/update-preserve-candidate-setup`
 - **Base:** `789dcd523b` (merged U14)
 - **Previous release:** `v1.1.2` = `7c60871e5daf`
-- **Product tip at the checks below:** `91a06da4f5` (gates and the update proof
-  ran on it). Commits after it change documentation only: `docs/SCRIPTS.md`,
+- **Product tip at the checks below:** `b41aee9` (gates and the update proof
+  ran on it; the commit messages were rewritten afterwards to add the co-author
+  trailer, and every tree is identical — the base-to-tip diff hash is unchanged). Commits after it change documentation only: `docs/SCRIPTS.md`,
   `docs/INSTALL.md`, the measured-times table in `docs/UPDATING.md` and this
   file
 
@@ -118,7 +119,7 @@ cache with `--offline`):
    format change (`npm run rollback -- --version v1.1.2`), then starts 1.1.2
    again against its original data.
 
-Result: **169 checks passed, exit 0**, on `91a06da4f5`; 15.2 s and 33.0 s
+Result: **169 checks passed, exit 0**, on `b41aee9`; 15.2 s and 33.0 s
 wall in the two runs. Recorded:
 
 - `output/u15-update/proof-run.log` (full output)
@@ -169,7 +170,7 @@ Three independent checks:
 
 ### 2.3 Candidate-side steps and timings
 
-From `output/u15-update/proof.json` (run B, on `91a06da4f5`) and the earlier
+From `output/u15-update/proof.json` (run B, on `b41aee9`) and the earlier
 run A; both used the same populated install and the local npm cache.
 
 | Step | Run A | Run B |
@@ -188,7 +189,7 @@ download is the only step that needs the network.
 
 ### 2.4 The release steps, run once end to end
 
-`npm run release:check -- --tag v1.1.2` on `91a06da4f5` (clean tree, VERSION
+`npm run release:check -- --tag v1.1.2` on `b41aee9` (clean tree, VERSION
 1.1.2 matches the tag, `docs/releases/v1.1.2.md` present), run once end to end:
 
 | Gate | Result |
@@ -205,8 +206,8 @@ commands and stopped; nothing was tagged, pushed or published. Full output:
 Before that run, the same script refused a dirty tree and listed the
 uncommitted files (exit 1). An earlier full run stopped at the fast suite:
 `tests/test-u12-reachability.mjs` still expected `npm run update:check` to run
-the career-ops updater. The contract was updated (`2fe1c41`, `2008bd6`,
-`b07cd4b`, all ancestors of `91a06da4f5`) and the whole check re-run from
+the career-ops updater. The contract was updated (`3507447`, `76145a6`,
+`b201ca6`, all ancestors of `b41aee9`) and the whole check re-run from
 scratch; the recorded run is that re-run.
 
 ## 3. Gates
