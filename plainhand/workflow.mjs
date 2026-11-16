@@ -69,6 +69,36 @@ export function dedupeResume(resume) {
   }
   return kept.map(({ entry }) => entry);
 }
+// A suggestion is a note about the packet, not part of it. One that says an item was
+// included when neither the resume nor the letter contains it misdescribes what the
+// candidate reviews, so it becomes an honest omission instead. Only a leading
+// included/added/kept claim whose item has a capitalized or acronym identifier is
+// touched: generic phrasing such as "Kept the resume to one page" is left alone.
+const SUGGESTION_CLAIM = /^(?:also\s+|then\s+|finally\s+|i\s+|we\s+)?(?:included|added|kept|retained|preserved|reused|carried over)\s+(.+)$/i;
+const SUGGESTION_SUBJECT_CLAIM = /^(?:the\s+)?(?:resume|packet|letter|draft|master resume)\s+(?:also\s+)?(?:includes|included|adds|added|keeps|kept|retains|retained|preserves|preserved|reuses|reused)\s+(.+)$/i;
+const SUGGESTION_TAIL = /\s+(?:from|in|on|to|into|within|under)\s+(?:the|my|your|their|this|that)?\s*(?:cv|resume|master resume|letter|packet|draft|profile|application|sources?|skills?|summary)\b[\s\S]*$/i;
+// Structural words name a place, not an item, so they never prove an inclusion claim.
+const SUGGESTION_GENERIC = new Set(['resume', 'cv', 'letter', 'packet', 'draft', 'profile', 'application', 'certificate', 'certification', 'certifications', 'license', 'licensure', 'degree', 'course', 'courses', 'project', 'projects', 'role', 'roles', 'skill', 'skills', 'section', 'summary', 'experience', 'education', 'publication', 'publications', 'award', 'awards', 'line', 'bullet', 'page', 'qualification', 'qualifications', 'credential', 'credentials', 'internship', 'position', 'job', 'company', 'employer', 'work']);
+const suggestionText = value => String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function suggestionItem(suggestion) {
+  const match = String(suggestion ?? '').match(SUGGESTION_CLAIM) || String(suggestion ?? '').match(SUGGESTION_SUBJECT_CLAIM);
+  if (!match) return null;
+  const item = match[1].replace(SUGGESTION_TAIL, '').replace(/[\s.;:!?]+$/, '').replace(/^(?:the|a|an|my|your|their|his|her|our)\s+/i, '').trim();
+  if (!item || item.length > 120 || item.split(/\s+/).length > 12) return null;
+  const named = item.split(/[\s,()]+/).filter(word => /^[A-Z0-9]/.test(word) && !SUGGESTION_GENERIC.has(suggestionText(word)) && suggestionText(word).length >= 2);
+  return named.length ? { item, named } : null;
+}
+export function guardSuggestions(suggestions, resume = [], coverLetter = '') {
+  const shown = (Array.isArray(resume) ? resume : []).map(entry => [entry?.section, entry?.heading?.org, entry?.heading?.title, entry?.heading?.location, entry?.heading?.dates, entry?.text].filter(Boolean).join(' ')).join(' ');
+  const haystack = ` ${suggestionText(`${shown} ${coverLetter}`)} `;
+  return (Array.isArray(suggestions) ? suggestions : []).map(suggestion => {
+    const claim = suggestionItem(suggestion);
+    if (!claim) return suggestion;
+    if (claim.named.every(word => haystack.includes(` ${suggestionText(word)} `))) return suggestion;
+    const item = claim.item.charAt(0).toUpperCase() + claim.item.slice(1);
+    return `Left out: ${item}.`;
+  });
+}
 function ready(state, fallbackProvider = null) {
   if (!state.provider && !fallbackProvider) throw new Error('Connect and select an agent first.');
   if (!state.profile.name || !state.profile.resume || !state.profile.roles || !state.profile.location) throw new Error('Save your name, resume, target roles, and location in My profile first.');
@@ -352,6 +382,7 @@ export class Workflow {
               ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
             }
             for (const index of blankRows) if (draft.resume[index]) draft.resume[index].text = '';
+            draft.suggestions = guardSuggestions(draft.suggestions, draft.resume, draft.coverLetter);
             await this.progress(id, 'Checking factual claims against the original sources');
             review = await run(REVIEW_INSTRUCTION, { job: STANDARD_JOB, packet: { ...draft, answers: [] }, ...lineData });
             if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
@@ -454,6 +485,7 @@ export class Workflow {
             ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
           }
           for (const index of blankRows) if (packet.resume[index]) packet.resume[index].text = '';
+          packet.suggestions = guardSuggestions(packet.suggestions, packet.resume, packet.coverLetter);
           await this.progress(id, 'Checking factual claims against the original sources');
           review = await run(REVIEW_INSTRUCTION, { job: providerJob(job), packet, ...lineData });
           if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
