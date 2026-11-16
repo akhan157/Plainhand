@@ -16,7 +16,8 @@ import { lineInput, candidateLine, markApplied } from './claim-line.mjs';
 import { STANDARD_JOB, standardInput, compareToStandard, autoPrepareDecision, masterCoverage, roleOrderOf } from './standard.mjs';
 import { HUMANIZE_INSTRUCTION, humanizeItems, applyHumanized } from './humanize.mjs';
 import { atsCheckPdf, extractPdfText } from './ats-check.mjs';
-import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings } from './resume-format.mjs';
+import { letterOverlaps, letterRetryFeedback, overlapSuggestion } from './letter-checks.mjs';
+import { DEFAULT_FORMAT, renderResumeHtml, renderLetterHtml, verifyHeadings, headingKey } from './resume-format.mjs';
 
 export const slug = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'candidate';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -36,6 +37,29 @@ function evidenceRetryFeedback(entries) {
     const cited = quotes.length ? `cites "${quotes.join('" and "')}", which ${quotes.length === 1 ? 'is' : 'are'} not in the sources` : 'cites no source quote';
     return `${kind} ${index} ("${condensed(item?.text ?? item?.answer, 160)}") ${cited}.`;
   })];
+}
+// An education or credential heading that carries the school or issuer, the degree or
+// credential and the dates states the whole entry, so its text is empty by design and
+// the renderer shows the heading alone. Every other blank row is a lost line: drop it
+// locally instead of failing the application on a row with nothing to cite.
+const CREDENTIAL_SECTION = /educat|certif|licen[cs]/i;
+const blankText = entry => typeof entry?.text === 'string' && !entry.text.trim();
+export const headingOnlyRow = entry => blankText(entry)
+  && CREDENTIAL_SECTION.test(String(entry?.section ?? ''))
+  && Boolean(entry?.heading && typeof entry.heading === 'object'
+    && String(entry.heading.org ?? '').trim() && String(entry.heading.title ?? '').trim() && String(entry.heading.dates ?? '').trim());
+export const keepResumeRow = entry => !blankText(entry) || headingOnlyRow(entry);
+// The same accomplishment written twice under one heading: keep the first line and
+// drop a later line whose normalized text equals or sits inside it.
+const normalizedLine = value => (String(value ?? '').toLowerCase().match(/[a-z0-9]+/g) || []).join(' ');
+export function dedupeResume(resume) {
+  const kept = [];
+  for (const entry of resume) {
+    const text = normalizedLine(entry?.text), key = headingKey(entry?.heading);
+    if (text && kept.some(line => line.key === key && line.text && ` ${line.text} `.includes(` ${text} `))) continue;
+    kept.push({ key, text, entry });
+  }
+  return kept.map(({ entry }) => entry);
 }
 function ready(state, fallbackProvider = null) {
   if (!state.provider && !fallbackProvider) throw new Error('Connect and select an agent first.');
@@ -260,7 +284,7 @@ export class Workflow {
             draft = await run(STANDARD_INSTRUCTION, { ...lineData, ...(request || attempt ? { previous: base } : {}), ...(request ? { revisionRequest: request } : {}), ...(attempt ? { reviewFeedback: [...evidencePrompt, ...(review?.issues || [])] } : {}), ...(attempt && missing.length ? { missingFromResume: missing } : {}) });
             requireText(draft.headline, 'headline'); requireText(draft.coverLetter, 'cover letter', 25000); list(draft.resume, 'resume', 150);
             draft.suggestions = strings(draft.suggestions || [], 'optional suggestions');
-            draft.resume = draft.resume.filter(item => typeof item?.text !== 'string' || item.text.trim());
+            draft.resume = dedupeResume(draft.resume.filter(keepResumeRow));
             const uncited = draft.resume.filter(item => !hasEvidence(item, context));
             if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
             if (uncited.length) {
@@ -269,10 +293,16 @@ export class Workflow {
               await this.progress(id, 'Correcting claims without an exact source reference');
               continue;
             }
-            for (const item of draft.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
+            for (const item of draft.resume) { requireText(item.section, 'resume section', 100); if (!headingOnlyRow(item)) requireText(item.text, 'resume entry', 10000); }
             verifyHeadings(draft.resume, context.sources.map(s => s.text).join('\n'));
+            draft.resume = draft.resume.filter(item => !blankText(item) || Boolean(item?.heading));
+            if (!draft.resume.length) throw new Error(MASTER_EVIDENCE_ERROR);
+            // A blank education or credential row is legal; the humanizer rewrites lines,
+            // so restore its empty text if a pass added filler the renderer would show.
+            const blankRows = draft.resume.map((item, index) => blankText(item) ? index : -1).filter(index => index >= 0);
             await this.progress(id, 'Removing AI writing patterns');
             ({ packet: draft, report: humanizer } = applyHumanized({ ...draft, answers: [] }, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems({ ...draft, answers: [] }) })));
+            for (const index of blankRows) if (draft.resume[index]) draft.resume[index].text = '';
             await this.progress(id, 'Checking factual claims against the original sources');
             review = await run(REVIEW_INSTRUCTION, { job: STANDARD_JOB, packet: { ...draft, answers: [] }, ...lineData });
             if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
@@ -320,9 +350,12 @@ export class Workflow {
           requireText(packet.headline, 'headline'); requireText(packet.coverLetter, 'cover letter', 25000);
           list(packet.resume, 'resume', 60); list(packet.answers, 'answers', 40); packet.questions = strings(packet.questions, 'questions');
           packet.suggestions = strings(packet.suggestions || [], 'optional suggestions');
-          // A line with no text carries no claim and renders as an empty bullet: drop it
-          // instead of failing the whole application (a model may emit a heading-only row).
-          packet.resume = packet.resume.filter(item => typeof item?.text !== 'string' || item.text.trim());
+          // A blank row is a lost line everywhere except an education or credential
+          // heading that already states the school or issuer, the credential and the
+          // dates; that row is legal and renders as the heading alone. The same
+          // accomplishment written twice is dropped before humanize, review and
+          // calibration, so their resume:<index> keys stay aligned.
+          packet.resume = dedupeResume(packet.resume.filter(keepResumeRow));
           const uncited = [
             ...packet.resume.map((item, index) => ({ kind: 'Resume entry', index, item })),
             ...packet.answers.map((item, index) => ({ kind: 'Answer', index, item })),
@@ -330,13 +363,20 @@ export class Workflow {
           if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
           if (uncited.length) {
             if (attempt === 1) throw new Error(PACKET_EVIDENCE_ERROR);
-            evidencePrompt = evidenceRetryFeedback(uncited);
+            // One retry carries every deterministic finding, so the letter check adds
+            // no model call: the evidence failures and any repeated resume sentences
+            // go in the same reviewFeedback.
+            evidencePrompt = [...evidenceRetryFeedback(uncited), ...letterRetryFeedback(letterOverlaps(packet.coverLetter, packet.resume))];
             await this.progress(id, 'Correcting claims without an exact source reference');
             continue;
           }
-          for (const item of packet.resume) { requireText(item.section, 'resume section', 100); requireText(item.text, 'resume entry', 10000); }
+          for (const item of packet.resume) { requireText(item.section, 'resume section', 100); if (!headingOnlyRow(item)) requireText(item.text, 'resume entry', 10000); }
           for (const item of packet.answers) { requireText(item.question, 'question', 2000); requireText(item.answer, 'answer', 15000); }
           verifyHeadings(packet.resume, context.sources.map(s => s.text).join('\n'));
+          // A heading the sources cannot confirm may lose fields; keep a blank row only
+          // while some part of its heading survives, never as an invisible empty line.
+          packet.resume = packet.resume.filter(item => !blankText(item) || Boolean(item?.heading));
+          if (!packet.resume.length) throw new Error(PACKET_EVIDENCE_ERROR);
           // Reuse before humanize and review: an approved factual answer whose quote is in
           // the current shared sources replaces the draft and carries its provenance. Held,
           // expired, out-of-scope or unproved entries and every candidate assertion stay out,
@@ -356,15 +396,28 @@ export class Workflow {
             bank: reusableAnswers, job, asOf: now().slice(0, 10),
           });
           await this.progress(id, 'Removing AI writing patterns');
+          // The humanizer rewrites lines; a heading-only row that was blank before the
+          // pass stays blank, so a rewrite cannot turn it into "Graduated." filler.
+          const blankRows = packet.resume.map((item, index) => blankText(item) ? index : -1).filter(index => index >= 0);
           ({ packet, report: humanizer } = applyHumanized(packet, await run(HUMANIZE_INSTRUCTION, { items: humanizeItems(packet) })));
+          for (const index of blankRows) if (packet.resume[index]) packet.resume[index].text = '';
           await this.progress(id, 'Checking factual claims against the original sources');
           review = await run(REVIEW_INSTRUCTION, { job: providerJob(job), packet, ...lineData });
           if (typeof review.passed !== 'boolean') throw new Error('The reviewer returned an invalid result. Retry.');
           review.issues = strings(review.issues, 'review issues');
           reviewAttempts.push({ attempt: attempt + 1, ...review });
           if (review.passed && !review.issues.length) break;
-          if (attempt === 0) await this.progress(id, 'Correcting unsupported claims using the reviewer’s source checks');
+          if (attempt === 0) {
+            // The reviewer's own retry already re-runs the drafter; name any repeated
+            // resume sentences there too instead of spending another call on them.
+            evidencePrompt = [...evidencePrompt, ...letterRetryFeedback(letterOverlaps(packet.coverLetter, packet.resume))];
+            await this.progress(id, 'Correcting unsupported claims using the reviewer’s source checks');
+          }
         }
+        // Quality, never a factual gate: the packet is kept, and the overlap is left in
+        // suggestions for the next draft.
+        const repeatedInLetter = letterOverlaps(packet.coverLetter, packet.resume);
+        if (repeatedInLetter.length) packet.suggestions = [overlapSuggestion(repeatedInLetter), ...packet.suggestions].slice(0, 40);
         job.review = review;
         job.reviewAttempts = reviewAttempts;
         if (!review.passed || review.issues.length) {
