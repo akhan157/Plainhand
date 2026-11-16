@@ -265,3 +265,14 @@ test('the voice-contrast setup path prepares offline with the fixture agent', as
     assert.ok(result.reviewAttempts >= 1, 'the review ran');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('suggestion guard: an inclusion claimed anywhere in the sentence is checked, omissions and true claims are kept', async () => {
+  const { guardSuggestions } = await import('../plainhand/workflow.mjs');
+  const resume = [{ section: 'Experience', heading: { org: 'Fictional Biologics', title: 'Scientist', location: '', dates: '2021 to 2026' }, text: 'Ran potency assays at Fictional Biologics.' }];
+  const [master] = guardSuggestions(['The master includes the Example Bioinstruments role and the Lean Six Sigma Green Belt certification.'], resume, '');
+  assert.match(master, /^Left out: Example Bioinstruments Lean Six Sigma Green Belt\./);
+  const [every] = guardSuggestions(['Every role, including Example Bioinstruments, is listed with its title and dates.'], resume, '');
+  assert.match(every, /^Left out: Example Bioinstruments\./);
+  assert.deepEqual(guardSuggestions(['The Fictional Biologics role is listed with its dates.'], resume, ''), ['The Fictional Biologics role is listed with its dates.']);
+  assert.deepEqual(guardSuggestions(['Left out the Example Bioinstruments role because it predates the posting.'], resume, ''), ['Left out the Example Bioinstruments role because it predates the posting.']);
+});
