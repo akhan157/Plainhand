@@ -111,12 +111,15 @@ export function credentialName(text) {
   // when no token is a known issuer, the group is read issuer first.
   const paren = [...value.matchAll(/([A-Za-z])\s*\(([^)]*)\)/g)].flatMap(match => {
     const tokens = match[2].split(/[\s/]+/).filter(isAcronym);
-    const own = tokens.filter(token => !ISSUER.has(token));
-    return own;
+    return tokens.filter(token => !ISSUER.has(token));
   });
   const ownIsAcronym = ownWords.length >= 1 && ownWords.every(isAcronym);
   const inner = ownIsAcronym ? ownWords : ownWords.slice(1).filter(isAcronym);
   const acronyms = [...new Set([...paren, ...inner])];
+  // A bare-acronym credential with an issuer ("CKA (CNCF), 2022") keeps its issuer as a
+  // second identifier, so the written-out line "Certified Kubernetes Administrator,
+  // CNCF" is not read as missing; a named credential never matches on its issuer.
+  const issuers = ownIsAcronym ? [...value.matchAll(/\(([^)]*)\)/g)].flatMap(match => match[1].split(/[\s/]+/).filter(token => ISSUER.has(token))) : [];
   // Its written-out name: the longest capitalised run of the own name, without a
   // leading verb (while two words remain, so "Registered Nurse" stays) or a trailing
   // generic word, matched as one contiguous phrase within a single resume line
@@ -129,7 +132,7 @@ export function credentialName(text) {
     return words.join(' ');
   }).filter(run => run.split(' ').length >= 2 && !run.split(' ').every(isAcronym));
   const phrase = runs.sort((a, b) => b.length - a.length)[0] || '';
-  return { acronyms, phrase };
+  return { acronyms, phrase, issuers };
 }
 export function packetHasCredential(item, resume) {
   const entries = Array.isArray(resume) ? resume : [];
@@ -143,6 +146,12 @@ export function packetHasCredential(item, resume) {
   // "PMP" in a Skills list is a keyword, not the credential.
   if (acronyms.length && entries.some((entry, index) => (ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))
     && acronyms.some(acronym => lines[index].includes(` ${acronym.toLowerCase()} `)))) return true;
+  // The bare-acronym row's issuer, in a credentials entry that also uses a credential
+  // word or another capitalised name: "Certified Kubernetes Administrator, CNCF".
+  const { issuers = [] } = credentialName(item?.text);
+  if (issuers.length && entries.some((entry, index) => (ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))
+    && /[A-Z][a-z]+\s+[A-Z][a-z]+/.test(entryLine(entry))
+    && issuers.some(issuer => lines[index].includes(` ${issuer.toLowerCase()} `)))) return true;
   if (phrase || acronyms.length) return false;
   // No name could be read: only a credential entry may hold it.
   return credentialIndex(item, entries.filter(entry => ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))) >= 0;

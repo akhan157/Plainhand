@@ -407,3 +407,12 @@ test('review cba3b5c: an issuer-only group is never the credential; a shared neg
   assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (ASQ), 2019' }, [{ section: 'Certifications', heading: null, text: 'ASQ, 2019' }]), false);
   assert.deepEqual(dropCredentialInclusionClaims(['The certificate was not added or listed.'], [{ text: 'CPA, 2021' }]), ['The certificate was not added or listed.']);
 });
+
+test('review 79ac588: a bare-acronym credential matches its written-out line through its issuer', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const r = text => [{ section: 'Certifications', heading: null, text }];
+  assert.equal(packetHasCredential({ text: 'CKA (CNCF), 2022' }, r('Certified Kubernetes Administrator, CNCF, 2022')), true);
+  assert.equal(packetHasCredential({ text: 'PMP (PMI), 2021' }, r('Project Management Professional, PMI, 2021')), true);
+  assert.equal(packetHasCredential({ text: 'PMP (PMI), 2021' }, r('PMI, 2021')), false);
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (ASQ), 2019' }, r('ASQ, 2019')), false);
+});

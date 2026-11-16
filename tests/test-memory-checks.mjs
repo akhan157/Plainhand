@@ -336,3 +336,11 @@ test('review cba3b5c: a study range graduates at its end; contrastive starters e
   assert.equal(degree('I completed my MSc. However, in 2018, I joined Example Health.'), 0);
   assert.equal(degree('I completed my MSc. Therefore, in 2018, I joined.'), 0);
 });
+
+test('review 79ac588: a later job range never replaces the degree year, on either side', () => {
+  const degree = (text, graduation) => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('I completed my MSc in Biology in 2018 and was at Example Health 2019 to 2021.', '2018'), 0);
+  assert.equal(degree('I finished my BSc in Physics in 2016, then worked at Example Health 2017 to 2020.', '2016'), 0);
+  assert.equal(degree('Bachelor of Science in Accounting, 2013, then Example Freight Systems 2016 to 2021.', '2013'), 0);
+  assert.equal(degree('B.S. Mechanical Engineering, Example University, 2019 – 2021.', 'B.S. Mechanical Engineering, 2019 – 2021'), 0);
+});

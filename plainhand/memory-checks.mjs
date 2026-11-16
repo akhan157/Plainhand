@@ -71,6 +71,17 @@ function sentences(text) {
 const YEAR = /(?<![$\d])\b(?:19|20)\d{2}\b(?![%\d])/g;
 const RANGE = /\b((?:19|20)\d{2})\s*(?:[–—-]|to|until)\s*((?:19|20)\d{2}|present|current|now)\b/i;
 const yearOf = text => { const match = String(text || '').match(YEAR); return match ? Number(match[0]) : null; };
+// The graduation year a degree line states: a year standing alone ("MSc in 2018"), and
+// only when every year sits in a range ("2019 – 2021"), that range's end. An unrelated
+// job range later in the sentence never replaces the degree's own year.
+const LONE_YEAR = /(?<![$\d]|[–—-]\s*|\bto\s+|\buntil\s+)\b(?:19|20)\d{2}\b(?![%\d])(?!\s*(?:[–—-]|to\b|until\b))/i;
+function graduationYearOf(text) {
+  const value = String(text || '');
+  const lone = value.match(LONE_YEAR);
+  if (lone) return Number(lone[0]);
+  const range = value.match(RANGE);
+  return range && /^\d{4}$/.test(range[2]) ? Number(range[2]) : yearOf(value);
+}
 function rangeOf(text) {
   const match = String(text || '').match(RANGE);
   if (!match) return null;
@@ -156,9 +167,8 @@ function degreeFact(sourceId, sentence) {
   if (!degree) return null;
   const institution = sentence.match(INSTITUTION);
   return {
-    // A study range ("2019 – 2021") graduates at its end, not its start.
     sourceId, quote: sentence, level: degreeLevel(degree[0]),
-    year: (() => { const range = sentence.match(RANGE); return range && /^\d{4}$/.test(range[2]) ? Number(range[2]) : yearOf(sentence); })(),
+    year: graduationYearOf(sentence),
     org: institution ? normalizeOrg(institution[1]) : null,
   };
 }
@@ -166,7 +176,7 @@ function profileGraduationFact(profile) {
   const text = String(profile?.graduation || '').trim();
   if (!text) return null;
   const degree = degreeMatch(text);
-  const year = yearOf(text);
+  const year = graduationYearOf(text);
   if (!degree && !year) return null;
   const institution = text.match(INSTITUTION);
   return {
