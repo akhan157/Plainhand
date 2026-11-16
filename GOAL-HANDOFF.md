@@ -752,3 +752,21 @@ Reading the numbers:
 - Cover is still about 3.7. The judge still sees "restates the resume" and generic
   closes in some letters.
 - n=5 at repeat 1 shows variance, not significance.
+
+## Letter-motivation fix merged; live verification started — 2026-11-16
+
+- **Lane `1f590f2` (OMP DeepSeek), merged.** Three changes:
+  - The letter's "why this role" now draws only on motivation the candidate stated.
+    Otherwise it connects the posting's own work to evidenced work and never claims a
+    feeling or reason. Employer claims come only from the posting.
+  - The suggestion rule and a deterministic `guardSuggestions` rewrite a false
+    "Included X" as "Left out: X". This runs before review on both paths.
+  - Root cause of the voice-contrast script failure: the synthetic job had no
+    `reportPath`. Fixed, with an offline test.
+- **Gates.** Suite 660/660. Controlled 64/67, 0 unexpected. Simulation 49/49 on the lane.
+- **Live verification** on `3c344da` (Codex quota available again at 03:06). Three
+  runs:
+  - the four review-blocked rows: tech-recent, tech-match, journey-stem and
+    analyst-seeded;
+  - `voice-contrast`;
+  - `queue-vs-single` with 2 jobs.
