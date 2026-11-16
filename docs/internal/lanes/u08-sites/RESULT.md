@@ -120,7 +120,7 @@ two-page synthetic flow with one tenant host.
 | Indeed (`www.indeed.com/viewjob?jk=u08fixture`) | same import path | same | same six files | same | no |
 | Unknown (`careers.acme-u08.invalid/jobs/graduate-engineer`) | `jobs.add`; `supportedUrl` false, `isBoardUrl` false, `portalRoot` `acme-u08.invalid` | same | same six files | same | no |
 
-The kit resume and cover letter are byte-identical to the approved artifacts;
+The kit resume is verified against the approved PDF hash before it is written; the cover-letter PDF is copied from the prepared artifacts (its hash is not part of the approval);
 `answers.md` contains every approved packet answer; `posting.md` contains the
 posting link. The manual kit is also a UI action: “Save kit files” in the
 Apply-by-hand section writes the folder and shows its path. The existing UI gate

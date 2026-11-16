@@ -168,3 +168,8 @@ test('the fold switch reads the setting and the harness override', () => {
     else process.env.PLAINHAND_FOLD_HUMANIZE = saved;
   }
 });
+
+test('both drafting instructions say what to do with INPUT.humanizeRules in folded mode', async () => {
+  const { PACKET_INSTRUCTION, STANDARD_INSTRUCTION } = await import('../plainhand/agents.mjs');
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /When INPUT\.humanizeRules is present, apply those rules/);
+});

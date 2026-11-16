@@ -3,6 +3,7 @@
 // Files are written under output/, which is local and gitignored. Nothing here
 // submits, opens a browser or contacts the employer.
 import { slug, packetIdentity } from './workflow.mjs';
+import { digest } from './store.mjs';
 
 export const kitDirectory = job => `output/manual-kit/${slug(job.company)}-${slug(job.title)}-${job.id.slice(0, 8)}`;
 
@@ -37,7 +38,12 @@ export async function writeManualKit({ workspace, state, job }) {
     'Plainhand never submits an application.',
     '',
   ].join('\n'));
-  if (resume) await write('resume.pdf', await workspace.readBinary(resume));
+  if (resume) {
+    // The approval covers the resume PDF's hash: copy those exact bytes or nothing.
+    const bytes = await workspace.readBinary(resume);
+    if (job.pdfHash && digest(bytes) !== job.pdfHash) throw new Error('The resume file changed after you approved it. Prepare and approve it again before saving the kit.');
+    await write('resume.pdf', bytes);
+  }
   if (cover) await write('cover-letter.pdf', await workspace.readBinary(cover));
   if (job.packet.coverLetter) await write('cover-letter.md', job.packet.coverLetter.trim() + '\n');
   await write('answers.md', [

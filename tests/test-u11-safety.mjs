@@ -437,6 +437,9 @@ test('what each provider call is given: no excluded data, credentials, answer ba
   } finally { await h.close(); }
 });
 
+// Planted personal data is assembled at runtime, so no literal address or number
+// sits in this tracked file and the scanner can scan it like any other.
+const PLANT = { jane: ['jane', 'doe', 'real'].join('.') + '@' + 'gmail.com', john: ['john', 'doe', 'real'].join('.') + '@' + 'gmail.com', phone: '(4' + '15) 867-' + '5309' };
 // ── 6. No user data in tracked files ───────────────────────────────────────
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const PHONE = /(?<![\d.])(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]\d{3}[\s.-]\d{4}(?!\d)/g;
@@ -451,6 +454,9 @@ const ADDRESS_ALLOWLIST = [
   { address: 'dana@company.com', file: /^plainhand\/web\/ui\/inbox\.mjs$/ },
   { address: 'a@b.co', file: /^tests\/test-cloud-accounts\.mjs$/ },
 ];
+// This file lists the documented addresses above; that list is not a leak, so each
+// allowed address is also allowed here. Anything else in this file is still caught.
+const ALLOWLIST_FILE = 'tests/test-u11-safety.mjs';
 const USER_LAYER = [
   { test: /^data\//, allow: /(?:^|\/)\.gitkeep$/, why: 'candidate data under data/' },
   { test: /^output\//, allow: /(?:^|\/)\.gitkeep$/, why: 'generated artifacts under output/' },
@@ -469,7 +475,7 @@ function textViolations(file, text) {
     const address = match[0].toLowerCase();
     if (RESERVED_DOMAIN.test(address.split('@')[1])) continue;
     if (URL_AUTHORITY.test(text.slice(Math.max(0, match.index - 200), match.index))) continue; // scheme://user:secret@host
-    if (ADDRESS_ALLOWLIST.some(entry => entry.address === address && entry.file.test(file))) continue;
+    if (ADDRESS_ALLOWLIST.some(entry => entry.address === address && (entry.file.test(file) || file === ALLOWLIST_FILE))) continue;
     found.push(`${file}: email ${match[0]}`);
   }
   for (const match of text.matchAll(PHONE)) {
@@ -497,9 +503,6 @@ async function trackedText(cwd) {
   const entries = [];
   for (const file of files) {
     if (BINARY.test(file) || /(?:^|\/)package-lock\.json$/.test(file)) continue; // generated dependency metadata
-    // This suite holds the planted personal data the scanner must catch, so it is never
-    // scanned itself; every other file, including other tests, is.
-    if (file === 'tests/test-u11-safety.mjs') continue;
     try { if ((await stat(path.join(cwd, file))).size > 2 * 1024 * 1024) continue; } catch { continue; }
     let text;
     try { text = await readFile(path.join(cwd, file), 'utf8'); } catch { continue; }
@@ -520,17 +523,17 @@ test('tracked files hold no real personal data, and a planted file is caught', a
   try {
     await exec('git', ['init', '-q'], { cwd: planted });
     await mkdir(path.join(planted, 'data'), { recursive: true });
-    await writeFile(path.join(planted, 'data', 'applications.md'), '| 1 | Acme | Engineer |\n\nReach me at jane.doe.real@gmail.com or (415) 867-5309.\n');
+    await writeFile(path.join(planted, 'data', 'applications.md'), `| 1 | Acme | Engineer |\n\nReach me at ${PLANT.jane} or ${PLANT.phone}.\n`);
     await exec('git', ['add', '-A'], { cwd: planted });
     const violations = scanTracked(await trackedText(planted));
-    assert.ok(violations.some(item => item.includes('jane.doe.real@gmail.com')), 'a real address is flagged');
-    assert.ok(violations.some(item => item.includes('(415) 867-5309')), 'a real phone number is flagged');
+    assert.ok(violations.some(item => item.includes(PLANT.jane)), 'a real address is flagged');
+    assert.ok(violations.some(item => item.includes(PLANT.phone)), 'a real phone number is flagged');
     assert.ok(violations.some(item => item.includes('data/applications.md')), 'a tracked data/ path is flagged');
   } finally { await rm(planted, { recursive: true, force: true }); }
 
   // A simulated list catches an address planted outside a fixture domain, and passes
   // the documented fictional fixtures.
-  assert.deepEqual(scanTracked([{ file: 'docs/leaked-note.md', text: 'Write to john.doe.real@gmail.com.' }]), ['docs/leaked-note.md: email john.doe.real@gmail.com']);
+  assert.deepEqual(scanTracked([{ file: 'docs/leaked-note.md', text: `Write to ${PLANT.john}.` }]), [`docs/leaked-note.md: email ${PLANT.john}`]);
   assert.deepEqual(scanTracked([{ file: 'tests/fixture.mjs', text: "email: 'riley@example.invalid', phone: '+1 617 555 0100'" }]), []);
   assert.deepEqual(scanTracked([{ file: 'output/cv-riley.pdf', text: '' }]), ['output/cv-riley.pdf: generated artifacts under output/']);
 });

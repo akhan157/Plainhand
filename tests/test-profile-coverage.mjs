@@ -211,3 +211,24 @@ test('a conversation-built profile keeps org, title and dates on the role headin
     assert.deepEqual(prepared.packet.resume[0].heading, heading, 'the role heading keeps its employer, title and dates');
   } finally { await app.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+test('the engine counts the current answer: a plain "no" closes the area on the same turn', async () => {
+  const state = { profile: {}, conversation: [] };
+  const history = [{ role: 'assistant', text: 'Thanks. Do you hold any certifications or licences?' }];
+  assert.ok(profileCoverage(state, history).uncovered.includes('certifications and licences'), 'the question alone does not close it');
+  const spoken = [...history, { role: 'user', text: 'No.' }];
+  assert.ok(!profileCoverage(state, spoken).uncovered.includes('certifications and licences'), 'the answer in this turn closes it');
+});
+
+test('engine: the digest for the turn that answers "No." already shows that area closed', async () => {
+  const h = await harness([
+    { match: /^Hi/, reply: { say: 'Welcome. Do you hold any certifications or licences?', actions: [] } },
+    { match: /^No\.$/, reply: { say: 'Understood. What tools do you use?', actions: [] } },
+  ]);
+  try {
+    await h.say('Hi there, I want to set up my profile.');
+    assert.ok(h.agent.calls.at(-1).digest.profile.interview.uncovered.includes('certifications and licences'));
+    await h.say('No.');
+    assert.ok(!h.agent.calls.at(-1).digest.profile.interview.uncovered.includes('certifications and licences'), 'closed on the answering turn, not one turn later');
+  } finally { await h.close(); }
+});

@@ -157,7 +157,10 @@ export class AgentEngine {
       for (let call = 1; call <= BUDGET.calls; call++) {
         if (signal.aborted) return await finish('canceled', 'Stopped. Nothing was changed.');
         const snapshot = await this.workspace.load();
-        const data = { message, history, today: this.today(), digest: withInterview(this.registry.digest(snapshot), snapshot, history), actions: this.catalogue(), results, ...(repairNote ? { repair: repairNote } : {}) };
+        // The candidate's current message answers the last question too: a plain "no"
+        // closes that area now instead of costing one more repeated question.
+        const spoken = [...history, { role: 'user', text: message }];
+        const data = { message, history, today: this.today(), digest: withInterview(this.registry.digest(snapshot), snapshot, spoken), actions: this.catalogue(), results, ...(repairNote ? { repair: repairNote } : {}) };
         let reply;
         try {
           reply = parseReply(await this.workflow.agent(provider, AGENT_INSTRUCTION, data, { signal, usageContext: { purpose: 'agent', taskId: turnId, attempt: call }, onText: text => { if (!signal.aborted) this.emit('agent.delta', { turnId, call, text }); } }));
@@ -190,8 +193,8 @@ export class AgentEngine {
           }
           // The interview is not over while areas are uncovered: a summary the candidate
           // did not ask for waits, so the turn continues with the next question.
-          if (action.name === 'tasks.interview' && !canOfferSummary(snapshot, message, history)) {
-            const coverage = profileCoverage(snapshot, history);
+          if (action.name === 'tasks.interview' && !canOfferSummary(snapshot, message, spoken)) {
+            const coverage = profileCoverage(snapshot, spoken);
             results.push({ name: action.name, error: `Do not offer to rebuild the profile yet: ${coverage.covered} of ${coverage.total} areas are covered (still open: ${coverage.uncovered.join('; ')}). Ask the candidate the next uncovered question and save their answer.` });
             continue;
           }

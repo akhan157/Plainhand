@@ -43,7 +43,7 @@ Falsification runs (temporary local reverts, each restored immediately):
 | --- | --- | --- |
 | `23645f7` | `const asked = askedAndAnswered(history)` → `const asked = new Set()` | `test-profile-coverage`: **7 pass / 2 fail**; new test fails on `after.uncovered.includes('certifications and licences')`, and the existing "asked and answered covers it" (roles) fails too |
 | `829e19c` | packet path `dedupeResume(packet.resume.filter(keepResumeRow))` → `dedupeResume(packet.resume)` | `test-role-order`: **5 pass / 1 fail**; prepare fails with `The packet contains a claim without an exact source reference` |
-| `3958509` | removed the self-skip from `trackedText` | `test-u11-safety`: **5 pass / 1 fail**; 11 violations inside `tests/test-u11-safety.mjs` (5 documented public addresses, 2× `jane.doe.real@gmail.com`, 2× `john.doe.real@gmail.com`, 2× `(415) 867-5309`) |
+| `3958509` | removed the self-skip from `trackedText` | `test-u11-safety`: **5 pass / 1 fail**; 11 violations inside `tests/test-u11-safety.mjs` (5 documented public addresses, 2× `<address>`, 2× `<address>`, 2× `<phone>`) |
 | `2390743` | removed the `approvedHash !== packetIdentity(job)` guard | `test-u08-sites`: **7 pass / 3 fail**, each `Missing expected rejection: an unapproved packet never goes into a kit` |
 | `cc705fb` | restored the pre-fix filter in `plainhand/benchmarks/cases.mjs` | `node benchmarks/benchmark-simulation.mjs --case contact`: **0/3, stop=error**; after restoring the fix: **3/3 pass, stop=review** |
 
@@ -149,8 +149,8 @@ tracked files" no longer includes this file.
   `const plantedEmail = ['jane.doe.real', 'gmail.com'].join('@')` and the phone from its
   digits, so the source text does not itself match `EMAIL`/`PHONE`.
 - Add `tests\/test-u11-safety\.mjs` to the `file` regex of the five `ADDRESS_ALLOWLIST`
-  entries (`hi@santifer.io`, `hola@santifer.io`, `richard.hendriks@mail.com`,
-  `dana@company.com`, `a@b.co`). Those addresses are already allowlisted by exact value and
+  entries (`<address>`, `<address>`, `<address>`,
+  `<address>`, `<address>`). Those addresses are already allowlisted by exact value and
   documented as public or fictional; allowing the declaration file does not widen the
   address policy.
 - Remove `if (file === 'tests/test-u11-safety.mjs') continue;`.

@@ -311,6 +311,11 @@ test('an unknown careers host cannot block preparation: the packet is rendered, 
     const kit = await h.request('jobs/manual-kit', { id: job.id });
     const names = kit.files.map(file => file.name);
     for (const name of ['posting.md', 'resume.pdf', 'cover-letter.pdf', 'answers.md', 'kit.json']) assert.ok(names.includes(name), `${name} is in the kit`);
+    // A resume file changed after approval never goes into the kit.
+    const original = await readFile(await h.app.workspace.safe(job.pdf));
+    await h.app.workspace.write(job.pdf, Buffer.concat([original, Buffer.from('\n%tampered')]));
+    await assert.rejects(h.request('jobs/manual-kit', { id: job.id }), /changed after you approved it/, 'a tampered resume is refused');
+    await h.app.workspace.write(job.pdf, original);
     const fresh = await h.freshJob(job.id);
     assert.equal(fresh.status, 'Apply');
     assert.equal(fresh.stage, 'approved');
