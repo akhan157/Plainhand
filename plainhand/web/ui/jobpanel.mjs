@@ -240,11 +240,17 @@ async function copyText(text, what) {
 function ManualKit({ job, title }) {
   const packet = job.packet, link = job.applyUrl || job.url;
   const docs = (job.artifacts || []).filter(file => !file.endsWith('.md'));
+  const [kit, setKit] = useState(null);
+  const saveKit = async () => {
+    try { const result = await api('jobs/manual-kit', { id: job.id }); setKit(result); toast(`Application kit saved to ${result.directory}.`); }
+    catch (error) { toast(error.message, true); }
+  };
   return html`<${Section} title=${title || `Apply on ${hostOf(link)} yourself`} id="ap-manual">
     <ol class="plain-list manual-steps">
       <li><strong>Open the application.</strong> ${link ? html`<${LinkButton} class="small" href=${safeLink(link)} external>Open ${hostOf(link)}</${LinkButton}>` : null}</li>
       <li><strong>Attach your approved documents.</strong> <span class="download-row">${store.demo ? html`<${Pill} tone="warn">Sample documents · demo only</${Pill}>` : docs.length ? docs.map(file => html`<a key=${file} class="button small" href=${artifactHref(file)} download><${Icon} name="download" />${artifactLabel(file)}</a>`) : html`<span class="muted-text">Regenerate the packet to make the PDFs.</span>`}</span></li>
       <li><strong>Paste your answers.</strong> Each one is the approved wording.</li>
+      <li><strong>Keep a copy.</strong> <${Button} class="small" icon="download" disabled=${!packet || store.demo || store.state.cloud} onClick=${saveKit}>Save kit files</${Button}> <span class="muted-text">${kit ? kit.directory : 'The documents, answers and posting link in one folder.'}</span></li>
     </ol>
     ${packet?.coverLetter ? html`<div class="qa"><h4>Cover letter text</h4><p class="muted-text">For sites that ask you to paste it.</p><${Button} class="small" icon="copy" onClick=${() => copyText(packet.coverLetter, 'Cover letter')}>Copy cover letter</${Button}></div>` : null}
     ${(packet?.answers || []).map((a, i) => html`<div class="qa" key=${i}><h4>${a.question}</h4><p>${a.answer}</p><${Button} class="small" icon="copy" onClick=${() => copyText(a.answer, 'Answer')}>Copy answer</${Button}></div>`)}

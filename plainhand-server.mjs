@@ -380,6 +380,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/tasks/cancel') { await ui('tasks.cancel', { taskId: input.id }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/jobs/apply-link') return json(res, 200, await ui('jobs.setApplyLink', { jobId: input.id, applyUrl: input.applyUrl }));
+      if (url.pathname === '/api/jobs/manual-kit') return json(res, 200, await ui('jobs.manualKit', { jobId: input.id }));
       if (url.pathname === '/api/format/derive') {
         // Reads layout from the candidate's own resume PDF; nothing is saved until they choose to.
         const pdf = Buffer.from(String(input.content || ''), 'base64');

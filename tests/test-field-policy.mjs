@@ -17,6 +17,8 @@ test('questions reserved for the candidate are sensitive, in any field', () => {
     'Desired pay rate',
     'Expected hourly rate',
     'Minimum wage you would accept',
+    'Social Security Number',
+    'SSN',
   ]) assert.equal(isSensitiveLabel(label), true, label);
 });
 

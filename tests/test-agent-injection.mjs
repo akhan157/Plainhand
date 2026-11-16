@@ -604,7 +604,7 @@ test('every write and task, even confirmed for the agent, never reaches approval
       'record.addContact': { jobId: h.jobId, name: 'X' }, 'record.removeContact': { jobId: h.jobId, entryId: 'none' },
       'record.addInterview': { jobId: h.jobId, stage: 'Final', date: today(), status: 'completed' }, 'record.setInterviewStatus': { jobId: h.jobId, entryId: 'none', status: 'completed' },
       'record.removeInterview': { jobId: h.jobId, entryId: 'none' }, 'record.setNextAction': { jobId: h.jobId, text: 'Submitted already' },
-      'jobs.add': { company: 'Other', title: 'Role', url: 'https://jobs.lever.co/other/1' }, 'jobs.select': { jobId: h.jobId, selected: true },
+      'jobs.add': { company: 'Other', title: 'Role', url: 'https://jobs.lever.co/other/1' }, 'jobs.select': { jobId: h.jobId, selected: true }, 'jobs.manualKit': { jobId: h.jobId },
       'jobs.setContext': { jobId: h.jobId, overrideReason: 'Approved by the posting' }, 'jobs.setStatus': { jobId: h.jobId, status: 'Offer' },
       'sources.add': { name: 'Acme', url: 'https://boards.greenhouse.io/acme' }, 'sources.remove': { sourceId: 'none' },
       'corrections.propose': { question: 'Chassis', answer: 'Yes', evidence },
