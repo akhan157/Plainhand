@@ -770,3 +770,27 @@ Reading the numbers:
     analyst-seeded;
   - `voice-contrast`;
   - `queue-vs-single` with 2 jobs.
+
+## Live verification on `3c344da`; register 13/15 — 2026-11-16
+
+- **The four review-blocked rows were re-run after the motivation fix.**
+  - Pass: analyst-seeded, oldrole-tech-recent, oldrole-tech-match.
+  - holdout2-journey-stem now runs end to end (resume 100%, form 100%, submitted). It
+    fails only the evaluation expectation: 3.8 Investigate, because the conversation
+    never captured the assay-validation evidence the posting requires.
+- **Voice contrast (live, synthetic).**
+  - The terse persona's letter is closer to its own samples.
+  - The formal persona's letter is not (1.82 vs 0.83), so the pre-registered test fails.
+  - Post hoc, and not counted as a pass: the formal letter is visibly more formal. The
+    direction is right but too weak.
+- **queue-vs-single** stopped at the provider usage limit.
+- **Attempted fix, reverted.** Root tried starting new workspaces at state version 2 to
+  avoid a no-op 1→2 migration on first restart. Export format v1 shares that field, so
+  12 import tests failed. Reverted. Residual: a new workspace runs one harmless
+  migration with a backup on its second start.
+- **Register: 13/15 accepted.**
+  - U04 and U14 are accepted on live evidence.
+  - U13 is accepted as an uncalibrated harness, as UNIFIED-GOAL allows. External check 1
+    stays listed.
+  - Open: U01 (a single-sequence live fresh-install onboarding) and U05 (the voice
+    contrast). Both need quota. A voice-strength fix lane is next.
