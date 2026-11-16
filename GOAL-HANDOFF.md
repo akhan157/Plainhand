@@ -890,3 +890,39 @@ Lane `9f593d8` (OMP DeepSeek), reviewed and merged by root. Suite 683/683.
   document fact still forces a redraft. Saves 3 calls when it applies.
 - **Next lane, in flight.** Exact counts (no "assays" from "assay"), relevant
   credentials kept, and contiguous sections.
+
+## Live re-check on `f12ff66` — 2026-11-16 (fresh clone, Codex)
+
+Fresh clone: `npm ci` and `setup` both exit 0. Six live rows: 3/6 pass on the first
+run (journey-sci, fin-built, fin-seeded). Re-running the three failures with
+`--retain`: both analyst rows pass, so their first failures were a flaky review.
+holdout2-journey-stem fails again, the same way.
+- **holdout2-journey-stem (U01, U03): open.** Cause, from a logged replay of the master step:
+  - The seeded profile holds one dated role (Applications Scientist), so the
+    coverage check counts `roles` as covered. The stories actually come from older,
+    never-named roles, and the conversation never asks where they happened.
+  - The master's first draft put every line under a made-up section ("Experience —
+    employer and dates not supplied") and dropped both the source role heading and
+    the interview Green Belt. A passive suggestion ("The certification is included")
+    then got past the guard, and the review failed on it.
+  - The completeness parser misses headings packed into a one-line `profile.resume`.
+- **Judge (Claude, uncalibrated, 3 passing packets):** overall 4.00, honesty 4.22 (up
+  from 3.50–3.78), 0 unsupported claims, structure 3.22. Structure problems:
+  - Skills placed before Experience.
+  - One role's accomplishments put under a separate heading-less section.
+  - The judge reads rows that repeat a heading as split entries. This is a
+    presentation artifact: the PDF groups them.
+- **Voice (U05): still fails for formal.** Terse is closer to its own samples (0.29
+  vs 2.37). Formal is not (1.85 vs 0.80): its letter has 0.8 formal markers per
+  100 words against 11.8 in its samples. By the frozen measure, at least ~4 per
+  100 are needed to pass.
+- **Calls per application (U14):** seeded rows 5–6 calls (controlled: 5). Built rows
+  12, of which ~7 are interview turns. journey-sci 19, including the interview,
+  understanding and master steps.
+- Codex quota ran out during the replay. Fix lane in flight (OMP DeepSeek):
+  - role attachment in the interview;
+  - completeness parsing of one-line resumes;
+  - master keeps source role headings and stated credentials;
+  - passive suggestion guard;
+  - deterministic section order and a grouping repair;
+  - voiceTarget carries the candidate's own register phrases.
