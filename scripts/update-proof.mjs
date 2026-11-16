@@ -116,8 +116,12 @@ async function startServer() {
   const apiFile = path.join(candidate, 'data', 'plainhand', 'local-api.json');
   await waitFor(() => /Plainhand is ready/.test(output) && existsSync(apiFile), 120000, () => `Plainhand did not start:\n${output}\n${errors}`);
   const api = JSON.parse(await readFile(apiFile, 'utf8'));
+  // The page carries the owner session token; local-api.json carries the MCP bridge token.
+  const page = await fetch(`http://127.0.0.1:${api.port}/`).then(response => response.text()).catch(() => '');
+  const session = page.match(/name="plainhand-session" content="([A-Za-z0-9]+)"/)?.[1] || null;
+  if (!session) throw new Error('Could not read the Plainhand session token from the page.');
   return {
-    port: api.port, token: api.mcpToken, log: () => output + errors,
+    port: api.port, token: session, log: () => output + errors,
     stop: async () => { child.kill('SIGTERM'); await new Promise(resolve => child.on('exit', resolve)); },
   };
 }
@@ -349,7 +353,9 @@ try {
   await mkdir(work, { recursive: true });
   candidate = path.join(work, 'candidate');
   home = path.join(work, 'home');
-  npmCache = path.join(work, 'npm-cache');
+  // The npm cache stays where the machine already has it: the proof may not need the
+  // network, but it must not need an empty cache either. It is not a credential directory.
+  npmCache = process.env.npm_config_cache || path.join(os.homedir(), '.npm');
   const release = path.join(work, 'release.git'), releaseWork = path.join(work, 'release-work');
   const stateFile = path.join(candidate, 'data/plainhand/workspace.json');
   const toSha = git(ROOT, ['rev-parse', TO]);
@@ -375,7 +381,7 @@ try {
   // A candidate install already at the previous release.
   phase('Candidate install at the previous release');
   await mkdir(home, { recursive: true });
-  await mkdir(npmCache, { recursive: true });
+  await mkdir(npmCache, { recursive: true }).catch(() => {});
   for (const [file, contents] of Object.entries({ '.codex/auth.json': '{"token":"fake-codex"}\n', '.codex/config.toml': 'model = "fake"\n', '.claude/.credentials.json': '{"token":"fake-claude"}\n', '.config/gh/hosts.yml': 'github.com: {user: riley}\n' })) {
     await mkdir(path.dirname(path.join(home, file)), { recursive: true });
     await writeFile(path.join(home, file), contents);
@@ -392,6 +398,7 @@ try {
     await mkdir(path.dirname(path.join(candidate, file)), { recursive: true });
     await writeFile(path.join(candidate, file), contents);
   }
+  await mkdir(path.dirname(stateFile), { recursive: true });
   await writeFile(stateFile, JSON.stringify(STATE, null, 2) + '\n');
   await writeFile(path.join(candidate, 'u15-seed.mjs'), SEED);
   const seed = JSON.parse(run(process.execPath, ['u15-seed.mjs'], { cwd: candidate, env: envFor() }).stdout.trim().split('\n').pop());
@@ -401,7 +408,6 @@ try {
 
   const fileHashes = {};
   for (const file of Object.keys(USER_FILES)) fileHashes[file] = await hashFile(path.join(candidate, file));
-  const stateBytesBefore = await readFile(stateFile);
 
   let server = await startServer();
   let before;
@@ -411,6 +417,10 @@ try {
     check(before.data.standardStatus === 'approved', 'the previous release reports the master resume approved');
     check(before.data.jobs.find(item => item.id === 'job-pumps').approvedHash === seed.packetHashes['job-pumps'], 'the previous release reads the packet approval');
   } finally { await server.stop(); }
+  // What the candidate's install holds immediately before the update. Starting Plainhand
+  // writes a state revision of its own, so this is the file the migration must back up.
+  const stateBytesBeforeUpdate = await readFile(stateFile);
+
   // ── the update a v1.1.2 install documents: fetch the release, switch, install ──
   phase(`Update ${FROM} → ${RELEASES[0]} with the documented commands`);
   await candidateStep(`switch to ${RELEASES[0]} (git fetch --tags && git checkout)`, () => {
@@ -427,11 +437,13 @@ try {
   const startupMs = Date.now() - startupAt;
   candidateSteps.push({ label: 'start Plainhand (workspace migrates automatically)', ms: startupMs });
   log(`  [${(startupMs / 1000).toFixed(1)} s] start Plainhand (workspace migrates automatically)`);
-  let afterNew, migrated = null, storyKeysAfter = null;
+  let afterNew, migrated = null, storyKeysAfter = null, answerBankAfterApprove = null;
   try {
     check(/Workspace state migrated 1 → 2/.test(server.log()), 'the start migrated the workspace state', server.log().slice(0, 2000));
     afterNew = await expectRecords(server, { label: 'after update', packetHash: seed.packetHashes['job-pumps'], storyKeys: null });
     expectNewRelease(afterNew, { label: 'after update' });
+    // The update itself wrote nothing in the user layer; checked before anything else runs.
+    for (const [file, hash] of Object.entries(fileHashes)) check(await hashFile(path.join(candidate, file)) === hash, `user file unchanged by the update: ${file}`);
 
     // The migrated records are usable, not just present.
     const autonomy = await call(server, 'settings/autonomy', { enabled: true, perDay: 5, minScore: 4 });
@@ -440,6 +452,7 @@ try {
     check(reverted.status === 200 && reverted.data?.perDay === 2, 'the autonomy setting is back to the candidate value');
     const approvedAnswer = await call(server, 'action', { name: 'answers.approve', input: { id: 'answer-describe-a-hands-on-project' } });
     check(approvedAnswer.status === 200, 'the migrated reusable answer can be re-approved', JSON.stringify(approvedAnswer.data));
+    answerBankAfterApprove = await readFile(path.join(candidate, 'data/answer-bank.yml'));
     const exported = await call(server, 'export');
     check(exported.status === 200 && exported.data?.profile?.name === PROFILE.name, 'the workspace exports with its profile');
     check(exported.data.jobs.some(item => item.id === 'job-pumps'), 'the export contains the applications');
@@ -452,12 +465,10 @@ try {
     check(migrated.jobs.find(item => item.id === 'job-pumps').approvalReset?.reason === 'profile-privacy', 'the state file records the approval reset');
   } finally { await server.stop(); }
 
-  // Files the candidate owns are byte-identical; only the state file and its backup changed.
-  for (const [file, hash] of Object.entries(fileHashes)) check(await hashFile(path.join(candidate, file)) === hash, `user file unchanged: ${file}`);
   const backups = (await readdir(path.join(candidate, 'data/plainhand/backups'), { withFileTypes: true })).filter(entry => entry.isDirectory() && entry.name.startsWith('migrate-1-to-2-')).map(entry => entry.name);
   check(backups.length === 1, 'one dated pre-migration backup');
   const backupDir = path.join(candidate, 'data/plainhand/backups', backups[0]);
-  check(await readFile(path.join(backupDir, 'workspace.json')).then(buffer => buffer.equals(stateBytesBefore)), 'the backup is the exact pre-update state file');
+  check(await readFile(path.join(backupDir, 'workspace.json')).then(buffer => buffer.equals(stateBytesBeforeUpdate)), 'the backup is the exact pre-update state file');
   const manifest = JSON.parse(await readFile(path.join(backupDir, 'MANIFEST.json'), 'utf8'));
   check(manifest.from === 1 && manifest.to === 2 && manifest.appVersion === '1.2.0', 'the backup manifest names the versions', JSON.stringify(manifest));
   check(sha256(await readFile(path.join(backupDir, 'workspace.json'))) === manifest.files[0].sha256, 'the backup matches its recorded hash');
@@ -495,7 +506,7 @@ try {
   const rollbackTwo = await candidateStep(`npm run rollback -- --version ${FROM} --offline`, () => run('npm', ['run', 'rollback', '--', '--version', FROM, '--offline'], { cwd: candidate, env: envFor() }));
   check(/Rolled back to Plainhand 1\.1\.2/.test(rollbackTwo.stdout), 'the rollback reports 1.1.2', rollbackTwo.stdout);
   check(git(candidate, ['rev-parse', 'HEAD']) === fromSha, 'the code is the exact previous release commit');
-  check(await readFile(stateFile).then(buffer => buffer.equals(stateBytesBefore)), 'the workspace state file is byte-identical to the pre-update file');
+  check(await readFile(stateFile).then(buffer => buffer.equals(stateBytesBeforeUpdate)), 'the workspace state file is byte-identical to the pre-update file');
   server = await startServer();
   let restored;
   try {
@@ -505,7 +516,14 @@ try {
     check(restored.conversation.every(message => !message.id), 'the restored state is in the previous release\'s shape');
     check(restored.settings.roleOrder === undefined, 'no new-release setting leaked into the restored state');
   } finally { await server.stop(); }
-  for (const [file, hash] of Object.entries(fileHashes)) check(await hashFile(path.join(candidate, file)) === hash, `user file unchanged after rollback: ${file}`);
+  // Rollback restores the workspace state; it never rewrites user files. The answer bank is
+  // the one file the candidate's own re-approval changed in this run, so it is compared to
+  // what that action wrote.
+  for (const [file, hash] of Object.entries(fileHashes)) {
+    if (file === 'data/answer-bank.yml') continue;
+    check(await hashFile(path.join(candidate, file)) === hash, `user file unchanged after rollback: ${file}`);
+  }
+  check((await readFile(path.join(candidate, 'data/answer-bank.yml'))).equals(answerBankAfterApprove), 'the answer bank is what the re-approval wrote, not rewritten by the rollback');
   const credentialsFinal = { codex: await hashTree(path.join(home, '.codex')), claude: await hashTree(path.join(home, '.claude')) };
   check(JSON.stringify(credentialsFinal) === JSON.stringify(credentialsBefore), 'provider credential directories were still untouched after rollback');
 
