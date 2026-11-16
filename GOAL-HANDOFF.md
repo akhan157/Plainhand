@@ -332,3 +332,21 @@ running. U15 stays deferred by the owner until the rest is done.
   contact fields local (rendering and form fill only) and out of provider context by
   default. This changes the context hash once, so approvals reset. Queued as a small
   product lane after the workflow lanes land.
+
+## U05 merged — 2026-11-16
+
+Lane `ce4b2ce` (OMP DeepSeek) adds tests and tools only, with no product change. The
+tests show:
+- A conversational "shorter" request leads to a confirmed `tasks.revise`, which runs
+  packet, humanize, review and render in that order, produces a new PDF hash, refreshes
+  calibration and clears approval.
+- "Lead with X" reorders only the resume.
+- An unsupported request is left out and named. The negative control is blocked by
+  review.
+- Revising the master resets its approval.
+- Three writing samples reach the provider as voice only and are never evidence.
+  Removing one removes it.
+
+The lane also adds `plainhand/voice-metrics.mjs` and `scripts/voice-contrast.mjs`, a
+live contrast check for root to run under budget. Suite 587/587. Residual: real-user
+voice validation is external.
