@@ -31,7 +31,10 @@ const MAX_QUOTE = 400;
 // Sentences are sliced back out of the source text, so every quote is an exact substring.
 // A period after a single capital letter (B.S., Ph.D., U.S.) does not end a sentence;
 // splitting there would hide a degree from the year and institution that qualify it.
-const ABBREVIATION = new Set(['mr', 'mrs', 'ms', 'dr', 'prof', 'inc', 'ltd', 'co', 'vs', 'etc', 'm.sc', 'b.sc', 'ph.d', 'msc', 'bsc']);
+const ABBREVIATION = new Set(['mr', 'mrs', 'ms', 'dr', 'prof', 'inc', 'ltd', 'co', 'vs', 'etc']);
+// A degree abbreviation ends a sentence unless the next word is lower-case: "M.Sc. in
+// Biology" continues, "I completed my MSc. I then worked" does not.
+const DEGREE_ABBREVIATION = new Set(['m.sc', 'b.sc', 'ph.d', 'msc', 'bsc']);
 function sentences(text) {
   const source = String(text || '');
   const found = [];
@@ -48,6 +51,7 @@ function sentences(text) {
       const before = source.slice(start, index);
       const word = before.match(/([A-Za-z.]+)$/)?.[1] || '';
       if (/\b[A-Z]$/.test(before) || ABBREVIATION.has(word.toLowerCase())) continue;
+      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && /^\s*[a-z]/.test(source.slice(index + 1))) continue;
     }
     push(index + 1);
     start = index + 1;
@@ -81,7 +85,13 @@ const NOT_TITLE = new Set(['worked', 'work', 'working', 'served', 'serving', 'em
 // A bare "Associate" or "Master" is a job title ("Senior Research Associate", "Scrum
 // Master"), not a degree: those words count only as "Associate's", "Master of ..." or
 // "... degree".
-const DEGREE_TOKEN = /\b(Ph\.?\s?D\.?|Doctorate|Doctor of [A-Za-z]+|MBA|M\.?B\.?A\.?|M\.\s?Sc?\.?|(?-i:MSc|MS)(?=\s+(?:in|of)\s+[A-Z]|,\s*(?-i:[A-Z])[a-z]+(?:\s|$|[.,—–-]))|(?-i:MSc)|M\.A\.?|(?-i:MA)(?=\s+(?:in|of)\s+[A-Z]|,\s*(?-i:[A-Z])[a-z]+(?:\s|$|[.,—–-]))|M\.?Eng\.?|Master(?:’s|'s|s)(?:\s+(?:degree|(?:of|in)\s+[A-Za-z ]+))?|Master\s+(?:degree|of\s+[A-Za-z ]+|in\s+(?!(?:the|a|an|our|my|this|that|their|his|her)\b)[A-Za-z ]+)|B\.\s?Sc?\.?|(?-i:BSc|BS)(?=\s+(?:in|of)\s+[A-Z]|,\s*(?-i:[A-Z])[a-z]+(?:\s|$|[.,—–-]))|(?-i:BSc)|B\.A\.?|(?-i:BA)(?=\s+(?:in|of)\s+[A-Z]|,\s*(?-i:[A-Z])[a-z]+(?:\s|$|[.,—–-]))|B\.?Eng\.?|Bachelor(?:’s|'s|s)?(?:\s+of\s+[A-Za-z ]+)?|Associate(?:’s|'s|s)(?:\s+(?:degree|(?:of|in)\s+[A-Za-z ]+))?|Associate\s+(?:degree|of\s+[A-Za-z ]+|in\s+(?:Arts|Science|Applied|General|Fine|Business|Nursing|Occupational)\b[A-Za-z ]*))\b/i;
+const DEGREE_TOKEN = /\b(Ph\.?\s?D\.?|Doctorate|Doctor of [A-Za-z]+|MBA|M\.?B\.?A\.?|M\.\s?Sc?\.?|M\.A\.?|M\.?Eng\.?|Master(?:’s|'s|s)(?:\s+(?:degree|(?:of|in)\s+[A-Za-z ]+))?|Master\s+(?:degree|of\s+[A-Za-z ]+|in\s+(?!(?:the|a|an|our|my|this|that|their|his|her)\b)[A-Za-z ]+)|B\.\s?Sc?\.?|B\.A\.?|B\.?Eng\.?|Bachelor(?:’s|'s|s)?(?:\s+of\s+[A-Za-z ]+)?|Associate(?:’s|'s|s)(?:\s+(?:degree|(?:of|in)\s+[A-Za-z ]+))?|Associate\s+(?:degree|of\s+[A-Za-z ]+|in\s+(?:Arts|Science|Applied|General|Fine|Business|Nursing|Occupational)\b[A-Za-z ]*))\b/i;
+// The two- and three-letter abbreviations are case-sensitive (no i flag), so "50 ms in
+// 2018" or "MS Excel" are not degrees, and need a degree shape after them: "MS in
+// Chemistry", "BSc Physics", or a comma and a field that ends the heading field
+// ("BA, economics — 2018"), never a comma before more prose ("BA, Pilot study in").
+const DEGREE_ABBR = /\b(MSc|BSc|MS|MA|BS|BA)(?=\s+(?:in|of)\s+[A-Za-z]|\s+[A-Z][a-z]+\s*[—–,]|,\s*[A-Za-z]+(?:\s+[A-Za-z]+)?\s*(?:[—–]|$|\.\s*$|,\s*(?:19|20)\d{2}))/;
+const degreeMatch = text => String(text ?? '').match(DEGREE_TOKEN) || String(text ?? '').match(DEGREE_ABBR);
 const INSTITUTION = /\b((?:[A-Z][\w'’.-]*\s+){0,3}(?:University|College|Institute|School|Polytechnic|Academy)(?:\s+of\s+[A-Z][\w'’.-]*(?:\s+[A-Z][\w'’.-]*)*)?)\b/;
 
 function cleanTitle(value) {
@@ -90,7 +100,7 @@ function cleanTitle(value) {
   const words = title.split(/\s+/);
   if (words.length > 4 || words.some(word => NOT_TITLE.has(word.toLowerCase()))) return null;
   if (/\b(?:19|20)\d{2}\b/.test(title)) return null;
-  if (DEGREE_TOKEN.test(title) || INSTITUTION.test(title)) return null;
+  if (degreeMatch(title) || INSTITUTION.test(title)) return null;
   return title;
 }
 function cleanOrg(value) {
@@ -134,7 +144,7 @@ function degreeLevel(match) {
   return null;
 }
 function degreeFact(sourceId, sentence) {
-  const degree = sentence.match(DEGREE_TOKEN);
+  const degree = degreeMatch(sentence);
   if (!degree) return null;
   const institution = sentence.match(INSTITUTION);
   return {
@@ -145,7 +155,7 @@ function degreeFact(sourceId, sentence) {
 function profileGraduationFact(profile) {
   const text = String(profile?.graduation || '').trim();
   if (!text) return null;
-  const degree = text.match(DEGREE_TOKEN);
+  const degree = degreeMatch(text);
   const year = yearOf(text);
   if (!degree && !year) return null;
   const institution = text.match(INSTITUTION);

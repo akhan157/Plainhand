@@ -345,3 +345,22 @@ test('review cec2918: own-name credential matching, carried-row notes, negated n
   const [note] = scopeSuggestions([{ kind: 'resume', index: 0, text: long, word: 'assays', singular: 'assay' }]);
   assert.match(note, /"[^"]*assays[^"]*" says "assays"/);
 });
+
+test('review e03f483: acronyms inside names, generic suffixes, Registered titles, issuers, negated clauses', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  const r = (section, text) => [{ section, heading: null, text }];
+  const cases = [
+    ['Kubernetes CKA (2023)', r('Certifications', 'CKA (2023)'), true],
+    ['Passed CFA Level I in 2024; registered for Level II.', r('Certifications', 'CFA Level II candidate; passed Level I in 2024'), true],
+    ['Six Sigma Green Belt (ASQ CSSGB), 2019', r('Certifications', 'CSSGB, 2019'), true],
+    ['PE license, Texas', r('Summary', 'I ran PE, pilot programs in Texas in 2019'), false],
+    ['CPA license, State of Colorado, active since 2025.', r('Skills', 'I supported CPA firm audits and Colorado clients'), false],
+    ['PE license, Texas', r('Licenses', 'PE, Texas'), true],
+    ['Registered Nurse (RN) license, Ohio, 2018', r('Licenses', 'Registered Nurse license, Ohio, 2018'), true],
+    ['Certified Information Systems Security Professional (CISSP), (ISC)2, 2021', r('Certifications', 'ISC'), false],
+  ];
+  for (const [master, packet, expected] of cases) assert.equal(packetHasCredential({ text: master }, packet), expected, master);
+  assert.deepEqual(dropCredentialInclusionClaims(["The certificate wasn't added because no date is stated.", 'The certificate was not formally listed.', 'The CPA is included with its year, but the CFP was not added.'], [{ text: 'CPA, 2021' }]),
+    ["The certificate wasn't added because no date is stated.", 'The certificate was not formally listed.']);
+});

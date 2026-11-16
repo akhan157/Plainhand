@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createPlainhand } from '../plainhand-server.mjs';
@@ -293,4 +294,15 @@ test('review cec2918: lowercase "ms in" and "BA, pilot" are not degrees; M.Sc., 
   assert.equal(degree('Example University — MSc Biology — 2018.'), 1);
   assert.equal(degree('I hold a BSc in Physics from 2018.'), 1);
   assert.equal(degree('Example University — BS, Biology — 2018.'), 1);
+});
+
+test('review e03f483: abbreviations without regex modifiers; a degree abbreviation ends a sentence before a capital', () => {
+  const degree = (text, graduation = '2012') => findConflicts({ sources: [interview(text)], profile: { graduation } }).filter(item => item.kind === 'degree').length;
+  assert.equal(degree('I completed my MSc. I then worked at Example Health from 2013 to 2018.'), 0);
+  assert.equal(degree('I ran the BA, Pilot study in 2019.'), 0);
+  assert.equal(degree('Example University — BA, economics — 2018.'), 1);
+  assert.equal(degree('In 2018 I used MS Excel.'), 0);
+  // The module must load where RegExp modifiers are unsupported (Node 22).
+  const source = readFileSync(new URL('../plainhand/memory-checks.mjs', import.meta.url), 'utf8');
+  assert.ok(!/\(\?-?[ims]+:/.test(source), 'no inline RegExp modifiers');
 });

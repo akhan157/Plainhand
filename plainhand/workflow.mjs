@@ -132,6 +132,7 @@ export function accomplishmentRetryFeedback({ roles = [], sections = [] } = {}) 
 // it was ("Left out the Green Belt because ...") would now misdescribe the master. Only
 // an omission note naming the added row's credential or employer is dropped.
 // Row absence only: "missing the issuing body" is advice about a field of the row.
+const CARRIED = Symbol('carried credential row');
 const entryLine = entry => [entry?.text, entry?.heading?.org, entry?.heading?.title].filter(Boolean).join(' ');
 const OMISSION_NOTE = /\b(?:left out|leaves? out|leaving out|omitted|omits?|omission|not included|absent from|excluded|excluding|missing from)\b/i;
 export function dropRepairedOmissions(suggestions, added) {
@@ -162,7 +163,7 @@ export function dropRepairedOmissions(suggestions, added) {
 // out, so it is dropped. Advice and questions are not inclusion claims.
 const CREDENTIAL_NOUN_MENTION = /\b(?:certif\w*|licen[cs]\w*|credentials?)\b/i;
 // "was not added" reports an omission, not an inclusion.
-const NEGATED_INCLUSION = /\b(?:not|never|no longer)\s+(?:been\s+)?(?:kept|retained|included|listed|shown|preserved|carried|added)\b/i;
+const NEGATED_INCLUSION = /(?:\b(?:not|never|no longer)|n['’]t)\s+(?:\w+ly\s+)?(?:been\s+)?(?:kept|retained|included|listed|shown|preserved|carried|added)\b/i;
 const INCLUSION_VERB = /\b(?:kept|keeps|retain\w*|includ(?:ed|es)|listed|lists|shown|shows|preserved|carried|added|adds)\b/i;
 // `missing` holds the missing credentials; a note counts as being about one when it
 // uses a credential noun or names one of those credentials' own acronyms or name
@@ -172,10 +173,15 @@ export function dropCredentialInclusionClaims(suggestions, missing = []) {
     const { acronyms, phrase } = credentialName(item?.text || item?.label || '');
     return [...acronyms.map(acronym => new RegExp(`\\b${acronym}\\b`, 'i')), ...(phrase ? [new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\b`, 'i')] : [])];
   });
+  // Read clause by clause: "The CPA is included, but the CFP was not added" still
+  // claims the CPA, and "The certificate wasn't added" reports an omission.
   return (Array.isArray(suggestions) ? suggestions : []).filter(text => {
     const value = String(text ?? '');
-    const about = CREDENTIAL_NOUN_MENTION.test(value) || names.some(pattern => pattern.test(value));
-    return !(about && INCLUSION_VERB.test(value) && !NEGATED_INCLUSION.test(value) && !QUESTION_OR_ADVICE.test(value));
+    if (QUESTION_OR_ADVICE.test(value)) return true;
+    return !value.split(/[;,]|\s+(?:but|while|whereas|although)\s+/i).some(clause => {
+      const about = CREDENTIAL_NOUN_MENTION.test(clause) || names.some(pattern => pattern.test(clause));
+      return about && INCLUSION_VERB.test(clause) && !NEGATED_INCLUSION.test(clause);
+    });
   });
 }
 export function accomplishmentSuggestion({ roles = [], sections = [] } = {}) {
@@ -686,13 +692,19 @@ export class Workflow {
               .map(({ section, heading, text, evidence }) => ({ section, heading: heading || null, text, evidence }))
               .filter(row => {
                 // One row per credential, and none the packet already shows.
-                // Same written name, or the same source quote, is the same credential.
-                const keys = [credentialName(entryLine(row)).phrase.toLowerCase() || entryLine(row).toLowerCase(), ...(row.evidence || []).map(item => `quote:${item?.quote}`)];
+                // The same credential is the same written name or abbreviation; two
+                // credentials that cite one source sentence are still two.
+                const name = credentialName(entryLine(row));
+                const keys = [...(name.phrase ? [`name:${name.phrase.toLowerCase()}`] : []), ...name.acronyms.map(acronym => `abbr:${acronym.toLowerCase()}`)];
+                if (!keys.length) keys.push(`line:${entryLine(row).toLowerCase()}`);
                 if (keys.some(key => seenCarry.has(key)) || packetHasCredential({ text: entryLine(row) }, packet.resume)) return false;
                 for (const key of keys) seenCarry.add(key);
                 return true;
               });
-            carriedRows = carried.map(row => ({ ...row, heading: row.heading ? { ...row.heading } : null }));
+            // Each carried row is marked so the restore after the humanizer finds that
+            // row and no other; the marker is a symbol, so it is never stored.
+            carriedRows = carried.map(row => ({ text: row.text, heading: row.heading ? { ...row.heading } : null }));
+            carried.forEach((row, index) => { row[CARRIED] = index; });
             if (carried.length) {
               packet.resume = normalizeResume([...packet.resume, ...carried], { sections: formatSections });
               packet.suggestions = dropRepairedOmissions(packet.suggestions, carried);
@@ -729,10 +741,11 @@ export class Workflow {
           // A carried credential keeps the wording the candidate approved in the master;
           // the humanizer has no AI tell to remove there, and a reworded name would read
           // as missing to the final check.
-          for (const row of carriedRows) {
-            const quote = JSON.stringify(row.evidence);
-            const target = packet.resume.find(entry => entry.section === row.section && JSON.stringify(entry.evidence) === quote);
-            if (target) { target.text = row.text; target.heading = row.heading; }
+          for (const entry of packet.resume) {
+            const index = entry?.[CARRIED];
+            if (index === undefined || !carriedRows[index]) continue;
+            entry.text = carriedRows[index].text;
+            entry.heading = carriedRows[index].heading ? { ...carriedRows[index].heading } : null;
           }
           // The final attempt never blocks on these quality findings; it records them
           // for the candidate. Recomputed on the rewritten text, so a humanizer pass

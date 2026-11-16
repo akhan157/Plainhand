@@ -93,26 +93,33 @@ const entryLine = entry => [entry?.text, entry?.heading?.org, entry?.heading?.ti
 export function credentialName(text) {
   const value = clean(text);
   const own = value.split(/\s*[,(;]\s*|\s+[—–-]\s+/)[0] || value;
-  // Its abbreviation: a parenthesised acronym right after the name, or a name that
-  // is itself an acronym ("PMP, 2021"). An acronym inside a longer name ("AWS" in
-  // "AWS Certified Solutions Architect") is a prefix, not the credential.
-  const paren = [...value.matchAll(/\(([A-Z][A-Z0-9-]{1,7})\)/g)].map(match => match[1]);
+  // Generic trailing words ("PE license", "CPA license") are not part of the name.
   const ownWords = own.split(/\s+/).filter(Boolean);
-  const ownIsAcronym = ownWords.length >= 1 && ownWords.every(word => /^[A-Z][A-Z0-9-]{1,7}$/.test(word) && !NOT_ACRONYM.has(word));
-  const acronyms = [...new Set([...paren, ...(ownIsAcronym ? ownWords : [])])];
+  while (ownWords.length > 1 && TRAILING_GENERIC.has(ownWords.at(-1).toLowerCase())) ownWords.pop();
+  const isAcronym = word => /^[A-Z][A-Z0-9-]{1,7}$/.test(word) && !NOT_ACRONYM.has(word);
+  // Its abbreviations: the parenthesised group right after the own name ("(PMP)",
+  // "(ASQ CSSGB)"), every acronym of an all-acronym name ("PMP", "PE license"), and an
+  // acronym after the first word ("Kubernetes CKA", "Passed CFA Level I"). A first-word
+  // acronym in a longer name is a prefix ("AWS Certified Solutions Architect"), and an
+  // issuer field after a comma ("PMI", "(ISC)2") is never the credential.
+  const after = value.slice(own.length).match(/^\s*\(([^)]*)\)/);
+  const paren = after ? after[1].split(/[\s/]+/).filter(isAcronym) : [];
+  const ownIsAcronym = ownWords.length >= 1 && ownWords.every(isAcronym);
+  const inner = ownIsAcronym ? ownWords : ownWords.slice(1).filter(isAcronym);
+  const acronyms = [...new Set([...paren, ...inner])];
   // Its written-out name: the longest capitalised run of the own name, without a
-  // leading verb or a trailing generic word, matched as one contiguous phrase within
-  // a single resume line ("Google Data Analytics Professional Certificate" holds
-  // "Google Data Analytics"; "led project management" does not hold "Project
-  // Management Professional").
-  const runs = [...own.matchAll(/\b[A-Z][A-Za-z0-9&+-]*(?:\s+(?:of|and|&|in|for)?\s*[A-Z][A-Za-z0-9&+-]*)*/g)].map(match => {
+  // leading verb (while two words remain, so "Registered Nurse" stays) or a trailing
+  // generic word, matched as one contiguous phrase within a single resume line
+  // ("Google Data Analytics Professional Certificate" holds "Google Data Analytics";
+  // "led project management" does not hold "Project Management Professional").
+  const runs = [...ownWords.join(' ').matchAll(/\b[A-Z][A-Za-z0-9&+-]*(?:\s+(?:of|and|&|in|for)?\s*[A-Z][A-Za-z0-9&+-]*)*/g)].map(match => {
     const words = match[0].split(/\s+/);
-    while (words.length && LEADING_VERB.has(words[0].toLowerCase())) words.shift();
+    while (words.length > 2 && LEADING_VERB.has(words[0].toLowerCase())) words.shift();
     while (words.length && TRAILING_GENERIC.has(words.at(-1).toLowerCase())) words.pop();
     return words.join(' ');
-  }).filter(run => run.split(' ').length >= 2 && !(ownIsAcronym && run === own));
+  }).filter(run => run.split(' ').length >= 2 && !run.split(' ').every(isAcronym));
   const phrase = runs.sort((a, b) => b.length - a.length)[0] || '';
-  return { acronyms: acronyms.filter(word => !NOT_ACRONYM.has(word)), phrase };
+  return { acronyms, phrase };
 }
 export function packetHasCredential(item, resume) {
   const entries = Array.isArray(resume) ? resume : [];
@@ -127,7 +134,8 @@ export function packetHasCredential(item, resume) {
   if (acronyms.length && entries.some((entry, index) => (ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))
     && acronyms.some(acronym => lines[index].includes(` ${acronym.toLowerCase()} `)))) return true;
   if (phrase || acronyms.length) return false;
-  return credentialIndex(item, entries) >= 0;
+  // No name could be read: only a credential entry may hold it.
+  return credentialIndex(item, entries.filter(entry => ACRONYM_SECTION.test(String(entry?.section ?? '')) || CREDENTIAL_WORD.test(entryLine(entry)))) >= 0;
 }
 
 // The approved master's own rows for the given missing credentials, matched by the

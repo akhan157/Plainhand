@@ -529,3 +529,42 @@ test('a carried credential keeps its master wording through the humanizer, and i
     assert.ok(!state.jobs.find(item => item.id === jobId).packet.suggestions.some(text => /Left out: .*Green Belt/.test(text)), 'and no false omission note');
   } finally { await h.close(); }
 });
+
+test('two credentials citing one source sentence are each carried and restored to their own row', async () => {
+  const COMBINED = 'Certified Public Accountant (CPA), Ohio, 2015, and Lean Six Sigma Green Belt, 2019.';
+  const CPA_ROW = 'Certified Public Accountant (CPA), Ohio, 2015';
+  const GB_ROW = 'Lean Six Sigma Green Belt, 2019';
+  const basePersona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const persona = {
+    ...basePersona,
+    profile: { ...basePersona.profile, resume: basePersona.profile.resume.split('\n').map(line => /Green Belt/.test(line) ? COMBINED : line).join('\n') },
+    facts: basePersona.facts.map(fact => fact.id === 'cert' ? { ...fact, text: COMBINED } : fact),
+  };
+  const baseJob = jobById('holdout2-job-stem-assay');
+  const job = { ...baseJob, description: `${baseJob.description} CPA audit exposure and process improvement leadership are required.` };
+  const cert = text => ({ section: 'Certifications', heading: null, text, evidence: [{ sourceId: 'cv', quote: COMBINED }] });
+  for (const keeps of ['cpa', 'none']) {
+    const base = controlledAgent({ scenario: { id: `u03-shared-quote-${keeps}`, roleOrder: 'recent' }, persona, job });
+    const agent = async (id, instruction, data, options) => {
+      const reply = await base(id, instruction, data, options);
+      if (instruction === STANDARD_INSTRUCTION) return { ...reply, resume: [...reply.resume.filter(entry => !/Green Belt|CPA/.test(entry.text)), cert(CPA_ROW), cert(GB_ROW)] };
+      if (instruction === PACKET_INSTRUCTION) return { ...reply, resume: [...reply.resume.filter(entry => !/Green Belt|CPA/.test(entry.text)), ...(keeps === 'cpa' ? [cert(CPA_ROW)] : [])] };
+      return reply;
+    };
+    const h = await harness({ persona, job, agent, profile: persona.profile, verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: job.description, checkedAt: new Date().toISOString(), reason: 'Fixture.' }) });
+    try {
+      await h.ui('tasks.standard', {}); await h.settle();
+      await h.ui('standard.approve', {});
+      const jobId = await h.addJob(job);
+      await h.ui('tasks.evaluate', { jobId }); await h.settle();
+      await h.ui('jobs.setContext', { jobId, overrideReason: 'Fixture proceeds to the packet.' });
+      await h.ui('jobs.select', { jobId, selected: true });
+      await h.ui('tasks.prepare', { jobId }); await h.settle();
+      assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+      const packet = (await h.app.workspace.load()).jobs.find(item => item.id === jobId).packet;
+      const texts = packet.resume.filter(entry => /Green Belt|CPA/.test(entry.text)).map(entry => entry.text).sort();
+      assert.deepEqual(texts, [CPA_ROW, GB_ROW].sort(), `${keeps}: each credential once, in its own wording`);
+      assert.ok(!packet.suggestions.some(text => /^Left out: /.test(text)), `${keeps}: no false omission note`);
+    } finally { await h.close(); }
+  }
+});
