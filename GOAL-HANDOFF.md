@@ -350,3 +350,29 @@ tests show:
 The lane also adds `plainhand/voice-metrics.mjs` and `scripts/voice-contrast.mjs`, a
 live contrast check for root to run under budget. Suite 587/587. Residual: real-user
 voice validation is external.
+
+## U09 merged — 2026-11-16
+
+Lane `8bf98f6` (OMP DeepSeek), reviewed and merged by root. Four product fixes:
+- **Cancel during the final ATS check.** It could save an approvable packet. A
+  `check()` now runs before commit.
+- **App close.** Closing the app now stops the queue (`Workflow.stop()`), so nothing
+  starts after shutdown.
+- **Restart.** Restart now gives separate messages for queued and running tasks.
+- **Autonomy clock and limit.** The autonomy clock is injectable, and a refusal at the
+  daily limit is recorded.
+
+Eight tests cover:
+- batch order;
+- process-stop recovery;
+- per-item retry;
+- cancel, both queued and running;
+- the autonomy limit and its daily reset;
+- queued and single runs producing byte-identical packets.
+
+`scripts/queue-vs-single.mjs --provider` is ready for the live run. Suite 595/595.
+
+Residuals:
+- Turning autonomy off does not cancel an auto-prepare that is already queued.
+- Queued work is marked interrupted on restart rather than auto-resumed.
+- A failed auto-prepare still uses up its daily slot.
