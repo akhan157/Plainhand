@@ -272,3 +272,22 @@ Frozen worktree: /home/ak/.cache/plainhand-baseline-00ce1bf (remove when done).
 - Suite 562/562; controlled 64/67, 0 unexpected. `agent.mjs` is product code and not
   hashed by the measurement manifest, so v3 still matches.
 - Ready for the live comparison on this tree once the owner's Codex quota resets.
+
+## M3 story edit/delete merged — 2026-11-16
+
+- Lane `40bbf48` (DeepSeek), reviewed and merged by root.
+  - Adds candidate-tier `profile.editStory` and `profile.removeStory`.
+  - Each message gets a stable `id`. Older messages without one use a derived
+    `legacy-<sha(role,at)>` key.
+  - Both actions clear the understanding and every approval.
+  - The audit log has no deleted text, and conversation.jsonl is untouched.
+  - The UI adds Edit and Delete with a confirmation step.
+- Six falsifier tests are mutation-checked. Suite 568/568; UI flow passes; controlled
+  64/67, 0 unexpected.
+- Not done:
+  - hosted Postgres suites (no database authorized);
+  - story controls are not in the scripted UI flow. A real-Chromium probe was run
+    instead.
+- Residual: two legacy messages sharing a millisecond timestamp would share a key.
+  The first one wins, so this is low risk.
+- Next memory packets: M4 (approved-correction reuse), then M5.
