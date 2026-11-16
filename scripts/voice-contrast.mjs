@@ -12,10 +12,11 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { voiceAttribution, voiceFeatures } from '../plainhand/voice-metrics.mjs';
 
-const PERSONA = {
+export const PERSONA = {
   name: 'Voice Contrast Candidate',
   email: 'voice-contrast@example.invalid',
   phone: '',
@@ -31,7 +32,7 @@ const PERSONA = {
   voice: '',
   constraints: 'Entry-level roles.',
 };
-const SAMPLES = {
+export const SAMPLES = {
   terse: [
     "I'm a hands-on engineer. I build test rigs. I break them on purpose. I fix what breaks. Then I write the numbers down.",
     "Quick update: the upright passed. I'll send the plots tonight. Ask me if anything looks off.",
@@ -41,7 +42,7 @@ const SAMPLES = {
     'Please find the relevant documentation attached for your consideration, and do not hesitate to contact me at your earliest convenience should any further information be required.',
   ],
 };
-const JOB = {
+export const JOB = {
   company: 'Acme Robotics',
   title: 'Graduate Engineer',
   url: 'https://jobs.lever.co/acme/voice-contrast',
@@ -69,7 +70,7 @@ function parseArgs(argv) {
   return args;
 }
 
-async function preparePersona(provider, label, samples, root) {
+export async function preparePersona(provider, label, samples, root, { agent = null } = {}) {
   const [{ createPlainhand }, { digest }] = await Promise.all([import('../plainhand-server.mjs'), import('../plainhand/store.mjs')]);
   // Rendering has its own U05 tests with a real PDF; this harness only needs the
   // pipeline's render step to run, so it writes the packet text as the artifact.
@@ -78,19 +79,24 @@ async function preparePersona(provider, label, samples, root) {
     await workspace.write(pdf, body);
     return { pdf, pdfHash: digest(Buffer.from(body)), artifacts: [pdf] };
   };
-  const app = await createPlainhand({ root, providers: async () => [], startFeatures: false, workflowOptions: { renderer } });
+  // A test supplies the fixture agent; a live run leaves the default provider path.
+  const workflowOptions = agent ? { agent, renderer } : { renderer };
+  const app = await createPlainhand({ root, providers: async () => [], startFeatures: false, workflowOptions });
   try {
     const state = await app.workspace.load();
     await app.workspace.saveProfile({ ...state.profile, ...PERSONA }, state.revision);
     for (const [index, text] of samples.entries()) await app.registry.run('profile.addWritingSample', { title: `Sample ${index + 1}`, text }, { actor: 'ui' });
     const loaded = await app.workspace.load();
     const contextHash = (await app.workspace.context(loaded)).hash;
-    const jobId = randomUUID();
+    const jobId = randomUUID(), reportPath = `reports/voice-contrast-${jobId.slice(0, 8)}.md`;
     await app.workspace.mutate(current => {
       current.provider = provider;
-      current.jobs = [{ ...JOB, id: jobId, description: JOB_TEXT, location: '', createdAt: new Date().toISOString(), stage: 'evaluated', status: 'Evaluated', selected: true, contextHash,
+      current.jobs = [{ ...JOB, id: jobId, reportPath, description: JOB_TEXT, location: '', createdAt: new Date().toISOString(), stage: 'evaluated', status: 'Evaluated', selected: true, contextHash,
         evaluation: { score: 4.5, recommendation: 'Apply', summary: 'Synthetic voice-contrast fixture.', matches: [], gaps: [], questions: [], legitimacyNotes: [] } }];
     });
+    // Evaluate writes this report; the script builds the evaluated job directly, so it
+    // must provide the same shape and prepare updates the PDF line in it.
+    await app.workspace.write(reportPath, `# ${JOB.company} — ${JOB.title}\n\n**PDF:** pending\n`);
     await app.registry.run('tasks.prepare', { jobId }, { actor: 'ui' });
     for (let i = 0; i < 6; i++) await app.workflow.queue;
     const task = (await app.workspace.load()).tasks[0];
@@ -143,4 +149,6 @@ async function main() {
   }
 }
 
-main().then(code => { process.exitCode = code; }).catch(error => { console.error(`voice contrast failed: ${error.message}`); process.exitCode = 2; });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().then(code => { process.exitCode = code; }).catch(error => { console.error(`voice contrast failed: ${error.message}`); process.exitCode = 2; });
+}

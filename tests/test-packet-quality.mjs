@@ -13,7 +13,7 @@ import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fix
 import { PACKET_INSTRUCTION, REVIEW_INSTRUCTION, STANDARD_INSTRUCTION } from '../plainhand/agents.mjs';
 import { HUMANIZE_INSTRUCTION } from '../plainhand/humanize.mjs';
 import { MIN_OVERLAP_WORDS, letterOverlaps, letterRetryFeedback, overlapSuggestion } from '../plainhand/letter-checks.mjs';
-import { dedupeResume, headingOnlyRow, keepResumeRow } from '../plainhand/workflow.mjs';
+import { dedupeResume, guardSuggestions, headingOnlyRow, keepResumeRow } from '../plainhand/workflow.mjs';
 import { DEFAULT_FORMAT, renderResumeHtml } from '../plainhand/resume-format.mjs';
 
 const ATLAS = 'Built the Atlas reporting tool at Synthetic Engineering and cut report preparation time from three days to four hours for the finance team.';
@@ -194,4 +194,74 @@ test('both instructions carry the letter, heading-only and duplicate rules', () 
   assert.match(PACKET_INSTRUCTION, /pick the top two or three qualifications this posting asks for/);
   assert.ok(!PACKET_INSTRUCTION.includes('Every resume entry has non-empty text'), 'the old blanket rule is replaced');
   assert.ok(!PACKET_INSTRUCTION.includes('fill the letter\'s {company} and {role} slots while tailoring its opening and closing'), 'the copy-the-base-letter instruction is gone');
+});
+
+test('both instructions forbid invented motivation and false inclusion suggestions', () => {
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) {
+    assert.match(instruction, /motivation the candidate stated/);
+    assert.match(instruction, /never claim a feeling, want, interest or reason/);
+    assert.match(instruction, /Suggestions describe only what this (?:packet|master resume) actually contains or leaves out/);
+    assert.ok(instruction.includes('"left out X because ..."'));
+    assert.ok(instruction.includes('never claim the resume or letter included or added an item that is not in it'));
+  }
+  assert.ok(PACKET_INSTRUCTION.includes('connect the posting\'s own stated work to the candidate\'s evidenced work'), 'the no-motivation fallback names the posting\'s own work');
+  assert.ok(PACKET_INSTRUCTION.includes('Say nothing about the employer or role that the posting text does not say'));
+  assert.ok(STANDARD_INSTRUCTION.includes('connect the candidate\'s evidenced work to the kind of work those roles name'));
+  assert.ok(!PACKET_INSTRUCTION.includes('Say briefly why this role and this employer'), 'the unsupported why-this-employer request is gone');
+  assert.ok(!STANDARD_INSTRUCTION.includes('say briefly why this kind of role at this kind of employer'), 'the unsupported why-this-employer request is gone from the base letter');
+});
+
+test('the suggestion guard rewrites a false inclusion and keeps a true one', () => {
+  const resume = [
+    { section: 'Certifications', heading: { org: 'CNCF', title: 'CKS', location: '', dates: '2025' }, text: '', evidence: evidence('CKS') },
+    { section: 'Projects', heading: EXPERIENCE_HEADING, text: ATLAS, evidence: evidence(ATLAS) },
+  ];
+  const letter = 'I keep Kubernetes clusters patched and tested.';
+  assert.deepEqual(guardSuggestions([
+    'Included the Google Data Analytics Certificate from the CV.',
+    'Included the CKS certification in the resume.',
+    'Included the Atlas reporting tool to the resume.',
+    'Added Kubernetes work to the letter.',
+    'Kept the resume to one page.',
+    'Left out the Google Data Analytics Certificate because this posting does not ask for it.',
+  ], resume, letter), [
+    'Left out: Google Data Analytics Certificate.',
+    'Included the CKS certification in the resume.',
+    'Included the Atlas reporting tool to the resume.',
+    'Added Kubernetes work to the letter.',
+    'Kept the resume to one page.',
+    'Left out the Google Data Analytics Certificate because this posting does not ask for it.',
+  ], 'only the claim whose named item is absent changes, and it becomes an honest omission');
+});
+
+test('the suggestion guard runs before review and keeps a true inclusion note', async () => {
+  const h = await harness(() => ({
+    headline: 'Mechanical Engineering Graduate',
+    resume: [atlasRow()],
+    coverLetter: 'I built reporting tools for a finance team.',
+    answers: [], questions: [],
+    suggestions: ['Included the Google Data Analytics Certificate from the CV.', 'Included the Atlas reporting tool in Projects.'],
+  }));
+  try {
+    const { job } = await h.prepareJob();
+    assert.equal((await h.lastTask()).status, 'complete', (await h.lastTask()).message);
+    const reviewCall = h.calls.filter(call => call.instruction === REVIEW_INSTRUCTION).at(-1);
+    assert.ok(reviewCall, 'the reviewer ran');
+    assert.deepEqual(reviewCall.data.packet.suggestions, [
+      'Left out: Google Data Analytics Certificate.',
+      'Included the Atlas reporting tool in Projects.',
+    ], 'the reviewer sees the corrected note and the true one');
+    assert.deepEqual(job.packet.suggestions, reviewCall.data.packet.suggestions, 'the corrected note is saved with the packet');
+  } finally { await h.close(); }
+});
+
+test('the voice-contrast setup path prepares offline with the fixture agent', async () => {
+  const { preparePersona, SAMPLES } = await import('../scripts/voice-contrast.mjs');
+  const root = await mkdtemp(path.join(tmpdir(), 'plainhand-voice-contrast-test-'));
+  try {
+    const result = await preparePersona('codex', 'terse', SAMPLES.terse, root, { agent: fixtureAgent });
+    assert.match(result.coverLetter, /design and testing/, 'the prepared packet has a cover letter');
+    assert.equal(result.reviewPassed, true, 'the review passed');
+    assert.ok(result.reviewAttempts >= 1, 'the review ran');
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

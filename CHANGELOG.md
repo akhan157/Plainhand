@@ -51,6 +51,17 @@
 - **One accomplishment appears once.** A resume line whose normalized text
   repeats or sits inside an earlier line under the same heading is dropped before
   humanize, review and calibration.
+- **The letter invents no motivation, and suggestions stay true.** The cover
+  letter connects to the role only from motivation the candidate stated in their
+  target roles, stories, constraints, role answers or candidate line. With no
+  stated motivation, it connects the posting's own stated work to the
+  candidate's evidenced work and never claims a feeling, want, interest or
+  reason; what it says about the employer comes from the posting text. A
+  suggestion that says an item was included when neither the resume nor the
+  letter contains it becomes a "Left out:" note before the independent review.
+  The base cover letter follows the same motivation rule for the candidate's
+  target roles, and `scripts/voice-contrast.mjs` now gives its synthetic
+  evaluated job the report that prepare updates.
 ## Unreleased: quota efficiency
 
 - **Less provider overhead per call.** Codex CLI and Claude Code now run with
