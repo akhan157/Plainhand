@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { digest, now, requireText, cleanText, syncTracker, recordStatusChange } from './store.mjs';
+import { digest, now, requireText, cleanText, syncTracker, recordStatusChange, storyKey } from './store.mjs';
 import { jobUrl, isBoardUrl } from './jobs.mjs';
 import { assertPacketFresh, packetIdentity } from './workflow.mjs';
 import { Corrections } from './corrections.mjs';
@@ -64,6 +64,16 @@ function findJob(state, jobId) {
   const job = state.jobs.find(j => j.id === jobId);
   if (!job) throw new ActionError('failed', 'Job not found.');
   return job;
+}
+// A story is evidence, so adding, editing or deleting one clears what was built from
+// the old text: the reviewed understanding and every packet approval.
+function invalidateProfile(state) { state.understanding = null; for (const job of state.jobs) job.approvedHash = null; }
+// The saved story a key names. Only the candidate's own messages are stories; the
+// assistant's summary in the same list is not theirs to edit here.
+function storyAt(state, key) {
+  const message = (state.conversation || []).find(item => item?.role === 'user' && storyKey(item) === key);
+  if (!message) throw new ActionError('failed', 'That story is no longer in your profile. Reload and try again.');
+  return message;
 }
 const label = job => `${job.company} — ${job.title}`;
 
@@ -296,13 +306,39 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
   define({ name: 'profile.addStory', tier: 'write', title: 'Add to your story', description: "Save something the candidate told you about their experience as profile evidence. text must be the candidate's own words, copied exactly from their messages; never paraphrase or add facts. Clears the understanding so it is rebuilt.", input: { text: 'string', topic: 'string?' }, candidateWords: 'text',
     summarize: input => `Save to your story${input.topic ? ` (${input.topic})` : ''}: "${String(input.text).slice(0, 120)}${String(input.text).length > 120 ? '…' : ''}"`,
     run: async (ctx, input) => {
-      const text = requireText(input.text, 'story', 15000), at = now();
-      await workspace.mutate(state => { state.conversation.push({ role: 'user', text, at, via: 'assistant' }); state.understanding = null; for (const j of state.jobs) j.approvedHash = null; });
-      return { result: { saved: true }, undo: () => workspace.mutate(state => {
-        const index = state.conversation.findLastIndex(m => m.role === 'user' && m.text === text && m.at === at);
+      const text = requireText(input.text, 'story', 15000), at = now(), id = randomUUID();
+      await workspace.mutate(state => { state.conversation.push({ id, role: 'user', text, at, via: 'assistant' }); invalidateProfile(state); });
+      return { result: { saved: true, key: id }, undo: () => workspace.mutate(state => {
+        const index = state.conversation.findIndex(m => m.id === id);
         if (index < 0) throw new ActionError('failed', 'That statement is no longer in your story.');
         state.conversation.splice(index, 1); state.understanding = null;
       }) };
+    } });
+  define({ name: 'profile.editStory', tier: 'candidate', title: 'Edit a story', description: "The candidate corrects one saved story to their own exact words. Clears the understanding and packet approvals, since the profile context changed.", input: { key: 'string', text: 'string' }, panel: () => ({ type: 'profile' }),
+    run: async (ctx, input) => {
+      const text = requireText(input.text, 'story', 15000);
+      let key;
+      await workspace.mutate(state => {
+        const message = storyAt(state, input.key);
+        message.text = text; message.editedAt = now();
+        key = storyKey(message);
+        invalidateProfile(state);
+        state.events.unshift({ at: now(), text: 'Story updated. Your understanding and packet approvals were cleared.' });
+      });
+      await audit.append({ action: 'ui-candidate', reason: 'profile.editStory: updated one saved story', outcome: 'done' }).catch(() => {});
+      return { result: { key } };
+    } });
+  define({ name: 'profile.removeStory', tier: 'candidate', title: 'Delete a story', description: 'The candidate deletes one saved story. It stops counting as evidence everywhere, and packets built on it must be regenerated. Earlier backups keep the old version.', input: { key: 'string' }, panel: () => ({ type: 'profile' }),
+    run: async (ctx, input) => {
+      await workspace.mutate(state => {
+        const message = storyAt(state, input.key);
+        state.conversation = state.conversation.filter(item => item !== message);
+        invalidateProfile(state);
+        state.events.unshift({ at: now(), text: 'Story deleted. Earlier backups keep the old version.' });
+      });
+      // The record is the action and its time; the deleted text is never written.
+      await audit.append({ action: 'ui-candidate', reason: 'profile.removeStory: deleted one saved story', outcome: 'done' }).catch(() => {});
+      return { result: { removed: true } };
     } });
   define({ name: 'profile.addWritingSample', tier: 'write', title: 'Add a writing sample', description: "Save a piece of the candidate's own writing (an email, a post, a past cover letter, a project write-up) so drafts match how they sound. text must be copied exactly from what the candidate pasted or wrote. Samples guide voice, not facts. Saving clears packet approvals.", input: { text: 'string', title: 'string?' }, candidateWords: 'text',
     summarize: input => `Save a writing sample${input.title ? ` (${input.title})` : ''}: "${String(input.text).slice(0, 100)}${String(input.text).length > 100 ? '…' : ''}"`,
@@ -403,7 +439,7 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       await workspace.mutate(async state => {
         const job = findJob(state, input.jobId);
         if (typeof input.description === 'string' && input.description !== job.description) { job.description = cleanText(input.description, 45000); job.evaluation = null; job.integrity = null; job.approvedHash = null; job.stage = 'inbox'; }
-        if (typeof input.roleAnswers === 'string') { job.roleAnswers = cleanText(input.roleAnswers, 15000); state.conversation.push({ role: 'user', text: `For ${job.company} — ${job.title}:\n${job.roleAnswers}`, at: now() }); for (const j of state.jobs) j.approvedHash = null; state.understanding = null; }
+        if (typeof input.roleAnswers === 'string') { job.roleAnswers = cleanText(input.roleAnswers, 15000); state.conversation.push({ id: randomUUID(), role: 'user', text: `For ${job.company} — ${job.title}:\n${job.roleAnswers}`, at: now() }); invalidateProfile(state); }
         if (typeof input.overrideReason === 'string') job.overrideReason = cleanText(input.overrideReason, 1000);
       });
       return { result: { ok: true } };

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { Workspace, digest, now, requireText, cleanText, syncTracker, hasEvidence } from './plainhand/store.mjs';
+import { Workspace, digest, now, requireText, cleanText, syncTracker, hasEvidence, storyKey } from './plainhand/store.mjs';
 import { Workflow, assertPacketFresh, packetIdentity, suggestFormAnswers } from './plainhand/workflow.mjs';
 import { AnswerBank } from './plainhand/answer-bank.mjs';
 import { Corrections } from './plainhand/corrections.mjs';
@@ -157,6 +157,9 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         // Calibration as seen through the candidate's current line and choices.
         for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
         return json(res, 200, { ...state,
+          // Each story carries the key the edit and delete routes accept, including an
+          // older message that has no id of its own.
+          conversation: (state.conversation || []).map(message => ({ ...message, key: storyKey(message) })),
           answerBank: await new AnswerBank(workspace).load(),
           corrections: await new Corrections(workspace).list(),
           audit: await new AuditLog(workspace).list({ limit: 20 }),
@@ -285,7 +288,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/conversation') {
         const text = requireText(input.text, 'message', 15000);
-        await workspace.mutate(state => { state.conversation.push({ role: 'user', text, at: now() }); state.understanding = null; for (const j of state.jobs) j.approvedHash = null; });
+        await workspace.mutate(state => { state.conversation.push({ id: randomUUID(), role: 'user', text, at: now() }); state.understanding = null; for (const j of state.jobs) j.approvedHash = null; });
         const { taskId } = await ui('tasks.interview', {});
         return json(res, 202, { taskId });
       }
@@ -411,6 +414,8 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/samples/add') return json(res, 200, await ui('profile.addWritingSample', { title: input.title || '', text: input.text }));
       if (url.pathname === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
+      if (url.pathname === '/api/story/edit') return json(res, 200, await ui('profile.editStory', { key: input.key, text: input.text }));
+      if (url.pathname === '/api/story/remove') { await ui('profile.removeStory', { key: input.key }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/calibration/decide') { return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true }); }
       if (url.pathname === '/api/line/remove') { await ui('line.removeStatement', { index: input.index }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/packet/approve') { await ui('packet.approve', { jobId: input.id }); return json(res, 200, { ok: true }); }

@@ -7,7 +7,7 @@ import { HomePage } from './ui/home.mjs';
 import { JobsPage, AddJobDialog, AddSourceDialog } from './ui/jobs.mjs';
 import { ApplicationsPage } from './ui/applications.mjs';
 import { CampaignsPage } from './ui/campaigns.mjs';
-import { ProfilePage, brainChecks } from './ui/profile.mjs';
+import { ProfilePage, brainChecks, RemoveStoryDialog } from './ui/profile.mjs';
 import { ActivityPage, UsagePage } from './ui/activity.mjs';
 import { ConnectionsPage, WorkspacePage, AntigravityDialog, ClearConversationDialog, ImportDialog } from './ui/settings.mjs';
 import { syncWithState } from './ui/agent.mjs';
@@ -104,6 +104,7 @@ function Dialogs() {
   if (d.type === 'confirm-submit') return html`<${ConfirmSubmissionDialog} id=${d.id} />`;
   if (d.type === 'antigravity') return html`<${AntigravityDialog} />`;
   if (d.type === 'clear-conversation') return html`<${ClearConversationDialog} />`;
+  if (d.type === 'remove-story') return html`<${RemoveStoryDialog} storyKey=${d.storyKey} />`;
   if (d.type === 'import') return html`<${ImportDialog} data=${d.data} preview=${d.preview} />`;
   return null;
 }

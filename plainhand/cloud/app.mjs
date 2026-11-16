@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { randomUUID, createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { digest, now as isoNow, requireText, cleanText } from '../store.mjs';
+import { digest, now as isoNow, requireText, cleanText, storyKey } from '../store.mjs';
 import { Workflow } from '../workflow.mjs';
 import { AnswerBank } from '../answer-bank.mjs';
 import { Corrections } from '../corrections.mjs';
@@ -264,6 +264,9 @@ export function createCloudApp(deps) {
     for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
     return { ...state,
       cloud: true,
+      // Each story carries the key the edit and delete routes accept, including an
+      // older message that has no id of its own.
+      conversation: (state.conversation || []).map(message => ({ ...message, key: storyKey(message) })),
       connectionCheck: await readConnectionCheck(workspace),
       onboarding: JSON.parse(await workspace.read('data/plainhand/onboarding.json') || 'null'),
       answerBank: await new AnswerBank(workspace).load(),
@@ -405,6 +408,8 @@ export function createCloudApp(deps) {
     if (p === '/api/settings/role-order') return json(res, 200, await ui('settings.roleOrder', { order: input.order }));
     if (p === '/api/samples/add') return json(res, 200, await ui('profile.addWritingSample', { title: input.title || '', text: input.text }));
     if (p === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
+    if (p === '/api/story/edit') return json(res, 200, await ui('profile.editStory', { key: input.key, text: input.text }));
+    if (p === '/api/story/remove') { await ui('profile.removeStory', { key: input.key }); return json(res, 200, { ok: true }); }
     if (p === '/api/calibration/decide') return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true });
     if (p === '/api/line/remove') { await ui('line.removeStatement', { index: input.index }); return json(res, 200, { ok: true }); }
     if (p === '/api/packet/approve') { await ui('packet.approve', { jobId: input.id }); return json(res, 200, { ok: true }); }

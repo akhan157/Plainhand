@@ -1,7 +1,7 @@
 // Profile & brain: the foundation form, resume import, the profile interview
 // conversation and the reviewed understanding.
-import { html, useState, store, api, refresh, toast, navigate, queueTask, runningTask, Icon, useDraft } from './core.mjs';
-import { ActionButton, Button, Card, PageHeading, Field, Notice, Pill, Meter } from './components.mjs';
+import { html, useState, store, api, refresh, toast, navigate, queueTask, runningTask, Icon, useDraft, openDialog, closeDialog } from './core.mjs';
+import { ActionButton, Button, Card, PageHeading, Field, Notice, Pill, Meter, Dialog } from './components.mjs';
 import { CopyRequest } from './onboarding.mjs';
 import { MessageList, Composer } from './conversation.mjs';
 import { agentAvailable, agentClient } from './agent.mjs';
@@ -91,11 +91,37 @@ function Interview() {
   return html`<${Card} title="Let’s connect the dots." icon="brain" id="interview-title" subtitle="A conversation, not another questionnaire. Only what you write becomes evidence." class="interview">
     ${!state.provider ? html`<${Notice} tone="info">First connect your AI account, then Plainhand can talk with you here. <a href="#connections">Connect it</a></${Notice}>`
       : !state.profile.resume ? html`<${Notice} tone="info">First save your basics and resume in step 1; Plainhand uses them to ask better questions.</${Notice}>`
-      : html`<${MessageList} label="Profile interview" messages=${state.conversation.length ? state.conversation.slice(-12) : [opening]} streaming=${interviewing ? ' ' : ''} authorFor=${m => m.role === 'user' ? first : 'Plainhand'} />`}
+      : html`<${MessageList} label="Profile interview" messages=${state.conversation.length ? state.conversation.slice(-12) : [opening]} streaming=${interviewing ? ' ' : ''} authorFor=${m => m.role === 'user' ? first : 'Plainhand'} renderExtra=${m => !store.demo && m.role === 'user' && m.key ? html`<${StoryControls} message=${m} />` : null} />`}
     <${Composer} draftKey="interview" label="Your message" placeholder="Tell me a little about it…" disabled=${blocked} busy=${!!interviewing}
       hint="Shared with your selected agent · Enter to send"
       onSend=${async text => { await api('conversation', { text }); toast('Your agent is connecting the dots…'); refresh(); }} />
   </${Card}>`;
+}
+
+// Editing and deleting one saved story. A story is evidence, so either change clears
+// the understanding and every packet approval; earlier backups keep the old version.
+function StoryControls({ message }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(message.text);
+  if (!editing) return html`<div class="story-actions">
+    <${Button} class="link-button small" icon="edit" onClick=${() => { setText(message.text); setEditing(true); }}>Edit</${Button}>
+    <${Button} class="link-button small" icon="trash" onClick=${() => openDialog({ type: 'remove-story', storyKey: message.key })}>Delete</${Button}>
+  </div>`;
+  return html`<div class="story-edit">
+    <label class="visually-hidden" for=${'story-text-' + message.key}>Your story, in your own words</label>
+    <textarea id=${'story-text-' + message.key} rows="4" value=${text} onInput=${e => setText(e.currentTarget.value)}></textarea>
+    <div class="action-row">
+      <${Button} class="ghost" onClick=${() => setEditing(false)}>Cancel</${Button}>
+      <${ActionButton} class="primary" icon="check" disabled=${!text.trim()} onClick=${async () => { await api('story/edit', { key: message.key, text: text.trim() }); setEditing(false); toast('Story updated. Your understanding and packet approvals were cleared.'); refresh(); }}>Save story</${ActionButton}>
+    </div>
+  </div>`;
+}
+
+export function RemoveStoryDialog({ storyKey }) {
+  return html`<${Dialog} title="Delete this story?" size="sm" onClose=${closeDialog}>
+    <p>Your agent stops using it as evidence, and packets built on it have to be prepared again. Earlier backups keep old snapshots of your workspace.</p>
+    <div class="dialog-actions"><${Button} class="ghost" data-autofocus onClick=${closeDialog}>Keep it</${Button}><${ActionButton} class="primary danger-fill" icon="trash" onClick=${async () => { await api('story/remove', { key: storyKey }); closeDialog(); toast('Story deleted.'); refresh(); }}>Delete story</${ActionButton}></div>
+  </${Dialog}>`;
 }
 
 function Understanding() {

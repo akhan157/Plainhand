@@ -516,6 +516,11 @@ blockquote.sample { margin: 0; padding: var(--sp-3) var(--sp-4); border-left: 3p
 .entry.from-assistant { align-items: flex-start; }
 .entry-extras { width: 100%; display: grid; gap: var(--sp-2); }
 .entry-extras > .message-links { margin-top: 0; }
+/* Story controls in the profile interview (plainhand/web/ui/profile.mjs). */
+.story-actions { display: flex; gap: var(--sp-3); }
+.story-actions .button { font-size: var(--fs-xs); }
+.story-edit { width: 100%; display: grid; gap: var(--sp-2); }
+.story-edit textarea { min-height: 96px; }
 .message-list.page-flow { max-height: none; overflow: visible; padding: 0; margin-bottom: var(--sp-4); gap: var(--sp-4); }
 .show-earlier { text-align: center; }
 .composer-dock { position: sticky; bottom: 0; z-index: 2; background: var(--surface); padding: var(--sp-3) 0 var(--sp-1); margin: 0 calc(-1 * var(--sp-2)); padding-left: var(--sp-2); padding-right: var(--sp-2); border-radius: 0 0 var(--r-lg) var(--r-lg); }
