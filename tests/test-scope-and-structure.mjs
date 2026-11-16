@@ -387,3 +387,16 @@ test('review 4695e0d: issuer-first groups take the last token; a later negation 
   assert.deepEqual(credentialName('Lean Six Sigma Green Belt Acme (LLC)').acronyms, []);
   assert.deepEqual(dropCredentialInclusionClaims(['The certificate is included with its stated year, the older licence was not added.'], [{ text: 'CPA, 2021' }]), []);
 });
+
+test('review 2c9f88e: a known issuer is never the designation, in either order', async () => {
+  const { packetHasCredential } = await import('../plainhand/credential-relevance.mjs');
+  const { dropCredentialInclusionClaims } = await import('../plainhand/workflow.mjs');
+  const r = text => [{ section: 'Certifications', heading: null, text }];
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMP PMI)' }, r('PMP, 2021')), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMI PMP)' }, r('PMP, 2021')), true);
+  assert.equal(packetHasCredential({ text: 'Project Management Professional (PMI PMP)' }, r('PMI, 2021')), false);
+  assert.equal(packetHasCredential({ text: 'Lean Six Sigma Green Belt (ASQ CSSGB), 2019' }, r('ASQ member since 2019')), false);
+  // A long clause: the negation belongs to its own verb.
+  assert.deepEqual(dropCredentialInclusionClaims(['The certificate that the posting asks for in its second paragraph was not included.'], [{ text: 'CPA, 2021' }]),
+    ['The certificate that the posting asks for in its second paragraph was not included.']);
+});

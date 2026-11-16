@@ -37,6 +37,12 @@ const ABBREVIATION = new Set(['mr', 'mrs', 'ms', 'dr', 'prof', 'inc', 'ltd', 'co
 // — 2018"); before anything else ("MSc. I then worked", "M.Sc. In 2019, I moved") it
 // ends the sentence, so the next sentence's year is never read as a graduation year.
 const DEGREE_ABBREVIATION = new Set(['m.sc', 'b.sc', 'ph.d', 'msc', 'bsc']);
+// What may follow the abbreviation inside the same sentence: a lower-case word ("in
+// Biology"), a year, bracket or dash ("(2018)", "— 2018"), or a capitalised field that
+// ends its heading field or leads into the school ("Computer Science — 2018",
+// "Computer Science at Example University"). A clause starter ("Then, in 2018, I
+// joined") is a new sentence, so its year is never read as a graduation year.
+const DEGREE_CONTINUES = /^\s*(?:[a-z]|[\d(—–]|(?!(?:Then|Later|Next|Afterwards?|Subsequently|Today|Meanwhile|Finally|Now|Before|After|Since|During|In|At|On|By|From)\b)(?:[A-Z][a-z]+\s+){0,5}[A-Z][a-z]+(?:\s*[—–,]|\s+(?:at|from|in|of)\s))/;
 function sentences(text) {
   const source = String(text || '');
   const found = [];
@@ -53,7 +59,7 @@ function sentences(text) {
       const before = source.slice(start, index);
       const word = before.match(/([A-Za-z.]+)$/)?.[1] || '';
       if (/\b[A-Z]$/.test(before) || ABBREVIATION.has(word.toLowerCase())) continue;
-      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && /^\s*(?:[a-z]|(?:[A-Z][a-z]+\s+){0,5}[A-Z][a-z]+\s*[—–,])/.test(source.slice(index + 1))) continue;
+      if (DEGREE_ABBREVIATION.has(word.toLowerCase()) && DEGREE_CONTINUES.test(source.slice(index + 1))) continue;
     }
     push(index + 1);
     start = index + 1;

@@ -320,3 +320,9 @@ test('review 4695e0d: "M.Sc. In 2019, I moved" ends the degree sentence', () => 
   assert.equal(degree('I earned my B.Sc. In 2019, I moved to Baltimore.'), 0);
   assert.equal(degree('Example University — M.Sc. Computer Science — 2018.'), 1);
 });
+
+test('review 2c9f88e: clause starters end the degree sentence; a year, bracket or school continues it', () => {
+  const degree = text => findConflicts({ sources: [interview(text)], profile: { graduation: '2012' } }).filter(item => item.kind === 'degree').length;
+  for (const text of ['I completed my MSc. Then, in 2018, I joined Example Health.', 'I completed my MSc. Later, in 2018, I joined Example Health.', 'I completed my MSc. Afterwards, in 2018, I moved.']) assert.equal(degree(text), 0, text);
+  for (const text of ['I hold an M.Sc. (2018) from Example University.', 'M.Sc. 2018, Example University.', 'M.Sc. — 2018 — Example University.', 'M.Sc. Computer Science at Example University — 2018.']) assert.equal(degree(text), 1, text);
+});

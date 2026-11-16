@@ -180,10 +180,10 @@ export function dropCredentialInclusionClaims(suggestions, missing = []) {
     if (QUESTION_OR_ADVICE.test(value)) return true;
     return !value.split(/;|,?\s+(?:but|while|whereas|although)\s+/i).some(clause => {
       const about = CREDENTIAL_NOUN_MENTION.test(clause) || names.some(pattern => pattern.test(clause));
-      // Each inclusion verb is read with the few words before it, so a later "was not
-      // added" never masks an earlier "is included".
-      const claims = [...clause.matchAll(new RegExp(INCLUSION_VERB.source, 'gi'))]
-        .some(match => !NEGATED_INCLUSION.test(clause.slice(Math.max(0, match.index - 30), match.index + match[0].length)));
+      // Each inclusion verb is read with the words since the previous one, so a later
+      // "was not added" never masks an earlier "is included".
+      const verbs = [...clause.matchAll(new RegExp(INCLUSION_VERB.source, 'gi'))];
+      const claims = verbs.some((match, at) => !NEGATED_INCLUSION.test(clause.slice(at ? verbs[at - 1].index + verbs[at - 1][0].length : 0, match.index + match[0].length)));
       return about && claims;
     });
   });
