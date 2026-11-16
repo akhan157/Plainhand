@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -74,7 +74,6 @@ const hasChromium = existsSync(chromiumPath);
 
 if (check) {
   console.log(`Node.js ${process.versions.node}`);
-  console.log(`Workspace ${dataRoot}`);
   // The state version tells a candidate (and support) whether a start will migrate.
   const stateFile = path.join(dataRoot, 'data', 'plainhand', 'workspace.json');
   let state = existsSync(stateFile) ? 'state version unreadable' : 'new workspace';
@@ -83,11 +82,11 @@ if (check) {
       const parsed = JSON.parse(readFileSync(stateFile, 'utf8'));
       const version = Number.isInteger(parsed.version) ? parsed.version : 1;
       let current = null;
-      try { current = (await import('./plainhand/migrations.mjs')).STATE_VERSION; } catch { /* deps may be missing; the version alone is useful */ }
+      try { current = (await import(pathToFileURL(path.join(APP_ROOT, 'plainhand', 'migrations.mjs')).href)).STATE_VERSION; } catch { /* deps may be missing; the version alone is useful */ }
       state = current && version < current ? `state version ${version} (migrates to ${current} on the next start)` : `state version ${version}`;
     } catch { /* keep the unreadable message */ }
   }
-  console.log(`Workspace ${state}`);
+  console.log(`Workspace ${dataRoot} (${state})`);
   console.log(`Chromium ${hasChromium ? chromiumPath : 'not installed'}`);
   console.log(`Plainhand ${path.join(APP_ROOT, 'plainhand-server.mjs')}`);
   process.exit(0);

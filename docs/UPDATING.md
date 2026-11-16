@@ -123,9 +123,25 @@ From `node scripts/update-proof.mjs` on a populated install (a 1.1.2 workspace
 with a profile, a master resume, four stories, two applications with a packet
 and an approval, a contact and an interview round, tracker rows, settings, a
 reusable answer and a writing sample). Times are on this development machine
-and include installing dependencies from the local npm cache.
+and include installing dependencies from the local npm cache; the download is
+the only step that needs the network.
 
-<!-- MEASURED-TIMES -->
+| Step | Time |
+| --- | --- |
+| Switch the checkout to the new release (`git fetch --tags && git checkout`) | 0.1 s |
+| Install the release's dependencies (`npm ci --offline`) | 4.2 s |
+| Start Plainhand, migrating the workspace | 0.7 s |
+| **Update with the commands above, plus the restart** | **about 5 s** |
+| One-command update to the next release (`plainhand update`) | 0.3 s |
+| Roll back one release, code only (`plainhand rollback`) | 0.2 s |
+| Roll back across the data change (`plainhand rollback --version v1.1.2`) | 1.5 s |
+
+A warm npm cache gives these numbers; a cold one adds the download time. A cold
+`npm ci` run in the same proof took 6.6–9.2 s. Installed copies run the
+installer, so their update also includes the release download.
+
+The whole proof — two releases, one full update, two rollbacks and three server
+starts — took 15.2 s and passed 169 checks.
 
 ## What is not covered yet
 
