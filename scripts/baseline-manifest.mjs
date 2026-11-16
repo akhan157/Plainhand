@@ -57,9 +57,9 @@ async function build() {
   const seen = scenarios.filter(s => s.holdout && s.holdoutSet !== 2).map(s => s.id);
   const fresh = scenarios.filter(s => s.holdout && s.holdoutSet === 2).map(s => s.id);
   return {
-    version: 3,
+    version: 4,
     scorerVersion: SCORER_VERSION,
-    previous: [{ version: 1, commit: '00ce1bfbffa4ec0edec6045f0caf3b0b5333384f', note: 'v1 live baseline; re-scored offline with scripts/rescore.mjs and reported beside later versions, never mixed.' }, { version: 2, commit: '5e4a000', note: 'v2 freeze; never run live.' }],
+    previous: [{ version: 1, commit: '00ce1bfbffa4ec0edec6045f0caf3b0b5333384f', note: 'v1 live baseline; re-scored offline with scripts/rescore.mjs and reported beside later versions, never mixed.' }, { version: 2, commit: '5e4a000', note: 'v2 freeze; never run live.' }, { version: 3, commit: 'c9e09cb', note: 'v3 freeze; live runs 0f5cfe8 and f8f3663. Held-out set 2 is now seen.' }],
     note: 'Frozen baseline manifest. The baseline SHA is the commit containing this file. Any change to a hashed file invalidates the baseline and requires a re-freeze.',
     design: { commit: 'b6c0b562732b45455e4709e5e390fe00d2a4874d', review: 'docs/internal/lanes/measurement-design/REVIEW.md' },
     files,
@@ -89,7 +89,8 @@ async function build() {
       calibration: 'uncalibrated: no human ratings exist',
     },
     budgets: { modelCalls: 900, wallClockMinutes: 480, callTimeoutSeconds: 900, onCap: 'blocked: budget, not a pass', onQuota: 'blocked: provider-quota; partial evidence kept; no aggregate reported' },
-    thresholds: { existing: 'unchanged: factCoverage >= 0.66, leadShare >= 0.67, Apply >= 4, Skip <= maxScore (default 3.9), zero absent claims/unsupported numbers/banned words, review/calibration and first-person gates', v3: 'Lead share no longer gates: kept experience roles must follow the run roleOrder (recent: newest first by heading dates; match: the required-fact role first, rest newest first), and a role holding a required fact may not be dropped. Within-role curation is a diagnostic.',
+    thresholds: { existing: 'unchanged: factCoverage >= 0.66, leadShare >= 0.67, Apply >= 4, Skip <= maxScore (default 3.9), zero absent claims/unsupported numbers/banned words, review/calibration and first-person gates', v4: 'Interleave check compares each matched run on its own; a phrase repeated inside another line, or a group whose parts matched in different places, is not interleaving. True interleave control still fails.',
+      v3: 'Lead share no longer gates: kept experience roles must follow the run roleOrder (recent: newest first by heading dates; match: the required-fact role first, rest newest first), and a role holding a required fact may not be dropped. Within-role curation is a diagnostic.',
       v2: 'An honest zero-match Skip (Skip band, gaps naming posting requirements) passes evidenceValid; PDF line matching picks the occurrence consistent with order so far. Reordered-line and Apply-without-evidence controls still fail.',
       new: 'Investigate within job.scoreBand with the below-4 prepare guard; recent-role jobs keep their retainFactIds', proposed: 'design §8.8, not approved; diagnostic only' },
     usage: 'Every live run records calls, input/output/cached/reasoning tokens, promptChars (Plainhand prompt size) and wall time per scenario. Codex exec --json states no model id, so actualModel is null with a reason.',
