@@ -343,41 +343,36 @@ const prose = text => esc(text).replace(HYPHENATED, word => `<span class="nobrea
 // is left exactly as drafted. Otherwise dated roles are sorted among the slots dated
 // roles occupy; a role whose dates cannot be read keeps its slot; a line with no
 // heading travels with the role above it. Every section named like experience
-// counts, including a name the candidate's own format uses.
-const EXPERIENCE_NAME = /experience|employment|work history|career|professional history/i;
-export function orderRolesNewestFirst(resume, { sections = [] } = {}) {
+// counts ("Professional Roles", "Work History").
+const EXPERIENCE_NAME = /experience|employment|work history|career|professional history|\broles\b|\bpositions\b|appointments/i;
+export function orderRolesNewestFirst(resume) {
   const entries = Array.isArray(resume) ? resume : [];
-  const named = new Set((Array.isArray(sections) ? sections : []).map(name => String(name ?? '').trim().toLowerCase()).filter(name => EXPERIENCE_NAME.test(name)));
-  const isExperience = entry => {
-    const name = String(entry?.section ?? '').trim();
-    return EXPERIENCE_NAME.test(name) || named.has(name.toLowerCase());
-  };
-  const out = [...entries];
-  // Each run of consecutive experience rows is one section; order within it.
-  for (let i = 0; i < out.length;) {
-    if (!isExperience(out[i])) { i++; continue; }
-    let j = i;
-    while (j < out.length && isExperience(out[j]) && String(out[j].section) === String(out[i].section)) j++;
-    const run = out.slice(i, j);
-    const groups = [];
-    for (const entry of run) {
-      const key = entry?.heading && typeof entry.heading === 'object' ? headingKey(entry.heading) : null;
-      const existing = key && groups.find(group => group.key === key);
-      if (existing) existing.rows.push(entry);
-      else if (!key && groups.length) groups.at(-1).rows.push(entry);
-      else groups.push({ key, rows: [entry], dates: key ? parseDates(entry.heading.dates) : null });
-    }
-    const dated = groups.filter(group => group.dates && Number.isFinite(Number(group.dates.start)));
-    const inOrder = dated.every((group, index) => !index || Number(group.dates.start) <= Number(dated[index - 1].dates.start));
-    if (!inOrder) {
-      const sorted = [...dated].sort((a, b) => (Number(b.dates.start) - Number(a.dates.start))
-        || ((b.dates.ongoing ? Infinity : Number(b.dates.end ?? b.dates.start)) - (a.dates.ongoing ? Infinity : Number(a.dates.end ?? a.dates.start))));
-      let next = 0;
-      const placed = groups.map(group => (dated.includes(group) ? sorted[next++] : group));
-      out.splice(i, run.length, ...placed.flatMap(group => group.rows));
-    }
-    i = j;
+  const isExperience = entry => EXPERIENCE_NAME.test(String(entry?.section ?? '').trim());
+  const slots = entries.map((entry, index) => (isExperience(entry) ? index : -1)).filter(index => index >= 0);
+  if (!slots.length) return entries;
+  // A resume has one experience section; a draft that drifts to a second name
+  // ("Experience" then "Work History") is one section under the first name, and all
+  // its roles are ordered together, as the scorer reads them.
+  const sectionName = entries[slots[0]].section;
+  const run = slots.map(index => ({ ...entries[index], section: sectionName }));
+  const groups = [];
+  for (const entry of run) {
+    const key = entry?.heading && typeof entry.heading === 'object' ? headingKey(entry.heading) : null;
+    const existing = key && groups.find(group => group.key === key);
+    if (existing) existing.rows.push(entry);
+    else if (!key && groups.length) groups.at(-1).rows.push(entry);
+    else groups.push({ key, rows: [entry], dates: key ? parseDates(entry.heading.dates) : null });
   }
+  const dated = groups.filter(group => group.dates && Number.isFinite(Number(group.dates.start)));
+  const inOrder = dated.every((group, index) => !index || Number(group.dates.start) <= Number(dated[index - 1].dates.start));
+  const sameSection = slots.every(index => entries[index].section === sectionName);
+  if (inOrder && sameSection) return entries;
+  const sorted = inOrder ? dated : [...dated].sort((a, b) => (Number(b.dates.start) - Number(a.dates.start))
+    || ((b.dates.ongoing ? Infinity : Number(b.dates.end ?? b.dates.start)) - (a.dates.ongoing ? Infinity : Number(a.dates.end ?? a.dates.start))));
+  let next = 0;
+  const ordered = groups.map(group => (dated.includes(group) ? sorted[next++] : group)).flatMap(group => group.rows);
+  const out = entries.filter((entry, index) => !slots.includes(index));
+  out.splice(slots[0] - slots.filter(index => index < slots[0]).length, 0, ...ordered);
   return out;
 }
 

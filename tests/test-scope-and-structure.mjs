@@ -441,3 +441,17 @@ test('a raised verb its own evidence never uses is a scope stretch, unless the c
   assert.match(scopeSuggestions(issues)[0], /says "built", a verb its cited evidence does not use/);
   assert.deepEqual(pluralScopeIssues(packet, { sources, allowVerbs: true }), []);
 });
+
+test('review 97f3a7e: raised verbs only in verb position, present tense counts, equal-strength verbs support, letters use factual sources', () => {
+  const flagged = (text, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(flagged('Integrated built-in SSO using SAML.', 'Integrated SAML SSO for the portal.'), []);
+  assert.deepEqual(flagged('Migrated the batch jobs to a managed Kubernetes service.', 'Moved the nightly batch jobs onto GKE.'), []);
+  assert.deepEqual(flagged('Debugged the LED driver board.', 'Debugged the light-emitting-diode driver board.'), []);
+  assert.deepEqual(flagged('Lead the weekly stand-up for the data platform.', 'Attended the weekly stand-up for the data platform.'), ['lead']);
+  assert.deepEqual(flagged('Built the reporting pipeline.', 'Constructed the reporting pipeline in Airflow.'), []);
+  assert.deepEqual(flagged('Managed the annual equipment budget of $2M.', 'Responsible for the $2M annual equipment budget.'), []);
+  assert.deepEqual(flagged('Headed the safety committee.', 'Chair of the site safety committee.'), []);
+  assert.deepEqual(flagged('Mechanical engineer who built a lightweight chassis.', 'Designed and tested a lightweight chassis.'), ['built']);
+  const letter = pluralScopeIssues({ resume: [], coverLetter: 'I built the chassis program from scratch.', answers: [] }, { sources: [{ id: 'cv', text: 'Designed and tested a chassis.' }, { id: 'writing-samples', text: 'we build things carefully.' }] });
+  assert.deepEqual(letter.filter(issue => issue.verb).map(issue => issue.word), ['built']);
+});

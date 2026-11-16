@@ -667,7 +667,7 @@ export class Workflow {
           }
           // The candidate's newest-first setting is a rule, not a hope: the roles are
           // put in date order here. "match" order and revisions stay as drafted.
-          if (!revising && roleOrderOf(state) === 'recent') packet.resume = orderRolesNewestFirst(packet.resume, { sections: formatSections });
+          if (!revising && roleOrderOf(state) === 'recent') packet.resume = orderRolesNewestFirst(packet.resume);
           // Deterministic findings ride the existing one retry, before humanize and
           // review so their resume:<index> keys name the entries that will ship:
           // a misplaced accomplishment section, a plural the item's own evidence never

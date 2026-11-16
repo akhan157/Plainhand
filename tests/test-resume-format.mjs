@@ -159,14 +159,22 @@ test('hyphenated words render unbroken so extractors read them whole', () => {
 test('review 23931b5: newest first by start date; passing drafts, undated roles and loose lines stay put', () => {
   const role = (org, dates) => ({ org, title: 'T', location: '', dates });
   const row = (org, dates, text, section = 'Experience') => ({ section, heading: org ? role(org, dates) : null, text });
-  const order = (rows, sections) => orderRolesNewestFirst(rows, { sections }).map(entry => entry.text);
+  const order = rows => orderRolesNewestFirst(rows).map(entry => entry.text);
   // Already newest first by start: untouched, even with an ongoing older role or overlap.
   assert.deepEqual(order([row('A', '2020 to 2023', 'a'), row('B', '2018 to present', 'b')]), ['a', 'b']);
   assert.deepEqual(order([row('A', '2020 to 2021', 'a'), row('B', '2016 to 2023', 'b')]), ['a', 'b']);
   // An undated role keeps its slot.
   assert.deepEqual(order([row('Cur', 'Summer 2025', 'cur'), row('Old', '2016 to 2023', 'old'), row('New', '2024 to 2025', 'new')]), ['cur', 'new', 'old']);
   // The candidate's own section name counts.
-  assert.deepEqual(order([row('Old', '2016 to 2023', 'old', 'Professional History'), row('New', '2025 to 2026', 'new', 'Professional History')], ['Professional History']), ['new', 'old']);
+  assert.deepEqual(order([row('Old', '2016 to 2023', 'old', 'Professional History'), row('New', '2025 to 2026', 'new', 'Professional History')]), ['new', 'old']);
   // A heading-less line travels with the role above it.
   assert.deepEqual(order([row('Old', '2016 to 2023', 'old'), row(null, '', 'loose'), row('New', '2025 to 2026', 'new')]), ['new', 'old', 'loose']);
+});
+
+test('review 97f3a7e: roles are ordered across experience sections, and candidate names like Professional Roles count', () => {
+  const role = (org, dates) => ({ org, title: 'T', location: '', dates });
+  const row = (org, dates, text, section = 'Experience') => ({ section, heading: role(org, dates), text });
+  const out = orderRolesNewestFirst([{ section: 'Summary', heading: null, text: 's' }, row('A', '2016 to 2020', 'a'), row('B', '2025 to 2026', 'b'), row('C', '2019 to 2021', 'c', 'Work History')]);
+  assert.deepEqual(out.map(entry => `${entry.text}:${entry.section}`), ['s:Summary', 'b:Experience', 'c:Experience', 'a:Experience']);
+  assert.deepEqual(orderRolesNewestFirst([row('Old', '2016 to 2020', 'old', 'Professional Roles'), row('New', '2025 to 2026', 'new', 'Professional Roles')]).map(entry => entry.text), ['new', 'old']);
 });

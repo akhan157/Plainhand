@@ -1,3 +1,4 @@
+import { FACTUAL_SOURCE_IDS } from './store.mjs';
 // A scope stretch the reviewer and calibration have missed: the source says one
 // assay and the packet says "assays" because the posting uses the plural. This is
 // lexical and local: an item's own evidence quote is the only reference text, so
@@ -134,33 +135,46 @@ const quotesOf = item => (Array.isArray(item?.evidence) ? item.evidence : []).ma
 // source context when the caller supplies it; a plural any source uses is allowed.
 // Without sources, the packet's evidence quotes are the fallback reference.
 // Raised verbs: a line that says the candidate built, led or managed something when
-// its own evidence never uses that verb in any form ("designed and tested a chassis"
-// becomes "built a chassis"). Each entry lists the forms that support it.
+// its own evidence never says so, in that verb or an equal-strength one ("designed
+// and tested a chassis" becomes "built a chassis"). Only a verb in verb position
+// counts: at the start of a line or clause, or after a subject or auxiliary, never a
+// hyphenated word ("built-in"), an adjective ("a managed service") or an acronym
+// ("LED"). Each entry: the verb, the forms that raise it, the forms that support it.
 const RAISED_VERBS = [
-  ['built', /\b(?:build|builds|built|building|builder)\b/],
-  ['led', /\b(?:lead|leads|led|leading|leader|leadership)\b/],
-  ['managed', /\b(?:manage|manages|managed|managing|manager|management)\b/],
-  ['launched', /\b(?:launch|launches|launched|launching)\b/],
-  ['founded', /\b(?:found|founded|founder|co-founded|cofounded)\b/],
-  ['headed', /\b(?:head|heads|headed|heading)\b/],
-  ['directed', /\b(?:direct|directs|directed|directing|director)\b/],
-  ['architected', /\b(?:architect|architects|architected|architecture)\b/],
-  ['spearheaded', /\b(?:spearhead|spearheads|spearheaded)\b/],
-  ['oversaw', /\b(?:oversee|oversees|oversaw|overseen|overseeing|oversight)\b/],
-  ['supervised', /\b(?:supervise|supervises|supervised|supervising|supervisor)\b/],
+  ['built', /^(?:build|builds|built|building)$/, /\b(?:build|builds|built|building|builder|construct\w*|assembled|fabricated|developed|implemented|created)\b/],
+  ['led', /^(?:lead|leads|led|leading)$/, /\b(?:lead|leads|led|leading|leader|leadership|headed|chaired|directed)\b/],
+  ['managed', /^(?:manage|manages|managed|managing)$/, /\b(?:manage|manages|managed|managing|manager|management|responsible for|in charge of|oversaw|oversee|oversees|owned|ran)\b/],
+  ['launched', /^(?:launch|launches|launched|launching)$/, /\b(?:launch|launches|launched|launching|released|shipped|introduced)\b/],
+  ['founded', /^(?:founded|co-founded|cofounded)$/, /\b(?:founded|founder|co-founded|cofounded|started|established)\b/],
+  ['headed', /^(?:headed|heads)$/, /\b(?:head|heads|headed|heading|chair|chaired|led|lead)\b/],
+  ['directed', /^(?:direct|directs|directed|directing)$/, /\b(?:direct|directs|directed|directing|director|led|headed)\b/],
+  ['architected', /^(?:architect|architects|architected)$/, /\b(?:architect|architects|architected|architecture|designed)\b/],
+  ['spearheaded', /^(?:spearhead|spearheads|spearheaded)$/, /\b(?:spearhead\w*|led|lead|initiated|started)\b/],
+  ['oversaw', /^(?:oversee|oversees|oversaw|overseeing)$/, /\b(?:oversee|oversees|oversaw|overseen|overseeing|oversight|managed|supervised|responsible for)\b/],
+  ['supervised', /^(?:supervise|supervises|supervised|supervising)$/, /\b(?:supervise\w*|supervisor|managed|oversaw)\b/],
 ];
-const RAISED_FORMS = new Map([
-  ['built', /\b(?:built|builds|building)\b/], ['led', /\b(?:led|leads|leading)\b/], ['managed', /\b(?:managed|manages|managing)\b/],
-  ['launched', /\b(?:launched|launches)\b/], ['founded', /\b(?:founded|co-founded|cofounded)\b/], ['headed', /\b(?:headed)\b/],
-  ['directed', /\b(?:directed|directs)\b/], ['architected', /\b(?:architected)\b/], ['spearheaded', /\b(?:spearheaded|spearheads)\b/],
-  ['oversaw', /\b(?:oversaw|oversees|overseeing)\b/], ['supervised', /\b(?:supervised|supervises|supervising)\b/],
-]);
+// Words that put the next word in verb position.
+const VERB_SLOT = new Set(['i', 'we', 'who', 'and', 'also', 'then', 'that', 'which', 'have', 'has', 'had', 'to', 'jointly', 'personally', 'successfully', 'later', 'now', 'currently']);
+function raisedTokens(text) {
+  const value = String(text ?? '');
+  const found = [];
+  for (const match of value.matchAll(/[A-Za-z][A-Za-z'-]*/g)) {
+    const word = match[0], at = match.index;
+    if (word.includes('-') || (word.length > 1 && word === word.toUpperCase())) continue;
+    const before = value.slice(0, at);
+    const previous = before.match(/([A-Za-z']+)[^A-Za-z']*$/)?.[1]?.toLowerCase();
+    const clauseStart = /(?:^|[.;:!?•·\-–—]\s*|,\s+)$/.test(before) || /^\s*$/.test(before);
+    if (clauseStart || (previous && VERB_SLOT.has(previous))) found.push(word.toLowerCase());
+  }
+  return found;
+}
 function verbItem({ kind, index, text, quotes }) {
-  const value = String(text ?? '').toLowerCase(), reference = quotes.join(' ').toLowerCase();
+  const reference = quotes.join(' ').toLowerCase();
   if (!reference.trim()) return [];
-  return RAISED_VERBS.flatMap(([verb, supported]) => {
-    const form = value.match(RAISED_FORMS.get(verb));
-    return form && !supported.test(reference) ? [{ kind, index, word: form[0], verb, text: String(text ?? ''), quote: quotes[0] || '' }] : [];
+  const tokens = raisedTokens(text);
+  return RAISED_VERBS.flatMap(([verb, raised, supported]) => {
+    const word = tokens.find(token => raised.test(token));
+    return word && !supported.test(reference) ? [{ kind, index, word, verb, text: String(text ?? ''), quote: quotes[0] || '' }] : [];
   });
 }
 
@@ -180,9 +194,12 @@ export function pluralScopeIssues(packet, { sources = [], allowVerbs = false } =
     issues.push(...scanItem({ kind: 'answer', index, text: entry.answer, quotes: quotesOf(entry) }), ...verbs({ kind: 'answer', index, text: entry.answer, quotes: quotesOf(entry) }));
   });
   const sourceText = (Array.isArray(sources) ? sources : []).map(source => String(source?.text ?? '')).filter(Boolean);
+  // A raised verb in the letter is checked against factual sources only: writing
+  // samples and the reviewed understanding never support a fact.
+  const factualText = (Array.isArray(sources) ? sources : []).filter(source => FACTUAL_SOURCE_IDS.includes(source?.id)).map(source => String(source?.text ?? '')).filter(Boolean);
   const letterQuotes = sourceText.length ? sourceText : [...resume.flatMap(quotesOf), ...answers.flatMap(quotesOf)];
   if (letterQuotes.length && String(packet?.coverLetter ?? '').trim()) {
-    sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: letterQuotes })));
+    sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: factualText.length ? factualText : letterQuotes })));
   }
   return issues;
 }
