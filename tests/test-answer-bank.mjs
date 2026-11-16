@@ -78,3 +78,60 @@ test('the reviewed packet wins over the reusable bank, which fills only unanswer
   assert.equal(answers.a, 'Packet answer.');
   assert.equal(answers.b, 'Bank reuse.');
 });
+
+const SOURCES = [{ id: 'cv', text: 'Designed and tested a lightweight chassis for a Formula SAE team.' }];
+const chassisEvidence = [{ sourceId: 'cv', quote: 'Designed and tested a lightweight chassis for a Formula SAE team.' }];
+const JOB = { id: 'job-1', company: 'Grip' };
+
+test('provenance follows the evidence: a typed answer is an assertion, never packet grounding', async () => {
+  const h = await bank();
+  try {
+    const typed = await h.bank.add({ question: 'Describe a hands-on project', answer: 'I rebuilt the test rig myself.', evidence: [{ sourceId: 'candidate-answer', quote: 'I rebuilt the test rig myself.' }] });
+    assert.equal(typed.sourceKind, 'assertion');
+    assert.match(typed.verifiedAt, /^\d{4}-\d{2}-\d{2}$/);
+    // The candidate's own approved assertion may fill a later form field.
+    assert.equal(AnswerBank.match([typed], { label: 'Describe a hands-on project', job: JOB }).answer, 'I rebuilt the test rig myself.');
+    // It can never replace a packet answer, even when a source happens to repeat it.
+    const { entry, reason } = AnswerBank.reuse([typed], { label: 'Describe a hands-on project', job: JOB, sources: [{ id: 'cv', text: 'I rebuilt the test rig myself.' }] });
+    assert.equal(entry, null);
+    assert.match(reason, /assertion/);
+    await assert.rejects(() => h.bank.add({ question: 'Why us?', answer: 'Because.', evidence: [{ sourceId: 'candidate-answer', quote: 'Because.' }], sourceKind: 'factual' }), /provenance follows its evidence/);
+  } finally { await h.close(); }
+});
+
+test('packet reuse needs the exact normalized label, a factual quote still in the shared sources, scope and no expiry', async () => {
+  const h = await bank();
+  try {
+    const base = { question: 'Describe a hands-on project', answer: 'I designed and tested a lightweight chassis.', evidence: chassisEvidence, scope: { jobs: ['job-1'], companies: [] } };
+    const entry = await h.bank.add(base);
+    const options = { label: '  describe   A HANDS-ON   project ', job: JOB, asOf: '2026-11-15', sources: SOURCES };
+    assert.equal(AnswerBank.reuse([entry], options).entry.id, entry.id, 'case and spacing normalize, the label is otherwise exact');
+    assert.equal(AnswerBank.reuse([entry], { ...options, label: 'Describe a hands-on project you led' }).entry, null, 'aliases are not matched');
+    assert.match(AnswerBank.reuse([entry], { ...options, sources: [] }).reason, /quote is not in the current sources/);
+    assert.match(AnswerBank.reuse([entry], { ...options, sources: [{ id: 'writing-samples', text: 'I designed and tested a lightweight chassis for a Formula SAE team.' }] }).reason, /quote is not in the current sources/);
+    assert.match(AnswerBank.reuse([entry], { ...options, job: { id: 'job-2', company: 'Other' } }).reason, /scope does not match/);
+    const byCompany = await h.bank.add({ ...base, scope: { jobs: [], companies: ['Grip'] } });
+    assert.equal(AnswerBank.reuse([byCompany], { ...options, job: { id: 'job-9', company: 'grip' } }).entry.id, byCompany.id, 'company scope matches case-insensitively');
+    const expired = await h.bank.add({ ...base, reviewBy: '2020-01-01' });
+    assert.match(AnswerBank.reuse([expired], options).reason, /expired/);
+    const held = await h.bank.add({ ...base, status: 'needs-review' });
+    assert.match(AnswerBank.reuse([held], options).reason, /needs review/);
+  } finally { await h.close(); }
+});
+
+test('an edited answer loses its verification; an expiry-only change keeps it', async () => {
+  const h = await bank();
+  try {
+    const entry = await h.bank.add({ question: 'Describe a hands-on project', answer: 'I designed and tested a lightweight chassis.', evidence: chassisEvidence, scope: 'global' });
+    const verified = entry.verifiedAt;
+    const edited = await h.bank.add({ ...entry, answer: 'I led a team of twelve engineers.', verifiedAt: null, needsReview: true });
+    assert.equal(edited.verifiedAt, null);
+    assert.equal(edited.needsReview, true);
+    assert.deepEqual(edited.evidence, entry.evidence, 'the old quote is kept for display only');
+    assert.match(AnswerBank.reuse([edited], { label: entry.question, job: JOB, sources: SOURCES }).reason, /needs review/);
+    const expiryOnly = await h.bank.add({ ...entry, reviewBy: '2030-01-01' });
+    assert.equal(expiryOnly.verifiedAt, verified, 'changing the expiry does not re-verify the content');
+    assert.equal(expiryOnly.needsReview, undefined);
+    assert.equal(AnswerBank.reuse([expiryOnly], { label: entry.question, job: JOB, sources: SOURCES }).entry.answer, 'I designed and tested a lightweight chassis.');
+  } finally { await h.close(); }
+});

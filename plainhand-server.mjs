@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { Workspace, digest, now, requireText, cleanText, syncTracker, hasEvidence, storyKey } from './plainhand/store.mjs';
 import { Workflow, assertPacketFresh, packetIdentity, suggestFormAnswers } from './plainhand/workflow.mjs';
 import { AnswerBank } from './plainhand/answer-bank.mjs';
-import { Corrections } from './plainhand/corrections.mjs';
+import { Corrections, offerTypedAnswers } from './plainhand/corrections.mjs';
 import { AuditLog } from './plainhand/audit.mjs';
 import { followUpQueue } from './plainhand/application-record.mjs';
 import { providerDescription } from './plainhand/posting-integrity.mjs';
@@ -496,14 +496,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
             job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, check, navigation: job.browserCheckpoint?.navigation || [] }; job.stage = 'awaiting-user-submit'; await syncTracker(workspace, state);
             await workspace.saveBrowserCheckpoint(job);
             // Answers the candidate typed are offered for reuse; they reach the answer bank only after approval.
-            const corrections = new Corrections(workspace), known = await corrections.list();
-            let offered = 0;
-            for (const field of plan?.fields || []) {
-              const typed = typeof input.answers[field.key] === 'string' ? input.answers[field.key].trim() : '';
-              if (typed.length < 8 || field.type === 'file' || isSensitiveLabel(field.label) || typed === (plan.answers[field.key] || '').trim()) continue;
-              if (known.some(c => c.question === field.label && c.answer === typed && c.status !== 'rejected')) continue;
-              try { await corrections.propose({ jobId: job.id, question: field.label, previous: plan.answers[field.key] || null, answer: typed, evidence: [{ sourceId: 'candidate-answer', quote: typed.slice(0, 500) }], scope: 'global' }); offered++; } catch {}
-            }
+            const offered = await offerTypedAnswers(new Corrections(workspace), { job, fields: plan?.fields || [], answers: input.answers, planned: plan?.answers || {} });
             return { ...result, check, offered };
           }
           if (url.pathname === '/api/browser/handoff') {

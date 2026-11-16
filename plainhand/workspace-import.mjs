@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import yaml from 'js-yaml';
 import { cleanText, emptyProfile, factualSource, now, syncTracker } from './store.mjs';
-import { AnswerBank, ANSWER_BANK_FILE } from './answer-bank.mjs';
+import { AnswerBank, ANSWER_BANK_FILE, answerSourceKind } from './answer-bank.mjs';
 import { Corrections, CORRECTIONS_FILE } from './corrections.mjs';
 import { cleanFormat } from './resume-format.mjs';
 import { DEFAULT_AUTONOMY, DEFAULT_ROLE_ORDER, ROLE_ORDERS } from './standard.mjs';
@@ -189,13 +189,19 @@ export function cleanAnswerBank(value, sources) {
     if (isSensitiveLabel(question)) { sensitiveDropped++; continue; }
     const evidence = cleanEvidence(entry.evidence);
     const unresolved = !evidence.length || evidence.some(item => !factualSource(item.sourceId) || !(factual.get(item.sourceId) || '').includes(item.quote));
-    if (unresolved) held++;
+    // An entry the candidate still had to review before the export stays held after it.
+    // Provenance follows the evidence that travelled, never a stale label.
+    const needsReview = entry.needsReview === true;
+    if (unresolved || needsReview) held++;
     const record = {
       id: textWithin(entry.id, 120) || `answer-${normalizeQuestion(question).replace(/[^a-z0-9]+/g, '-').slice(0, 60)}`,
       question, answer, evidence,
+      sourceKind: answerSourceKind(evidence),
       scope: cleanScope(entry.scope),
       reviewedAt: /^\d{4}-\d{2}-\d{2}$/.test(entry.reviewedAt || '') ? entry.reviewedAt : now().slice(0, 10),
       reviewBy: /^\d{4}-\d{2}-\d{2}$/.test(entry.reviewBy || '') ? entry.reviewBy : null,
+      verifiedAt: entry.verifiedAt === null ? null : /^\d{4}-\d{2}-\d{2}$/.test(entry.verifiedAt || '') ? entry.verifiedAt : null,
+      ...(unresolved || needsReview ? { needsReview: true } : {}),
       importedAt: now(),
       ...(unresolved ? { status: 'needs-review' } : {}),
     };

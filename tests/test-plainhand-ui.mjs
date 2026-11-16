@@ -4,6 +4,8 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
 import { createPlainhand } from '../plainhand-server.mjs';
+import { Workspace } from '../plainhand/store.mjs';
+import { AnswerBank } from '../plainhand/answer-bank.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
 import { fixtureApplicationBrowser } from '../plainhand/test-browser-fixture.mjs';
 
@@ -27,6 +29,9 @@ const app = await createPlainhand({ root, providers: fixtureProviders, browser: 
 } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${app.server.address().port}`;
+// One held reusable answer, so the settings list shows the review state the candidate
+// must resolve and the re-approve control that clears it.
+await new AnswerBank(new Workspace(root)).add({ question: 'Describe a hands-on project', answer: 'I designed and tested a lightweight chassis.', evidence: [{ sourceId: 'cv', quote: 'Designed and tested a lightweight chassis' }], status: 'needs-review', verifiedAt: null, needsReview: true });
 let browser;
 const errors = [];
 const navLink = (page, name) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
@@ -66,6 +71,13 @@ try {
   await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light', 'Explicit choice overrides system preference.');
   await navLink(page, 'Workspace').click();
+  await page.getByRole('heading', { name: 'Reusable answers', exact: true }).waitFor();
+  await shot(page, '12-answer-needs-review.png');
+  assert.equal(await page.getByText('Needs review', { exact: true }).count(), 1, 'a held answer says it needs review');
+  await page.getByRole('button', { name: 'Re-approve answer: Describe a hands-on project' }).click();
+  await page.getByRole('status').filter({ hasText: 'Reusable answer approved again.' }).waitFor();
+  await page.getByText('Needs review', { exact: true }).waitFor({ state: 'detached' });
+  assert.equal(await page.getByLabel('Color theme', { exact: true }).count(), 1);
   await page.getByLabel('Color theme', { exact: true }).selectOption('system');
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await page.emulateMedia({ colorScheme: 'light' });
