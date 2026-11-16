@@ -719,3 +719,36 @@ retries, which the regression fix should reduce. Prompt chars per call were unch
 there is no voice result yet. The fix is in the same lane.
 
 The judge on the 6 paired packets is running.
+
+## Scorer v4 merged; judge on f8f3663 paired — 2026-11-16
+
+**Scorer v4 (lane `cd66098`), merged.**
+- The interleave check now compares each matched run on its own. The true-interleave
+  control still fails, and the mutation check reproduces the live false positive.
+- Two `rescore.mjs` fixes:
+  - evidence state is recomputed;
+  - a review-blocked row with no packet is reported as unscorable, not a silent pass.
+- Offline v4 rescore of set 2: fin-recent and fin-match now PASS, so set 2 is 6/9.
+  The remaining three are review blocks caused by the letter-motivation regression.
+- Manifest v4 frozen at `94a0b68`. Set 2 is now seen.
+- Suite: 656/656.
+
+**Judge (Claude, uncalibrated) on 5 paired packets, repeat 1.** analyst-seeded was
+review-blocked, so no packet exists for it.
+
+| | v1 baseline | 0f5cfe8 | f8f3663 |
+|---|---|---|---|
+| unsupported | 0 | 0 | 0 |
+| relevance | 4.42 | 4.23 | **4.60** |
+| specificity | 4.81 | 4.20 | 4.33 |
+| structure | 3.50 | 3.60 | 3.60 |
+| voice | 4.17 | 4.27 | 4.27 |
+| cover | 3.61 | 3.63 | 3.67 |
+| honesty | 5.00 | 4.83 | 4.40 |
+| overall | 4.03 | 4.00 | **4.13** |
+
+Reading the numbers:
+- Honesty fell because of the motivation regression. The fix lane is in flight.
+- Cover is still about 3.7. The judge still sees "restates the resume" and generic
+  closes in some letters.
+- n=5 at repeat 1 shows variance, not significance.
