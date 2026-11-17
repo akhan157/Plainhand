@@ -186,11 +186,14 @@ export function simulatedCandidate(persona) {
       // Only a question about credentials the candidate holds ("Do you hold any
       // certifications or licences?"), never "did you need a driver's licence" or
       // "would you get a certification".
-      const askedText = asked || question || '';
-      const credentialWord = /\b(?:certificat\w*|credential\w*|(?<!driv(?:er'?s|ers|ing)\s)licen[cs]\w*)\b/i;
+      const askedText = (String(question || '').replace(/\u2019/g, "'").split(/(?<=[.!?])\s+/).filter(part => part.includes('?')).at(-1)) || '';
+      // A driving licence in any spelling is not a professional credential.
+      const credentialWord = /\b(?:certificat\w*|credential\w*|(?<!\bdriv\w*'?s?'?\s+)licen[cs]\w*)\b/i;
+      // Hypothetical only when it asks about acquiring one ("would you obtain", "willing
+      // to get"); a polite "would you share which certifications you hold" still asks.
       const credentialAsked = credentialWord.test(askedText)
         && /\b(?:hold|have|has|earned|held|got)\b/i.test(askedText)
-        && !/\b(?:would|willing|obtain|get|pursue|planning)\b/i.test(askedText);
+        && !/\b(?:would|willing|planning)\b[^?]*\b(?:get|obtain|pursue|earn|acquire)\b|\b(?:obtain|pursue|acquire)\b/i.test(askedText);
       const ranked = open.map(f => [hits(question, f.keywords) + (credentialAsked && /certif|licen/i.test(f.section || '') ? 10 : 0), f]).sort((a, b) => b[0] - a[0]);
       const pick = absent || (ranked[0]?.[0] > 0 ? ranked[0][1] : asks ? open[0] : null);
       if (pick) { said.add(pick.id); last = persona.facts.includes(pick) ? pick : null; return say(pick.text, { factId: pick.id, onTopic: Boolean(absent || ranked[0]?.[0] > 0) }); }

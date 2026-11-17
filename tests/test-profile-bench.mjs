@@ -132,3 +132,12 @@ test('review d291f66: driver licences and hypothetical credentials never get the
   assert.match(reply('Do you hold any certifications, or a drivers licence?'), /CPA/);
   assert.match(reply('Do you have any certifications?'), /CPA/);
 });
+
+test('review 07ce879: every driving-licence spelling is excluded; polite held-credential questions still count', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-fin-close');
+  const reply = question => simulatedCandidate(persona).reply(question).text;
+  for (const question of ['Do you have a driver licence?', "Do you have a Drivers' licence?", 'Do you have a driver’s licence?']) assert.doesNotMatch(reply(question), /CPA/, question);
+  for (const question of ['Would you be able to share which certifications you hold?', 'Would you have any certifications to share?', 'Do you have any certifications? I would appreciate it.']) assert.match(reply(question), /CPA/, question);
+});

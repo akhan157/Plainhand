@@ -65,9 +65,13 @@ export function voiceTargetOf(samples) {
   // The rate counts only the phrases of the register the samples are written in
   // (casual phrases for a plain or neutral voice), and multi-word casual phrases only,
   // since one-word fillers ("just", "actually") are what the humanizer cuts. It is
-  // summed over every phrase found, then capped at one phrase per sentence.
+  // summed over every phrase found. It is capped at the samples' own density per
+  // sentence (never above three), so the letter is as dense as the candidate writes
+  // and never denser: one candidate writes one connective a sentence, another three.
   const own = phrases.filter(item => (register === 'formal' ? item.register === 'formal' : item.register === 'casual' && (item.phrase.includes(' ') || item.phrase.includes("'"))));
-  const rate = Math.min(Math.round(own.reduce((sum, item) => sum + item.per100, 0) * 10) / 10, Math.round(1000 / sentenceLength) / 10);
+  const ownCount = own.reduce((sum, item) => sum + item.count, 0);
+  const perSentence = Math.max(1, Math.min(3, Math.round(ownCount / Math.max(1, features.sentences))));
+  const rate = Math.min(Math.round(own.reduce((sum, item) => sum + item.per100, 0) * 10) / 10, Math.round(perSentence * 1000 / sentenceLength) / 10);
   return {
     sentenceLength,
     contractions: features.contractionRate >= CONTRACTION_USE ? 'use' : 'avoid',
@@ -77,7 +81,7 @@ export function voiceTargetOf(samples) {
     registerPhrases: phrases.filter(item => (register === 'formal') === (item.register === 'formal')).slice(0, PHRASE_LIMIT),
     // Their combined rate, so the drafter has one number to write to rather than a
     // list of small per-phrase rates it tends to undershoot.
-    ...(rate > 0 ? { registerRate: rate } : {}),
+    ...(rate > 0 ? { registerRate: rate, registerPerSentence: perSentence } : {}),
   };
 }
 

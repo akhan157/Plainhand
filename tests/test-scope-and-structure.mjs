@@ -321,7 +321,9 @@ test('review 37eb4fd: written names, issuer acronyms, tool acronyms, claim notes
   ]);
   assert.equal(target.register, 'formal');
   assert.ok(target.registerPhrases.every(item => item.register === 'formal'));
-  assert.ok(target.registerRate > 0 && target.registerRate <= Math.round(1000 / target.sentenceLength) / 10);
+  // Capped at the samples' own density per sentence (1 to 3).
+  assert.ok(target.registerPerSentence >= 1 && target.registerPerSentence <= 3);
+  assert.ok(target.registerRate > 0 && target.registerRate <= Math.round(target.registerPerSentence * 1000 / target.sentenceLength) / 10);
 });
 
 test('review cec2918: own-name credential matching, carried-row notes, negated notes, scope quotes', async () => {
@@ -536,4 +538,21 @@ test('review d291f66: attributive "direct" before a client noun is not a raised 
   const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
   assert.deepEqual(verbs('Direct client work across three regions.', 'Worked with clients in three regions.'), []);
   assert.deepEqual(verbs('Direct customer support and onboarding.', 'Supported customers during onboarding.'), []);
+});
+
+test('the register target follows the samples\' own density: dense formal samples allow three a sentence, plain samples one', async () => {
+  const { voiceTargetOf } = await import('../plainhand/voice-target.mjs');
+  const formal = voiceTargetOf(['I am writing to provide a comprehensive update regarding the test campaign, and I would like to explain the methodology that was applied throughout the process. Furthermore, the results obtained thus far are approximately consistent with the initial predictions, although additional validation shall be required prior to the final report.', 'Please find the relevant documentation attached for your consideration, and do not hesitate to contact me at your earliest convenience should any further information be required.']);
+  assert.equal(formal.register, 'formal');
+  assert.equal(formal.registerPerSentence, 3);
+  const plain = voiceTargetOf(["I'm a hands-on engineer. I build test rigs. I break them on purpose. I fix what breaks. Then I write the numbers down.", "Quick update: the upright passed. I'll send the plots tonight. Ask me if anything looks off."]);
+  assert.equal(plain.registerPerSentence, 1);
+  assert.match(PACKET_INSTRUCTION, /never more in one sentence than registerPerSentence/);
+});
+
+test('review 07ce879: "direct" before people is a raised verb; before a singular client noun it is not', () => {
+  const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(verbs('Direct analysts through quarterly close.', 'Coordinated the finance team during close.'), ['direct']);
+  assert.deepEqual(verbs('Direct clients through onboarding.', 'Supported onboarding.'), ['direct']);
+  assert.deepEqual(verbs('Direct client work across three regions.', 'Worked with clients in three regions.'), []);
 });
