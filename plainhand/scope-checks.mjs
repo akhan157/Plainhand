@@ -177,17 +177,25 @@ function raisedTokens(text) {
     const before = value.slice(0, at);
     const previousWords = before.toLowerCase().match(/[a-z][a-z'-]*/g) || [];
     let back = previousWords.length - 1;
-    while (back >= 0 && /ly$/.test(previousWords[back]) && previousWords[back].length > 3) back--;
+    while (back >= 0 && /ly$/.test(previousWords[back]) && previousWords[back].length > 3 && !VERB_SLOT.has(previousWords[back])) back--;
     const previous = back >= 0 ? previousWords[back] : null;
     const lower = word.toLowerCase();
+    // An opener that is itself a slot word ("Successfully built") leaves the line start
+    // before it; the slot word then puts the verb in position.
     const lineStart = /^[\s•·\-–—*]*$/.test(before) || /[.;:!?]\s*$/.test(before);
     const softStart = /,\s*$/.test(before) || previous === 'and';
     // A present-tense form must take an object to be a verb: "Lead the stand-up",
     // never "Build tooling ownership".
     const following = value.slice(at + match[0].length).toLowerCase().match(/^\s+([a-z][a-z'-]*)/)?.[1];
-    const verbal = PAST_RAISED.test(lower) || /(?:ing)$/.test(lower) || (following && OBJECT_START.has(following));
+    // An object: a determiner, possessive, number or quantity word, or a noun that
+    // starts with a capital or ends in -s (QA, technicians, teams).
+    const nextRaw = value.slice(at + match[0].length).match(/^\s+([A-Za-z][A-Za-z'-]*)/)?.[1] || '';
+    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || (/s$/.test(following) && following.length > 3) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
+    // After a subject ("I oversee", "who leads") the word is a verb whatever follows.
+    const afterSubject = previous && /^(?:i|we|who|i've|we've|i'd|we'd)$/.test(previous);
+    const verbal = PAST_RAISED.test(lower) || /(?:ing)$/.test(lower) || takesObject || afterSubject;
     if (!verbal) continue;
-    if (lineStart || (previous && VERB_SLOT.has(previous)) || (softStart && PAST_RAISED.test(lower))) found.push(lower);
+    if (lineStart || (previous && VERB_SLOT.has(previous)) || (softStart && (PAST_RAISED.test(lower) || takesObject || (/ing$/.test(lower) && /,\s*$/.test(before))))) found.push(lower);
   }
   return found;
 }
@@ -201,25 +209,39 @@ function verbItem({ kind, index, text, quotes }) {
   });
 }
 
-// A number word the sources never state ("one Raleigh role", "two teams") is a
-// number claim like any digit: it must come from the candidate's factual sources
-// or the posting, as the word or as its digit. "A" or "a single" says the same thing
-// without claiming a count.
-const NUMBER_WORDS = Object.freeze({ one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12', twenty: '20', thirty: '30', forty: '40', fifty: '50' });
-function numberWordItem({ kind, index, text, reference }) {
+// A count written as a word that no source states ("one Raleigh role", "two teams")
+// is a number claim like any digit. Values are compared, not spellings: "twenty-five"
+// matches 25, "a dozen" 12, "twice" 2. A digit counts only standing alone, never
+// inside "CO2", "3D", "5S" or "24/7". Uses that are not counts are skipped on both
+// sides: "one of the", "one-page", "one-third", "one-on-one", "no one".
+const UNITS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+const SPECIAL = { dozen: 12, twice: 2, thrice: 3, couple: 2, pair: 2, hundred: 100, thousand: 1000 };
+const NUMBER_WORD = new RegExp(`\\b(?:(${Object.keys(TENS).join('|')})(?:[-\\s](${Object.keys(UNITS).slice(0, 9).join('|')}))?|(${Object.keys(UNITS).join('|')})|(${Object.keys(SPECIAL).join('|')}))\\b`, 'gi');
+// Not a count: a partitive, a compound modifier, a fraction, or a fixed phrase.
+const NOT_A_COUNT_AFTER = /^(?:\s+of\b|-(?!(?:one|two|three|four|five|six|seven|eight|nine)\b)[a-z]|\s*-?\s*(?:half|third|thirds|quarter|quarters|fifth|fifths)\b|\s+another\b|\s+(?:or|to)\s+(?:two|three|more)\b)/i;
+const NOT_A_COUNT_BEFORE = /(?:\bno|\bany|\bevery|\bsome|\bthe only|-)\s*$/i;
+function countValues(text) {
   const value = String(text ?? '');
-  const ref = ` ${String(reference ?? '').toLowerCase()} `;
-  const found = [];
-  for (const [word, digit] of Object.entries(NUMBER_WORDS)) {
-    if (!new RegExp(`\\b${word}\\b`, 'i').test(value)) continue;
-    if (new RegExp(`\\b${word}\\b`).test(ref) || new RegExp(`(?<![\\d.,])${digit}(?![\\d.,]*\\d)`).test(ref)) continue;
-    found.push({ kind, index, word, number: digit, text: value, quote: '' });
+  const values = [];
+  for (const match of value.matchAll(NUMBER_WORD)) {
+    const after = value.slice(match.index + match[0].length), before = value.slice(0, match.index);
+    if (NOT_A_COUNT_AFTER.test(after) || NOT_A_COUNT_BEFORE.test(before)) continue;
+    const word = match[0].toLowerCase();
+    const number = match[1] ? TENS[match[1].toLowerCase()] + (match[2] ? UNITS[match[2].toLowerCase()] : 0)
+      : match[3] ? UNITS[match[3].toLowerCase()] : SPECIAL[match[4].toLowerCase()];
+    values.push({ word, number });
   }
-  return found;
+  return values;
+}
+const digitValues = text => new Set([...String(text ?? '').matchAll(/(?<![A-Za-z0-9/.,])(\d{1,3}(?:,\d{3})*|\d+)(?![A-Za-z0-9/]|[.,]\d)/g)].map(match => Number(match[1].replace(/,/g, ''))));
+function numberWordItem({ kind, index, text, reference }) {
+  const stated = new Set([...digitValues(reference), ...countValues(reference).map(item => item.number)]);
+  const seen = new Set();
+  return countValues(text).filter(item => !stated.has(item.number) && !seen.has(item.word) && seen.add(item.word))
+    .map(item => ({ kind, index, word: item.word, number: String(item.number), text: String(text ?? ''), quote: '' }));
 }
 
-// allowVerbs: the candidate chose stronger ownership or level wording (their line's
-// allowedStretches), so raised verbs are their informed choice, not a stretch.
 // numbers: false on a revision, where the candidate's request is checked by review.
 export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jobText = '', numbers = true } = {}) {
   const verbs = item => (allowVerbs ? [] : verbItem(item));
@@ -241,7 +263,12 @@ export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jo
   // Number words are checked only when the factual sources are known; the posting
   // may state a number the letter repeats.
   const numberReference = numbers && factualText.length ? `${factualText.join(' ')} ${jobText}` : '';
-  if (numberReference) resume.forEach((entry, index) => { if (String(entry?.text ?? '').trim()) issues.push(...numberWordItem({ kind: 'resume', index, text: entry.text, reference: numberReference })); });
+  // Resume lines and answers are checked against their own cited evidence, the
+  // letter against the factual sources and the posting.
+  if (numberReference) {
+    resume.forEach((entry, index) => { if (String(entry?.text ?? '').trim()) issues.push(...numberWordItem({ kind: 'resume', index, text: entry.text, reference: quotesOf(entry).join(' ') || numberReference })); });
+    answers.forEach((entry, index) => { if (String(entry?.answer ?? '').trim()) issues.push(...numberWordItem({ kind: 'answer', index, text: entry.answer, reference: quotesOf(entry).join(' ') || numberReference })); });
+  }
   const letterQuotes = sourceText.length ? sourceText : [...resume.flatMap(quotesOf), ...answers.flatMap(quotesOf)];
   if (letterQuotes.length && String(packet?.coverLetter ?? '').trim()) {
     sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: factualText.length ? factualText : letterQuotes }),

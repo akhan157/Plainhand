@@ -186,3 +186,8 @@ test('review 983c762: volunteer and board sections are never merged; apart emplo
   const apart = orderRolesNewestFirst([{ section: 'Summary', heading: null, text: 's' }, { section: 'Experience', heading: role('A', '2016 to 2020'), text: 'a' }, { section: 'Education', heading: role('U', '2012'), text: 'u' }, { section: 'Professional Roles', heading: role('B', '2025 to 2026'), text: 'b' }]);
   assert.deepEqual(apart.map(entry => `${entry.text}:${entry.section}`), ['s:Summary', 'a:Experience', 'u:Education', 'b:Professional Roles']);
 });
+
+test('review d2a6000: a bare Roles or Positions section is ordered newest first', () => {
+  const role = (org, dates) => ({ org, title: 'T', location: '', dates });
+  assert.deepEqual(orderRolesNewestFirst(normalizeResume([{ section: 'Roles', heading: role('Old', '2015 to 2018'), text: 'old' }, { section: 'Roles', heading: role('New', '2024 to 2025'), text: 'new' }])).map(entry => entry.text), ['new', 'old']);
+});

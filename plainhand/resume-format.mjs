@@ -347,7 +347,7 @@ const prose = text => esc(text).replace(HYPHENATED, word => `<span class="nobrea
 // Employment sections only. "Volunteer Roles", "Teaching Positions", "Board
 // Appointments", Projects and Research are their own sections, never merged into
 // Experience; a role-like name counts only when it says professional.
-const EXPERIENCE_NAME = /^(?:(?:relevant |professional |work |industry )?experience|employment(?: history)?|work history|career(?: history)?|professional (?:history|roles|positions))$/i;
+const EXPERIENCE_NAME = /^(?:(?:relevant |professional |work |industry )?experience|employment(?: history)?|work history|career(?: history| roles)?|(?:professional )?(?:history|roles|positions|appointments))$/i;
 export function orderRolesNewestFirst(resume) {
   const entries = Array.isArray(resume) ? resume : [];
   const isExperience = entry => EXPERIENCE_NAME.test(String(entry?.section ?? '').trim());

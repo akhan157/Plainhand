@@ -80,9 +80,12 @@ test('the plural check flags only a plural the item evidence never uses', () => 
 });
 
 test('both instructions state the exact-count rule; the packet keeps relevant credentials', () => {
-  const rule = 'Keep counts and number exactly as the sources state, and never write a number, including a number word such as "one" or "two", that the sources or the posting do not state; write "a" or "a single" instead. One assay stays "an assay" or "a potency assay", never "assays". A single project, system or team is never pluralised. The job\'s vocabulary may name the kind of work, but it never changes how many.';
+  const rule = 'Keep counts and number exactly as the sources state, and never state a count, as a digit or a word such as "one" or "two", that the sources';
+  const rest = 'One assay stays "an assay" or "a potency assay", never "assays". A single project, system or team is never pluralised. The job\'s vocabulary may name the kind of work, but it never changes how many.';
+  assert.ok(PACKET_INSTRUCTION.includes(rest) && STANDARD_INSTRUCTION.includes(rest));
   assert.ok(PACKET_INSTRUCTION.includes(rule));
   assert.ok(STANDARD_INSTRUCTION.includes(rule));
+  assert.ok(!STANDARD_INSTRUCTION.includes('or the posting do not state'), 'the master has no posting');
   assert.ok(PACKET_INSTRUCTION.includes('A credential the posting names or relates to is always kept in the resume.'));
   assert.ok(PACKET_INSTRUCTION.includes('When INPUT.missingFromResume is present, it lists credentials the posting names or relates to that the previous packet left out: keep each in the resume.'));
 });
@@ -468,7 +471,7 @@ test('a number word no source or posting states is a scope stretch; a stated one
   assert.match(scopeRetryFeedback(issues).join('\n'), /"one" states a number \(1\) no source gives/);
   // The posting stating it is enough.
   assert.deepEqual(pluralScopeIssues(packet, { sources, jobText: 'One Raleigh role covers assay, automation and LIMS.' }).filter(issue => issue.number), []);
-  assert.match(PACKET_INSTRUCTION, /never write a number, including a number word such as "one"/);
+  assert.match(PACKET_INSTRUCTION, /never state a count, as a digit or a word such as "one"/);
 });
 
 test('review 983c762: list nouns are not verbs; contractions, adverbs and co- prefixes still count', () => {
@@ -480,4 +483,25 @@ test('review 983c762: list nouns are not verbs; contractions, adverbs and co- pr
   assert.deepEqual(letterFlags("I've built the chassis program from scratch."), ['built']);
   assert.deepEqual(letterFlags('I single-handedly built the chassis program.'), ['built']);
   assert.deepEqual(letterFlags('We co-led the chassis program.'), ['led']);
+});
+
+test('review d2a6000: counts compare by value, skip non-count uses, cover answers; verbs after openers and subjects', () => {
+  const numbers = (line, cv, jobText = '') => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote: cv }] }], coverLetter: '', answers: [] }, { sources: [{ id: 'cv', text: cv }], jobText }).filter(issue => issue.number).map(issue => issue.word);
+  assert.deepEqual(numbers('Validated twenty-five samples.', 'Validated 25 samples.'), []);
+  assert.deepEqual(numbers('Wrote twelve reports.', 'Wrote a dozen reports.'), []);
+  assert.deepEqual(numbers('Ran the assay two times daily.', 'Ran the assay twice daily.'), []);
+  assert.deepEqual(numbers('Led two teams.', 'Maintained the CO2 incubator.'), ['two']);
+  assert.deepEqual(numbers('Ran fifteen assay transfers.', 'Ran assay development for the lab.'), ['fifteen']);
+  assert.deepEqual(numbers('Served as one of the QA liaisons.', 'Served as QA liaison.'), []);
+  assert.deepEqual(numbers('Wrote a one-page strategy brief.', 'Wrote a strategy brief.'), []);
+  const letter = pluralScopeIssues({ resume: [], coverLetter: 'Your posting combines the assay, automation and LIMS in one Raleigh role.', answers: [] }, { sources: [{ id: 'cv', text: 'Developed an assay.' }], jobText: 'You will be one of our first engineers in Raleigh.' });
+  assert.deepEqual(letter.filter(issue => issue.number).map(issue => issue.word), ['one']);
+  const answer = pluralScopeIssues({ resume: [], coverLetter: '', answers: [{ question: 'q', answer: 'I led two teams and one program.', evidence: [{ sourceId: 'cv', quote: 'Led teams on programs.' }] }] }, { sources: [{ id: 'cv', text: 'Led teams on programs.' }] });
+  assert.deepEqual(answer.filter(issue => issue.number).map(issue => issue.word), ['two', 'one']);
+  const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(verbs('Successfully built the reporting pipeline.', 'Designed and tested the reporting pipeline.'), ['built']);
+  assert.deepEqual(verbs('Personally managed the LIMS rollout.', 'Designed and tested the LIMS rollout.'), ['managed']);
+  assert.deepEqual(verbs('Lead QA for the analytical lab.', 'Attended QA reviews for the analytical lab.'), ['lead']);
+  const cover = pluralScopeIssues({ resume: [], coverLetter: 'I oversee assay development for three products.', answers: [] }, { sources: [{ id: 'cv', text: 'Ran assay development for three products.' }] });
+  assert.deepEqual(cover.filter(issue => issue.verb).map(issue => issue.word), ['oversee']);
 });
