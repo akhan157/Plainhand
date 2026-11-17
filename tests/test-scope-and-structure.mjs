@@ -631,3 +631,10 @@ test('a dotted degree code alone marks a degree line', () => {
   const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
   assert.equal(flagged('I have written SQL since 2023.', 'B.S. Computer Science — Example State — 2023 to 2026'), 0);
 });
+
+test('review d406453: a bare degree code first in the line is a degree; a state code later is a location', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  assert.equal(flagged('I have run the forecast since 2023.', 'Acme Corp — Financial Analyst — 2021 to present\nMS Data Science — Georgia Tech — 2023 to 2025'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Financial Analyst — Jackson, MS — 2023 to present\nBeta — Junior Analyst — 2023 to 2024'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Beta — Junior Analyst — Boston, MA — 2023 to 2024'), 1);
+});

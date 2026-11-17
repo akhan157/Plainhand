@@ -270,7 +270,13 @@ function sinceItem({ kind, index, text, reference }) {
     // Headings split on an em dash or a spaced hyphen, never the en dash inside a date
     // range ("May 2023 – Jun 2026"); the last field holds the dates, as in roles.mjs.
     const parts = line.split(/\s+—\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
-    if (parts.length < 2 || (/\b(?:bachelor|master|ph\.?d|mba|degree|university|college|school|institute|project|certified|certificate|certification)\b/i.test(line) || /\b[bm]\.[sa]\./i.test(line))) return [];
+    // A degree line names the degree first ("MS Data Science — Georgia Tech"), where a
+    // role heading holds its employer; a state code later in the line ("Boston, MA")
+    // is a location, never a degree.
+    const degreeLine = /^(?:bachelor|master|ph\.?d|mba|degree|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?)\b/i.test(parts[0] || '')
+      || /\b[bm]\.[sa]\./i.test(line)
+      || /\b(?:university|college|school|institute|project|certified|certificate|certification)\b/i.test(line);
+    if (parts.length < 2 || degreeLine) return [];
     // A spaced hyphen can sit inside the date range ("2023 - present") and any number
     // of location fields can follow it, so the dates are found by scanning from the
     // right: at each position, two fields rejoined as a range, then the field alone;
