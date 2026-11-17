@@ -183,7 +183,11 @@ export function simulatedCandidate(persona) {
       const open = persona.facts.filter(f => !said.has(f.id));
       // A question about certifications or licences is answered with the certification
       // the candidate holds, whatever words the persona's keywords happen to use.
-      const credentialAsked = /\b(?:certificat\w*|licen[cs]\w*|credential\w*)\b/i.test(asked || question || '');
+      // Only a question about credentials the candidate holds ("Do you hold any
+      // certifications or licences?"), never "did you need a driver's licence" or
+      // "would you get a certification".
+      const credentialAsked = /\b(?:hold|have|earned|held|got)\b[^?]*\b(?:certificat\w*|licen[cs]\w*|credential\w*)\b|\b(?:what|which|any)\s+(?:professional\s+)?(?:certificat\w*|licen[cs]\w*|credential\w*)\b/i.test(asked || question || '')
+        && !/\bdriv\w*\s+licen/i.test(asked || question || '');
       const ranked = open.map(f => [hits(question, f.keywords) + (credentialAsked && /certif|licen/i.test(f.section || '') ? 10 : 0), f]).sort((a, b) => b[0] - a[0]);
       const pick = absent || (ranked[0]?.[0] > 0 ? ranked[0][1] : asks ? open[0] : null);
       if (pick) { said.add(pick.id); last = persona.facts.includes(pick) ? pick : null; return say(pick.text, { factId: pick.id, onTopic: Boolean(absent || ranked[0]?.[0] > 0) }); }

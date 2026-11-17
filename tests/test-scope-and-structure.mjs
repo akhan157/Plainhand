@@ -519,3 +519,15 @@ test('review 45b1448: compounds and composites state counts; only "one of" is pa
   assert.deepEqual(verbs('Assay development, lead optimizations, and method transfer.', 'Ran assay development.'), []);
   assert.match(PACKET_INSTRUCTION, /a count the posting states may be repeated only to describe the posting, never as the candidate's own/);
 });
+
+test('review edf7a8f: duration and fraction compounds state no count; people and places are raised-verb objects', () => {
+  const numbers = (line, cv) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote: cv }] }], coverLetter: '', answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.number).map(issue => issue.word);
+  assert.deepEqual(numbers('Supported three teams.', 'Ran a three-hour workshop.'), ['three']);
+  assert.deepEqual(numbers('Supported two teams.', 'Wrote a two-year roadmap.'), ['two']);
+  assert.deepEqual(numbers('Hired one analyst.', 'Cut defects by one-third.'), ['one']);
+  assert.deepEqual(numbers('Worked in a team of two.', 'Worked in a two-person team.'), []);
+  const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(verbs('Lead analysts through the close.', 'Supported the close.'), ['lead']);
+  assert.deepEqual(verbs('Manage vendors and invoices.', 'Processed vendor invoices.'), ['manage']);
+  assert.deepEqual(verbs('Direct reports include five scientists.', 'Managed five scientists.'), []);
+});

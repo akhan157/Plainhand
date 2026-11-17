@@ -158,6 +158,9 @@ const RAISED_VERBS = [
 // single-handedly built"). After "and" or a comma only a past-tense raised form
 // counts, so a list noun ("CI/CD, build tooling, and ...") is never read as a verb.
 const VERB_SLOT = new Set(["i", "we", "who", "also", "then", "that", "which", "have", "has", "had", "to", "jointly", "personally", "successfully", "later", "now", "currently", "i've", "we've", "i'd", "we'd", "i've", "we've"]);
+// People and places a raised verb acts on ("lead analysts", "manage vendors"); an
+// abstract plural ("reports", "optimizations") is not an object.
+const ROLE_OBJECT = /^(?:analysts?|technicians?|auditors?|vendors?|customers?|clients?|scientists?|associates?|contractors?|labs?|sites?|locations?|interns?|developers?|nurses?|operators?|managers?|accountants?|researchers?|students?|volunteers?|suppliers?|partners?|stakeholders?|teams?|crews?|squads?)$/;
 const OBJECT_START = new Set(['a', 'an', 'the', 'our', 'my', 'their', 'its', 'this', 'that', 'these', 'those', 'every', 'all', 'two', 'three', 'four', 'five', 'several', 'multiple', 'weekly', 'daily', 'monthly', 'new', 'cross-functional', 'teams', 'team', 'people', 'staff', 'engineers', 'projects', 'programs', 'programmes']);
 const PAST_RAISED = /^(?:built|led|managed|launched|founded|co-founded|cofounded|headed|directed|architected|spearheaded|oversaw|supervised|co-led)$/;
 function raisedTokens(text) {
@@ -191,7 +194,7 @@ function raisedTokens(text) {
     // name after a lower-case verb ("lead QA"); a bare plural is not enough, so
     // "Direct reports" and "lead optimizations" stay nouns.
     const nextRaw = value.slice(at + match[0].length).match(/^\s+([A-Za-z][A-Za-z'-]*)/)?.[1] || '';
-    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
+    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || ROLE_OBJECT.test(following) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
     // After a subject ("I oversee", "who leads") the word is a verb whatever follows.
     const afterSubject = previous && /^(?:i|we|who|i've|we've|i'd|we'd)$/.test(previous);
     const verbal = PAST_RAISED.test(lower) || /(?:ing)$/.test(lower) || takesObject || afterSubject;
@@ -225,6 +228,7 @@ const NOT_A_COUNT_BEFORE = /(?:\bno|\bany|\bevery|\bsome|\bthe only|-)\s*$/i;
 // `all` reads every number word, including compounds ("a two-person team" states
 // two): what a source states. Without it, uses that are not counts are skipped:
 // what a line claims.
+const COUNT_COMPOUND = /^-(?:person|people|member|site|lab|team|location|product|program|programme|plant|line|store|country|state|office|client|customer|engineer|analyst|scientist|squad|unit|clinic|hospital|school|campus|region|market|brand|vendor)s?\b/i;
 function countValues(text, { all = false } = {}) {
   const value = String(text ?? '');
   const values = [];
@@ -233,7 +237,10 @@ function countValues(text, { all = false } = {}) {
     const word = match[0].toLowerCase();
     // "one of", "no one", "someone" never state a count, on either side.
     if ((word === 'one' && /^\s+of\b/i.test(after)) || NOT_A_COUNT_BEFORE.test(before)) continue;
-    if (!all && NOT_A_COUNT_AFTER.test(after)) continue;
+    // A source states a count through a compound of countable things ("a two-person
+    // team", "a three-site rollout"), never a duration or fraction ("three-hour",
+    // "two-year", "one-third").
+    if (NOT_A_COUNT_AFTER.test(after) && !(all && COUNT_COMPOUND.test(after))) continue;
     const number = match[1] ? UNITS[match[1].toLowerCase()] * (match[2].toLowerCase() === 'hundred' ? 100 : 1000)
       : match[3] ? TENS[match[3].toLowerCase()] + (match[4] ? UNITS[match[4].toLowerCase()] : 0)
         : match[5] ? UNITS[match[5].toLowerCase()] : SPECIAL[match[6].toLowerCase()];

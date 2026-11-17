@@ -111,3 +111,12 @@ test('a role phrase in a statement before a different question is not a role que
   const answer = candidate.reply("I haven't yet heard which employer or role this work was at, so I'm not attaching it. Do you hold any certifications or licences relevant to your lab work?").text;
   assert.match(answer, /Green Belt/, answer);
 });
+
+test('only a question about credentials held gets the certification', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-fin-close');
+  assert.doesNotMatch(simulatedCandidate(persona).reply('Did you need a drivers licence for that kind of site work?').text, /CPA/);
+  assert.doesNotMatch(simulatedCandidate(persona).reply('Would you be willing to get a certification later?').text, /CPA/);
+  assert.match(simulatedCandidate(persona).reply('Do you hold any certifications or licences?').text, /CPA/);
+});
