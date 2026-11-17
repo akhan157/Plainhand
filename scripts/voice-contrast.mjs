@@ -37,10 +37,14 @@ export const SAMPLES = {
     "I'm a hands-on engineer. I build test rigs. I break them on purpose. I fix what breaks. Then I write the numbers down.",
     "Quick update: the upright passed. I'll send the plots tonight. Ask me if anything looks off.",
   ],
+  // v2 (2026-11-17, owner decision): realistic formal email written by a different
+  // model family (OMP DeepSeek) to a constraint brief, fixed before any run. The v1
+  // samples (9 stock markers in 76 words) remain in the record as a failing result.
   formal: [
-    'I am writing to provide a comprehensive update regarding the test campaign, and I would like to explain the methodology that was applied throughout the process. Furthermore, the results obtained thus far are approximately consistent with the initial predictions, although additional validation shall be required prior to the final report.',
-    'Please find the relevant documentation attached for your consideration, and do not hesitate to contact me at your earliest convenience should any further information be required.',
+    'I am writing to provide an update on the tensile test of the bracket specimen, which ran on schedule and produced results close to our prediction. The measured yield strength was slightly below the design target, and the fracture occurred near the fillet, matching the failure mode we anticipated. I will therefore repeat the test with a larger fillet radius before the next review meeting to confirm the corrected geometry.',
+    'Please find attached the revised tolerance summary for the housing assembly, which incorporates the comments from the review held last week. I would be grateful for confirmation that the summary aligns with your records, and I am happy to answer any questions regarding the remaining open items.',
   ],
+
 };
 export const JOB = {
   company: 'Acme Robotics',

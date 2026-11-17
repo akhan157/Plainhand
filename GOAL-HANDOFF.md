@@ -1090,3 +1090,23 @@ holdout2-journey-stem fails again, the same way.
   in 76 words.
 - **Decision:** no stuffing. U05 stays in_progress. Passing it would need an owner
   decision on the fixture or the measure.
+
+## U05 voice contrast v2 — pre-registration (written before any v2 run) — 2026-11-17
+
+- **Owner decision:** replace the formal persona's samples with realistic formal
+  writing and pre-register again. The v1 result (formal fails, recorded above) stays
+  in the record.
+- **Fixture:** `scripts/voice-contrast.mjs` `SAMPLES.formal`, v2.
+  - Two formal professional emails, written by OMP DeepSeek (a different model
+    family) to a constraint brief.
+  - The brief: realistic, no parody, no contractions, 20–28 words per sentence,
+    3–6 formal markers across both samples, 80–120 words.
+  - The author saw no Plainhand output.
+  - Measured: 117 words, 23.4 words per sentence, 0 contractions, 3.42 formal
+    markers per 100 words.
+  - Terse samples unchanged.
+- **Measure:** unchanged and frozen (`plainhand/voice-metrics.mjs`).
+- **Pass rule (unchanged):** each persona's letter is strictly closer to its own
+  samples than to the other persona's (`closerToOwn` for both).
+- **Run:** Claude Sonnet 5.5 at medium effort, fresh clone of the commit that
+  adds this entry. The first v2 run is the result, whatever it shows.
