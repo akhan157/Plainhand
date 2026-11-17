@@ -266,3 +266,11 @@ test('a JSON reply wrapped in prose or a fenced block is still read; prose alone
   assert.deepEqual(parseAgentJson(envelope('{"a":1}')), { a: 1 });
   assert.throws(() => parseAgentJson(envelope('no json here')), /unreadable result/);
 });
+
+test('review fdff850: the output cap is 2 MB unless the caller asks for more, whatever onOutput is', async () => {
+  const { runProcess } = await import('../plainhand/agents.mjs');
+  const big = ['-c', "head -c 2100000 /dev/zero | tr '\\0' 'a'"];
+  await assert.rejects(runProcess('sh', big, { onOutput: () => {} }), /exceeded the limit/);
+  const out = await runProcess('sh', big, { onOutput: () => {}, maxOutput: 8000000 });
+  assert.equal(String(out.stdout ?? out).length >= 2100000, true);
+});

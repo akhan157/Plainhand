@@ -54,7 +54,7 @@ export function letterOverlaps(coverLetter, resume = []) {
 // and tell the drafter what the letter should say instead. Empty when nothing overlaps.
 export function letterRetryFeedback(overlaps, limit = 3) {
   if (!overlaps.length) return [];
-  return ['The cover letter repeats resume lines word for word. Rewrite each flagged sentence as the story behind the line, with the situation, how the work was done and why it mattered, never the resume line itself:', ...overlaps.slice(0, limit).map(item => `Letter sentence "${condensed(item.sentence, 180)}" repeats "${item.phrase}" from a ${item.section || 'resume'} line.`)];
+  return ['The cover letter repeats resume lines word for word. Rewrite each flagged sentence in fresh words, never the resume line itself. Add the situation, how the work was done and why it mattered only where a story, interview or narrative source states them; when none does, reword the same evidenced work and add nothing:', ...overlaps.slice(0, limit).map(item => `Letter sentence "${condensed(item.sentence, 180)}" repeats "${item.phrase}" from a ${item.section || 'resume'} line.`)];
 }
 
 // The final-attempt record: quality, not a factual finding, so the packet is kept.

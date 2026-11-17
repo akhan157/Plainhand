@@ -569,10 +569,16 @@ test('the candidate\'s own register phrases are exempt from the stock-phrase rul
 });
 
 test('the letter rules forbid context no source states (situation, reason, before-state, outcome)', () => {
-  assert.match(PACKET_INSTRUCTION, /Every situation, reason, before-state, motivation, ownership and outcome in the letter must be stated in a source/);
+  assert.match(PACKET_INSTRUCTION, /Every situation, reason, before-state and outcome in the letter must be stated in a source, and so must ownership and motivation unless INPUT.candidateLine.allowedStretches names that kind/);
   assert.match(STANDARD_INSTRUCTION, /never an imagined situation, reason, before-state or outcome/);
 });
 
 test('the summary never calls the candidate by a job title they have not held', () => {
   assert.match(PACKET_INSTRUCTION, /never calls them by a job title they have not held/);
+});
+
+test('review fdff850: the letter-overlap retry never asks for unsourced context', async () => {
+  const { letterRetryFeedback } = await import('../plainhand/letter-checks.mjs');
+  const [head] = letterRetryFeedback([{ sentence: 'Supervised the chassis program.', phrase: 'supervised the chassis program', section: 'Experience' }]);
+  assert.match(head, /only where a story, interview or narrative source states them; when none does, reword the same evidenced work and add nothing/);
 });
