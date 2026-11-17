@@ -582,3 +582,11 @@ test('review fdff850: the letter-overlap retry never asks for unsourced context'
   const [head] = letterRetryFeedback([{ sentence: 'Supervised the chassis program.', phrase: 'supervised the chassis program', section: 'Experience' }]);
   assert.match(head, /only where a story, interview or narrative source states them; when none does, reword the same evidenced work and add nothing/);
 });
+
+test('"since YEAR" for a role the sources close is flagged; an ongoing role is not', () => {
+  const letter = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since);
+  assert.equal(letter('I have run the forecast since 2023.', 'Example Manufacturing Corp — Financial Analyst — 2023 to 2026').length, 1);
+  assert.equal(letter('I have run the forecast since 2023.', 'Example Manufacturing Corp — Financial Analyst — 2023 to present').length, 0);
+  assert.equal(letter('I have run the forecast since 2023.', 'I joined in 2023.').length, 0);
+  assert.match(scopeRetryFeedback(letter('I have run the forecast since 2023.', 'Example Corp — Analyst — 2023 to 2026')).join('\n'), /sources date it 2023 to 2026/);
+});

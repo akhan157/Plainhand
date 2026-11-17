@@ -256,6 +256,20 @@ function numberWordItem({ kind, index, text, reference }) {
     .map(item => ({ kind, index, word: item.word, number: String(item.number), text: String(text ?? ''), quote: '' }));
 }
 
+// "since 2023" says the candidate is still there. When every factual source dates that
+// start year as a range that ended ("2023 to 2026"), the letter claims a current role
+// the sources close, so it is a scope stretch on time.
+function sinceItem({ kind, index, text, reference }) {
+  const value = String(text ?? '');
+  const ref = String(reference ?? '');
+  return [...value.matchAll(/\bsince\s+((?:19|20)\d{2})\b/gi)].flatMap(match => {
+    const year = match[1];
+    const ranges = [...ref.matchAll(new RegExp(`\\b${year}\\s*(?:[–—-]|to|until)\\s*((?:19|20)\\d{2}|present|current|now|today)\\b`, 'gi'))].map(range => range[1].toLowerCase());
+    if (!ranges.length || ranges.some(end => !/^\d/.test(end))) return [];
+    return [{ kind, index, word: match[0], since: year, ended: ranges[0], text: value, quote: '' }];
+  });
+}
+
 // numbers: false on a revision, where the candidate's request is checked by review.
 export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jobText = '', numbers = true } = {}) {
   const verbs = item => (allowVerbs ? [] : verbItem(item));
@@ -286,6 +300,7 @@ export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jo
   const letterQuotes = sourceText.length ? sourceText : [...resume.flatMap(quotesOf), ...answers.flatMap(quotesOf)];
   if (letterQuotes.length && String(packet?.coverLetter ?? '').trim()) {
     sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: factualText.length ? factualText : letterQuotes }),
+      ...(factualText.length ? sinceItem({ kind: 'cover', index: null, text, reference: factualText.join(' ') }) : []),
       ...(numberReference ? numberWordItem({ kind: 'cover', index: null, text, reference: numberReference }) : [])));
   }
   return issues;
@@ -305,7 +320,9 @@ export function scopeRetryFeedback(issues) {
   if (!issues.length) return [];
   return [
     'Keep counts, number and verbs exactly as the sources state: a plural or a stronger verb (built, led, managed) the evidence does not use is a scope stretch.',
-    ...issues.map(issue => issue.number
+    ...issues.map(issue => issue.since
+      ? `${label(issue)}: "${issue.word}" says the role is current, but the sources date it ${issue.since} to ${issue.ended}; use the sources' dates. Sentence: "${around(issue.text, issue.word)}"`
+      : issue.number
       ? `${label(issue)}: "${issue.word}" states a number (${issue.number}) no source gives; write "a" or "a single", or leave the count out. Sentence: "${around(issue.text, issue.word)}"`
       : issue.verb
       ? `${label(issue)}: "${issue.word}" is a stronger verb than the cited evidence uses; use the evidence's own verb (for example "designed", "tested", "worked on") unless a source says "${issue.verb}". Sentence: "${around(issue.text, issue.word)}"`
@@ -317,7 +334,9 @@ export function scopeSuggestions(issues) {
   // Quote the line, never an index: a reviewer counting entries from zero would read
   // "Resume entry 2" as a different line and reject the note as false.
   const where = issue => issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line';
-  return issues.map(issue => issue.number
+  return issues.map(issue => issue.since
+    ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", but the sources date that role ${issue.since} to ${issue.ended}. Use the sources' dates.`
+    : issue.number
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a number no source states. Write "a" or leave the count out.`
     : issue.verb
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a verb its cited evidence does not use. Use the evidence's own verb or add a source that says "${issue.verb}".`
