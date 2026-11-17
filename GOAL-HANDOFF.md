@@ -1175,3 +1175,21 @@ holdout2-journey-stem fails again, the same way.
   identified.
 - **State at `98faeb6`:** suite 770/770, controlled gate 64/67 (expected),
   simulation 49/49.
+
+## U14 Claude re-run on `22b840c` — 2026-11-17
+
+- **Run:** after the sourced-letter, summary-title and since-year fixes. Same six
+  rows, Sonnet 5.5 at medium effort.
+
+  | | Baseline | HEAD `22b840c` |
+  | --- | --- | --- |
+  | Rows passed | 2/6 | 4/6 |
+  | Application calls | 36 | 34 (−6%) |
+  | Seeded input tokens | 122k | 116k (−5%) |
+  | Judge overall | 4.00 | 4.00 |
+  | Judge honesty | 4.83 | 4.60 |
+  | Unsupported | 1% | 0% |
+
+- **Verdict:** near parity, with more passes. Honesty is still slightly lower, and
+  the cost difference is within the noise of a single repeat. U14 stays
+  in_progress, and the Codex re-run on 2026-11-22 decides it.
