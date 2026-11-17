@@ -101,3 +101,13 @@ test('asked where the work just described happened, the simulated candidate name
   assert.ok(answer.includes(heading.split(' — ')[0]), `${answer} names ${heading}`);
   assert.ok(answer.startsWith(first.split(/,|\s+(?:that|which|so|and I)\s+/)[0]), 'and the work it is about');
 });
+
+test('a role phrase in a statement before a different question is not a role question', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const candidate = simulatedCandidate(persona);
+  candidate.reply('What were you responsible for, and what results did you achieve?');
+  const answer = candidate.reply("I haven't yet heard which employer or role this work was at, so I'm not attaching it. Do you hold any certifications or licences relevant to your lab work?").text;
+  assert.match(answer, /Green Belt/, answer);
+});

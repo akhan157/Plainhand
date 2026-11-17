@@ -505,3 +505,17 @@ test('review d2a6000: counts compare by value, skip non-count uses, cover answer
   const cover = pluralScopeIssues({ resume: [], coverLetter: 'I oversee assay development for three products.', answers: [] }, { sources: [{ id: 'cv', text: 'Ran assay development for three products.' }] });
   assert.deepEqual(cover.filter(issue => issue.verb).map(issue => issue.word), ['oversee']);
 });
+
+test('review 45b1448: compounds and composites state counts; only "one of" is partitive; noun phrases are not raised verbs', () => {
+  const numbers = (line, cv) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote: cv }] }], coverLetter: '', answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.number).map(issue => issue.word);
+  assert.deepEqual(numbers('Worked in a team of two.', 'Worked in a two-person team.'), []);
+  assert.deepEqual(numbers('Rolled the system out to three sites.', 'Ran the three-site rollout.'), []);
+  assert.deepEqual(numbers('Screened two hundred samples.', 'Screened 200 samples.'), []);
+  assert.deepEqual(numbers('Screened two thousand samples.', 'Screened 2,000 samples.'), []);
+  const letter = pluralScopeIssues({ resume: [], coverLetter: 'I audited twelve of the thirty labs.', answers: [] }, { sources: [{ id: 'cv', text: 'Audited 30 labs.' }] });
+  assert.deepEqual(letter.filter(issue => issue.number).map(issue => issue.word), ['twelve']);
+  const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(verbs('Direct reports include five scientists.', 'Managed a team of five scientists.'), []);
+  assert.deepEqual(verbs('Assay development, lead optimizations, and method transfer.', 'Ran assay development.'), []);
+  assert.match(PACKET_INSTRUCTION, /a count the posting states may be repeated only to describe the posting, never as the candidate's own/);
+});

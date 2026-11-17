@@ -187,10 +187,11 @@ function raisedTokens(text) {
     // A present-tense form must take an object to be a verb: "Lead the stand-up",
     // never "Build tooling ownership".
     const following = value.slice(at + match[0].length).toLowerCase().match(/^\s+([a-z][a-z'-]*)/)?.[1];
-    // An object: a determiner, possessive, number or quantity word, or a noun that
-    // starts with a capital or ends in -s (QA, technicians, teams).
+    // An object: a determiner, possessive, number or quantity word, or a capitalised
+    // name after a lower-case verb ("lead QA"); a bare plural is not enough, so
+    // "Direct reports" and "lead optimizations" stay nouns.
     const nextRaw = value.slice(at + match[0].length).match(/^\s+([A-Za-z][A-Za-z'-]*)/)?.[1] || '';
-    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || (/s$/.test(following) && following.length > 3) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
+    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
     // After a subject ("I oversee", "who leads") the word is a verb whatever follows.
     const afterSubject = previous && /^(?:i|we|who|i've|we've|i'd|we'd)$/.test(previous);
     const verbal = PAST_RAISED.test(lower) || /(?:ing)$/.test(lower) || takesObject || afterSubject;
@@ -217,26 +218,32 @@ function verbItem({ kind, index, text, quotes }) {
 const UNITS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
 const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
 const SPECIAL = { dozen: 12, twice: 2, thrice: 3, couple: 2, pair: 2, hundred: 100, thousand: 1000 };
-const NUMBER_WORD = new RegExp(`\\b(?:(${Object.keys(TENS).join('|')})(?:[-\\s](${Object.keys(UNITS).slice(0, 9).join('|')}))?|(${Object.keys(UNITS).join('|')})|(${Object.keys(SPECIAL).join('|')}))\\b`, 'gi');
+const NUMBER_WORD = new RegExp(`\\b(?:(${Object.keys(UNITS).slice(0, 9).join('|')})\\s+(hundred|thousand)|(${Object.keys(TENS).join('|')})(?:[-\\s](${Object.keys(UNITS).slice(0, 9).join('|')}))?|(${Object.keys(UNITS).join('|')})|(${Object.keys(SPECIAL).join('|')}))\\b`, 'gi');
 // Not a count: a partitive, a compound modifier, a fraction, or a fixed phrase.
-const NOT_A_COUNT_AFTER = /^(?:\s+of\b|-(?!(?:one|two|three|four|five|six|seven|eight|nine)\b)[a-z]|\s*-?\s*(?:half|third|thirds|quarter|quarters|fifth|fifths)\b|\s+another\b|\s+(?:or|to)\s+(?:two|three|more)\b)/i;
+const NOT_A_COUNT_AFTER = /^(?:-(?!(?:one|two|three|four|five|six|seven|eight|nine)\b)[a-z]|\s*-?\s*(?:half|third|thirds|quarter|quarters|fifth|fifths)\b|\s+another\b|\s+(?:or|to)\s+(?:two|three|more)\b)/i;
 const NOT_A_COUNT_BEFORE = /(?:\bno|\bany|\bevery|\bsome|\bthe only|-)\s*$/i;
-function countValues(text) {
+// `all` reads every number word, including compounds ("a two-person team" states
+// two): what a source states. Without it, uses that are not counts are skipped:
+// what a line claims.
+function countValues(text, { all = false } = {}) {
   const value = String(text ?? '');
   const values = [];
   for (const match of value.matchAll(NUMBER_WORD)) {
     const after = value.slice(match.index + match[0].length), before = value.slice(0, match.index);
-    if (NOT_A_COUNT_AFTER.test(after) || NOT_A_COUNT_BEFORE.test(before)) continue;
     const word = match[0].toLowerCase();
-    const number = match[1] ? TENS[match[1].toLowerCase()] + (match[2] ? UNITS[match[2].toLowerCase()] : 0)
-      : match[3] ? UNITS[match[3].toLowerCase()] : SPECIAL[match[4].toLowerCase()];
+    // "one of", "no one", "someone" never state a count, on either side.
+    if ((word === 'one' && /^\s+of\b/i.test(after)) || NOT_A_COUNT_BEFORE.test(before)) continue;
+    if (!all && NOT_A_COUNT_AFTER.test(after)) continue;
+    const number = match[1] ? UNITS[match[1].toLowerCase()] * (match[2].toLowerCase() === 'hundred' ? 100 : 1000)
+      : match[3] ? TENS[match[3].toLowerCase()] + (match[4] ? UNITS[match[4].toLowerCase()] : 0)
+        : match[5] ? UNITS[match[5].toLowerCase()] : SPECIAL[match[6].toLowerCase()];
     values.push({ word, number });
   }
   return values;
 }
 const digitValues = text => new Set([...String(text ?? '').matchAll(/(?<![A-Za-z0-9/.,])(\d{1,3}(?:,\d{3})*|\d+)(?![A-Za-z0-9/]|[.,]\d)/g)].map(match => Number(match[1].replace(/,/g, ''))));
 function numberWordItem({ kind, index, text, reference }) {
-  const stated = new Set([...digitValues(reference), ...countValues(reference).map(item => item.number)]);
+  const stated = new Set([...digitValues(reference), ...countValues(reference, { all: true }).map(item => item.number)]);
   const seen = new Set();
   return countValues(text).filter(item => !stated.has(item.number) && !seen.has(item.word) && seen.add(item.word))
     .map(item => ({ kind, index, word: item.word, number: String(item.number), text: String(text ?? ''), quote: '' }));

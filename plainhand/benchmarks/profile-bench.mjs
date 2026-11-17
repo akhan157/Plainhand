@@ -158,7 +158,10 @@ export function simulatedCandidate(persona) {
       const asks = /\?/.test(question || '');
       const qWords = content(question);
       const overlap = last ? [...content(last.text)].filter(w => qWords.has(w)).length : 0;
-      const roleQuestion = asks && ROLE_QUESTION.test(question || '');
+      // Only the question actually asked counts: a statement earlier in the message
+      // ("I haven't heard which employer this was at, so ...") is not a role question.
+      const asked = String(question || '').split(/(?<=[.!])\s+/).filter(part => part.includes('?')).at(-1) || '';
+      const roleQuestion = asks && ROLE_QUESTION.test(asked);
       const placed = roleQuestion && last && !placedFacts.has(last.id) ? roleOfFact(persona, last, roles) : null;
       if (placed) {
         placedFacts.add(last.id);
@@ -178,7 +181,10 @@ export function simulatedCandidate(persona) {
       if (asks && last?.detail && !detailed.has(last.id) && overlap >= 2) { detailed.add(last.id); return say(last.detail, { factId: last.id, detail: true, onTopic: true }); }
       const absent = persona.absent.find(a => !said.has(a.id) && hits(question, a.keywords));
       const open = persona.facts.filter(f => !said.has(f.id));
-      const ranked = open.map(f => [hits(question, f.keywords), f]).sort((a, b) => b[0] - a[0]);
+      // A question about certifications or licences is answered with the certification
+      // the candidate holds, whatever words the persona's keywords happen to use.
+      const credentialAsked = /\b(?:certificat\w*|licen[cs]\w*|credential\w*)\b/i.test(asked || question || '');
+      const ranked = open.map(f => [hits(question, f.keywords) + (credentialAsked && /certif|licen/i.test(f.section || '') ? 10 : 0), f]).sort((a, b) => b[0] - a[0]);
       const pick = absent || (ranked[0]?.[0] > 0 ? ranked[0][1] : asks ? open[0] : null);
       if (pick) { said.add(pick.id); last = persona.facts.includes(pick) ? pick : null; return say(pick.text, { factId: pick.id, onTopic: Boolean(absent || ranked[0]?.[0] > 0) }); }
       if (!agreed && !asks) { agreed = true; return say('Yes, go ahead.', { factId: null, agreed: true, onTopic: false }); }
