@@ -1076,3 +1076,17 @@ holdout2-journey-stem fails again, the same way.
     scores with the frozen baseline.
 - **Live provider settings for Claude runs:** `PLAINHAND_CLAUDE_MODEL=sonnet`,
   `PLAINHAND_CLAUDE_EFFORT=medium`; the script is `~/.cache/plainhand-recheck/recheck2-live.sh`.
+
+## U05 diagnosis — 2026-11-17
+
+- **Where the markers are lost:** in drafting. The formal draft had 2.4 markers per
+  100 words before the humanizer and 2.4 after it. The instructions forbade stock
+  phrases and closings that the candidate's own samples use. `c1c9684` exempts the
+  candidate's register phrases from those rules.
+- **Live result on Sonnet medium:** the formal letter is now visibly formal, at 3.2
+  markers per 100 words. The contrast still fails (1.55 vs 1.11).
+- **Why it cannot pass honestly:** the frozen measure needs more than about 4.5 markers
+  per 100 words, roughly 9 in a typical letter. The fixture samples carry 9 markers
+  in 76 words.
+- **Decision:** no stuffing. U05 stays in_progress. Passing it would need an owner
+  decision on the fixture or the measure.
