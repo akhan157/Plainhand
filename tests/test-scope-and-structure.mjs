@@ -567,3 +567,12 @@ test('review 3e74cb4: "direct" takes only a plural role noun as its object', () 
 test('the candidate\'s own register phrases are exempt from the stock-phrase rules in both instructions', () => {
   for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /registerPhrases are exempt from the stock-phrase and stock-closing rules/);
 });
+
+test('the letter rules forbid context no source states (situation, reason, before-state, outcome)', () => {
+  assert.match(PACKET_INSTRUCTION, /Every situation, reason, before-state, motivation, ownership and outcome in the letter must be stated in a source/);
+  assert.match(STANDARD_INSTRUCTION, /never an imagined situation, reason, before-state or outcome/);
+});
+
+test('the summary never calls the candidate by a job title they have not held', () => {
+  assert.match(PACKET_INSTRUCTION, /never calls them by a job title they have not held/);
+});
