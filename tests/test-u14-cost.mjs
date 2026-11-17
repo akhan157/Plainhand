@@ -274,3 +274,12 @@ test('review fdff850: the output cap is 2 MB unless the caller asks for more, wh
   const out = await runProcess('sh', big, { onOutput: () => {}, maxOutput: 8000000 });
   assert.equal(String(out.stdout ?? out).length >= 2100000, true);
 });
+
+test('the Codex model and reasoning effort come from PLAINHAND_CODEX_MODEL and PLAINHAND_CODEX_EFFORT', async () => {
+  const { codexModelArgs, codexExecArgs } = await import('../plainhand/agents.mjs');
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: 'gpt-6.1-sol', PLAINHAND_CODEX_EFFORT: 'low' }), ['-m', 'gpt-6.1-sol', '-c', 'model_reasoning_effort="low"']);
+  assert.deepEqual(codexModelArgs({}), []);
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: 'x; rm -rf', PLAINHAND_CODEX_EFFORT: 'turbo' }), []);
+  const args = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: { PLAINHAND_CODEX_MODEL: 'gpt-6.1-sol', PLAINHAND_CODEX_EFFORT: 'low' } });
+  assert.ok(args.includes('-m') && args.includes('model_reasoning_effort="low"'));
+});

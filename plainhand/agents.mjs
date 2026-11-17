@@ -256,9 +256,18 @@ export const CLI_INSTRUCTIONS = AGENT_PREAMBLE;
 const tomlString = value => `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 // Exported so a test (and the cost harness) can measure the exact request the CLI
 // makes without duplicating these flags.
-export function codexExecArgs({ resultFile, instructionsFile }) {
+// The Codex model and reasoning effort for each call: PLAINHAND_CODEX_MODEL (for
+// example "gpt-6.1-sol") and PLAINHAND_CODEX_EFFORT (minimal, low, medium, high, xhigh).
+// Unset keeps the CLI default (the user's own config is ignored by design).
+const CODEX_EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh']);
+export function codexModelArgs(env = process.env) {
+  const model = String(env?.PLAINHAND_CODEX_MODEL ?? '').trim();
+  const effort = String(env?.PLAINHAND_CODEX_EFFORT ?? '').trim().toLowerCase();
+  return [...(/^[A-Za-z0-9._-]{1,80}$/.test(model) ? ['-m', model] : []), ...(CODEX_EFFORTS.has(effort) ? ['-c', `model_reasoning_effort="${effort}"`] : [])];
+}
+export function codexExecArgs({ resultFile, instructionsFile, env = process.env }) {
   return [
-    'exec', '--json', '--skip-git-repo-check', '--ephemeral', '--ignore-user-config', '--sandbox', 'read-only',
+    'exec', '--json', '--skip-git-repo-check', '--ephemeral', '--ignore-user-config', '--sandbox', 'read-only', ...codexModelArgs(env),
     // The shell tool is the one Codex tool Plainhand keeps disabled by flag; the rest
     // below are per-call config overrides in the same style.
     '-c', 'features.shell_tool=false',
@@ -308,7 +317,7 @@ export async function executeAgent(id, instruction, data, { signal, runner = run
     if (id === 'codex') {
       const instructionsFile = path.join(cwd, 'instructions.txt');
       await writeFile(instructionsFile, CLI_INSTRUCTIONS + '\n');
-      args = codexExecArgs({ resultFile: path.join(cwd, 'result.json'), instructionsFile });
+      args = codexExecArgs({ resultFile: path.join(cwd, 'result.json'), instructionsFile, env });
     }
     const streaming = id === 'claude' && typeof onText === 'function';
     if (id === 'claude') args = ['-p', ...(streaming ? ['--output-format', 'stream-json', '--verbose', '--include-partial-messages'] : ['--output-format', 'json']), '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', '', '--disable-slash-commands', '--no-session-persistence', ...claudeModelArgs(env), '--system-prompt', CLI_INSTRUCTIONS];
