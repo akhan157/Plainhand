@@ -638,3 +638,14 @@ test('review d406453: a bare degree code first in the line is a degree; a state 
   assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Financial Analyst — Jackson, MS — 2023 to present\nBeta — Junior Analyst — 2023 to 2024'), 0);
   assert.equal(flagged('I have run the forecast since 2023.', 'Beta — Junior Analyst — Boston, MA — 2023 to 2024'), 1);
 });
+
+test('review a6fff1f: school-first degree lines are degrees; "Master Data Analyst" is a role', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  const current = 'Acme Corp — Financial Analyst — 2021 to present\n';
+  for (const degree of ['Wharton — MBA — 2023 to 2025', 'Stanford — Master of Science — 2023 to 2025', 'Wharton MBA — 2023 to 2025', 'Kellogg — Master of Science in Management — 2023 to 2025']) {
+    assert.equal(flagged('I have worked in financial analysis since 2023.', current + degree), 0, degree);
+  }
+  assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Master Data Analyst — 2023 to 2024'), 1);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Acme Corp — Financial Analyst — 2021 to present\nMS Data Science — Georgia Tech — 2023 to 2025'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Financial Analyst — Jackson, MS — 2023 to present\nBeta — Junior Analyst — 2023 to 2024'), 0);
+});

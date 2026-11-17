@@ -270,11 +270,16 @@ function sinceItem({ kind, index, text, reference }) {
     // Headings split on an em dash or a spaced hyphen, never the en dash inside a date
     // range ("May 2023 – Jun 2026"); the last field holds the dates, as in roles.mjs.
     const parts = line.split(/\s+—\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
-    // A degree line names the degree first ("MS Data Science — Georgia Tech"), where a
-    // role heading holds its employer; a state code later in the line ("Boston, MA")
-    // is a location, never a degree.
-    const degreeLine = /^(?:bachelor|master|ph\.?d|mba|degree|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?)\b/i.test(parts[0] || '')
+    // A degree line: a field that is a degree and cannot be a job-title word (a bare
+    // code, "Master of …", MBA, PhD), the degree first in the line, a dotted code, or
+    // a school word. A state code ("Boston, MA") is a location, and "Master Data
+    // Analyst" stays a role.
+    const degreeField = parts.some(part => /^(?:b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?|mba|ph\.?d|degree|bachelor'?s?|master'?s?)$/i.test(part)
+      || /^(?:bachelor|master|ph\.?d)\b.*\b(?:of|in)\b|^master'?s\b/i.test(part));
+    const degreeLine = degreeField
+      || /^(?:bachelor|master|ph\.?d|mba|degree|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?)\b/i.test(parts[0] || '')
       || /\b[bm]\.[sa]\./i.test(line)
+      || /\b(?:mba|ph\.?d|degree)\b/i.test(line)
       || /\b(?:university|college|school|institute|project|certified|certificate|certification)\b/i.test(line);
     if (parts.length < 2 || degreeLine) return [];
     // A spaced hyphen can sit inside the date range ("2023 - present") and any number
