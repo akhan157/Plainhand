@@ -1,3 +1,4 @@
+import { parseDates } from './evaluation/roles.mjs';
 import { FACTUAL_SOURCE_IDS } from './store.mjs';
 // A scope stretch the reviewer and calibration have missed: the source says one
 // assay and the packet says "assays" because the posting uses the plural. This is
@@ -262,11 +263,23 @@ function numberWordItem({ kind, index, text, reference }) {
 function sinceItem({ kind, index, text, reference }) {
   const value = String(text ?? '');
   const ref = String(reference ?? '');
+  // Role headings only (employer — title — dates), read with the same date parser the
+  // rest of Plainhand uses, so "May 2023 – Jun 2026" and "2023 through 2026" count;
+  // a degree or project range is never a role.
+  const roles = ref.split(/\r?\n|(?<=\.)\s+/).flatMap(line => {
+    const parts = line.split(/\s+[—–]\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
+    if (parts.length < 3 || /\b(?:bachelor|master|b\.?s\.?|m\.?s\.?|ph\.?d|mba|degree|university|college|school|project)\b/i.test(line)) return [];
+    const dates = parseDates(parts.slice(2).join(' – '));
+    return dates && !dates.ongoing && Number.isFinite(Number(dates.end)) ? [{ org: parts[0], title: parts[1], start: Number(dates.start), end: Number(dates.end) }] : [];
+  });
   return [...value.matchAll(/\bsince\s+((?:19|20)\d{2})\b/gi)].flatMap(match => {
-    const year = match[1];
-    const ranges = [...ref.matchAll(new RegExp(`\\b${year}\\s*(?:[–—-]|to|until)\\s*((?:19|20)\\d{2}|present|current|now|today)\\b`, 'gi'))].map(range => range[1].toLowerCase());
-    if (!ranges.length || ranges.some(end => !/^\d/.test(end))) return [];
-    return [{ kind, index, word: match[0], since: year, ended: ranges[0], text: value, quote: '' }];
+    const year = Number(match[1]);
+    // A source that itself says "since YEAR" supports the sentence.
+    if (new RegExp(`\\bsince\\s+${year}\\b`, 'i').test(ref)) return [];
+    const closed = roles.filter(role => role.start === year);
+    if (closed.length !== 1) return [];
+    const role = closed[0];
+    return [{ kind, index, word: match[0], since: String(year), ended: String(role.end), role: `${role.title} at ${role.org}`, text: value, quote: '' }];
   });
 }
 
@@ -321,7 +334,7 @@ export function scopeRetryFeedback(issues) {
   return [
     'Keep counts, number and verbs exactly as the sources state: a plural or a stronger verb (built, led, managed) the evidence does not use is a scope stretch.',
     ...issues.map(issue => issue.since
-      ? `${label(issue)}: "${issue.word}" says the role is current, but the sources date it ${issue.since} to ${issue.ended}; use the sources' dates. Sentence: "${around(issue.text, issue.word)}"`
+      ? `${label(issue)}: "${issue.word}" says the ${issue.role} role is current, but the sources date it ${issue.since} to ${issue.ended}; use the sources' dates. Sentence: "${around(issue.text, issue.word)}"`
       : issue.number
       ? `${label(issue)}: "${issue.word}" states a number (${issue.number}) no source gives; write "a" or "a single", or leave the count out. Sentence: "${around(issue.text, issue.word)}"`
       : issue.verb
@@ -335,7 +348,7 @@ export function scopeSuggestions(issues) {
   // "Resume entry 2" as a different line and reject the note as false.
   const where = issue => issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line';
   return issues.map(issue => issue.since
-    ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", but the sources date that role ${issue.since} to ${issue.ended}. Use the sources' dates.`
+    ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", but the sources date the ${issue.role} role ${issue.since} to ${issue.ended}. Use the sources' dates.`
     : issue.number
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a number no source states. Write "a" or leave the count out.`
     : issue.verb

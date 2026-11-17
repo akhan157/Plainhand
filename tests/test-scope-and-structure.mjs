@@ -588,5 +588,14 @@ test('"since YEAR" for a role the sources close is flagged; an ongoing role is n
   assert.equal(letter('I have run the forecast since 2023.', 'Example Manufacturing Corp — Financial Analyst — 2023 to 2026').length, 1);
   assert.equal(letter('I have run the forecast since 2023.', 'Example Manufacturing Corp — Financial Analyst — 2023 to present').length, 0);
   assert.equal(letter('I have run the forecast since 2023.', 'I joined in 2023.').length, 0);
-  assert.match(scopeRetryFeedback(letter('I have run the forecast since 2023.', 'Example Corp — Analyst — 2023 to 2026')).join('\n'), /sources date it 2023 to 2026/);
+  assert.match(scopeRetryFeedback(letter('I have run the forecast since 2023.', 'Example Corp — Analyst — 2023 to 2026')).join('\n'), /Analyst at Example Corp role is current, but the sources date it 2023 to 2026/);
+});
+
+test('review cd3eb60: only one closed role starting that year counts; degrees, sourced claims and month formats', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  assert.equal(flagged('I have written SQL since 2023.', 'B.S. Computer Science — State University — 2023 to 2026. I have written SQL since 2023.'), 0);
+  assert.equal(flagged('I have written SQL since 2023.', 'B.S. Computer Science — State University — 2023 to 2026'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — May 2023 – Jun 2026'), 1);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 through 2026'), 1);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Analyst — 2023 to 2024\nOther Corp — Associate — 2023 to 2025'), 0);
 });
