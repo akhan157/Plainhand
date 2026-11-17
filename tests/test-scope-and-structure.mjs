@@ -599,3 +599,13 @@ test('review cd3eb60: only one closed role starting that year counts; degrees, s
   assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 through 2026'), 1);
   assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Analyst — 2023 to 2024\nOther Corp — Associate — 2023 to 2025'), 0);
 });
+
+test('review c8cefac: single-year entries, location slots, B.S. degrees and ongoing roles', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  assert.equal(flagged('I have written SQL since 2023.', 'Example Lab — Research Intern — 2023'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — Raleigh, NC — 2023 to 2026'), 1);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — 2023 to 2026'), 1);
+  assert.equal(flagged('I have written SQL since 2023.', 'B.S. Computer Science — Example Institute — 2023 to 2026'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 to present\nExample Consulting — Contract Analyst — 2023 to 2024'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — May 2023 – Jun 2026'), 1);
+});

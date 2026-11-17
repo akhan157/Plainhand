@@ -266,20 +266,26 @@ function sinceItem({ kind, index, text, reference }) {
   // Role headings only (employer — title — dates), read with the same date parser the
   // rest of Plainhand uses, so "May 2023 – Jun 2026" and "2023 through 2026" count;
   // a degree or project range is never a role.
-  const roles = ref.split(/\r?\n|(?<=\.)\s+/).flatMap(line => {
-    const parts = line.split(/\s+[—–]\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
-    if (parts.length < 3 || /\b(?:bachelor|master|b\.?s\.?|m\.?s\.?|ph\.?d|mba|degree|university|college|school|project)\b/i.test(line)) return [];
-    const dates = parseDates(parts.slice(2).join(' – '));
-    return dates && !dates.ongoing && Number.isFinite(Number(dates.end)) ? [{ org: parts[0], title: parts[1], start: Number(dates.start), end: Number(dates.end) }] : [];
+  const roles = ref.split(/\r?\n|(?<=[a-z]{3}\.|\d\.)\s+/).flatMap(line => {
+    // Headings split on an em dash or a spaced hyphen, never the en dash inside a date
+    // range ("May 2023 – Jun 2026"); the last field holds the dates, as in roles.mjs.
+    const parts = line.split(/\s+—\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
+    if (parts.length < 2 || /\b(?:bachelor|master|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?|ph\.?d|mba|degree|university|college|school|institute|project|certified|certificate|certification)\b/i.test(line)) return [];
+    const dates = parseDates(parts.at(-1));
+    if (!dates || !Number.isFinite(Number(dates.start))) return [];
+    return [{ org: parts[0], title: parts.length >= 3 ? parts[1] : '', start: Number(dates.start), end: Number(dates.end), ongoing: Boolean(dates.ongoing) }];
   });
   return [...value.matchAll(/\bsince\s+((?:19|20)\d{2})\b/gi)].flatMap(match => {
     const year = Number(match[1]);
     // A source that itself says "since YEAR" supports the sentence.
     if (new RegExp(`\\bsince\\s+${year}\\b`, 'i').test(ref)) return [];
-    const closed = roles.filter(role => role.start === year);
+    // An ongoing role from that year supports "since"; a single-year entry is not a
+    // closed range; only one ended role from that year is unambiguous.
+    if (roles.some(role => role.start === year && role.ongoing)) return [];
+    const closed = roles.filter(role => role.start === year && !role.ongoing && role.end > role.start);
     if (closed.length !== 1) return [];
     const role = closed[0];
-    return [{ kind, index, word: match[0], since: String(year), ended: String(role.end), role: `${role.title} at ${role.org}`, text: value, quote: '' }];
+    return [{ kind, index, word: match[0], since: String(year), ended: String(role.end), role: role.title ? `${role.title} at ${role.org}` : role.org, text: value, quote: '' }];
   });
 }
 
