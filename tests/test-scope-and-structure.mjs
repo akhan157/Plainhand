@@ -649,3 +649,11 @@ test('review a6fff1f: school-first degree lines are degrees; "Master Data Analys
   assert.equal(flagged('I have run the forecast since 2023.', 'Acme Corp — Financial Analyst — 2021 to present\nMS Data Science — Georgia Tech — 2023 to 2025'), 0);
   assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Financial Analyst — Jackson, MS — 2023 to present\nBeta — Junior Analyst — 2023 to 2024'), 0);
 });
+
+test('review d3fe1cd: Project Manager and MBA Associate are roles, so an ongoing one supports "since"', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  const closed = '\nBeta Capital — Junior Analyst — 2021 to 2022';
+  assert.equal(flagged('I have led delivery since 2021.', `Acme — Project Manager — 2021 to present${closed}`), 0);
+  assert.equal(flagged('I have worked in investment banking since 2021.', `Acme Capital — MBA Associate — 2021 to present${closed}`), 0);
+  assert.equal(flagged('I have worked in financial analysis since 2023.', 'Acme Corp — Financial Analyst — 2021 to present\nWharton MBA — 2023 to 2025'), 0);
+});

@@ -272,15 +272,15 @@ function sinceItem({ kind, index, text, reference }) {
     const parts = line.split(/\s+—\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
     // A degree line: a field that is a degree and cannot be a job-title word (a bare
     // code, "Master of …", MBA, PhD), the degree first in the line, a dotted code, or
-    // a school word. A state code ("Boston, MA") is a location, and "Master Data
-    // Analyst" stays a role.
+    // a school word. A state code ("Boston, MA") is a location; "Master Data Analyst",
+    // "MBA Associate" and "Project Manager" stay roles.
     const degreeField = parts.some(part => /^(?:b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?|mba|ph\.?d|degree|bachelor'?s?|master'?s?)$/i.test(part)
       || /^(?:bachelor|master|ph\.?d)\b.*\b(?:of|in)\b|^master'?s\b/i.test(part));
     const degreeLine = degreeField
       || /^(?:bachelor|master|ph\.?d|mba|degree|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?)\b/i.test(parts[0] || '')
       || /\b[bm]\.[sa]\./i.test(line)
-      || /\b(?:mba|ph\.?d|degree)\b/i.test(line)
-      || /\b(?:university|college|school|institute|project|certified|certificate|certification)\b/i.test(line);
+      || (parts.length === 2 && /\b(?:mba|ph\.?d|degree)\b/i.test(line))
+      || /\b(?:university|college|school|institute|certified|certificate|certification)\b/i.test(line);
     if (parts.length < 2 || degreeLine) return [];
     // A spaced hyphen can sit inside the date range ("2023 - present") and any number
     // of location fields can follow it, so the dates are found by scanning from the
