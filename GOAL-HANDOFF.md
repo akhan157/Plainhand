@@ -1156,3 +1156,22 @@ holdout2-journey-stem fails again, the same way.
   is the deciding measurement.
 - **Invalid runs:** `output/u14-claude-22cf435-void-default-model` (patch not applied),
   and `u14-claude-fdff850` (superseded).
+
+## "since YEAR" letter check — 2026-11-17
+
+- **What it does:** flags a cover letter that says "since YEAR" for a role the
+  sources close. It only adds retry feedback and a note, and never changes a packet.
+- **Where it came from:** a U14 judge finding.
+- **Review rounds (OMP DeepSeek):** `cd3eb60`, `c8cefac`, `6f57734`, `6957ac5`,
+  `d406453`, `a6fff1f`, `d3fe1cd`, `98faeb6`. Each round fixed parsing of real resume
+  heading formats:
+  - month and hyphen ranges;
+  - locations and state codes;
+  - degree and school lines;
+  - ongoing roles from the same year;
+  - "Project Manager" and "MBA Associate" kept as roles.
+- **Final review:** `d3fe1cd` had no blocking findings. `98faeb6` applies that
+  reviewer's suggested narrowing plus the pre-existing "project" false flag it
+  identified.
+- **State at `98faeb6`:** suite 770/770, controlled gate 64/67 (expected),
+  simulation 49/49.
