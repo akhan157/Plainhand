@@ -1014,3 +1014,43 @@ holdout2-journey-stem fails again, the same way.
     has 3.8 formal markers per 100 words (0.8 this morning), at the
     one-phrase-per-sentence cap root set to avoid phrase stuffing. The cap is not
     raised to clear the frozen measure.
+
+## Onboarding journey passes live; U01 and U03 accepted — 2026-11-17
+
+- **Live provider.** Codex hit its weekly limit on 2026-11-16 (resets 2026-11-22). The
+  owner approved Claude, on the most usage-efficient model that does the job.
+  - `PLAINHAND_CLAUDE_MODEL` / `PLAINHAND_CLAUDE_EFFORT` pass `--model` / `--effort`.
+  - Sonnet 5.5 at low effort: 1 pass, 1 fail. The fail was garbled prose ("a
+    cell-based one that takes two") and invented preferences. Medium is the floor.
+- **holdout2-journey-stem on Sonnet medium.** Fails before the fixes below, then
+  3/3 consecutive passes on `45b1448`, `edf7a8f` and `d291f66`.
+  - Each pass was a fresh clone with `npm ci` and `setup`.
+  - Each had 10 candidate turns, 0 failed turns, 0 packet questions, 0 unsupported
+    claims or numbers, and 23–25 calls. Judge overall 4.0.
+- **Fixes since the morning live runs (root code, each reviewed by OMP DeepSeek):**
+  - **Credentials:** packet credential matching by own name; carry from the approved
+    master, never on revisions; issuer, degree-year and degree-token edge cases.
+  - **Resume layout:**
+    - newest-first by start date, employment sections only;
+    - hyphenated words never break across PDF lines.
+  - **Scope checks:**
+    - raised verbs (built, led, managed …) the evidence never uses;
+    - number words no source states, compared by value;
+    - both are retry feedback, off on revisions.
+  - **Reliability:** JSON replies wrapped in prose are read.
+- **Measurement changes** (simulated candidate, `plainhand/benchmarks/profile-bench.mjs`):
+  `131bdad`, `edf7a8f`, `d291f66`, `07ce879`.
+  - It answers where the work just described happened.
+  - It reads only the final question.
+  - It answers a held-credential question with its certification.
+  - holdout2 results after `131bdad` are not comparable with earlier ones.
+- **U03.** The stated Green Belt was omitted by the model. The completeness repair
+  added it from the candidate's sentence before the review, and it carried into
+  the packet in both runs where it was stated.
+- **Register now 13/15 accepted.**
+  - U05 in_progress: the formal voice contrast still fails, held at root's
+    phrase cap.
+  - U14 in_progress: quality parity with the Codex baseline is not shown; Claude
+    numbers are not comparable.
+- **Next.** After the Codex reset, rerun holdout2 and the paired rows on Codex to
+  confirm these commits on the baseline provider and remeasure U14.
