@@ -609,3 +609,11 @@ test('review c8cefac: single-year entries, location slots, B.S. degrees and ongo
   assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 to present\nExample Consulting — Contract Analyst — 2023 to 2024'), 0);
   assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — May 2023 – Jun 2026'), 1);
 });
+
+test('review 6f57734: a spaced-hyphen date range is read whole', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 - present\nExample Consulting — Contract Analyst — 2023 to 2024'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — May 2023 - Jun 2026'), 1);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Analyst — 2023 to present — Boston, MA'), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 to 2026'), 1);
+});

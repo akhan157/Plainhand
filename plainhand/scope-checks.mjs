@@ -271,9 +271,19 @@ function sinceItem({ kind, index, text, reference }) {
     // range ("May 2023 – Jun 2026"); the last field holds the dates, as in roles.mjs.
     const parts = line.split(/\s+—\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
     if (parts.length < 2 || /\b(?:bachelor|master|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?|ph\.?d|mba|degree|university|college|school|institute|project|certified|certificate|certification)\b/i.test(line)) return [];
-    const dates = parseDates(parts.at(-1));
-    if (!dates || !Number.isFinite(Number(dates.start))) return [];
-    return [{ org: parts[0], title: parts.length >= 3 ? parts[1] : '', start: Number(dates.start), end: Number(dates.end), ongoing: Boolean(dates.ongoing) }];
+    // A spaced hyphen can sit inside the date range ("2023 - present"), and a location
+    // can follow it, so the date field is read from the right: the last field, the
+    // last two joined, then the one before; a range or ongoing date wins over a point.
+    const tries = [
+      { dates: parts.length >= 3 ? parseDates(parts.slice(-2).join(' – ')) : null, used: 2 },
+      { dates: parseDates(parts.at(-1)), used: 1 },
+      { dates: parts.length >= 3 ? parseDates(parts.at(-2)) : null, used: 2 },
+    ].filter(item => item.dates && Number.isFinite(Number(item.dates.start)));
+    const best = tries.find(item => item.dates.ongoing || item.dates.end > item.dates.start) || tries[0];
+    if (!best) return [];
+    const { dates } = best;
+    const head = parts.slice(0, parts.length - best.used);
+    return [{ org: head[0] || parts[0], title: head.length >= 2 ? head[1] : '', start: Number(dates.start), end: Number(dates.end), ongoing: Boolean(dates.ongoing) }];
   });
   return [...value.matchAll(/\bsince\s+((?:19|20)\d{2})\b/gi)].flatMap(match => {
     const year = Number(match[1]);
