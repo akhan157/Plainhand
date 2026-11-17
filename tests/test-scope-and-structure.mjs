@@ -563,3 +563,7 @@ test('review 3e74cb4: "direct" takes only a plural role noun as its object', () 
   assert.deepEqual(verbs('Direct stakeholder engagement for the program.', 'Supported stakeholder engagement.'), []);
   assert.deepEqual(verbs('Direct analysts through quarterly close.', 'Coordinated the finance team during close.'), ['direct']);
 });
+
+test('the candidate\'s own register phrases are exempt from the stock-phrase rules in both instructions', () => {
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /registerPhrases are exempt from the stock-phrase and stock-closing rules/);
+});
