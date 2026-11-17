@@ -1127,3 +1127,32 @@ holdout2-journey-stem fails again, the same way.
 - **Register:** U05 accepted. Caveats are in the row: a single run, on Claude, and
   the v1 failing result stays recorded.
 - **Register now 14/15.** Only U14 remains: Codex parity after the 2026-11-22 reset.
+
+## U14 on Claude — 2026-11-17 (owner decision)
+
+- **Setup:** the frozen baseline `00ce1bf` against HEAD. The baseline clone was
+  patched only with `--model`/`--effort`, so both sides ran Claude Sonnet 5.5 at
+  medium effort. Six paired rows, repeat 1, same Claude judge.
+
+  | | Baseline | HEAD `910f588` |
+  | --- | --- | --- |
+  | Rows passed | 2/6 | 3/6 |
+  | Application calls (interview excluded) | 36 | 35 |
+  | Seeded input tokens | 122k | 125k |
+  | Judge overall | 4.00 | 3.95 |
+  | Judge honesty | 4.83 | 4.17 |
+  | Unsupported | 1% | 0% |
+
+- **Interview cost:** built-row interviews took 30 calls against 17. The interview now
+  asks role attribution and every coverage area (the U01/U03 fix). It is a one-time
+  cost per candidate.
+- **Fixes found on the way:**
+  - `fdff850`/`910f588`: letters state only context a source gives, in both the
+    instruction and the retry feedback.
+  - Summaries never use a title the candidate has not held.
+  - Streamed replies get a bounded 8 MB output cap.
+- **Verdict:** U14 is not met on Claude. The saving was a Codex CLI overhead cut,
+  which does not exist on Claude. The scheduled Codex re-run (2026-11-22, 10:00 ET)
+  is the deciding measurement.
+- **Invalid runs:** `output/u14-claude-22cf435-void-default-model` (patch not applied),
+  and `u14-claude-fdff850` (superseded).
