@@ -1110,3 +1110,20 @@ holdout2-journey-stem fails again, the same way.
   samples than to the other persona's (`closerToOwn` for both).
 - **Run:** Claude Sonnet 5.5 at medium effort, fresh clone of the commit that
   adds this entry. The first v2 run is the result, whatever it shows.
+
+## U05 v2 result — 2026-11-17
+
+- **Run:** first measured run of the pre-registered v2 voice contrast, on `48696bd`
+  (Claude Sonnet 5.5 at medium effort, fresh clone).
+- **Result: passed.**
+  - Terse: 0.06 to its own samples against 1.17 to the formal samples.
+  - Formal: 0.32 to its own samples against 0.90 to the terse samples. Its letter
+    averaged 18.1 words per sentence, with no contractions and 2.0 formal markers
+    per 100 words.
+  - Both letters passed factual review.
+- **Aborted attempt:** an earlier attempt stopped on the Claude usage limit before
+  any letter was written, so it produced no measurement. Its log is
+  `voice-attempt1-quota.log`.
+- **Register:** U05 accepted. Caveats are in the row: a single run, on Claude, and
+  the v1 failing result stays recorded.
+- **Register now 14/15.** Only U14 remains: Codex parity after the 2026-11-22 reset.
