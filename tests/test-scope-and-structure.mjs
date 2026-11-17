@@ -556,3 +556,10 @@ test('review 07ce879: "direct" before people is a raised verb; before a singular
   assert.deepEqual(verbs('Direct clients through onboarding.', 'Supported onboarding.'), ['direct']);
   assert.deepEqual(verbs('Direct client work across three regions.', 'Worked with clients in three regions.'), []);
 });
+
+test('review 3e74cb4: "direct" takes only a plural role noun as its object', () => {
+  const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(verbs('Direct vendor negotiations across three regions.', 'Negotiated vendor contracts and pricing.'), []);
+  assert.deepEqual(verbs('Direct stakeholder engagement for the program.', 'Supported stakeholder engagement.'), []);
+  assert.deepEqual(verbs('Direct analysts through quarterly close.', 'Coordinated the finance team during close.'), ['direct']);
+});

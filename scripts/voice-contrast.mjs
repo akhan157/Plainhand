@@ -108,7 +108,7 @@ export async function preparePersona(provider, label, samples, root, { agent = n
     }
     const job = (await app.workspace.load()).jobs.find(j => j.id === jobId);
     if (!job?.packet?.coverLetter) throw new Error(`prepare ${label} finished without a cover letter.`);
-    return { coverLetter: job.packet.coverLetter, reviewPassed: job.review?.passed === true, reviewAttempts: job.reviewAttempts?.length || 0 };
+    return { coverLetter: job.packet.coverLetter, reviewPassed: job.review?.passed === true, reviewAttempts: job.reviewAttempts?.length || 0, humanizerVoice: job.humanizer?.voice || null };
   } finally { await app.close(); }
 }
 
@@ -139,7 +139,7 @@ async function main() {
       const attribution = voiceAttribution({ letter: persona.coverLetter, own: text(persona.samples), other: text(other.samples) });
       return { label: persona.label, samples: persona.samples, coverLetter: persona.coverLetter,
         features: voiceFeatures(persona.coverLetter), sampleFeatures: voiceFeatures(text(persona.samples)),
-        reviewPassed: persona.reviewPassed, reviewAttempts: persona.reviewAttempts,
+        reviewPassed: persona.reviewPassed, reviewAttempts: persona.reviewAttempts, humanizerVoice: persona.humanizerVoice,
         ownDistance: attribution.ownDistance, otherDistance: attribution.otherDistance, closerToOwn: attribution.closerToOwn, margin: attribution.margin };
     });
     const passed = report.every(entry => entry.closerToOwn);

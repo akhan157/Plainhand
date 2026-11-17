@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { numbersIn } from './claim-calibration.mjs';
 import { voiceDrift } from './voice-target.mjs';
+import { voiceFeatures } from './voice-metrics.mjs';
 
 const SKILL = readFileSync(new URL('./vendor/humanizer/SKILL.md', import.meta.url), 'utf8').replace(/^---[\s\S]*?---\s*/, '');
 
@@ -70,6 +71,7 @@ export function applyHumanized(packet, result, { voiceTarget = null, voiceSample
   }
   let voice = null;
   if (originalCover && voiceTarget && coverChanged) {
+    const rewritten = next.coverLetter;
     const drift = voiceDrift(originalCover, next.coverLetter, voiceSamples);
     if (drift) {
       if (drift.drifted) {
@@ -77,7 +79,9 @@ export function applyHumanized(packet, result, { voiceTarget = null, voiceSample
         changed--;
         kept.push({ id: 'cover', reason: 'voice drifted from samples' });
       }
-      voice = { target: voiceTarget, ...drift, kept: drift.drifted ? 'draft' : 'humanized' };
+      // The draft's and the rewrite's surface features, so a run shows where the
+      // candidate's register was kept or lost (drafting or the humanizer pass).
+      voice = { target: voiceTarget, ...drift, kept: drift.drifted ? 'draft' : 'humanized', draftFeatures: voiceFeatures(originalCover), rewriteFeatures: voiceFeatures(rewritten) };
     }
   }
   const tells = p => humanizeItems(p).flatMap(i => aiTells(i.text));

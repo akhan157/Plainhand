@@ -194,7 +194,7 @@ function raisedTokens(text) {
     // name after a lower-case verb ("lead QA"); a bare plural is not enough, so
     // "Direct reports" and "lead optimizations" stay nouns.
     const nextRaw = value.slice(at + match[0].length).match(/^\s+([A-Za-z][A-Za-z'-]*)/)?.[1] || '';
-    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || (ROLE_OBJECT.test(following) && !(lower === 'direct' && /^(?:client|customer|account|partner)$/.test(following))) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
+    const takesObject = Boolean(following) && (OBJECT_START.has(following) || /^[A-Z]/.test(nextRaw) || (ROLE_OBJECT.test(following) && !(lower === 'direct' && !/s$/.test(following))) || /^(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|several|many|both)$/.test(following));
     // After a subject ("I oversee", "who leads") the word is a verb whatever follows.
     const afterSubject = previous && /^(?:i|we|who|i've|we've|i'd|we'd)$/.test(previous);
     const verbal = PAST_RAISED.test(lower) || /(?:ing)$/.test(lower) || takesObject || afterSubject;
