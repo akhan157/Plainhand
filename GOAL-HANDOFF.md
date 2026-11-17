@@ -1054,3 +1054,25 @@ holdout2-journey-stem fails again, the same way.
     numbers are not comparable.
 - **Next.** After the Codex reset, rerun holdout2 and the paired rows on Codex to
   confirm these commits on the baseline provider and remeasure U14.
+
+## Voice density change and where the goal stands — 2026-11-17
+
+- `3e74cb4`: the register cap follows the samples' own density
+  (`registerPerSentence`, 1–3) instead of one phrase per sentence. Live voice
+  contrast on Claude Sonnet medium:
+  - terse: closer to its own samples (0.11 vs 2.55);
+  - formal: still not closer (1.57 vs 1.09), at 2.9 markers per 100 words
+    against 11.8.
+
+  The drafter does not reach the samples' density even when allowed to. Forcing
+  more stock phrases would be phrase stuffing and tuning to a frozen measure.
+  U05 stays in_progress.
+- **Register: 13/15 accepted.** Open:
+  - **U05:** the formal synthetic voice contrast fails. User-voice validation is
+    an external check.
+  - **U14:** quality parity at lower cost against the Codex baseline is
+    unproven. Codex is at its weekly limit until 2026-11-22. To close it, rerun
+    the paired Codex rows on HEAD after the reset and compare judge and grounding
+    scores with the frozen baseline.
+- **Live provider settings for Claude runs:** `PLAINHAND_CLAUDE_MODEL=sonnet`,
+  `PLAINHAND_CLAUDE_EFFORT=medium`; the script is `~/.cache/plainhand-recheck/recheck2-live.sh`.
