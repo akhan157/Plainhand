@@ -531,3 +531,9 @@ test('review edf7a8f: duration and fraction compounds state no count; people and
   assert.deepEqual(verbs('Manage vendors and invoices.', 'Processed vendor invoices.'), ['manage']);
   assert.deepEqual(verbs('Direct reports include five scientists.', 'Managed five scientists.'), []);
 });
+
+test('review d291f66: attributive "direct" before a client noun is not a raised verb', () => {
+  const verbs = (line, quote) => pluralScopeIssues({ resume: [{ section: 'Experience', heading: null, text: line, evidence: [{ sourceId: 'cv', quote }] }], coverLetter: '', answers: [] }, { sources: [] }).filter(issue => issue.verb).map(issue => issue.word);
+  assert.deepEqual(verbs('Direct client work across three regions.', 'Worked with clients in three regions.'), []);
+  assert.deepEqual(verbs('Direct customer support and onboarding.', 'Supported customers during onboarding.'), []);
+});

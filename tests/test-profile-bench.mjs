@@ -120,3 +120,15 @@ test('only a question about credentials held gets the certification', async () =
   assert.doesNotMatch(simulatedCandidate(persona).reply('Would you be willing to get a certification later?').text, /CPA/);
   assert.match(simulatedCandidate(persona).reply('Do you hold any certifications or licences?').text, /CPA/);
 });
+
+test('review d291f66: driver licences and hypothetical credentials never get the certification; a combined question still does', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-fin-close');
+  const reply = question => simulatedCandidate(persona).reply(question).text;
+  assert.doesNotMatch(reply("Have you ever held a driver's licence?"), /CPA/);
+  assert.doesNotMatch(reply('Are you willing to obtain any certifications required for the role?'), /CPA/);
+  assert.doesNotMatch(reply('Would you obtain any credentials the client requires?'), /CPA/);
+  assert.match(reply('Do you hold any certifications, or a drivers licence?'), /CPA/);
+  assert.match(reply('Do you have any certifications?'), /CPA/);
+});

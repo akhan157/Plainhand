@@ -186,8 +186,11 @@ export function simulatedCandidate(persona) {
       // Only a question about credentials the candidate holds ("Do you hold any
       // certifications or licences?"), never "did you need a driver's licence" or
       // "would you get a certification".
-      const credentialAsked = /\b(?:hold|have|earned|held|got)\b[^?]*\b(?:certificat\w*|licen[cs]\w*|credential\w*)\b|\b(?:what|which|any)\s+(?:professional\s+)?(?:certificat\w*|licen[cs]\w*|credential\w*)\b/i.test(asked || question || '')
-        && !/\bdriv\w*\s+licen/i.test(asked || question || '');
+      const askedText = asked || question || '';
+      const credentialWord = /\b(?:certificat\w*|credential\w*|(?<!driv(?:er'?s|ers|ing)\s)licen[cs]\w*)\b/i;
+      const credentialAsked = credentialWord.test(askedText)
+        && /\b(?:hold|have|has|earned|held|got)\b/i.test(askedText)
+        && !/\b(?:would|willing|obtain|get|pursue|planning)\b/i.test(askedText);
       const ranked = open.map(f => [hits(question, f.keywords) + (credentialAsked && /certif|licen/i.test(f.section || '') ? 10 : 0), f]).sort((a, b) => b[0] - a[0]);
       const pick = absent || (ranked[0]?.[0] > 0 ? ranked[0][1] : asks ? open[0] : null);
       if (pick) { said.add(pick.id); last = persona.facts.includes(pick) ? pick : null; return say(pick.text, { factId: pick.id, onTopic: Boolean(absent || ranked[0]?.[0] > 0) }); }
