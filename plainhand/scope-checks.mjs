@@ -270,19 +270,23 @@ function sinceItem({ kind, index, text, reference }) {
     // Headings split on an em dash or a spaced hyphen, never the en dash inside a date
     // range ("May 2023 – Jun 2026"); the last field holds the dates, as in roles.mjs.
     const parts = line.split(/\s+—\s+|\s+-\s+/).map(part => part.trim().replace(/\.$/, '')).filter(Boolean);
-    if (parts.length < 2 || /\b(?:bachelor|master|b\.?s\.?|m\.?s\.?|b\.?a\.?|m\.?a\.?|ph\.?d|mba|degree|university|college|school|institute|project|certified|certificate|certification)\b/i.test(line)) return [];
-    // A spaced hyphen can sit inside the date range ("2023 - present"), and a location
-    // can follow it, so the date field is read from the right: the last field, the
-    // last two joined, then the one before; a range or ongoing date wins over a point.
-    const tries = [
-      { dates: parts.length >= 3 ? parseDates(parts.slice(-2).join(' – ')) : null, used: 2 },
-      { dates: parseDates(parts.at(-1)), used: 1 },
-      { dates: parts.length >= 3 ? parseDates(parts.at(-2)) : null, used: 2 },
-    ].filter(item => item.dates && Number.isFinite(Number(item.dates.start)));
-    const best = tries.find(item => item.dates.ongoing || item.dates.end > item.dates.start) || tries[0];
+    if (parts.length < 2 || (/\b(?:bachelor|master|ph\.?d|mba|degree|university|college|school|institute|project|certified|certificate|certification)\b/i.test(line) || /\b[bm]\.[sa]\./i.test(line))) return [];
+    // A spaced hyphen can sit inside the date range ("2023 - present") and any number
+    // of location fields can follow it, so the dates are found by scanning from the
+    // right: at each position, two fields rejoined as a range, then the field alone;
+    // the rightmost range or ongoing date wins, else the rightmost single date.
+    let best = null;
+    for (let i = parts.length - 1; i >= 1 && !best?.strong; i--) {
+      for (const [dates, from] of [[i >= 2 ? parseDates(`${parts[i - 1]} - ${parts[i]}`) : null, i - 1], [parseDates(parts[i]), i]]) {
+        if (!dates || !Number.isFinite(Number(dates.start)) || from < 1) continue;
+        const strong = Boolean(dates.ongoing || dates.end > dates.start);
+        if (!best || (strong && !best.strong)) best = { dates, from, strong };
+        if (strong) break;
+      }
+    }
     if (!best) return [];
     const { dates } = best;
-    const head = parts.slice(0, parts.length - best.used);
+    const head = parts.slice(0, best.from);
     return [{ org: head[0] || parts[0], title: head.length >= 2 ? head[1] : '', start: Number(dates.start), end: Number(dates.end), ongoing: Boolean(dates.ongoing) }];
   });
   return [...value.matchAll(/\bsince\s+((?:19|20)\d{2})\b/gi)].flatMap(match => {

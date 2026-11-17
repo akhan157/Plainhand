@@ -617,3 +617,17 @@ test('review 6f57734: a spaced-hyphen date range is read whole', () => {
   assert.equal(flagged('I have run the forecast since 2023.', 'Acme — Analyst — 2023 to present — Boston, MA'), 0);
   assert.equal(flagged('I have run the forecast since 2023.', 'Example Corp — Financial Analyst — 2023 to 2026'), 1);
 });
+
+test('review 6957ac5: ranges before locations and state codes, with a same-year closed role present', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  const closed = '\nBeta — Junior Analyst — 2023 to 2024';
+  assert.equal(flagged('I have run the forecast since 2023.', `Acme — Financial Analyst — 2023 - present — Boston${closed}`), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', `Acme — Financial Analyst — Boston, MA — 2023 to present${closed}`), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', `Acme — Financial Analyst — 2023 to present — Boston, Massachusetts${closed}`), 0);
+  assert.equal(flagged('I have run the forecast since 2023.', 'Beta — Junior Analyst — Boston, MA — 2023 to 2024'), 1);
+});
+
+test('a dotted degree code alone marks a degree line', () => {
+  const flagged = (text, cv) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [{ id: 'cv', text: cv }] }).filter(issue => issue.since).length;
+  assert.equal(flagged('I have written SQL since 2023.', 'B.S. Computer Science — Example State — 2023 to 2026'), 0);
+});
