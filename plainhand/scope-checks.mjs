@@ -315,52 +315,7 @@ function sinceItem({ kind, index, text, reference }) {
 }
 
 // numbers: false on a revision, where the candidate's request is checked by review.
-// A letter sentence that says the candidate's work "matches" or "covers" the posting's
-// claims a fit at the posting's scope, audience and setting, which the sources rarely
-// state (a business unit is not a product line). The letter should name the evidenced
-// work and the posting's stated need, each at its own scope, and leave the match to the
-// reader. A fit claim needs both a first-person subject and a posting object: "My role
-// covered month-end close" and "my results matched the forecast" are scope facts, and
-// "the assay matched the standard" is not the candidate's claim at all. When in doubt
-// the check stays silent: a missed claim is left to review, a false one costs a redraft.
-const MODS = String.raw`(?:[\w'&-]+\s+){0,3}?`;
-const OWN_WORK = String.raw`(?:experience|work|background|skills?|skill set|expertise|track record|qualifications?|career|record)`;
-// cased: spell the capitals out for the case-sensitive company pattern.
-const subject = cased => {
-  const [my, own] = cased ? ['[Mm]y', '[Tt]his'] : ['my', 'this'];
-  return String.raw`\b(?:${my}\s+${MODS}(?:${OWN_WORK}|role)|${own}\s+${MODS}${OWN_WORK}|I)\b`;
-};
-const FIT_VERB = String.raw`\b(?:match(?:es|ed)?|align(?:s|ed)?\s+(?:closely\s+|well\s+)?with|mirror(?:s|ed)?|cover(?:s|ed)?|map(?:s|ped)?\s+(?:on)?to|meet(?:s)?|met|satisf(?:y|ies|ied)|fulfil(?:l|ls|s|led)?|line(?:s|d)?\s+up\s+with|correspond(?:s|ed)?\s+to)\b`;
-const ADVERB = String.raw`(?:(?:almost\s+|nearly\s+)?(?:exactly|directly|closely|fully|well)\s+)?`;
-const ASKED = String.raw`(?:requirements?|responsibilit(?:y|ies)|duties|qualifications|criteria)`;
-// Only objects that can mean nothing but the posting count. "the role", "the job", "the
-// requirements" and "Example Corp's requirements" also name a post the candidate covered,
-// a project, an outside standard or their own employer ("I covered the position during a
-// vacancy", "the welds met the requirements for the job", "met OSHA's requirements"), so
-// they are left to review. After this/these the modifiers carry no apostrophe: "this
-// year's audit requirements" is the candidate's own scope.
-const THE_POSTING = String.raw`(?:(?:this|your)\s+(?:role|position|job|opening|team)\b(?!\s+I\b)|the\s+(?:advertised|open)\s+(?:role|position|job)\b|the\s+(?:job\s+)?(?:posting|job description)\b)`;
-const postingObject = bareRole => String.raw`(?:your\s+(?:[\w'&-]+\s+){0,4}?(?:team|role|responsibilities|requirements|needs|duties|qualifications|criteria|priorities|focus|work|description)\b|(?:these|those)\s+(?:[\w&-]+\s+){0,4}?(?:responsibilities|requirements|needs|duties|qualifications|criteria|priorities)\b|${bareRole ? THE_POSTING : String.raw`the\s+(?:job\s+)?(?:posting|job description)\b`}|(?:the|all|every|each|most)\s+(?:of\s+)?(?:the\s+)?${ASKED}\s+(?:of|for|in|listed\s+in|described\s+in|outlined\s+in)\s+${THE_POSTING}|what\s+(?:you|your\s+team)\s+(?:need|want|are\s+looking|ask)\w*)`;
-// A company's stated work ("Fictional Devices Inc's stated work") names what the posting
-// says, so it counts; a company's plain requirements may be the candidate's own employer
-// or customer. Case-sensitive, so "this year's" is never read as a company.
-const COMPANY_OBJECT = String.raw`(?:[A-Z][\w&.-]*\s+){0,4}[A-Z][\w&.-]*'s\s+stated\s+(?:[\w-]+\s+){0,3}?(?:work|needs|requirements|responsibilities|focus|priorities|duties)\b`;
-const COMPANY_FIT = new RegExp(`${subject(true)}[^.;:!?]{0,120}?${FIT_VERB}\\s+${ADVERB}${COMPANY_OBJECT}`);
-// "Covered the role" means filling the post, so after cover a bare role is not the posting.
-const POSTING_OBJECT = postingObject(true);
-const COVER = String.raw`\bcover(?:s|ed)?\b`;
-const FIT_CLAIM = new RegExp(`${subject(false)}[^.;:!?]{0,120}?(?:(?!${COVER})${FIT_VERB}\\s+${ADVERB}${POSTING_OBJECT}|${COVER}\\s+${ADVERB}${postingObject(false)})`, 'i');
-// The posting as subject: "X's combination of ... matches the work I do".
-const FIT_OBJECT = /\b(?:match(?:es|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|cover(?:s|ed)?)\s+(?:exactly\s+)?(?:the\s+)?(?:work|experience|kind of work)\s+I\b/i;
-// "I am a strong match for this role", "my experience is an excellent fit for the job".
-const FIT_NOUN = new RegExp(`(?:\\bI\\s+(?:am|would\\s+be)|\\bI'(?:m|d\\s+be)|\\bmy\\s+${MODS}${OWN_WORK}\\s+(?:is|are|would\\s+be|makes?\\s+me))\\s+(?:a|an)\\s+(?:[\\w-]+\\s+){0,2}?(?:fit|match)\\s+for\\s+(?:${POSTING_OBJECT}|the\\s+(?:role|position|job|team)\\b)`, 'i');
-function fitItem({ kind, index, text }) {
-  const value = String(text ?? '');
-  const match = value.match(FIT_CLAIM) || value.match(COMPANY_FIT) || value.match(FIT_OBJECT) || value.match(FIT_NOUN);
-  return match ? [{ kind, index, word: match[0].replace(/\s+/g, ' ').trim(), fit: true, text: value, quote: '' }] : [];
-}
-
-export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jobText = '', numbers = true, fit = true } = {}) {
+export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jobText = '', numbers = true } = {}) {
   const verbs = item => (allowVerbs ? [] : verbItem(item));
   const resume = Array.isArray(packet?.resume) ? packet.resume : [];
   const answers = Array.isArray(packet?.answers) ? packet.answers : [];
@@ -390,8 +345,7 @@ export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jo
   if (letterQuotes.length && String(packet?.coverLetter ?? '').trim()) {
     sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: factualText.length ? factualText : letterQuotes }),
       ...(factualText.length ? sinceItem({ kind: 'cover', index: null, text, reference: factualText.join(' ') }) : []),
-      ...(numberReference ? numberWordItem({ kind: 'cover', index: null, text, reference: numberReference }) : []),
-      ...(fit ? fitItem({ kind: 'cover', index: null, text }) : [])));
+      ...(numberReference ? numberWordItem({ kind: 'cover', index: null, text, reference: numberReference }) : [])));
   }
   return issues;
 }
@@ -409,10 +363,8 @@ function around(text, word) {
 export function scopeRetryFeedback(issues) {
   if (!issues.length) return [];
   return [
-    'Keep counts, number, verbs and fit exactly as the sources state: a plural, a stronger verb (built, led, managed) or a claim that the work matches the posting, when the evidence does not say so, is a scope stretch.',
-    ...issues.map(issue => issue.fit
-      ? `${label(issue)}: "${issue.word}" claims the candidate's work matches or covers the posting's. Name the specific work the sources show and the posting's specific need, each at its own stated scope, audience and setting, and let the reader draw the match. Sentence: "${around(issue.text, issue.word)}"`
-      : issue.since
+    'Keep counts, number and verbs exactly as the sources state: a plural or a stronger verb (built, led, managed) the evidence does not use is a scope stretch.',
+    ...issues.map(issue => issue.since
       ? `${label(issue)}: "${issue.word}" says the ${issue.role} role is current, but the sources date it ${issue.since} to ${issue.ended}; use the sources' dates. Sentence: "${around(issue.text, issue.word)}"`
       : issue.number
       ? `${label(issue)}: "${issue.word}" states a number (${issue.number}) no source gives; write "a" or "a single", or leave the count out. Sentence: "${around(issue.text, issue.word)}"`
@@ -426,9 +378,7 @@ export function scopeSuggestions(issues) {
   // Quote the line, never an index: a reviewer counting entries from zero would read
   // "Resume entry 2" as a different line and reject the note as false.
   const where = issue => issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line';
-  return issues.map(issue => issue.fit
-    ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a claim that the candidate's work matches the posting's at its scope. Name the evidenced work and let the reader draw the match.`
-    : issue.since
+  return issues.map(issue => issue.since
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", but the sources date the ${issue.role} role ${issue.since} to ${issue.ended}. Use the sources' dates.`
     : issue.number
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a number no source states. Write "a" or leave the count out.`

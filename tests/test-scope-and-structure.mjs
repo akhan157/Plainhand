@@ -658,110 +658,13 @@ test('review d3fe1cd: Project Manager and MBA Associate are roles, so an ongoing
   assert.equal(flagged('I have worked in financial analysis since 2023.', 'Acme Corp — Financial Analyst — 2021 to present\nWharton MBA — 2023 to 2025'), 0);
 });
 
-test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matches or covers the posting\'s is flagged; own-scope facts are not', () => {
-  const cv = { id: 'cv', text: 'Example Manufacturing Corp — Financial Analyst — 2021 to present\nBuilt and maintain the three-statement forecast model for a $240 million business unit.' };
-  const fits = (text, options = {}) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [cv], ...options }).filter(issue => issue.fit);
-  for (const text of [
-    "My experience matches Fictional Devices Inc's stated work on product-line forecasting, budget variance analysis and communicating financial drivers.",
-    'At Example Manufacturing Corp, my financial analyst work covers these responsibilities.',
-    'My work at Example Manufacturing Corp covers these responsibilities.',
-    "Fictional Devices Inc's stated combination of forecast ownership and variance analysis matches the work I do in corporate planning.",
-    'This background aligns with your team\'s reporting work.',
-    'I am a strong match for this role.',
-    'My experience is an excellent fit for this role.',
-    'My experience lines up with your team\'s needs.',
-    'My experience across forecasting, budgeting, variance analysis and month-end close at two manufacturers directly matches what you need.',
-    // Review 84a18f2: modal fit claims and the posting named after "the requirements of".
-    'I would be a strong match for this role.',
-    "I'd be a great fit for your team.",
-    'My experience would be an excellent fit for the position.',
-    'My experience meets the requirements of this role.',
-    "My work covers Example Corp's stated responsibilities.",
-    // Review e9e6a6d: the posting named after the requirements, and a singular requirement.
-    'I would be a strong fit for the advertised role.',
-    'My experience meets the requirements for the advertised role.',
-    'I meet every requirement in the posting.',
-    'My experience meets the requirements listed in the posting.',
-    "I meet Example Corp's stated requirements.",
-  ]) assert.equal(fits(text).length, 1, text);
-  // Review 887d1b6: the candidate's own scope, the posting described, and plain facts.
-  for (const text of [
-    'My role on the team covered month-end close.',
-    'In my role on the team I covered month-end close, variance analysis and the monthly forecast.',
-    'My experience covers forecasting, budgeting and variance analysis.',
-    'At Example Manufacturing Corp my work covered two plants.',
-    'This work covered two plants and one distribution centre.',
-    'This role covers month-end close and forecasting, according to the posting.',
-    'My qualifications satisfy the state licensing requirements.',
-    'My work aligned with the audit calendar.',
-    'My experience meets the eligibility criteria for the CFA exam.',
-    'My work is covered by the quality agreement.',
-    'This role meets my need for a shorter commute.',
-    'This work met the FDA deadline.',
-    'I meet weekly with the controller.',
-    'My results matched the forecast within 2%.',
-    'I covered the role of controller during her leave.',
-    'Your team forecasts each product line; at Example Manufacturing Corp I built and maintain the forecast model for a $240 million business unit.',
-    'The potency assay matched the reference standard within 5%.',
-    'I present the monthly variance drivers to the finance director.',
-    // Review 84a18f2: an outside standard after "the requirements of", a work item named
-    // "requirements analysis", a time genitive after "this", and a company's own calendar.
-    'My role covered the duties of the controller during her leave.',
-    'I covered the duties of the controller during her leave.',
-    'My work met the requirements of the audit committee.',
-    'My qualifications satisfy the requirements of the state licensing board.',
-    'This work covered the requirements analysis for the migration.',
-    'My validation work satisfied the criteria of ICH Q2.',
-    "My work covered this year's audit requirements.",
-    "My work covered this quarter's reporting requirements.",
-    "My close work met this year's audit requirements.",
-    "My work aligned with Example Corp's audit calendar.",
-    "I met Example Corp's year-end deadlines.",
-    // Review e9e6a6d: a requirements work item, a document's requirements, a regulator's
-    // possessive.
-    'My role covered the requirements phase of the migration.',
-    'My work covered the requirements review and design.',
-    'My work covered the requirements definition for the new billing system.',
-    'My work met the requirements laid out in the quality agreement.',
-    'My work met the requirements described in the SOP.',
-    'My work met the requirements outlined in the validation plan.',
-    'My work met the requirements imposed by the regulator.',
-    "My work met OSHA's requirements.",
-    "My work met HIPAA's requirements.",
-    'I met all the requirements of the audit committee.',
-    // Review 333ef58: covering a post, the candidate's own employer or customer, a project
-    // "job", and a role the candidate held.
-    'I covered the position during a nine-month vacancy.',
-    'I covered the role for six months while it was vacant.',
-    'I covered this role during the vacancy until we hired.',
-    "My work met Example Manufacturing Corp's requirements.",
-    "I built the model that met Example Manufacturing Corp's reporting requirements.",
-    "I designed brackets that met Ford Motor Co's requirements.",
-    'My work met the requirements for the job.',
-    'The welds I signed off met the requirements for the job.',
-    'I met the requirements of the role I held.',
-    'I met the requirements of the position I was promoted into.',
-    // Left to review on purpose: a bare "the requirements" may be the posting's or an
-    // outside standard's, and a per-sentence check cannot tell which.
-    'I meet all the requirements.',
-    'My work met the requirements.',
-  ]) assert.equal(fits(text).length, 0, text);
-  // Off on a revision, where the candidate's own request decides the wording.
-  assert.equal(fits('My work covers these responsibilities.', { fit: false }).length, 0);
-  const feedback = scopeRetryFeedback(fits('My work covers these responsibilities.')).join('\n');
-  assert.match(feedback, /each at its own stated scope/);
-  assert.match(feedback, /fit exactly as the sources state/);
-  assert.match(scopeSuggestions(fits('My work covers these responsibilities.'))[0], /^Scope check \(not a factual issue\)/);
-});
-
-test('review 887d1b6: both workflow scope checks turn the fit check off on a revision', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const source = await readFile(new URL('../plainhand/workflow.mjs', import.meta.url), 'utf8');
-  assert.equal((source.match(/pluralScopeIssues\(packet, \{[^}]*fit: !revising/g) || []).length, 2);
-});
-
 test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence, and the summary field comes from the candidate\'s own roles', () => {
   assert.doesNotMatch(PACKET_INSTRUCTION, /matches the Y I did/);
   assert.match(PACKET_INSTRUCTION, /Never say the candidate's work, experience or background "matches", "covers"/);
   assert.match(PACKET_INSTRUCTION, /never the target role's or the posting's field when no source says they worked in it/);
+  // The fit rule is enforced by the model review, which reads context: five rounds of a
+  // per-sentence regex check could not tell a fit claim from honest scope
+  // ("I covered these responsibilities during a vacancy", "I met your team at the trade show").
+  assert.match(REVIEW_INSTRUCTION, /matches, covers or meets the posting's work or requirements is an issue when the sources show that work at a different scope/);
+  assert.match(REVIEW_INSTRUCTION, /an honest statement of the candidate's own scope is not/);
 });
