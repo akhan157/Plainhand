@@ -1247,3 +1247,29 @@ holdout2-journey-stem fails again, the same way.
   low and medium, and Haiku 5.5 low. One screening round each, two for the finalists.
 - **Void runs:** `output/u14-codex-da03b4a-void-default-effort`, which ran at the CLI
   default effort, and an r2 attempt killed during install.
+
+## U14 on gpt-6.2-sol — 2026-11-18
+
+- **Run:** owner's corrected model, gpt-6.2-sol at low effort, on both sides.
+  Baseline `00ce1bf` against HEAD `d9460ca`, six non-minimal rows, two repeats, same
+  Claude judge. Output is in `output/u14-codex62-d9460ca-r1` and `-r2`.
+
+  | | Baseline r1 | HEAD r1 | Baseline r2 | HEAD r2 |
+  | --- | --- | --- | --- | --- |
+  | Application calls | 33 | 36 | 36 | 33 |
+  | Input tokens | 1,297k | 1,099k (−15%) | 1,465k | 991k (−32%) |
+  | Seeded input tokens | 383k | 297k (−22%) | 477k | 245k (−49%) |
+  | Judge overall | 4.05 | 4.00 | 4.22 | 4.07 |
+  | Judge honesty | 4.95 | 4.80 | 5.00 | 4.87 |
+  | Unsupported claims | 0/91 | 0/80 | 0/96 | 0/81 |
+
+- **Fit claims gone.** In each repeat the honesty gap is one row, analyst-built (4.00 and
+  4.33). The packet ties the source's unnamed "it" to the tracker or dashboard before
+  the 14% to 9% drop. The baseline did the same in repeat 2 and scored 5.
+- **Falsifier.** HEAD honesty is lower in all four Codex repeats, by 0.13 to 0.50, so the
+  row is not accepted as written. Owner decision pending.
+- **Corpus label.** gpt-6.2-sol reads "SYNTHETIC TEST JOB." in the frozen postings and
+  recommends Skip or Investigate, so pass rates are 0-1/6 on both sides. Changing the
+  corpus needs the owner.
+- **Round 2 note.** The HEAD judge was interrupted by a T3 restart and re-run alone on
+  the same evidence.
