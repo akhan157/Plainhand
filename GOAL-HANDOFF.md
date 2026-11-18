@@ -1236,7 +1236,7 @@ holdout2-journey-stem fails again, the same way.
   after the Codex limit reset. The 6.1 rounds above stay as a same-model comparison.
   A 6.1 HEAD-only attempt hit the usage limit and is void.
 - **Prompt review chain:** `066e804` rejected (fixture terms), `08972e8` rejected
-  (kept decision against the fit ban), `736812b` accepted; `<next>` makes the packet
+  (kept decision against the fit ban), `736812b` accepted; `bd61b18` makes the packet
   exemption symmetric (allowedStretches names scope).
 - **Follow-up (non-blocking, from the `736812b` review):** a kept decision is exempt
   only until the packet ships (`markApplied`). A later revision's review no longer sees
