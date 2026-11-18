@@ -657,3 +657,31 @@ test('review d3fe1cd: Project Manager and MBA Associate are roles, so an ongoing
   assert.equal(flagged('I have worked in investment banking since 2021.', `Acme Capital — MBA Associate — 2021 to present${closed}`), 0);
   assert.equal(flagged('I have worked in financial analysis since 2023.', 'Acme Corp — Financial Analyst — 2021 to present\nWharton MBA — 2023 to 2025'), 0);
 });
+
+test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matches or covers the posting\'s is flagged; facts and plain links are not', () => {
+  const cv = { id: 'cv', text: 'Example Manufacturing Corp — Financial Analyst — 2021 to present\nBuilt and maintain the three-statement forecast model for a $240 million business unit.' };
+  const fits = (text, options = {}) => pluralScopeIssues({ resume: [], coverLetter: text, answers: [] }, { sources: [cv], ...options }).filter(issue => issue.fit);
+  for (const text of [
+    "My experience matches Fictional Devices Inc's stated work on product-line forecasting, budget variance analysis and communicating financial drivers.",
+    'At Example Manufacturing Corp, my financial analyst work covers these responsibilities.',
+    'My work at Example Manufacturing Corp covers these responsibilities.',
+    "Fictional Devices Inc's stated combination of forecast ownership and variance analysis matches the work I do in corporate planning.",
+    'This background aligns with your team\'s reporting work.',
+  ]) assert.equal(fits(text).length, 1, text);
+  for (const text of [
+    'Your team forecasts each product line; at Example Manufacturing Corp I built and maintain the forecast model for a $240 million business unit.',
+    'The potency assay matched the reference standard within 5%.',
+    'I present the monthly variance drivers to the finance director.',
+  ]) assert.equal(fits(text).length, 0, text);
+  // Off on a revision, where the candidate's own request decides the wording.
+  assert.equal(fits('My work covers these responsibilities.', { fit: false }).length, 0);
+  const feedback = scopeRetryFeedback(fits('My work covers these responsibilities.')).join('\n');
+  assert.match(feedback, /each at its own stated scope/);
+  assert.match(scopeSuggestions(fits('My work covers these responsibilities.'))[0], /^Scope check \(not a factual issue\)/);
+});
+
+test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence, and the summary field comes from the candidate\'s own roles', () => {
+  assert.doesNotMatch(PACKET_INSTRUCTION, /matches the Y I did/);
+  assert.match(PACKET_INSTRUCTION, /Never say the candidate's work, experience or background "matches", "covers"/);
+  assert.match(PACKET_INSTRUCTION, /never the target role's or the posting's field when no source says they worked in it/);
+});

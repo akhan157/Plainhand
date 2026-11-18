@@ -315,7 +315,20 @@ function sinceItem({ kind, index, text, reference }) {
 }
 
 // numbers: false on a revision, where the candidate's request is checked by review.
-export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jobText = '', numbers = true } = {}) {
+// A letter sentence that says the candidate's work "matches" or "covers" the posting's
+// claims a fit at the posting's scope, audience and setting, which the sources rarely
+// state (a business unit is not a product line). The letter should name the evidenced
+// work and the posting's stated need, each at its own scope, and leave the match to the
+// reader. Only first-person subjects are flagged: "the assay matched the standard" is a fact.
+const FIT_SUBJECT = /\b(?:my|this)\s+(?:[A-Za-z&-]+\s+){0,3}?(?:experience|work|background|skills?|expertise|track record|qualifications?|role)\b[^.;:!?]{0,80}?\b(match(?:es|ed)?|cover(?:s|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|map(?:s|ped)?\s+(?:on)?to|meet(?:s)?|satisf(?:y|ies))\b/i;
+const FIT_OBJECT = /\b(match(?:es|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|cover(?:s|ed)?)\s+(?:the\s+|exactly\s+the\s+)?(?:work|experience|kind of work|what)\s+I\b/i;
+function fitItem({ kind, index, text }) {
+  const value = String(text ?? '');
+  const match = value.match(FIT_SUBJECT) || value.match(FIT_OBJECT);
+  return match ? [{ kind, index, word: match[0].replace(/\s+/g, ' ').trim(), fit: true, text: value, quote: '' }] : [];
+}
+
+export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jobText = '', numbers = true, fit = true } = {}) {
   const verbs = item => (allowVerbs ? [] : verbItem(item));
   const resume = Array.isArray(packet?.resume) ? packet.resume : [];
   const answers = Array.isArray(packet?.answers) ? packet.answers : [];
@@ -345,7 +358,8 @@ export function pluralScopeIssues(packet, { sources = [], allowVerbs = false, jo
   if (letterQuotes.length && String(packet?.coverLetter ?? '').trim()) {
     sentence(packet.coverLetter).forEach(text => issues.push(...scanItem({ kind: 'cover', index: null, text, quotes: letterQuotes }), ...verbs({ kind: 'cover', index: null, text, quotes: factualText.length ? factualText : letterQuotes }),
       ...(factualText.length ? sinceItem({ kind: 'cover', index: null, text, reference: factualText.join(' ') }) : []),
-      ...(numberReference ? numberWordItem({ kind: 'cover', index: null, text, reference: numberReference }) : [])));
+      ...(numberReference ? numberWordItem({ kind: 'cover', index: null, text, reference: numberReference }) : []),
+      ...(fit ? fitItem({ kind: 'cover', index: null, text }) : [])));
   }
   return issues;
 }
@@ -364,7 +378,9 @@ export function scopeRetryFeedback(issues) {
   if (!issues.length) return [];
   return [
     'Keep counts, number and verbs exactly as the sources state: a plural or a stronger verb (built, led, managed) the evidence does not use is a scope stretch.',
-    ...issues.map(issue => issue.since
+    ...issues.map(issue => issue.fit
+      ? `${label(issue)}: "${issue.word}" claims the candidate's work matches or covers the posting's. Name the specific work the sources show and the posting's specific need, each at its own stated scope, audience and setting, and let the reader draw the match. Sentence: "${around(issue.text, issue.word)}"`
+      : issue.since
       ? `${label(issue)}: "${issue.word}" says the ${issue.role} role is current, but the sources date it ${issue.since} to ${issue.ended}; use the sources' dates. Sentence: "${around(issue.text, issue.word)}"`
       : issue.number
       ? `${label(issue)}: "${issue.word}" states a number (${issue.number}) no source gives; write "a" or "a single", or leave the count out. Sentence: "${around(issue.text, issue.word)}"`
@@ -378,7 +394,9 @@ export function scopeSuggestions(issues) {
   // Quote the line, never an index: a reviewer counting entries from zero would read
   // "Resume entry 2" as a different line and reject the note as false.
   const where = issue => issue.kind === 'cover' ? 'the cover-letter sentence' : issue.kind === 'answer' ? 'the answer' : 'the resume line';
-  return issues.map(issue => issue.since
+  return issues.map(issue => issue.fit
+    ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a claim that the candidate's work matches the posting's at its scope. Name the evidenced work and let the reader draw the match.`
+    : issue.since
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", but the sources date the ${issue.role} role ${issue.since} to ${issue.ended}. Use the sources' dates.`
     : issue.number
     ? `Scope check (not a factual issue): ${where(issue)} "${around(issue.text, issue.word)}" says "${issue.word}", a number no source states. Write "a" or leave the count out.`

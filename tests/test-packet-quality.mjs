@@ -214,7 +214,7 @@ test('both instructions forbid invented motivation and false inclusion suggestio
     assert.ok(instruction.includes('"left out X because ..."'));
     assert.ok(instruction.includes('never claim the resume or letter included or added an item that is not in it'));
   }
-  assert.ok(PACKET_INSTRUCTION.includes('connect the posting\'s own stated work to the candidate\'s evidenced work'), 'the no-motivation fallback names the posting\'s own work');
+  assert.ok(PACKET_INSTRUCTION.includes('name something specific the posting states and the candidate\'s evidenced work that relates to it'), 'the no-motivation fallback names the posting\'s own work');
   assert.ok(PACKET_INSTRUCTION.includes('Say nothing about the employer or role that the posting text does not say'));
   assert.ok(STANDARD_INSTRUCTION.includes('connect the candidate\'s evidenced work to the kind of work those roles name'));
   assert.ok(!PACKET_INSTRUCTION.includes('Say briefly why this role and this employer'), 'the unsupported why-this-employer request is gone');
