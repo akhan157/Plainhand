@@ -660,7 +660,7 @@ test('review d3fe1cd: Project Manager and MBA Associate are roles, so an ongoing
 
 test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence, and the summary field comes from the candidate\'s own roles', () => {
   assert.doesNotMatch(PACKET_INSTRUCTION, /matches the Y I did/);
-  assert.match(PACKET_INSTRUCTION, /Never use any phrasing that says the candidate's work, experience or background matches, covers, aligns with, mirrors or meets the posting's/);
+  assert.match(PACKET_INSTRUCTION, /In the letter, never use any phrasing that says the candidate's work, experience or background matches, covers, aligns with, mirrors or meets the posting's/);
   // Review 066e804: the examples must not be the U14 fin fixture's own terms.
   for (const instruction of [PACKET_INSTRUCTION, REVIEW_INSTRUCTION]) assert.doesNotMatch(instruction, /business unit|product line|finance director|business leaders/i);
   assert.match(PACKET_INSTRUCTION, /never the target role's or the posting's field when no source says they worked in it/);
@@ -668,5 +668,10 @@ test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence
   // per-sentence regex check could not tell a fit claim from honest scope
   // ("I covered these responsibilities during a vacancy", "I met your team at the trade show").
   assert.match(REVIEW_INSTRUCTION, /matches, covers, aligns with, mirrors or meets the posting's work, responsibilities or requirements is an issue when the sources show the candidate's work at a different scope/);
-  assert.match(REVIEW_INSTRUCTION, /unless INPUT\.candidateLine\.allowedStretches names scope; a plain statement of the candidate's own scope/);
+  // Review 08972e8: a wording the candidate kept in decisions is never both "apply exactly"
+  // and "never use"; the own-scope exemption is only from the fit rule.
+  assert.match(PACKET_INSTRUCTION, /unless the candidate kept that wording in INPUT\.candidateLine\.decisions/);
+  assert.match(REVIEW_INSTRUCTION, /unless INPUT\.candidateLine\.allowedStretches names scope or the candidate kept that wording in INPUT\.candidateLine\.decisions; a plain statement of the candidate's own scope/);
+  assert.match(REVIEW_INSTRUCTION, /is not a fit issue, though it still needs a source like any claim/);
+  assert.match(REVIEW_INSTRUCTION, /When the packet is for a posting, any cover-letter phrasing/);
 });
