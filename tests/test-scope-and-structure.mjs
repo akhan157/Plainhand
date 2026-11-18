@@ -670,7 +670,7 @@ test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence
   assert.match(REVIEW_INSTRUCTION, /matches, covers, aligns with, mirrors or meets the posting's work, responsibilities or requirements is an issue when the sources show the candidate's work at a different scope/);
   // Review 08972e8: a wording the candidate kept in decisions is never both "apply exactly"
   // and "never use"; the own-scope exemption is only from the fit rule.
-  assert.match(PACKET_INSTRUCTION, /unless the candidate kept that wording in INPUT\.candidateLine\.decisions/);
+  assert.match(PACKET_INSTRUCTION, /unless INPUT\.candidateLine\.allowedStretches names scope or the candidate kept that wording in INPUT\.candidateLine\.decisions: state/);
   assert.match(REVIEW_INSTRUCTION, /unless INPUT\.candidateLine\.allowedStretches names scope or the candidate kept that wording in INPUT\.candidateLine\.decisions; a plain statement of the candidate's own scope/);
   assert.match(REVIEW_INSTRUCTION, /is not a fit issue, though it still needs a source like any claim/);
   assert.match(REVIEW_INSTRUCTION, /When the packet is for a posting, any cover-letter phrasing/);
