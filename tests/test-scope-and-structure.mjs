@@ -673,6 +673,12 @@ test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matche
     'My experience met the requirements.',
     'My experience lines up with your team\'s needs.',
     'My experience across forecasting, budgeting, variance analysis and month-end close at two manufacturers directly matches what you need.',
+    // Review 84a18f2: modal fit claims and the posting named after "the requirements of".
+    'I would be a strong match for this role.',
+    "I'd be a great fit for your team.",
+    'My experience would be an excellent fit for the position.',
+    'My experience meets the requirements of this role.',
+    "My work covers Example Corp's stated responsibilities.",
   ]) assert.equal(fits(text).length, 1, text);
   // Review 887d1b6: the candidate's own scope, the posting described, and plain facts.
   for (const text of [
@@ -694,6 +700,19 @@ test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matche
     'Your team forecasts each product line; at Example Manufacturing Corp I built and maintain the forecast model for a $240 million business unit.',
     'The potency assay matched the reference standard within 5%.',
     'I present the monthly variance drivers to the finance director.',
+    // Review 84a18f2: an outside standard after "the requirements of", a work item named
+    // "requirements analysis", a time genitive after "this", and a company's own calendar.
+    'My role covered the duties of the controller during her leave.',
+    'I covered the duties of the controller during her leave.',
+    'My work met the requirements of the audit committee.',
+    'My qualifications satisfy the requirements of the state licensing board.',
+    'This work covered the requirements analysis for the migration.',
+    'My validation work satisfied the criteria of ICH Q2.',
+    "My work covered this year's audit requirements.",
+    "My work covered this quarter's reporting requirements.",
+    "My close work met this year's audit requirements.",
+    "My work aligned with Example Corp's audit calendar.",
+    "I met Example Corp's year-end deadlines.",
   ]) assert.equal(fits(text).length, 0, text);
   // Off on a revision, where the candidate's own request decides the wording.
   assert.equal(fits('My work covers these responsibilities.', { fit: false }).length, 0);

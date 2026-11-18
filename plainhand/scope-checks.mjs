@@ -326,19 +326,28 @@ const MODS = String.raw`(?:[\w'&-]+\s+){0,3}?`;
 const OWN_WORK = String.raw`(?:experience|work|background|skills?|skill set|expertise|track record|qualifications?|career|record)`;
 const SUBJECT = String.raw`\b(?:my\s+${MODS}(?:${OWN_WORK}|role)|this\s+${MODS}${OWN_WORK}|I)\b`;
 const FIT_VERB = String.raw`\b(?:match(?:es|ed)?|align(?:s|ed)?\s+(?:closely\s+|well\s+)?with|mirror(?:s|ed)?|cover(?:s|ed)?|map(?:s|ped)?\s+(?:on)?to|meet(?:s)?|met|satisf(?:y|ies|ied)|fulfil(?:l|ls|s|led)?|line(?:s|d)?\s+up\s+with|correspond(?:s|ed)?\s+to)\b`;
+// After this/that the modifiers carry no apostrophe: "this year's audit requirements" is
+// the candidate's own scope. Bare "the requirements" never takes of/for/in: "the
+// requirements of the audit committee" names an outside standard.
 // What the posting asks: "your team's ... work", "this role", "these responsibilities",
 // "the requirements" (bare: "the state licensing requirements" is the candidate's own
 // scope), a company's stated work ("Fictional Devices Inc's stated work"), "what you need".
 const POSTING_NOUN = String.raw`(?:posting|role|job|position|opening|team|department|company|responsibilities|requirements|needs|duties|qualifications|criteria|priorities|focus|work|description)`;
-const POSTING_OBJECT = String.raw`(?:(?:your|this|these|that|those)\s+(?:[\w'&-]+\s+){0,4}?${POSTING_NOUN}|the\s+(?:role|job|position|posting|opening)(?:'s)?\b(?!\s+of\b)|the\s+(?:requirements|responsibilities|duties|qualifications|criteria)\b|(?:all|every|each|most)\s+(?:of\s+)?(?:the\s+|your\s+)?(?:[\w-]+\s+)?(?:requirements|responsibilities|duties|qualifications|criteria)|(?:[A-Z][\w&.-]*\s+){0,4}[A-Z][\w&.-]*'s\s+(?:[\w-]+\s+){0,3}?(?:work|needs|requirements|responsibilities|focus|priorities|duties)|what\s+(?:you|your\s+team|the\s+role|this\s+role|the\s+posting)\b)`;
+const POSTING_OBJECT = String.raw`(?:your\s+(?:[\w'&-]+\s+){0,4}?${POSTING_NOUN}|(?:this|these|that|those)\s+(?:[\w&-]+\s+){0,4}?${POSTING_NOUN}|the\s+(?:role|job|position|posting|opening)(?:'s)?\b(?!\s+of\b)|the\s+(?:requirements|responsibilities|duties|qualifications|criteria)\s+(?:of|for|in)\s+(?:the|this|your)\s+(?:role|job|position|posting|opening|team)\b|the\s+(?:requirements|responsibilities|duties|qualifications|criteria)\b(?!\s+(?:of|for|in|analysis|gathering|document|documents|matrix|set by|under)\b)|(?:all|every|each|most)\s+(?:of\s+)?(?:the\s+|your\s+)?(?:[\w-]+\s+)?(?:requirements|responsibilities|duties|qualifications|criteria)|what\s+(?:you|your\s+team|the\s+role|this\s+role|the\s+posting)\b)`;
+// A company's stated work ("Fictional Devices Inc's stated work") needs a capital, so this
+// pattern is case-sensitive: under the i flag "this year's audit requirements" would read
+// as a company. Subject and verb spell out their own capitals.
+const COMPANY_OBJECT = String.raw`(?:[A-Z][\w&.-]*\s+){0,4}[A-Z][\w&.-]*'s\s+(?:[\w-]+\s+){0,3}?(?:work|needs|requirements|responsibilities|focus|priorities|duties)\b`;
+const SUBJECT_CS = SUBJECT.replace('(?:my\\s+', '(?:[Mm]y\\s+').replace('|this\\s+', '|[Tt]his\\s+');
+const COMPANY_FIT = new RegExp(`${SUBJECT_CS}[^.;:!?]{0,120}?${FIT_VERB}\\s+(?:(?:exactly|directly|closely|fully|well)\\s+)?${COMPANY_OBJECT}`);
 const FIT_CLAIM = new RegExp(`${SUBJECT}[^.;:!?]{0,120}?${FIT_VERB}\\s+(?:(?:almost\\s+|nearly\\s+)?(?:exactly|directly|closely|fully|well)\\s+)?${POSTING_OBJECT}`, 'i');
 // The posting as subject: "X's combination of ... matches the work I do".
 const FIT_OBJECT = /\b(?:match(?:es|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|cover(?:s|ed)?)\s+(?:exactly\s+)?(?:the\s+)?(?:work|experience|kind of work)\s+I\b/i;
 // "I am a strong match for this role", "my experience is an excellent fit for the job".
-const FIT_NOUN = new RegExp(`(?:\\bI\\s+am|\\bI'm|\\bmy\\s+${MODS}${OWN_WORK}\\s+(?:is|are|makes\\s+me))\\s+(?:a|an)\\s+(?:[\\w-]+\\s+){0,2}?(?:fit|match)\\s+for\\s+${POSTING_OBJECT}`, 'i');
+const FIT_NOUN = new RegExp(`(?:\\bI\\s+(?:am|would\\s+be)|\\bI'(?:m|d\\s+be)|\\bmy\\s+${MODS}${OWN_WORK}\\s+(?:is|are|would\\s+be|makes?\\s+me))\\s+(?:a|an)\\s+(?:[\\w-]+\\s+){0,2}?(?:fit|match)\\s+for\\s+${POSTING_OBJECT}`, 'i');
 function fitItem({ kind, index, text }) {
   const value = String(text ?? '');
-  const match = value.match(FIT_CLAIM) || value.match(FIT_OBJECT) || value.match(FIT_NOUN);
+  const match = value.match(FIT_CLAIM) || value.match(COMPANY_FIT) || value.match(FIT_OBJECT) || value.match(FIT_NOUN);
   return match ? [{ kind, index, word: match[0].replace(/\s+/g, ' ').trim(), fit: true, text: value, quote: '' }] : [];
 }
 
