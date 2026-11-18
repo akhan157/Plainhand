@@ -676,8 +676,14 @@ test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence
   assert.match(REVIEW_INSTRUCTION, /When the packet is for a posting, any cover-letter phrasing/);
 });
 
-test('U14 6.2-sol: a source\'s unnamed "it" stays unnamed in the packet', () => {
-  assert.match(PACKET_INSTRUCTION, /Keep a source's unnamed reference unnamed: when a source says "it", "this" or "that" without saying what it refers to, never name it yourself/);
+test('U14 6.2-sol: a reference the cited passage leaves open stays open in the packet and the master', () => {
+  // Review d037477: the rule covers a reference the cited passage itself leaves open (an
+  // interview answer pointing back to an earlier one), allows a link the passage states,
+  // and sits in the master prompt too, since every packet reuses the master's wording.
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) {
+    assert.match(instruction, /Keep an unsettled reference unsettled: when the passage a claim rests on/);
+    assert.match(instruction, /When the same passage names it \("I wrote a scheduling script; after we started using it \.\.\."\), the link is stated and may be used/);
+  }
 });
 
 test('U14 6.2-sol: the evaluation corpora carry no synthetic-test label a model could act on', async () => {
