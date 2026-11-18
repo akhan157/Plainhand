@@ -679,6 +679,12 @@ test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matche
     'My experience would be an excellent fit for the position.',
     'My experience meets the requirements of this role.',
     "My work covers Example Corp's stated responsibilities.",
+    // Review e9e6a6d: the posting named after the requirements, and a singular requirement.
+    'I would be a strong fit for the advertised role.',
+    'My experience meets the requirements for the advertised role.',
+    'I meet every requirement in the posting.',
+    'My experience meets the requirements listed in the posting.',
+    "I meet Example Corp's stated requirements.",
   ]) assert.equal(fits(text).length, 1, text);
   // Review 887d1b6: the candidate's own scope, the posting described, and plain facts.
   for (const text of [
@@ -713,6 +719,18 @@ test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matche
     "My close work met this year's audit requirements.",
     "My work aligned with Example Corp's audit calendar.",
     "I met Example Corp's year-end deadlines.",
+    // Review e9e6a6d: a requirements work item, a document's requirements, a regulator's
+    // possessive.
+    'My role covered the requirements phase of the migration.',
+    'My work covered the requirements review and design.',
+    'My work covered the requirements definition for the new billing system.',
+    'My work met the requirements laid out in the quality agreement.',
+    'My work met the requirements described in the SOP.',
+    'My work met the requirements outlined in the validation plan.',
+    'My work met the requirements imposed by the regulator.',
+    "My work met OSHA's requirements.",
+    "My work met HIPAA's requirements.",
+    'I met all the requirements of the audit committee.',
   ]) assert.equal(fits(text).length, 0, text);
   // Off on a revision, where the candidate's own request decides the wording.
   assert.equal(fits('My work covers these responsibilities.', { fit: false }).length, 0);
