@@ -333,26 +333,27 @@ const subject = cased => {
 const FIT_VERB = String.raw`\b(?:match(?:es|ed)?|align(?:s|ed)?\s+(?:closely\s+|well\s+)?with|mirror(?:s|ed)?|cover(?:s|ed)?|map(?:s|ped)?\s+(?:on)?to|meet(?:s)?|met|satisf(?:y|ies|ied)|fulfil(?:l|ls|s|led)?|line(?:s|d)?\s+up\s+with|correspond(?:s|ed)?\s+to)\b`;
 const ADVERB = String.raw`(?:(?:almost\s+|nearly\s+)?(?:exactly|directly|closely|fully|well)\s+)?`;
 const ASKED = String.raw`(?:requirements?|responsibilit(?:y|ies)|duties|qualifications|criteria)`;
-const THE_POSTING = String.raw`(?:the|this|your)\s+(?:advertised\s+|open\s+)?(?:role|job|position|posting|opening|team|job description)\b`;
-// What the posting asks. After this/that the modifiers carry no apostrophe: "this year's
-// audit requirements" is the candidate's own scope. Bare "the requirements" counts only
-// at the end of the sentence or tied to the posting: "the requirements of the audit
-// committee", "the requirements phase" and "the requirements laid out in the SOP" are not
-// the posting's.
-const POSTING_NOUN = String.raw`(?:posting|role|job|position|opening|team|department|company|responsibilities|requirements|needs|duties|qualifications|criteria|priorities|focus|work|description)`;
-const POSTING_OBJECT = String.raw`(?:your\s+(?:[\w'&-]+\s+){0,4}?${POSTING_NOUN}|(?:this|these|that|those)\s+(?:[\w&-]+\s+){0,4}?${POSTING_NOUN}|the\s+(?:advertised\s+|open\s+)?(?:role|job|position|posting|opening)(?:'s)?\b(?!\s+of\b)|the\s+${ASKED}\s+(?:of|for|in|listed\s+in|described\s+in|outlined\s+in)\s+${THE_POSTING}|the\s+${ASKED}\s*[.!?]?\s*$|(?:all|every|each|most)\s+(?:of\s+)?(?:the\s+|your\s+)?(?:[\w-]+\s+)?${ASKED}(?:\s*[.!?]?\s*$|\s+(?:of|for|in|listed\s+in)\s+${THE_POSTING})|what\s+(?:you|your\s+team|the\s+role|this\s+role|the\s+posting)\b)`;
-// A company's stated work ("Fictional Devices Inc's stated work") needs a capital, so this
-// pattern is case-sensitive: under the i flag "this year's audit requirements" would read
-// as a company. It also needs a company suffix or "stated": "OSHA's requirements" names
-// a regulator, not the employer.
-const COMPANY = String.raw`(?:[A-Z][\w&.-]*\s+){0,4}`;
-const COMPANY_OBJECT = String.raw`(?:${COMPANY}[A-Z][\w&.-]*'s\s+stated\s+(?:[\w-]+\s+){0,3}?|${COMPANY}(?:Inc|Corp|Corporation|LLC|Ltd|Co|Group|Labs?|Technologies|Systems|Partners)\.?'s\s+(?:[\w-]+\s+){0,3}?)(?:work|needs|requirements|responsibilities|focus|priorities|duties)\b`;
+// Only objects that can mean nothing but the posting count. "the role", "the job", "the
+// requirements" and "Example Corp's requirements" also name a post the candidate covered,
+// a project, an outside standard or their own employer ("I covered the position during a
+// vacancy", "the welds met the requirements for the job", "met OSHA's requirements"), so
+// they are left to review. After this/these the modifiers carry no apostrophe: "this
+// year's audit requirements" is the candidate's own scope.
+const THE_POSTING = String.raw`(?:(?:this|your)\s+(?:role|position|job|opening|team)\b(?!\s+I\b)|the\s+(?:advertised|open)\s+(?:role|position|job)\b|the\s+(?:job\s+)?(?:posting|job description)\b)`;
+const postingObject = bareRole => String.raw`(?:your\s+(?:[\w'&-]+\s+){0,4}?(?:team|role|responsibilities|requirements|needs|duties|qualifications|criteria|priorities|focus|work|description)\b|(?:these|those)\s+(?:[\w&-]+\s+){0,4}?(?:responsibilities|requirements|needs|duties|qualifications|criteria|priorities)\b|${bareRole ? THE_POSTING : String.raw`the\s+(?:job\s+)?(?:posting|job description)\b`}|(?:the|all|every|each|most)\s+(?:of\s+)?(?:the\s+)?${ASKED}\s+(?:of|for|in|listed\s+in|described\s+in|outlined\s+in)\s+${THE_POSTING}|what\s+(?:you|your\s+team)\s+(?:need|want|are\s+looking|ask)\w*)`;
+// A company's stated work ("Fictional Devices Inc's stated work") names what the posting
+// says, so it counts; a company's plain requirements may be the candidate's own employer
+// or customer. Case-sensitive, so "this year's" is never read as a company.
+const COMPANY_OBJECT = String.raw`(?:[A-Z][\w&.-]*\s+){0,4}[A-Z][\w&.-]*'s\s+stated\s+(?:[\w-]+\s+){0,3}?(?:work|needs|requirements|responsibilities|focus|priorities|duties)\b`;
 const COMPANY_FIT = new RegExp(`${subject(true)}[^.;:!?]{0,120}?${FIT_VERB}\\s+${ADVERB}${COMPANY_OBJECT}`);
-const FIT_CLAIM = new RegExp(`${subject(false)}[^.;:!?]{0,120}?${FIT_VERB}\\s+${ADVERB}${POSTING_OBJECT}`, 'i');
+// "Covered the role" means filling the post, so after cover a bare role is not the posting.
+const POSTING_OBJECT = postingObject(true);
+const COVER = String.raw`\bcover(?:s|ed)?\b`;
+const FIT_CLAIM = new RegExp(`${subject(false)}[^.;:!?]{0,120}?(?:(?!${COVER})${FIT_VERB}\\s+${ADVERB}${POSTING_OBJECT}|${COVER}\\s+${ADVERB}${postingObject(false)})`, 'i');
 // The posting as subject: "X's combination of ... matches the work I do".
 const FIT_OBJECT = /\b(?:match(?:es|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|cover(?:s|ed)?)\s+(?:exactly\s+)?(?:the\s+)?(?:work|experience|kind of work)\s+I\b/i;
 // "I am a strong match for this role", "my experience is an excellent fit for the job".
-const FIT_NOUN = new RegExp(`(?:\\bI\\s+(?:am|would\\s+be)|\\bI'(?:m|d\\s+be)|\\bmy\\s+${MODS}${OWN_WORK}\\s+(?:is|are|would\\s+be|makes?\\s+me))\\s+(?:a|an)\\s+(?:[\\w-]+\\s+){0,2}?(?:fit|match)\\s+for\\s+${POSTING_OBJECT}`, 'i');
+const FIT_NOUN = new RegExp(`(?:\\bI\\s+(?:am|would\\s+be)|\\bI'(?:m|d\\s+be)|\\bmy\\s+${MODS}${OWN_WORK}\\s+(?:is|are|would\\s+be|makes?\\s+me))\\s+(?:a|an)\\s+(?:[\\w-]+\\s+){0,2}?(?:fit|match)\\s+for\\s+(?:${POSTING_OBJECT}|the\\s+(?:role|position|job|team)\\b)`, 'i');
 function fitItem({ kind, index, text }) {
   const value = String(text ?? '');
   const match = value.match(FIT_CLAIM) || value.match(COMPANY_FIT) || value.match(FIT_OBJECT) || value.match(FIT_NOUN);

@@ -667,10 +667,8 @@ test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matche
     'My work at Example Manufacturing Corp covers these responsibilities.',
     "Fictional Devices Inc's stated combination of forecast ownership and variance analysis matches the work I do in corporate planning.",
     'This background aligns with your team\'s reporting work.',
-    'I meet all the requirements.',
     'I am a strong match for this role.',
     'My experience is an excellent fit for this role.',
-    'My experience met the requirements.',
     'My experience lines up with your team\'s needs.',
     'My experience across forecasting, budgeting, variance analysis and month-end close at two manufacturers directly matches what you need.',
     // Review 84a18f2: modal fit claims and the posting named after "the requirements of".
@@ -731,6 +729,22 @@ test('U14 Codex round 2: a letter sentence claiming the candidate\'s work matche
     "My work met OSHA's requirements.",
     "My work met HIPAA's requirements.",
     'I met all the requirements of the audit committee.',
+    // Review 333ef58: covering a post, the candidate's own employer or customer, a project
+    // "job", and a role the candidate held.
+    'I covered the position during a nine-month vacancy.',
+    'I covered the role for six months while it was vacant.',
+    'I covered this role during the vacancy until we hired.',
+    "My work met Example Manufacturing Corp's requirements.",
+    "I built the model that met Example Manufacturing Corp's reporting requirements.",
+    "I designed brackets that met Ford Motor Co's requirements.",
+    'My work met the requirements for the job.',
+    'The welds I signed off met the requirements for the job.',
+    'I met the requirements of the role I held.',
+    'I met the requirements of the position I was promoted into.',
+    // Left to review on purpose: a bare "the requirements" may be the posting's or an
+    // outside standard's, and a per-sentence check cannot tell which.
+    'I meet all the requirements.',
+    'My work met the requirements.',
   ]) assert.equal(fits(text).length, 0, text);
   // Off on a revision, where the candidate's own request decides the wording.
   assert.equal(fits('My work covers these responsibilities.', { fit: false }).length, 0);
