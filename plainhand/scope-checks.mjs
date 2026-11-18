@@ -319,12 +319,26 @@ function sinceItem({ kind, index, text, reference }) {
 // claims a fit at the posting's scope, audience and setting, which the sources rarely
 // state (a business unit is not a product line). The letter should name the evidenced
 // work and the posting's stated need, each at its own scope, and leave the match to the
-// reader. Only first-person subjects are flagged: "the assay matched the standard" is a fact.
-const FIT_SUBJECT = /\b(?:my|this)\s+(?:[A-Za-z&-]+\s+){0,3}?(?:experience|work|background|skills?|expertise|track record|qualifications?|role)\b[^.;:!?]{0,80}?\b(match(?:es|ed)?|cover(?:s|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|map(?:s|ped)?\s+(?:on)?to|meet(?:s)?|satisf(?:y|ies))\b/i;
-const FIT_OBJECT = /\b(match(?:es|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|cover(?:s|ed)?)\s+(?:the\s+|exactly\s+the\s+)?(?:work|experience|kind of work|what)\s+I\b/i;
+// reader. A fit claim needs both a first-person subject and a posting object: "My role
+// covered month-end close" and "my results matched the forecast" are scope facts, and
+// "the assay matched the standard" is not the candidate's claim at all.
+const MODS = String.raw`(?:[\w'&-]+\s+){0,3}?`;
+const OWN_WORK = String.raw`(?:experience|work|background|skills?|skill set|expertise|track record|qualifications?|career|record)`;
+const SUBJECT = String.raw`\b(?:my\s+${MODS}(?:${OWN_WORK}|role)|this\s+${MODS}${OWN_WORK}|I)\b`;
+const FIT_VERB = String.raw`\b(?:match(?:es|ed)?|align(?:s|ed)?\s+(?:closely\s+|well\s+)?with|mirror(?:s|ed)?|cover(?:s|ed)?|map(?:s|ped)?\s+(?:on)?to|meet(?:s)?|met|satisf(?:y|ies|ied)|fulfil(?:l|ls|s|led)?|line(?:s|d)?\s+up\s+with|correspond(?:s|ed)?\s+to)\b`;
+// What the posting asks: "your team's ... work", "this role", "these responsibilities",
+// "the requirements" (bare: "the state licensing requirements" is the candidate's own
+// scope), a company's stated work ("Fictional Devices Inc's stated work"), "what you need".
+const POSTING_NOUN = String.raw`(?:posting|role|job|position|opening|team|department|company|responsibilities|requirements|needs|duties|qualifications|criteria|priorities|focus|work|description)`;
+const POSTING_OBJECT = String.raw`(?:(?:your|this|these|that|those)\s+(?:[\w'&-]+\s+){0,4}?${POSTING_NOUN}|the\s+(?:role|job|position|posting|opening)(?:'s)?\b(?!\s+of\b)|the\s+(?:requirements|responsibilities|duties|qualifications|criteria)\b|(?:all|every|each|most)\s+(?:of\s+)?(?:the\s+|your\s+)?(?:[\w-]+\s+)?(?:requirements|responsibilities|duties|qualifications|criteria)|(?:[A-Z][\w&.-]*\s+){0,4}[A-Z][\w&.-]*'s\s+(?:[\w-]+\s+){0,3}?(?:work|needs|requirements|responsibilities|focus|priorities|duties)|what\s+(?:you|your\s+team|the\s+role|this\s+role|the\s+posting)\b)`;
+const FIT_CLAIM = new RegExp(`${SUBJECT}[^.;:!?]{0,120}?${FIT_VERB}\\s+(?:(?:almost\\s+|nearly\\s+)?(?:exactly|directly|closely|fully|well)\\s+)?${POSTING_OBJECT}`, 'i');
+// The posting as subject: "X's combination of ... matches the work I do".
+const FIT_OBJECT = /\b(?:match(?:es|ed)?|align(?:s|ed)?\s+with|mirror(?:s|ed)?|cover(?:s|ed)?)\s+(?:exactly\s+)?(?:the\s+)?(?:work|experience|kind of work)\s+I\b/i;
+// "I am a strong match for this role", "my experience is an excellent fit for the job".
+const FIT_NOUN = new RegExp(`(?:\\bI\\s+am|\\bI'm|\\bmy\\s+${MODS}${OWN_WORK}\\s+(?:is|are|makes\\s+me))\\s+(?:a|an)\\s+(?:[\\w-]+\\s+){0,2}?(?:fit|match)\\s+for\\s+${POSTING_OBJECT}`, 'i');
 function fitItem({ kind, index, text }) {
   const value = String(text ?? '');
-  const match = value.match(FIT_SUBJECT) || value.match(FIT_OBJECT);
+  const match = value.match(FIT_CLAIM) || value.match(FIT_OBJECT) || value.match(FIT_NOUN);
   return match ? [{ kind, index, word: match[0].replace(/\s+/g, ' ').trim(), fit: true, text: value, quote: '' }] : [];
 }
 
@@ -377,7 +391,7 @@ function around(text, word) {
 export function scopeRetryFeedback(issues) {
   if (!issues.length) return [];
   return [
-    'Keep counts, number and verbs exactly as the sources state: a plural or a stronger verb (built, led, managed) the evidence does not use is a scope stretch.',
+    'Keep counts, number, verbs and fit exactly as the sources state: a plural, a stronger verb (built, led, managed) or a claim that the work matches the posting, when the evidence does not say so, is a scope stretch.',
     ...issues.map(issue => issue.fit
       ? `${label(issue)}: "${issue.word}" claims the candidate's work matches or covers the posting's. Name the specific work the sources show and the posting's specific need, each at its own stated scope, audience and setting, and let the reader draw the match. Sentence: "${around(issue.text, issue.word)}"`
       : issue.since

@@ -671,7 +671,8 @@ export class Workflow {
           // Deterministic findings ride the existing one retry, before humanize and
           // review so their resume:<index> keys name the entries that will ship:
           // a misplaced accomplishment section, a plural the item's own evidence never
-          // uses (scope stretch), and a credential the posting names or relates to that
+          // uses (scope stretch), a letter sentence claiming the work matches the
+          // posting (fit), and a credential the posting names or relates to that
           // the resume left out.
           scopeGaps = pluralScopeIssues(packet, { sources: context.sources, jobText, numbers: !revising, fit: !revising, allowVerbs: revising || (line?.allowedStretches || []).some(kind => ['ownership', 'level', 'scope'].includes(kind)) });
           // On a revision the candidate's request decides what the resume keeps, so a
