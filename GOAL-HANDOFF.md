@@ -1193,3 +1193,38 @@ holdout2-journey-stem fails again, the same way.
 - **Verdict:** near parity, with more passes. Honesty is still slightly lower, and
   the cost difference is within the noise of a single repeat. U14 stays
   in_progress, and the Codex re-run on 2026-11-22 decides it.
+
+## U14 Codex comparison on `3dd8006`; letter fit fix `887d1b6` — 2026-11-17
+
+- **Run:** owner's choice of Codex gpt-6.1-sol at low effort on both sides. The
+  baseline `00ce1bf` is patched only with `-m` and the effort flag. Six non-minimal
+  paired rows, two repeats, same Claude judge. Application calls leave out the
+  one-time interview.
+
+  | | Baseline r1 | HEAD r1 | Baseline r2 | HEAD r2 |
+  | --- | --- | --- | --- | --- |
+  | Rows passed | 5/6 | 5/6 | 4/6 | 4/6 |
+  | Application calls | 29 | 33 | 30 | 35 |
+  | Input tokens (6 rows) | 1,242k | 941k (−24%) | 1,249k | 976k (−22%) |
+  | Seeded input tokens | 355k | 258k | 371k | 305k |
+  | Judge overall | 4.07 | 4.00 | 4.00 | 3.93 |
+  | Judge honesty | 5.00 | 4.73 | 4.83 | 4.33 |
+  | Unsupported claims | 2/90 | 0/88 | 0/100 | 0/87 |
+
+- **Verdict:** not accepted. Tokens fell, but honesty is lower in both repeats, which
+  meets the falsifier. Calls are higher, so the saving is in tokens only.
+- **Cause:** the judge's reasons were letter sentences such as "My experience matches
+  X's stated work on product-line forecasting", against a business unit and a finance
+  director. The packet prompt itself modelled that sentence ("Your team's focus on X
+  matches the Y I did at Z", added in `1f590f2`). Summary lines also took the target
+  role's field as the candidate's.
+- **Fix `887d1b6`:** the prompt names a stated posting need and the related evidenced
+  work, each at its own scope, and never says the work matches or covers the posting.
+  A deterministic fit check adds retry feedback (off on revisions). Suite 775/775,
+  gate 64/67 (expected), simulation 49/49.
+- **Also:** `9680304` fixes the review findings on `3dd8006`. A model name can't start
+  with a dash, and new tests pin the default arguments and the env wiring.
+- **Next:** a HEAD-only Codex repeat on `887d1b6`, compared with both baseline repeats.
+  The fix is under independent review.
+- **Void runs:** `output/u14-codex-da03b4a-void-default-effort`, which ran at the CLI
+  default effort, and an r2 attempt killed during install.
