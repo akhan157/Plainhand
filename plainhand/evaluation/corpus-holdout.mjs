@@ -253,7 +253,7 @@ export const holdoutJobs = [
     location: 'Denver, US',
     requiredFactIds: ['erp', 'recs', 'cert'],
     atsTerms: ['NetSuite', 'general ledger', 'month-end close', 'reconciliation', 'CPA'],
-    description: 'SYNTHETIC TEST JOB. Fictional Outdoor Goods seeks a finance systems manager in Denver to lead its move to a new ERP. Own the NetSuite general ledger design, shorten the month-end close, and rebuild account reconciliations and controls for the audit. CPA required.',
+    description: 'Fictional Outdoor Goods seeks a finance systems manager in Denver to lead its move to a new ERP. Own the NetSuite general ledger design, shorten the month-end close, and rebuild account reconciliations and controls for the audit. CPA required.',
   },
   {
     id: 'holdout-job-fin-forecast',
@@ -263,7 +263,7 @@ export const holdoutJobs = [
     requiredFactIds: ['forecast', 'team', 'cert'],
     atsTerms: ['rolling forecast', 'planning', 'analysts', 'CPA', 'NetSuite'],
     retainFactIds: ['erp'],
-    description: 'SYNTHETIC TEST JOB. Fictional Medical Imaging seeks an FP&A manager in Denver. Own the rolling forecast for a product division, run the quarterly planning calendar, and manage a small team of analysts. CPA preferred; NetSuite familiarity is a plus.',
+    description: 'Fictional Medical Imaging seeks an FP&A manager in Denver. Own the rolling forecast for a product division, run the quarterly planning calendar, and manage a small team of analysts. CPA preferred; NetSuite familiarity is a plus.',
   },
   {
     id: 'holdout-job-stem-automation',
@@ -272,7 +272,7 @@ export const holdoutJobs = [
     location: 'Cambridge, US',
     requiredFactIds: ['automation', 'lims', 'cert'],
     atsTerms: ['liquid-handling', 'LIMS', 'throughput', 'automation', 'Six Sigma'],
-    description: 'SYNTHETIC TEST JOB. Fictional Sequencing Co seeks a senior lab automation scientist in Cambridge. Program and scale liquid-handling robots for sample preparation, integrate instruments with the LIMS, and raise lab throughput. Process improvement training such as Six Sigma is valued.',
+    description: 'Fictional Sequencing Co seeks a senior lab automation scientist in Cambridge. Program and scale liquid-handling robots for sample preparation, integrate instruments with the LIMS, and raise lab throughput. Process improvement training such as Six Sigma is valued.',
   },
   {
     id: 'holdout-job-stem-ops',
@@ -282,7 +282,7 @@ export const holdoutJobs = [
     requiredFactIds: ['team', 'audits', 'uptime'],
     atsTerms: ['lab operations', 'technicians', 'quality audits', 'maintenance', 'LIMS'],
     retainFactIds: ['lims'],
-    description: 'SYNTHETIC TEST JOB. Fictional Cell Sciences seeks a lab operations manager in Cambridge. Lead a team of lab technicians, prepare for external quality audits, and own instrument maintenance and uptime. Experience with a LIMS is helpful.',
+    description: 'Fictional Cell Sciences seeks a lab operations manager in Cambridge. Lead a team of lab technicians, prepare for external quality audits, and own instrument maintenance and uptime. Experience with a LIMS is helpful.',
   },
   {
     id: 'holdout-job-tech-reliability',
@@ -291,7 +291,7 @@ export const holdoutJobs = [
     location: 'Seattle, US',
     requiredFactIds: ['oncall', 'pages', 'runbooks'],
     atsTerms: ['on-call', 'incident commander', 'alerts', 'runbooks', 'Kubernetes'],
-    description: 'SYNTHETIC TEST JOB. Fictional Ticketing seeks a senior site reliability engineer in Seattle. Join the on-call rotation, act as incident commander, reduce alert noise, and write runbooks and postmortems. Kubernetes experience is a plus.',
+    description: 'Fictional Ticketing seeks a senior site reliability engineer in Seattle. Join the on-call rotation, act as incident commander, reduce alert noise, and write runbooks and postmortems. Kubernetes experience is a plus.',
   },
   {
     id: 'holdout-job-tech-ml',
@@ -301,7 +301,7 @@ export const holdoutJobs = [
     requiredFactIds: ['serving', 'gpu', 'cert'],
     atsTerms: ['model-serving', 'Kubernetes', 'GPU', 'CKA', 'on-call'],
     retainFactIds: ['oncall'],
-    description: 'SYNTHETIC TEST JOB. Fictional Vision Labs seeks an ML platform engineer in Seattle. Build model serving on Kubernetes, improve GPU scheduling for training jobs, and share the platform on-call. A Kubernetes certification is valued.',
+    description: 'Fictional Vision Labs seeks an ML platform engineer in Seattle. Build model serving on Kubernetes, improve GPU scheduling for training jobs, and share the platform on-call. A Kubernetes certification is valued.',
   },
   // Unseen hard-blocked control (fin-mismatch is seen): far outside the persona's field.
   {
@@ -313,7 +313,7 @@ export const holdoutJobs = [
     atsTerms: ['FSA', 'actuarial pricing', 'loss reserving'],
     expectRecommendation: 'Skip',
     maxScore: 3.5,
-    description: 'SYNTHETIC TEST JOB. Fictional Mutual Insurance seeks a senior pricing actuary. Fellow of the Society of Actuaries (FSA) required, with 8+ years of actuarial pricing and loss reserving for property and casualty lines.',
+    description: 'Fictional Mutual Insurance seeks a senior pricing actuary. Fellow of the Society of Actuaries (FSA) required, with 8+ years of actuarial pricing and loss reserving for property and casualty lines.',
   },
   // Borderline (§8.2 D): partial evidence, one required fact the persona does not have.
   {
@@ -325,7 +325,7 @@ export const holdoutJobs = [
     atsTerms: ['TypeScript', 'caching', 'testing', 'Docker', 'Terraform'],
     expectRecommendation: 'Investigate',
     scoreBand: { min: 3.0, max: 3.9 },
-    description: 'SYNTHETIC TEST JOB. Fictional Logistics Cloud seeks a software engineer for its platform services team in Austin. Build internal services in TypeScript with caching and good tests. Hands-on experience packaging and running services with Docker is required, and Terraform is a plus.',
+    description: 'Fictional Logistics Cloud seeks a software engineer for its platform services team in Austin. Build internal services in TypeScript with caching and good tests. Hands-on experience packaging and running services with Docker is required, and Terraform is a plus.',
   },
   {
     id: 'borderline-fin-job',
@@ -336,7 +336,7 @@ export const holdoutJobs = [
     atsTerms: ['Power Query', 'Excel', 'ERP configuration', 'SAP', 'reporting'],
     expectRecommendation: 'Investigate',
     scoreBand: { min: 3.0, max: 3.9 },
-    description: 'SYNTHETIC TEST JOB. Fictional Home Products seeks a finance systems analyst in Boston. Automate monthly reporting with Power Query and Excel, maintain forecast models, and help configure the SAP finance module. Experience configuring an ERP finance module is required.',
+    description: 'Fictional Home Products seeks a finance systems analyst in Boston. Automate monthly reporting with Power Query and Excel, maintain forecast models, and help configure the SAP finance module. Experience configuring an ERP finance module is required.',
   },
 ];
 

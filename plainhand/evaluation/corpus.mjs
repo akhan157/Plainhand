@@ -608,7 +608,7 @@ export const jobs = [
     location: 'Boston, US',
     requiredFactIds: ['fsae', 'pumps', 'tools'],
     atsTerms: ['SolidWorks', 'ANSYS', 'FEA', 'prototyping', 'test'],
-    description: 'SYNTHETIC TEST JOB. Fictional Robotics Co seeks a junior mechanical design engineer in Boston. Design and test mechanical assemblies for mobile robots. SolidWorks, FEA and prototyping are central. Write test plans, build prototypes with technicians, and explain design tradeoffs. GD&T for production parts is a plus but not required.',
+    description: 'Fictional Robotics Co seeks a junior mechanical design engineer in Boston. Design and test mechanical assemblies for mobile robots. SolidWorks, FEA and prototyping are central. Write test plans, build prototypes with technicians, and explain design tradeoffs. GD&T for production parts is a plus but not required.',
   },
   {
     id: 'data-analyst',
@@ -617,7 +617,7 @@ export const jobs = [
     location: 'Chicago, US',
     requiredFactIds: ['dashboard', 'sql', 'teaching'],
     atsTerms: ['SQL', 'Tableau', 'dashboards', 'stakeholders', 'Python'],
-    description: 'SYNTHETIC TEST JOB. Fictional Health Analytics seeks a data analyst in Chicago. Build dashboards and reports in SQL and Tableau for operations teams. Explain findings to non-technical stakeholders. Python is a plus. Two years of business analytics experience preferred, but a strong portfolio is considered.',
+    description: 'Fictional Health Analytics seeks a data analyst in Chicago. Build dashboards and reports in SQL and Tableau for operations teams. Explain findings to non-technical stakeholders. Python is a plus. Two years of business analytics experience preferred, but a strong portfolio is considered.',
   },
   {
     id: 'junior-swe',
@@ -626,7 +626,7 @@ export const jobs = [
     location: 'Austin, US',
     requiredFactIds: ['app', 'tests', 'ta'],
     atsTerms: ['TypeScript', 'tests', 'code review', 'on-call', 'Node.js'],
-    description: 'SYNTHETIC TEST JOB. Fictional Transit Software seeks a junior software engineer in Austin. Build TypeScript services and web apps for transit riders. Write tests, take part in code review, and join an on-call rotation after onboarding. Experience with a real user-facing app is valuable.',
+    description: 'Fictional Transit Software seeks a junior software engineer in Austin. Build TypeScript services and web apps for transit riders. Write tests, take part in code review, and join an on-call rotation after onboarding. Experience with a real user-facing app is valuable.',
   },
   {
     id: 'ops-manager',
@@ -635,7 +635,7 @@ export const jobs = [
     location: 'Chicago, US',
     requiredFactIds: ['scheduling', 'team', 'vendor'],
     atsTerms: ['scheduling', 'vendors', 'cost', 'team', 'delivery'],
-    description: 'SYNTHETIC TEST JOB. Fictional Logistics seeks an operations manager in Chicago. Own daily scheduling, manage a dispatch team, negotiate vendor contracts and keep delivery windows. Report cost and overtime results. Experience with a recurring scheduling process is required.',
+    description: 'Fictional Logistics seeks an operations manager in Chicago. Own daily scheduling, manage a dispatch team, negotiate vendor contracts and keep delivery windows. Report cost and overtime results. Experience with a recurring scheduling process is required.',
   },
   {
     id: 'product-designer',
@@ -644,7 +644,7 @@ export const jobs = [
     location: 'Seattle, US',
     requiredFactIds: ['design-system', 'research', 'prototype'],
     atsTerms: ['design system', 'research', 'prototyping', 'Figma', 'accessibility'],
-    description: 'SYNTHETIC TEST JOB. Fictional Design Studio seeks a product designer in Seattle. Build and document a design system in Figma, run user research, and turn findings into prototypes. Pair with engineers to ship accessible interfaces. Portfolio required.',
+    description: 'Fictional Design Studio seeks a product designer in Seattle. Build and document a design system in Figma, run user research, and turn findings into prototypes. Pair with engineers to ship accessible interfaces. Portfolio required.',
   },
   {
     id: 'content-strategist',
@@ -653,7 +653,7 @@ export const jobs = [
     location: 'Seattle, US',
     requiredFactIds: ['editorial', 'campaign', 'analytics'],
     atsTerms: ['editorial', 'campaigns', 'analytics', 'style guide', 'help articles'],
-    description: 'SYNTHETIC TEST JOB. Fictional Media seeks a content strategist in Seattle. Maintain an editorial guide, plan launch campaigns across email and social, and use article analytics to choose topics. Write and rewrite help content. A career break is not a barrier.',
+    description: 'Fictional Media seeks a content strategist in Seattle. Maintain an editorial guide, plan launch campaigns across email and social, and use article analytics to choose topics. Write and rewrite help content. A career break is not a barrier.',
   },
   {
     id: 'mech-mismatch-job',
@@ -664,7 +664,7 @@ export const jobs = [
     atsTerms: ['Kubernetes', 'Raft', 'Go'],
     expectRecommendation: 'Skip',
     maxScore: 3.5,
-    description: 'SYNTHETIC TEST JOB. Fictional Cloud Core seeks a principal distributed storage architect with 10+ years operating multi-region consensus engines, kernel bypass networking, and petabyte-scale object storage in Go and Rust.',
+    description: 'Fictional Cloud Core seeks a principal distributed storage architect with 10+ years operating multi-region consensus engines, kernel bypass networking, and petabyte-scale object storage in Go and Rust.',
   },
   {
     id: 'fpa-analyst',
@@ -673,7 +673,7 @@ export const jobs = [
     location: 'Boston, US',
     requiredFactIds: ['model', 'variance', 'cert'],
     atsTerms: ['forecast', 'variance', 'Excel', 'SQL', 'FP&A'],
-    description: 'SYNTHETIC TEST JOB. Fictional Devices Inc seeks a senior financial analyst for its FP&A team in Boston. Own the forecast model for a product line, run monthly variance analysis against budget, and present drivers to business leaders. Advanced Excel required; SQL and progress toward the CFA are valued. Three or more years of corporate finance experience.',
+    description: 'Fictional Devices Inc seeks a senior financial analyst for its FP&A team in Boston. Own the forecast model for a product line, run monthly variance analysis against budget, and present drivers to business leaders. Advanced Excel required; SQL and progress toward the CFA are valued. Three or more years of corporate finance experience.',
   },
   {
     id: 'senior-accountant',
@@ -682,7 +682,7 @@ export const jobs = [
     location: 'Denver, US',
     requiredFactIds: ['close', 'recs', 'cert'],
     atsTerms: ['month-end close', 'reconciliations', 'NetSuite', 'audit', 'CPA'],
-    description: 'SYNTHETIC TEST JOB. Fictional Software Co, a privately held company, seeks a senior accountant in Denver. Lead the month-end close, prepare and review balance sheet reconciliations, support the annual audit, and help improve the NetSuite general ledger. An active CPA license is required.',
+    description: 'Fictional Software Co, a privately held company, seeks a senior accountant in Denver. Lead the month-end close, prepare and review balance sheet reconciliations, support the annual audit, and help improve the NetSuite general ledger. An active CPA license is required.',
   },
   {
     id: 'scientist-i',
@@ -691,7 +691,7 @@ export const jobs = [
     location: 'San Diego, US',
     requiredFactIds: ['assay', 'screens', 'sops'],
     atsTerms: ['potency assay', 'CRISPR', 'flow cytometry', 'primary T cells', 'SOPs'],
-    description: 'SYNTHETIC TEST JOB. Fictional Therapeutics seeks a Scientist I for cell therapy discovery research in San Diego. Develop cell-based assays including potency assays, run CRISPR screens in primary T cells, analyze flow cytometry and sequencing data, and write SOPs for the team. A master\'s degree with five years of research experience, or a PhD, is required.',
+    description: 'Fictional Therapeutics seeks a Scientist I for cell therapy discovery research in San Diego. Develop cell-based assays including potency assays, run CRISPR screens in primary T cells, analyze flow cytometry and sequencing data, and write SOPs for the team. A master\'s degree with five years of research experience, or a PhD, is required.',
   },
   {
     id: 'director-engineering',
@@ -700,7 +700,7 @@ export const jobs = [
     location: 'Austin, US',
     requiredFactIds: ['team', 'latency', 'hiring'],
     atsTerms: ['latency', 'reliability', 'hiring', 'incident', 'platform'],
-    description: 'SYNTHETIC TEST JOB. Fictional Fintech seeks a director of engineering for its payments platform in Austin. Lead three teams of about 25 engineers, own platform reliability and latency, run hiring and career growth, and improve the incident process. Ten or more years in software with experience leading several teams.',
+    description: 'Fictional Fintech seeks a director of engineering for its payments platform in Austin. Lead three teams of about 25 engineers, own platform reliability and latency, run hiring and career growth, and improve the incident process. Ten or more years in software with experience leading several teams.',
   },
   {
     id: 'fin-mismatch-job',
@@ -711,7 +711,7 @@ export const jobs = [
     atsTerms: ['PE license', 'structural analysis', 'steel design'],
     expectRecommendation: 'Skip',
     maxScore: 3.5,
-    description: 'SYNTHETIC TEST JOB. Fictional Bridge Engineering seeks a senior structural engineer with a Professional Engineer license and 10+ years designing steel and concrete highway bridges, including load rating and structural analysis software.',
+    description: 'Fictional Bridge Engineering seeks a senior structural engineer with a Professional Engineer license and 10+ years designing steel and concrete highway bridges, including load rating and structural analysis software.',
   },
   // Same candidates, jobs that need a different part of their experience first.
   {
@@ -721,7 +721,7 @@ export const jobs = [
     location: 'Boston, US',
     requiredFactIds: ['automation', 'mentor', 'model'],
     atsTerms: ['Power Query', 'reporting', 'automation', 'training', 'Excel'],
-    description: 'SYNTHETIC TEST JOB. Fictional Consumer Brands seeks a finance systems analyst in Boston for its finance transformation team. Automate recurring reporting packs with Power Query, document finance models and write user guides, and train analysts on new tools. Hands-on experience maintaining a forecast model is expected.',
+    description: 'Fictional Consumer Brands seeks a finance systems analyst in Boston for its finance transformation team. Automate recurring reporting packs with Power Query, document finance models and write user guides, and train analysts on new tools. Hands-on experience maintaining a forecast model is expected.',
   },
   {
     id: 'bioinformatics-associate',
@@ -730,7 +730,7 @@ export const jobs = [
     location: 'San Diego, US',
     requiredFactIds: ['pipeline', 'sops', 'screens'],
     atsTerms: ['pipeline', 'sequencing', 'SOPs', 'plate-reader', 'CRISPR'],
-    description: 'SYNTHETIC TEST JOB. Fictional Genomics seeks a senior research associate for its data and automation group in San Diego. Build and maintain R pipelines for plate-reader and sequencing data, write SOPs and train lab staff on them, and support CRISPR screen analysis. Wet-lab experience is required so that pipelines fit how the lab works.',
+    description: 'Fictional Genomics seeks a senior research associate for its data and automation group in San Diego. Build and maintain R pipelines for plate-reader and sequencing data, write SOPs and train lab staff on them, and support CRISPR screen analysis. Wet-lab experience is required so that pipelines fit how the lab works.',
   },
   {
     id: 'instructional-data',
@@ -739,7 +739,7 @@ export const jobs = [
     location: 'Chicago, US',
     requiredFactIds: ['grade-tracker', 'teaching', 'explain'],
     atsTerms: ['student data', 'teachers', 'dashboards', 'data literacy', 'Google Sheets'],
-    description: 'SYNTHETIC TEST JOB. Fictional Unified School District seeks an instructional data coordinator in Chicago to help teachers use student data: build grade and attendance trackers in Google Sheets, run data-literacy sessions for staff, and explain results to families. Classroom teaching experience strongly preferred.',
+    description: 'Fictional Unified School District seeks an instructional data coordinator in Chicago to help teachers use student data: build grade and attendance trackers in Google Sheets, run data-literacy sessions for staff, and explain results to families. Classroom teaching experience strongly preferred.',
   },
 ];
 

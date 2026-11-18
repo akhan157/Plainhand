@@ -675,3 +675,15 @@ test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence
   assert.match(REVIEW_INSTRUCTION, /is not a fit issue, though it still needs a source like any claim/);
   assert.match(REVIEW_INSTRUCTION, /When the packet is for a posting, any cover-letter phrasing/);
 });
+
+test('U14 6.2-sol: a source\'s unnamed "it" stays unnamed in the packet', () => {
+  assert.match(PACKET_INSTRUCTION, /Keep a source's unnamed reference unnamed: when a source says "it", "this" or "that" without saying what it refers to, never name it yourself/);
+});
+
+test('U14 6.2-sol: the evaluation corpora carry no synthetic-test label a model could act on', async () => {
+  const { readFile } = await import('node:fs/promises');
+  for (const file of ['corpus.mjs', 'corpus-holdout.mjs', 'corpus-holdout-2.mjs']) {
+    const text = await readFile(new URL(`../plainhand/evaluation/${file}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /SYNTHETIC TEST JOB/, file);
+  }
+});

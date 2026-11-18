@@ -279,7 +279,7 @@ export const holdout2Jobs = [
     requiredFactIds: ['revrec', 'audit', 'close'],
     retainFactIds: ['recon'],
     atsTerms: ['ASC 606', 'revenue recognition', 'NetSuite', 'month-end close', 'reconciliation'],
-    description: 'SYNTHETIC TEST JOB. Fictional Brokerage Cloud seeks a revenue systems manager in Columbus to own revenue recognition under ASC 606, run the NetSuite revenue configuration, and shorten the month-end close. The role partners with the external audit team, and the monthly close still includes balance sheet reconciliations. CPA required.',
+    description: 'Fictional Brokerage Cloud seeks a revenue systems manager in Columbus to own revenue recognition under ASC 606, run the NetSuite revenue configuration, and shorten the month-end close. The role partners with the external audit team, and the monthly close still includes balance sheet reconciliations. CPA required.',
   },
   // The same shape in infrastructure: two required facts in the older SRE role, one
   // in the newer developer-experience role.
@@ -291,7 +291,7 @@ export const holdout2Jobs = [
     requiredFactIds: ['slo', 'incident', 'observability'],
     retainFactIds: ['oncall'],
     atsTerms: ['SLOs', 'incident command', 'tracing', 'on-call', 'Kubernetes'],
-    description: 'SYNTHETIC TEST JOB. Fictional Ticket Marketplace seeks a senior site reliability engineer for its observability team in Austin. Define SLOs for the ticketing services, act as incident commander, and improve the tracing and metrics pipelines the product teams rely on. Share on-call across regions; Kubernetes experience is a plus.',
+    description: 'Fictional Ticket Marketplace seeks a senior site reliability engineer for its observability team in Austin. Define SLOs for the ticketing services, act as incident commander, and improve the tracing and metrics pipelines the product teams rely on. Share on-call across regions; Kubernetes experience is a plus.',
   },
   // The newer role has nothing this job needs. It is dropped, or kept as one short
   // line when dropping it would leave the dates unexplained (2023 to 2025 here).
@@ -302,7 +302,7 @@ export const holdout2Jobs = [
     location: 'Raleigh, US',
     requiredFactIds: ['assay', 'automation', 'lims'],
     atsTerms: ['assay development', 'automation', 'LIMS', 'throughput', 'Six Sigma'],
-    description: 'SYNTHETIC TEST JOB. Fictional Biologics seeks a senior assay development scientist in Raleigh. Develop and validate cell-based potency assays, automate sample handling to raise throughput, and connect the workflow to the laboratory information management system. Process improvement training such as Six Sigma is valued.',
+    description: 'Fictional Biologics seeks a senior assay development scientist in Raleigh. Develop and validate cell-based potency assays, automate sample handling to raise throughput, and connect the workflow to the laboratory information management system. Process improvement training such as Six Sigma is valued.',
   },
   // Zero-match Skip: nothing in this persona's field is behind the posting.
   {
@@ -314,7 +314,7 @@ export const holdout2Jobs = [
     atsTerms: ['finite element analysis', 'airframe', 'CATIA', 'damage tolerance'],
     expectRecommendation: 'Skip',
     maxScore: 3.5,
-    description: 'SYNTHETIC TEST JOB. Fictional Aero Structures seeks a senior stress analysis engineer in Wichita. Perform finite element analysis of airframe structures, build CATIA models, and support structural certification with damage tolerance assessments.',
+    description: 'Fictional Aero Structures seeks a senior stress analysis engineer in Wichita. Perform finite element analysis of airframe structures, build CATIA models, and support structural certification with damage tolerance assessments.',
   },
   // Borderline (partial evidence): one required fact this persona does not have at all.
   {
@@ -326,7 +326,7 @@ export const holdout2Jobs = [
     atsTerms: ['cell-based potency assay', 'automation', 'release testing', 'quality management system'],
     expectRecommendation: 'Investigate',
     scoreBand: { min: 3.0, max: 3.9 },
-    description: 'SYNTHETIC TEST JOB. Fictional Sterile Manufacturing seeks a senior scientist for analytical development in Raleigh. Develop and validate cell-based potency assays, automate sample handling, and support release testing under a quality management system. Experience in a regulated manufacturing environment is required.',
+    description: 'Fictional Sterile Manufacturing seeks a senior scientist for analytical development in Raleigh. Develop and validate cell-based potency assays, automate sample handling, and support release testing under a quality management system. Experience in a regulated manufacturing environment is required.',
   },
 ];
 
