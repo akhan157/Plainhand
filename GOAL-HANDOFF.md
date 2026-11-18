@@ -1269,7 +1269,12 @@ holdout2-journey-stem fails again, the same way.
 - **Falsifier.** HEAD honesty is lower in all four Codex repeats, by 0.13 to 0.50, so the
   row is not accepted as written. Owner decision pending.
 - **Corpus label.** gpt-6.2-sol reads "SYNTHETIC TEST JOB." in the frozen postings and
-  recommends Skip or Investigate, so pass rates are 0-1/6 on both sides. Changing the
-  corpus needs the owner.
+  recommends Skip or Investigate, so pass rates are 0-1/6 on both sides. The owner
+  approved removing it (2026-11-18, `d037477`). Comparisons patch the baseline clone the
+  same way and are patched-baseline comparisons. The manifest check fails on the corpus
+  by design, as recorded in `docs/internal/EVALUATION-HARNESS.md`.
+- **Owner decision:** keep U14 open and keep fixing. Fix: the unsettled-reference rule,
+  in both the packet and master prompts, final wording after review. Next: two
+  label-free repeats on 6.2-sol low, both sides.
 - **Round 2 note.** The HEAD judge was interrupted by a T3 restart and re-run alone on
   the same evidence.

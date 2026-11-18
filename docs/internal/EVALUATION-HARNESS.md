@@ -339,6 +339,12 @@ Evidence: `output/evaluation-antigravity-2026-11-10T17-52-57-596Z` (3/6),
    stop), not to pin incidental wording.
 4. For a real provider, run `--provider` and compare against the controlled
    baseline. Do not edit the corpus to make a live run pass; record the failure.
+   The one recorded exception is an owner decision (2026-11-18): the
+   "SYNTHETIC TEST JOB." prefix was removed from every evaluation posting
+   (`d037477`), because gpt-6.2-sol reads it and recommends Skip. A comparison
+   with the frozen baseline must patch the baseline clone the same way, and is
+   then a patched-baseline comparison: `scripts/baseline-manifest.mjs --check`
+   fails on the corpus files by design.
    With `--repeat`, runs are named `<id>-r1`, `<id>-r2`; the baseline comparison
    matches on the base id, so a failure the baseline already had is a
    pre-existing failure, not a regression.
