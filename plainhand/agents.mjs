@@ -258,12 +258,13 @@ const tomlString = value => `"${String(value).replace(/\\/g, '\\\\').replace(/"/
 // makes without duplicating these flags.
 // The Codex model and reasoning effort for each call: PLAINHAND_CODEX_MODEL (for
 // example "gpt-6.1-sol") and PLAINHAND_CODEX_EFFORT (minimal, low, medium, high, xhigh).
-// Unset keeps the CLI default (the user's own config is ignored by design).
+// Unset or invalid keeps the CLI default (the user's own config is ignored by design);
+// a model name must start with a letter or digit so it can never read as a flag.
 const CODEX_EFFORTS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh']);
 export function codexModelArgs(env = process.env) {
   const model = String(env?.PLAINHAND_CODEX_MODEL ?? '').trim();
   const effort = String(env?.PLAINHAND_CODEX_EFFORT ?? '').trim().toLowerCase();
-  return [...(/^[A-Za-z0-9._-]{1,80}$/.test(model) ? ['-m', model] : []), ...(CODEX_EFFORTS.has(effort) ? ['-c', `model_reasoning_effort="${effort}"`] : [])];
+  return [...(/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(model) ? ['-m', model] : []), ...(CODEX_EFFORTS.has(effort) ? ['-c', `model_reasoning_effort="${effort}"`] : [])];
 }
 export function codexExecArgs({ resultFile, instructionsFile, env = process.env }) {
   return [

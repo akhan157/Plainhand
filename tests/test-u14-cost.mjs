@@ -282,4 +282,34 @@ test('the Codex model and reasoning effort come from PLAINHAND_CODEX_MODEL and P
   assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: 'x; rm -rf', PLAINHAND_CODEX_EFFORT: 'turbo' }), []);
   const args = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: { PLAINHAND_CODEX_MODEL: 'gpt-6.1-sol', PLAINHAND_CODEX_EFFORT: 'low' } });
   assert.ok(args.includes('-m') && args.includes('model_reasoning_effort="low"'));
+  assert.equal(args[args.indexOf('-m') + 1], 'gpt-6.1-sol');
+  // With both set, the default argument list is unchanged apart from the four inserted flags.
+  const plain = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: {} });
+  const at = args.indexOf('-m');
+  assert.deepEqual([...args.slice(0, at), ...args.slice(at + 4)], plain);
+  assert.equal(plain.indexOf('-m'), -1);
+});
+
+test('review 3dd8006: the Codex model gate rejects a leading dash and holds the 80-character limit; effort is case-insensitive', async () => {
+  const { codexModelArgs } = await import('../plainhand/agents.mjs');
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: '-m' }), []);
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: '--sandbox' }), []);
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: 'a'.repeat(80) }), ['-m', 'a'.repeat(80)]);
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: 'a'.repeat(81) }), []);
+  assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_EFFORT: ' LOW ' }), ['-c', 'model_reasoning_effort="low"']);
+});
+
+test('review 3dd8006: executeAgent passes PLAINHAND_CODEX_MODEL and EFFORT from the process env into the codex call and its child env', async () => {
+  const { executeAgent } = await import('../plainhand/agents.mjs');
+  const saved = { m: process.env.PLAINHAND_CODEX_MODEL, e: process.env.PLAINHAND_CODEX_EFFORT };
+  process.env.PLAINHAND_CODEX_MODEL = 'gpt-6.1-sol'; process.env.PLAINHAND_CODEX_EFFORT = 'low';
+  const seen = {};
+  try {
+    await executeAgent('codex', 'x', {}, { runner: async (command, args, options) => { seen.args = args; seen.env = options.env; return { stdout: JSON.stringify({ say: 'ok', actions: [] }), stderr: '', code: 0 }; } });
+  } finally {
+    for (const [key, value] of [['PLAINHAND_CODEX_MODEL', saved.m], ['PLAINHAND_CODEX_EFFORT', saved.e]]) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+  }
+  assert.equal(seen.args[seen.args.indexOf('-m') + 1], 'gpt-6.1-sol');
+  assert.ok(seen.args.includes('model_reasoning_effort="low"'));
+  assert.equal(seen.env.PLAINHAND_CODEX_MODEL, 'gpt-6.1-sol');
 });
