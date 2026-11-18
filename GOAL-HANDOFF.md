@@ -1218,13 +1218,24 @@ holdout2-journey-stem fails again, the same way.
   director. The packet prompt itself modelled that sentence ("Your team's focus on X
   matches the Y I did at Z", added in `1f590f2`). Summary lines also took the target
   role's field as the candidate's.
-- **Fix `887d1b6`:** the prompt names a stated posting need and the related evidenced
-  work, each at its own scope, and never says the work matches or covers the posting.
-  A deterministic fit check adds retry feedback (off on revisions). Suite 775/775,
-  gate 64/67 (expected), simulation 49/49.
+- **Fix (prompt, final wording `08972e8`):** the letter names a stated posting need and
+  the related evidenced work, each at its own scope, and never says the work matches or
+  covers the posting. The model review flags such a claim, and the summary's field comes
+  from the candidate's own roles.
 - **Also:** `9680304` fixes the review findings on `3dd8006`. A model name can't start
   with a dash, and new tests pin the default arguments and the env wiring.
-- **Next:** a HEAD-only Codex repeat on `887d1b6`, compared with both baseline repeats.
-  The fix is under independent review.
+- **Regex fit check removed (`066e804`):** five review rounds (`887d1b6` to `d2d5af2`)
+  found honest sentences it flagged. Examples: "I covered these responsibilities during
+  a vacancy", "I met your team at the trade show". A sentence pattern can't see whose
+  team or requirements are meant.
+- **Fixture leak fixed (`08972e8`):** the prompt examples had copied the fin fixture's
+  terms ("business unit", "finance director"). They now use a neutral domain, and a
+  test keeps those terms out.
+- **Model correction:** the owner wants gpt-6.2-sol, not 6.1. U14 is being redone: the
+  baseline and HEAD, both on 6.2-sol low, two repeats, starting at 00:16 on 2026-11-18
+  after the Codex limit reset. The 6.1 rounds above stay as a same-model comparison.
+  A 6.1 HEAD-only attempt hit the usage limit and is void.
+- **Model matrix (owner, after U14):** Codex 6.2-sol low and medium; Claude Sonnet 5.5
+  low and medium, and Haiku 5.5 low. One screening round each, two for the finalists.
 - **Void runs:** `output/u14-codex-da03b4a-void-default-effort`, which ran at the CLI
   default effort, and an r2 attempt killed during install.
