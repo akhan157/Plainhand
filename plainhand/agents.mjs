@@ -90,7 +90,7 @@ export function providerById(id) {
 const NOTICE_LINES = /^.*(?:connectors are disabled|takes precedence over your claude\.ai login).*$/gim;
 export function exitReason(output, code) {
   const text = String(output || '').replace(NOTICE_LINES, '');
-  if (/quota|rate.?limit|usage.?limit|limit (?:reached|exceeded)|too many requests|\b429\b|overloaded|\b529\b|(?:out of|insufficient|no) credits?|credit balance|billing/i.test(text)) return 'Your provider reported a usage or billing limit. Check your account before retrying.';
+  if (/quota|rate.?limit|usage.?limit|limit (?:reached|exceeded)|too many requests|\b429\b|overloaded|\b529\b|(?:out of|insufficient|no) credits?|credits? (?:exhausted|used up|depleted)|credit balance|billing/i.test(text)) return 'Your provider reported a usage or billing limit. Check your account before retrying.';
   if (/not (?:logged|signed) in|please (?:log|sign) ?in|(?:log|sign) ?in (?:required|again)|authenticat\w* (?:failed|error|required)|invalid (?:api key|credentials?|token)|unauthori[sz]ed|\b401\b(?!\s*\(?k)|credentials? (?:expired|missing|not found)|session expired/i.test(text)) return 'Sign in using the command on the Connections page.';
   return `The agent exited with code ${code}. Check its CLI in your terminal, then retry.`;
 }

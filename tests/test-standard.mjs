@@ -390,14 +390,29 @@ test('E2E 0b: adding a writing sample says what it reset instead of clearing it 
   const h = await harness();
   try {
     const first = (await h.ui('profile.addWritingSample', { title: 'Note', text: 'A short note I wrote to my team about the test schedule.' })).result;
-    assert.deepEqual(first.cleared, { understanding: false, approvals: 0 });
+    assert.deepEqual(first.cleared, { understanding: false, master: false, approvals: 0 });
     assert.equal(first.message, 'Writing sample saved. Your next drafts will sound more like you.');
-    await h.app.workspace.mutate(state => { state.understanding = { text: 'Summary', approvedHash: 'x' }; });
+    // Review 6650e7b: an unapproved summary is not "approving again"; the counts come from the action.
+    await h.app.workspace.mutate(state => { state.understanding = { result: {}, approved: false }; });
+    assert.equal((await h.ui('profile.addWritingSample', { title: 'Two', text: 'A second note about the brake rig schedule for the team.' })).result.cleared.understanding, false);
+    await h.ui('tasks.standard', {}); await h.settle();
+    await h.ui('standard.approve', {});
+    await h.app.workspace.mutate(state => {
+      state.understanding = { result: {}, approved: true };
+      state.jobs.push({ id: 'j1', company: 'A', title: 'B', approvedHash: 'h1' }, { id: 'j2', company: 'C', title: 'D', approvedHash: 'h2' }, { id: 'j3', company: 'E', title: 'F', approvedHash: null });
+    });
     const second = (await h.ui('profile.addWritingSample', { title: 'Email', text: 'A follow-up email I sent after the design review last spring.' })).result;
-    assert.deepEqual(second.cleared, { understanding: true, approvals: 0 });
-    assert.match(second.message, /so your profile summary needs approving again\.$/);
-    assert.equal((await h.app.workspace.load()).understanding, null, 'the reset itself is unchanged');
+    assert.deepEqual(second.cleared, { understanding: true, master: true, approvals: 2 });
+    assert.equal(second.message, 'Writing sample saved. Your next drafts will sound more like you, so your profile summary and 2 approved applications need approving again. Your master resume is now out of date: rewrite it on Profile so it matches.');
+    const state = await h.app.workspace.load();
+    assert.equal(state.understanding, null, 'the reset itself is unchanged');
+    assert.equal(standardStatus(state, (await h.app.workspace.context(state)).hash), 'stale', 'the master resume really is out of date');
   } finally { await h.close(); }
-  assert.equal(sampleSavedMessage({ understanding: true, approvals: 3 }), 'Writing sample saved. Your next drafts will sound more like you, so your profile summary and 3 approved applications need approving again.');
   assert.equal(sampleSavedMessage({ understanding: false, approvals: 1 }), 'Writing sample saved. Your next drafts will sound more like you, so 1 approved application needs approving again.');
+});
+
+test('review 6650e7b: "credits exhausted" reads as a usage limit', async () => {
+  const { exitReason } = await import('../plainhand/agents.mjs');
+  assert.match(exitReason('Error: credits exhausted for this account', 1), /usage or billing limit/);
+  assert.doesNotMatch(exitReason('Accredited by ABET; 401(k) match', 1), /usage or billing limit|sign/i);
 });

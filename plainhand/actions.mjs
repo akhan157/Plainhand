@@ -42,11 +42,14 @@ export class ActionError extends Error {
 // Lite schema: { key: 'string' | 'number' | 'boolean' | 'date' | 'string[]' | 'array' | 'object' | 'enum:a|b', with '?' for optional }.
 // An empty string is a value for 'string' (so text can be cleared) and missing for every other type.
 // What the candidate is told after adding a writing sample, including what it reset.
+// The summary and packets need approving again; the master resume needs rewriting,
+// because the sample changes its sources, as the master card itself says.
 export function sampleSavedMessage(cleared) {
   const reset = [cleared?.understanding ? 'your profile summary' : '', cleared?.approvals ? `${cleared.approvals} approved application${cleared.approvals === 1 ? '' : 's'}` : ''].filter(Boolean);
-  if (!reset.length) return 'Writing sample saved. Your next drafts will sound more like you.';
-  const one = reset.length === 1 && (cleared.understanding || cleared.approvals === 1);
-  return `Writing sample saved. Your next drafts will sound more like you, so ${reset.join(' and ')} ${one ? 'needs' : 'need'} approving again.`;
+  const one = reset.length === 1 && !(cleared.approvals > 1);
+  const approve = reset.length ? `, so ${reset.join(' and ')} ${one ? 'needs' : 'need'} approving again` : '';
+  const master = cleared?.master ? ' Your master resume is now out of date: rewrite it on Profile so it matches.' : '';
+  return `Writing sample saved. Your next drafts will sound more like you${approve}.${master}`;
 }
 
 export function validateInput(schema, input) {
@@ -409,11 +412,12 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
       const text = requireText(input.text, 'writing sample', 8000), id = randomUUID();
       // A sample changes how every draft sounds, so the understanding and packet approvals
       // are cleared; the result says what was cleared so the candidate is told, not surprised.
-      const cleared = { understanding: false, approvals: 0 };
+      const cleared = { understanding: false, master: false, approvals: 0 };
       await workspace.mutate(state => {
         if ((state.writingSamples || []).length >= 10) throw new ActionError('failed', 'You can keep up to 10 writing samples. Remove one first.');
         state.writingSamples = [...(state.writingSamples || []), { id, title: cleanText(input.title, 120), text, at: now() }];
-        cleared.understanding = Boolean(state.understanding);
+        cleared.understanding = Boolean(state.understanding?.approved);
+        cleared.master = Boolean(state.standard?.approvedHash);
         cleared.approvals = state.jobs.filter(j => j.approvedHash).length;
         state.understanding = null; for (const j of state.jobs) j.approvedHash = null;
       });
