@@ -28,6 +28,9 @@ const provider = option('provider');
 const JOBS = {
   'mech-grad': { company: 'Fictional Robotics Co', title: 'Junior Mechanical Design Engineer', description: 'SYNTHETIC TEST JOB. Design and test mechanical assemblies for mobile robots. SolidWorks, FEA, prototyping and test planning. GD&T for production parts is a plus. Work with technicians to build and test prototypes.' },
   'career-changer': { company: 'Fictional Health Analytics', title: 'Data Analyst', description: 'SYNTHETIC TEST JOB. Build dashboards and reports in SQL and Tableau for operations teams. Explain findings to non-technical stakeholders. Python a plus. Two years of business analytics experience preferred.' },
+  'fin-analyst': { company: 'Fictional Devices Inc', title: 'Senior Financial Analyst, FP&A', description: 'SYNTHETIC TEST JOB. Own the forecast model for a product line, run monthly variance analysis against budget, present drivers to business leaders. Advanced Excel required; SQL and progress toward the CFA valued.' },
+  accountant: { company: 'Fictional Software Co', title: 'Senior Accountant', description: 'SYNTHETIC TEST JOB. Privately held company. Lead the month-end close, prepare and review balance sheet reconciliations, support the annual audit, improve the NetSuite general ledger. Active CPA license required.' },
+  scientist: { company: 'Fictional Therapeutics', title: 'Scientist I, Cell Therapy Discovery', description: 'SYNTHETIC TEST JOB. Develop cell-based assays including potency assays, run CRISPR screens in primary T cells, analyze flow cytometry and sequencing data, write SOPs for the team.' },
   'quiet-junior': { company: 'Fictional Transit Software', title: 'Junior Software Engineer', description: 'SYNTHETIC TEST JOB. TypeScript services and web apps for transit riders. Write tests, take part in code review, and join an on-call rotation after onboarding.' },
 };
 

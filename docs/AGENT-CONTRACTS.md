@@ -92,8 +92,8 @@ Tier rules (enforced in `registry.run`, never by the caller):
 | --- | --- |
 | read | `workspace.digest`, `jobs.list`, `jobs.get`, `followups.list`, `audit.list`, `usage.summary`, `profile.get`, `profile.strength` (taints the turn when it returns gaps written from postings), `line.get` (where the candidate draws the line on wording), `context.get` (what the provider receives), `answers.list` |
 | write | `context.exclude` (narrowing what is shared; clears approvals through the context fingerprint), `profile.addStory` (text must be the candidate's own words), `line.addStatement` (the candidate's own words about how strongly their experience may be worded), `profile.addWritingSample` (the candidate's own text, for voice), `profile.update` (location, roles, graduation, phone, timezone, links, story, voice, constraints; never work authorization or compensation), `record.addContact`, `record.removeContact`, `record.addInterview`, `record.setInterviewStatus`, `record.removeInterview`, `record.setNextAction`, `jobs.add`, `jobs.select`, `jobs.setContext`, `jobs.setStatus` (never `Applied`), `sources.add`, `sources.remove`, `corrections.propose` |
-| task | `tasks.interview`, `tasks.discover`, `tasks.evaluate`, `tasks.prepare`, `tasks.standard` (write the standard application), `tasks.revise` (change a packet or the standard as the candidate asked, in their words), `tasks.cancel` |
-| candidate | `context.include` (widening what is shared), `answers.update`, `answers.remove`, `understanding.approve`, `calibration.decide` (use the suggested wording or keep their own for a flagged claim; unsupported claims can't be kept), `line.removeStatement`, `standard.approve`, `settings.autonomy` (preparing strong matches on its own; off by default), `jobs.setApplyLink` (the employer's link for a job-board posting), `profile.removeWritingSample`, `packet.approve`, `corrections.approve`, `corrections.reject`, `jobs.confirmSubmitted`, `inbox.apply` (a proposed status, interview round or next action from an email) |
+| task | `tasks.interview`, `tasks.discover`, `tasks.evaluate`, `tasks.prepare`, `tasks.standard` (write the master resume), `tasks.revise` (change a packet or the master resume as the candidate asked, in their words), `tasks.cancel` |
+| candidate | `context.include` (widening what is shared), `answers.update`, `answers.remove`, `understanding.approve`, `calibration.decide` (use the suggested wording or keep their own for a flagged claim; unsupported claims can't be kept), `line.removeStatement`, `standard.approve`, `settings.autonomy` (preparing strong matches on its own; off by default), `settings.roleOrder` (most recent first, or the best match first, on each tailored resume), `jobs.setApplyLink` (the employer's link for a job-board posting), `profile.removeWritingSample`, `packet.approve`, `corrections.approve`, `corrections.reject`, `jobs.confirmSubmitted`, `inbox.apply` (a proposed status, interview round or next action from an email) |
 
 Browser form assistance (`/api/browser/*`: open, autofill, fill, attention,
 resume, handoff) stays on its existing routes in the form panel. It is
@@ -145,7 +145,8 @@ forwards tool calls to the running Plainhand server:
 
 ```js
 {
-  profile: { name, roles, ready: boolean, missing: string[], understanding: 'none' | 'needs-review' | 'approved' },
+  profile: { name, roles, ready: boolean, missing: string[], understanding: 'none' | 'needs-review' | 'approved',
+             interview: { covered, total, complete: boolean, uncovered: string[] } },
   provider: 'claude' | 'codex' | 'antigravity' | null,
   counts: { jobs, selected, prepared, applied },
   jobs: [{ id, company, title, location, stage, status, score, recommendation, selected,
@@ -193,6 +194,14 @@ Turn rules as implemented (`plainhand/agent.mjs`):
 - One turn at a time (`busy` otherwise); `POST /api/agent/clear` wipes history.
 - Reads run immediately; rejected actions (unknown, invalid input) are fed
   back to the model so it can correct itself or explain.
+- `profile.interview` is computed from the candidate's own statements and the
+  profile fields they confirmed (`plainhand/profile-coverage.mjs`): the areas
+  an onboarding conversation still has to ask about. While any area is
+  uncovered the engine refuses a volunteered `tasks.interview` with an error
+  the model sees, so the turn continues with the next question instead of
+  offering to rebuild the summary. An explicit request from the candidate
+  (`understanding`, `summary`, `rebuild`, "I'm done", "that's everything")
+  and a fully covered profile are both allowed.
 - Writes become one proposal; a task is proposed alone; writes win over a task
   in the same reply. Candidate-only actions are never run or proposed: the
   engine emits `agent.panel` instead.

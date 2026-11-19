@@ -1,7 +1,196 @@
 # Changelog
 
+## Unreleased: fewer false review blocks, and earlier work gets its employer
+
+- **Job titles are not degrees.** "Senior Research Associate" or "Scrum Master" no
+  longer reads as an associate's or master's degree, so a role's dates no longer
+  produce a false "your sources disagree about your degree" question. "Associate in
+  Arts", "Master in Public Health" and dotted forms such as "M.S." still count.
+- **Credential notes match the credential's name.** A tailored resume keeps a
+  credential when it shows the written-out name, or one of its acronyms in a
+  credentials entry. A split CFA line no longer gets a false "Left out" note,
+  "Google Sheets" in Skills no longer passes for the Google Data Analytics
+  Certificate, and "AWS" as a skill no longer passes for an AWS certification.
+  When a needed credential is missing, notes claiming it was kept are dropped.
+- **The interview asks where earlier results happened.** Stated results that no
+  known role can hold keep the roles area open, so the candidate is asked for the
+  employer, title and dates instead of the master inventing a section for them.
+- **The master keeps every stated role and credential.** On its last drafting
+  pass, a role heading or a stated credential the draft left out is added from the
+  candidate's exact words before the factual review, and recorded as a repair.
+- **Conventional section order.** Contact and summary come first, then
+  Experience, then the rest, unless the candidate's saved format sets an order.
+  Lines filed under an "Accomplishments" section move under the only role.
+- **Register phrases.** The voice target lists the phrases the candidate's own
+  samples use in their register, with one combined rate capped at one phrase
+  per sentence.
+
+## Unreleased: the interview keeps its order, and applications spend fewer calls
+
+- **The interview asks the first open area.** The engine reads the last question
+  in an interview reply and checks it against the first uncovered profile area
+  (`plainhand/profile-coverage.mjs`). A later-area or off-area question gets one
+  repair naming the area to ask; a miss the repair does not fix is accepted and
+  recorded on the turn instead of looping. A writing-sample request waits until
+  every area is covered and is asked at most once per conversation.
+- **A stated credential is never silently dropped from the master.** When the
+  master draft leaves out a role, credential, degree or numbered result the
+  candidate's own sources state, those items join the candidate's resume lines in
+  the existing one-retry channel (`missingFromResume`), so the redraft adds them.
+- **Fewer calls per application.** A review issue that clearly targets a
+  suggestion or note drops the note instead of a full draft+humanize+review
+  cycle; any issue naming a resume, letter or answer fact still redrafts. Each
+  job records `callLog: [{purpose, attempt}]` and the packet carries it, so a
+  live run shows which purpose caused a second attempt.
+
+## Unreleased: the candidate's writing samples set the register
+
+- **Formal samples stay formal.** The candidate's writing samples are measured
+  deterministically (`plainhand/voice-target.mjs`) into a sentence-length,
+  contraction and register target, passed to the drafting and humanizer calls
+  as `INPUT.voiceTarget`. Plainness rules still remove AI tells and stock
+  phrases, but they no longer force short sentences or an informal register on a
+  candidate who writes formally. A humanized rewrite that moves the cover letter
+  farther from the samples keeps the draft's letter and records the drift in the
+  humanizer report.
+
+## Unreleased: updates keep the candidate's setup
+
+- **One command to update.** `plainhand update` finds the newest release,
+  installs its dependencies, migrates the workspace and asks for a restart.
+  Installed copies go through the same installer, so the workspace folder is
+  never copied or replaced. `plainhand rollback` restores the pre-update state
+  from `data/plainhand/backups/` and switches the code back; `plainhand status`
+  shows versions and pending migrations, and `plainhand --check` prints the
+  workspace state version. See [docs/UPDATING.md](docs/UPDATING.md).
+- **The workspace state is versioned and migrates itself.** `state.version` is
+  now read by an ordered migration chain (`plainhand/migrations.mjs`) with an
+  `up` and a `down` per step. It runs at start, copies the exact previous state
+  file to a dated backup first, writes atomically, journals what ran, and
+  refuses a corrupt or newer-than-the-code state instead of rewriting it.
+- **Updating from 1.1.2 keeps every approval that is still valid.** A master
+  resume approved under the previous release stays approved: its approval
+  covers the wording, and only the list of profile fields shared with the AI
+  changed. A packet approved under 1.1.2 is marked "Review again" with the
+  reason, and the old approval is kept as evidence, because 1.1.2 sent the
+  candidate's email and phone to the provider and current releases do not.
+- **Reusable answers saved before provenance existed keep working.** Entries
+  without `sourceKind`/`verifiedAt` get both when the bank is read — derived
+  from the evidence they already hold and the review date they were saved with.
+  `data/answer-bank.yml` is not rewritten.
+- **A release workflow and gate.** `docs/internal/RELEASE.md` is the release
+  procedure, and `scripts/release-check.mjs` refuses a dirty tree, a
+  VERSION/tag mismatch or missing release notes, then runs the fast suite, the
+  browser UI gate, the controlled evaluation and the simulation benchmark.
+- **Proven end to end.** `scripts/update-proof.mjs` clones a populated 1.1.2
+  install, updates it to the next release with the documented commands, checks
+  every record and setting through the API and on disk, checks the provider
+  credential directories were untouched, runs the one-command update, and rolls
+  back across the migration byte for byte. The result is
+  `docs/internal/lanes/u15-updates/RESULT.md`.
+
+## Unreleased: packet quality (cover letter, education headings, duplicates)
+
+- **The cover letter tells the story behind the resume.** With an approved
+  master resume, its base letter is a voice and tone reference only. Each letter
+  is written fresh around the posting's top two or three requirements, with the
+  situation, how and why it mattered from the candidate's own sources. A
+  deterministic check flags letter sentences that repeat a long run of a resume
+  line; the one existing retry names them, and a remaining overlap is recorded in
+  suggestions, never treated as a factual error.
+- **Education and credential headings can stand alone.** An Education,
+  Certifications or Licenses entry whose heading carries the school or issuer,
+  the credential and the dates has empty text and renders without a bullet. The
+  evidence gate and heading check still apply; Experience still requires a line.
+- **One accomplishment appears once.** A resume line whose normalized text
+  repeats or sits inside an earlier line under the same heading is dropped before
+  humanize, review and calibration.
+- **The letter invents no motivation, and suggestions stay true.** The cover
+  letter connects to the role only from motivation the candidate stated in their
+  target roles, stories, constraints, role answers or candidate line. With no
+  stated motivation, it connects the posting's own stated work to the
+  candidate's evidenced work and never claims a feeling, want, interest or
+  reason; what it says about the employer comes from the posting text. A
+  suggestion that says an item was included when neither the resume nor the
+  letter contains it becomes a "Left out:" note before the independent review.
+  The base cover letter follows the same motivation rule for the candidate's
+  target roles, and `scripts/voice-contrast.mjs` now gives its synthetic
+  evaluated job the report that prepare updates.
+## Unreleased: quota efficiency
+
+- **Less provider overhead per call.** Codex CLI and Claude Code now run with
+  their own coding-agent prompt, tool definitions, skill catalog and environment
+  context removed, and with Plainhand's one-paragraph output contract as the
+  system text. The candidate prompt is unchanged. On a 16k-character prompt the
+  Codex request fell from 61,035 to 18,190 bytes and the Claude request from
+  23,543 to 18,231; the per-call estimate is 10.7k–17.3k fewer input tokens.
+  Re-evaluating an unchanged job reuses the stored, validated evaluation instead
+  of calling the model again. `scripts/cost-breakdown.mjs` reports calls by
+  purpose for evidence runs. An opt-in setting (`settings.foldHumanize`, default
+  off) applies the humanizer rules inside the drafting call and skips the
+  separate rewrite, saving one call per master and application; the independent
+  factual review is never folded.
+
+## Unreleased: tracking workflow (board, people, deadlines, exports)
+
+- **A board for the whole search.** Applications has a Table / Board switch.
+  The board has one column per canonical tracker status, a count on each, and
+  the number of roles per stage in the card heading. Drag a card to another
+  stage to change it, or use the stage menu on the card. Dropping into Applied
+  only opens the same confirmation dialog as the table; nothing is recorded as
+  submitted until you say you submitted it. The board uses the statuses in
+  `templates/states.yml`, so the tracker contract is unchanged. Rows that exist
+  only in an existing `applications.md` appear in a read-only section under the
+  columns, filtered by the same search box; they never become cards.
+- **People in one place.** A People card lists every contact recorded on any
+  application, grouped by company, with their role and email, newest first, each
+  linked to its role. Contacts are still added and removed on the application's
+  Record tab; this is a read-only roll-up, so there is one owner for the data.
+- **Deadlines in your own calendar.** **Deadlines to calendar** downloads a
+  standard `.ics` file (RFC 5545) with each application's next action as an
+  all-day event and each scheduled interview round. An interview with an
+  optional time is a one-hour timed event, written in UTC from your profile time
+  zone; without a time it stays all-day. Completed rounds and closed
+  applications are left out. Import it into Google Calendar, Apple Calendar or
+  anything else; re-import after changes.
+- **Your table in a spreadsheet.** **Export CSV** downloads the same table the
+  page shows, UTF-8 with a byte-order mark for Excel, including rows that came
+  from an existing career-ops `applications.md`. Both downloads use the session
+  token in a request header, and are hidden in the sample workspace. Hosted
+  accounts get the same downloads from their own signed-in workspace.
+  Implementation: `plainhand/exports.mjs`, two read-only routes, and the
+  Applications page; tests are `tests/test-exports.mjs` plus the browser
+  workflow check.
+- **A submission keeps its packet.** Confirming a submission freezes the exact
+  packet hashes that were sent. Follow-up queue items cite that version, so a
+  later packet revision cannot rewrite what the follow-up refers to.
+- **Tracker rows move with a workspace.** A workspace export now includes
+  `data/applications.md`, and import restores it before syncing app jobs, so
+  rows that exist only in the tracker are not lost on a new computer.
+
 ## Unreleased: hosted Plainhand (cloud server, connector, extension)
 
+- **Apply by hand anywhere.** A job from any site can be evaluated and
+  prepared. Where Plainhand can't fill the form (a LinkedIn or Indeed posting
+  without the employer's link, a form it can't open or fill, or the hosted
+  website),
+  the Apply tab shows a kit: the application link, your approved PDFs and each
+  answer with a copy button. You apply and confirm; tracking carries on.
+- **Master resume.** The standard resume becomes a master resume: every role,
+  result, credential and skill your sources support, with no length limit.
+  Each application picks the lines that fit the job and leads with the most
+  relevant. Plainhand checks the master against your own resume, lists any
+  lines it missed, and redrafts once to add them. An older standard resume is
+  marked out of date until you write the master once. Approval covers the
+  headline, each line and the role headings each application receives; the
+  profile shows those headings, and editing an approved one asks for approval
+  again. A master with no headings keeps an approval it already had.
+- **Claims checked where they sit.** Every number in a packet is checked
+  against your evidence in the clause where it appears. A posting's own figures
+  can be restated about the employer or the role; a number about your work
+  still needs your evidence, even when the sentence also mentions the employer.
+  Postings are read through the same sanitized copy the agent sees, so text
+  addressed to AI tools cannot excuse a claim.
 - **End-to-end evaluation harness.** `npm run benchmark:eval` runs fictional
   candidates through profile building, resume preparation, portal filling and a
   candidate-confirmed submission to an owned loopback sandbox, then scores fact
@@ -66,7 +255,10 @@
 - **The browser extension (Manifest V3).** Save this job, Fill this page
   (approved packet only, sensitive fields always yours, every click screened by
   the shared submit guard, never submits), and I submitted this. Optional host
-  permissions requested on first use for the known application hosts.
+  permissions requested on first use for the known application hosts. On a job
+  board the extension matches a page by its posting id, never by a shared list
+  or search address; a page with no id, conflicting ids, or two saved roles
+  matching it returns no match instead of filling the wrong application.
 - **CI** gains a `cloud` job running the Postgres-backed suites
   (`test:cloud`) and the real-Chromium extension suite (`test:extension`).
 

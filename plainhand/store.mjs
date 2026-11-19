@@ -11,6 +11,10 @@ export function requireText(value, label, max = 100000) {
 }
 export const cleanText = (value, max = 100000) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 export const emptyProfile = () => ({ name: '', email: '', phone: '', location: '', timezone: '', roles: '', compensation: '', eligibility: '', graduation: '', links: '', resume: '', story: '', voice: '', constraints: '' });
+// Contact details are for the candidate's own documents and local form fill, never
+// for a provider prompt. This holds even when the candidate shares everything.
+export const PRIVATE_PROFILE_FIELDS = Object.freeze(['email', 'phone']);
+const PRIVATE_FIELDS = new Set(PRIVATE_PROFILE_FIELDS);
 export function initialState() {
   return { version: 1, revision: 0, profile: emptyProfile(), provider: null, jobs: [], sources: [], tasks: [], conversation: [], understanding: null, events: [] };
 }
@@ -103,10 +107,11 @@ export class Workspace {
   async context(state) {
     // The candidate decides what reaches the provider: excluded sources and profile fields
     // are left out here, which also changes the fingerprint and so invalidates approvals.
+    // Email and phone are always left out; documents and form fill read them locally.
     const prefs = state.contextPrefs || {};
     const excludedFields = new Set(prefs.excludedFields || []), excludedSources = new Set(prefs.excludedSources || []);
     const sources = [
-      { id: 'profile', text: JSON.stringify(Object.fromEntries(Object.entries(state.profile).filter(([key]) => key !== 'resume' && !excludedFields.has(key))), null, 2) },
+      { id: 'profile', text: JSON.stringify(Object.fromEntries(Object.entries(state.profile).filter(([key]) => key !== 'resume' && !PRIVATE_FIELDS.has(key) && !excludedFields.has(key))), null, 2) },
       { id: 'cv', text: state.profile.resume || await this.read('cv.md') },
     ];
     const interview = state.conversation.filter(m => m.role === 'user').map(m => m.text).join('\n\n');
@@ -154,9 +159,128 @@ export class Workspace {
   }
 }
 
-export function hasEvidence(item, context) {
-  return Array.isArray(item?.evidence) && item.evidence.length > 0 && item.evidence.every(e => e.sourceId !== 'reviewed-understanding' && typeof e.quote === 'string' && e.quote.trim().length >= 8 && context.sources.some(s => s.id === e.sourceId && s.text.includes(e.quote)));
+// Claim evidence: only sources that state facts about the candidate can ground a
+// claim. Writing samples guide voice, and the reviewed understanding is the agent's
+// own summary, so neither one is factual evidence.
+export const FACTUAL_SOURCE_IDS = Object.freeze(['profile', 'cv', 'structured-resume', 'narrative', 'proof-points', 'stories', 'interview']);
+const FACTUAL_SOURCES = new Set(FACTUAL_SOURCE_IDS);
+// The specific refusal a non-factual source gets, so answer storage and corrections
+// can say why instead of only "invalid evidence".
+export const NON_FACTUAL_SOURCE_REASONS = Object.freeze({
+  'writing-samples': 'a factual source quote, not a writing sample: samples record how you write, never what is true',
+  'reviewed-understanding': 'a factual source quote, not the reviewed understanding: it is the agent’s summary of your sources, not a source',
+});
+export const factualSource = sourceId => FACTUAL_SOURCES.has(sourceId);
+export const nonFactualSource = sourceId => Object.hasOwn(NON_FACTUAL_SOURCE_REASONS, sourceId) ? NON_FACTUAL_SOURCE_REASONS[sourceId] : null;
+
+// Identity negative control. An answer may not introduce an employer, seniority
+// title, date or name that the candidate's factual sources never state. The check
+// is deliberately narrow so ordinary prose is not mistaken for an identity claim:
+//   - every four-digit year must be a token in a factual source (dates are identity);
+//   - a seniority title directly before "at <Organisation>" in a sentence that also
+//     carries a year, or a past "worked at <Organisation>" frame with a year, must
+//     appear in the sources; the organisation must appear there too;
+//   - an explicit name introduction ("my name is …") must appear in the sources.
+// A title or employer asserted without any date is left to the reviewer; see
+// docs/internal/lanes/durable-memory/RESULT.md for that residual.
+const SENIORITY_TITLES = ['director', 'manager', 'head', 'lead', 'president', 'vice president', 'vp', 'chief', 'ceo', 'cto', 'cfo', 'coo', 'founder', 'co-founder', 'owner', 'partner', 'principal', 'supervisor'];
+const escapeWord = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const SENIORITY = new RegExp(`\\b(?:${SENIORITY_TITLES.map(escapeWord).join('|')})\\b`, 'gi');
+const ORG_AT = /\b[Aa]t\s+(?:the\s+)?((?:[A-Z][\w'’&.-]*)(?:\s+(?:[A-Z][\w'’&.-]*|of|and|&)){0,4})/g;
+const WORKED_AT = /\b(?:worked|served|employed)\s+at\s+(?:the\s+)?((?:[A-Z][\w'’&.-]*)(?:\s+(?:[A-Z][\w'’&.-]*|of|and|&)){0,4})/g;
+const NAME_INTRO = /\b(?:[Mm]y name is|[Ii] go by|[Cc]all me)\s+([A-Z][A-Za-z'’.-]*(?:\s+[A-Z][A-Za-z'’.-]*){0,2})/g;
+const YEAR = /(?<![$\d])\b(?:19|20)\d{2}\b(?![%\d])/g;
+const ORG_STOPWORDS = new Set(['of', 'and', 'the', 'for', 'at', 'in', '&']);
+const claimWords = value => String(value || '').toLowerCase().match(/[a-z0-9]+/g) || [];
+// Seniority words are compared on a short stem so "manager" matches "managed" and
+// "director" matches "directed"; an absent title still fails.
+const titleStem = word => word.length > 5 ? word.slice(0, 5) : word;
+const vocabularyCache = new WeakMap();
+function sourceVocabulary(sources) {
+  if (!Array.isArray(sources)) return { words: new Set(), stems: new Set() };
+  const cached = vocabularyCache.get(sources);
+  if (cached) return cached;
+  const words = new Set(), stems = new Set();
+  for (const source of sources) {
+    if (!factualSource(source?.id)) continue;
+    for (const word of claimWords(source.text)) { words.add(word); stems.add(titleStem(word)); }
+  }
+  const vocabulary = { words, stems };
+  vocabularyCache.set(sources, vocabulary);
+  return vocabulary;
 }
+export function identityProblem(text, sources) {
+  const claim = String(text || '');
+  if (!claim.trim()) return null;
+  const { words, stems } = sourceVocabulary(sources);
+  const problems = [];
+  // Only history is identity. A year before this one must be in the sources; this
+  // year or later need not be ("I can start in June 2026", "June 2026 works for me").
+  // No word list: wording around a historical claim cannot exempt it.
+  const thisYear = new Date().getFullYear();
+  const sentences = claim.split(/(?<=[.!?])\s+|\n+/).filter(Boolean);
+  const years = sentence => sentence.match(YEAR) || [];
+  const missingYears = [...new Set(sentences.flatMap(years))].filter(year => Number(year) < thisYear && !words.has(year));
+  if (missingYears.length) problems.push(`date ${missingYears.join(', ')}`);
+  for (const sentence of sentences) {
+    // A dated role or employer frame is identity, including one dated this year
+    // ("Director at Northwind, 2026"); a future-dated one is an ambition.
+    if (!years(sentence).some(year => Number(year) <= thisYear)) continue;
+    const checkOrg = (match, withTitle) => {
+      if (withTitle) {
+        const titles = [...sentence.slice(0, match.index).matchAll(SENIORITY)].map(item => item[0]);
+        const title = titles.at(-1);
+        if (!title) return;
+        if (!stems.has(titleStem(title.toLowerCase()))) problems.push(`title ${title}`);
+      }
+      const missing = claimWords(match[1]).filter(word => !ORG_STOPWORDS.has(word) && !words.has(word));
+      if (missing.length) problems.push(`employer ${[...new Set(missing)].join(' ')}`);
+    };
+    for (const match of sentence.matchAll(ORG_AT)) checkOrg(match, true);
+    for (const match of sentence.matchAll(WORKED_AT)) checkOrg(match, false);
+  }
+  for (const match of claim.matchAll(NAME_INTRO)) {
+    const missing = claimWords(match[1]).filter(word => !words.has(word));
+    if (missing.length) problems.push(`name ${[...new Set(missing)].join(' ')}`);
+  }
+  return problems.length ? [...new Set(problems)].join('; ') : null;
+}
+
+// Why a claim's evidence is unusable, or null when it is valid. This is the
+// specific refusal behind hasEvidence, so a caller that explains a failure can
+// name the source kind instead of saying only "invalid evidence".
+export function claimEvidenceProblem(item, context) {
+  const evidence = item?.evidence;
+  if (!Array.isArray(evidence) || !evidence.length) return 'at least one exact source quote of at least 8 characters';
+  for (const entry of evidence) {
+    const kind = nonFactualSource(entry?.sourceId);
+    if (kind) return kind;
+    if (!factualSource(entry?.sourceId)) return `a factual source (${FACTUAL_SOURCE_IDS.join(', ')}), not “${entry?.sourceId}”`;
+    if (typeof entry.quote !== 'string' || entry.quote.trim().length < 8) return 'an exact source quote of at least 8 characters';
+  }
+  const sources = Array.isArray(context?.sources) ? context.sources : [];
+  if (!evidence.every(entry => sources.some(source => source.id === entry.sourceId && String(source.text).includes(entry.quote)))) return 'a quote that appears in the current source';
+  // Identity statements in an answer or form value need their own grounding; resume
+  // lines keep their heading check (resume-format.mjs) and the reviewer.
+  if (typeof item?.answer === 'string') {
+    const identity = identityProblem(item.answer, sources);
+    if (identity) return `identity facts that appear in the sources (${identity})`;
+  }
+  return null;
+}
+
+export function hasEvidence(item, context) {
+  return claimEvidenceProblem(item, context) === null;
+}
+
+// The stable key of one saved story, used to edit or delete it later. Each new
+// conversation message carries an id. A message saved before ids existed resolves
+// through a key derived from what is stored, so old data needs no rewrite: when it was
+// said and by whom is its identity, so an edit keeps the same key. A message with no
+// timestamp at all falls back to its text, which is all it has.
+export const storyKey = message => message?.id || `legacy-${message?.at
+  ? digest([message.role || '', message.at]).slice(0, 16)
+  : digest([message?.role || '', '', message?.text || '']).slice(0, 16)}`;
 
 const cell = value => String(value ?? '').replace(/[\t\r\n|]/g, ' ').replace(/\[/g, '(').replace(/\]/g, ')');
 // A status change is recorded, not overwritten: the canonical tracker keeps the

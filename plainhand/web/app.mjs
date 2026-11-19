@@ -1,13 +1,13 @@
 // Plainhand browser app entry. Preact + htm from ./vendor, no build step.
 // Layout: header (status region) · navigation · centre column · context panel.
-import { html, render, useEffect, useLayoutEffect, useRef, store, update, useStore, useMedia, useTheme, refresh, connectEvents, loadProviders, navigate, viewFromHash, closePanel, closeDialog, VIEWS, Icon, initials, providerNames, providerSymbol, ACTIVE, api, toast } from './ui/core.mjs';
+import { html, render, useEffect, useLayoutEffect, useRef, store, update, useStore, useMedia, useTheme, refresh, connectEvents, loadProviders, navigate, viewFromHash, openJob, closePanel, closeDialog, VIEWS, Icon, initials, providerNames, providerSymbol, ACTIVE, api, toast } from './ui/core.mjs';
 import { Button, IconButton, Meter, trapTab } from './ui/components.mjs';
 import { GetStartedPage, ConnectPage, HelpPage, ChatRequestDialog } from './ui/onboarding.mjs';
 import { HomePage } from './ui/home.mjs';
 import { JobsPage, AddJobDialog, AddSourceDialog } from './ui/jobs.mjs';
 import { ApplicationsPage } from './ui/applications.mjs';
 import { CampaignsPage } from './ui/campaigns.mjs';
-import { ProfilePage, brainChecks } from './ui/profile.mjs';
+import { ProfilePage, brainChecks, RemoveStoryDialog } from './ui/profile.mjs';
 import { ActivityPage, UsagePage } from './ui/activity.mjs';
 import { ConnectionsPage, WorkspacePage, AntigravityDialog, ClearConversationDialog, ImportDialog } from './ui/settings.mjs';
 import { syncWithState } from './ui/agent.mjs';
@@ -104,6 +104,7 @@ function Dialogs() {
   if (d.type === 'confirm-submit') return html`<${ConfirmSubmissionDialog} id=${d.id} />`;
   if (d.type === 'antigravity') return html`<${AntigravityDialog} />`;
   if (d.type === 'clear-conversation') return html`<${ClearConversationDialog} />`;
+  if (d.type === 'remove-story') return html`<${RemoveStoryDialog} storyKey=${d.storyKey} />`;
   if (d.type === 'import') return html`<${ImportDialog} data=${d.data} preview=${d.preview} />`;
   return null;
 }
@@ -133,6 +134,16 @@ function App() {
     return () => document.removeEventListener('keydown', key);
   }, [docked]);
   useEffect(() => { syncWithState(); });
+  // A link from the agent or MCP opens its role: /?job=<id>&tab=<tab>#applications.
+  // The hash picks the screen; this opens that role and tab on top of it. Runs once
+  // the workspace is loaded, after the panel's own effects, so the panel is not closed
+  // again by its first render.
+  useEffect(() => {
+    if (!store.state) return;
+    const query = new URLSearchParams(location.search);
+    const id = query.get('job');
+    if (id && store.state.jobs.some(job => job.id === id)) openJob(id, query.get('tab') || 'fit');
+  }, [!!store.state]);
   const lock = !docked && !!store.focus || !!store.dialog || store.navOpen;
   useEffect(() => { document.body.classList.toggle('scroll-lock', lock); }, [lock]);
   if (!store.state) return html`<${Boot} message=${store.offline ? store.offlineReason === 'expired' ? 'Your session expired. Reload Plainhand.' : 'Plainhand is offline. Start the local server and reload this page.' : 'Opening your workspace…'} />`;

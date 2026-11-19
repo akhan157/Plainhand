@@ -1,0 +1,276 @@
+{
+  "version": 4,
+  "scorerVersion": 4,
+  "previous": [
+    {
+      "version": 1,
+      "commit": "00ce1bfbffa4ec0edec6045f0caf3b0b5333384f",
+      "note": "v1 live baseline; re-scored offline with scripts/rescore.mjs and reported beside later versions, never mixed."
+    },
+    {
+      "version": 2,
+      "commit": "5e4a000",
+      "note": "v2 freeze; never run live."
+    },
+    {
+      "version": 3,
+      "commit": "c9e09cb",
+      "note": "v3 freeze; live runs 0f5cfe8 and f8f3663. Held-out set 2 is now seen."
+    }
+  ],
+  "note": "Frozen baseline manifest. The baseline SHA is the commit containing this file. Any change to a hashed file invalidates the baseline and requires a re-freeze.",
+  "design": {
+    "commit": "b6c0b562732b45455e4709e5e390fe00d2a4874d",
+    "review": "docs/internal/lanes/measurement-design/REVIEW.md"
+  },
+  "files": {
+    "docs/internal/lanes/measurement-design/ASSIGNMENT.md": "66bec864c1193cb58c21672b3563759d45ff97f859b68e1f5ec769285d217fc8",
+    "docs/internal/lanes/measurement-design/REVIEW.md": "224a5be1414a3d6a7b5d33e1f5b42dd9eae0d7dab5e1c3dd5750822c2d2fd9da",
+    "plainhand/evaluation/corpus.mjs": "4ebc26b2d7e12439e3648c75ae232022365861145aaab37dce1e5b351786417d",
+    "plainhand/evaluation/corpus-holdout.mjs": "ac9a751ef1de26edeacb0c7e04fb05cc077c4b57f25b35a66a0e9f71e7f6dfab",
+    "plainhand/evaluation/corpus-holdout-2.mjs": "633c5389839360d023ee2c0eb9c93b22232904f9ae220ee2a485186f3e185aeb",
+    "plainhand/evaluation/roles.mjs": "1a94be76493f6aed4c63ed6af09a7ae37be2078f09eda6e64803aaf7a17b6e1b",
+    "plainhand/evaluation/score.mjs": "4a727d325ac44a99c7da204a4b6adbb697bfd947dcefc43af5038f7727d91b64",
+    "plainhand/evaluation/agent.mjs": "21ac78e9fb290c146cb65e815968db10439e0b13b841f42f1c889766fe2ad458",
+    "plainhand/evaluation/runner.mjs": "c673da79bc0f2ab3a53be15df8e4fe035cb75d178d2299374e1fc08f9a75ae7f",
+    "plainhand/evaluation/claims.mjs": "de3f9ad0aff708f2c947f0407ed4de315e1e71e973ef311d0cab31fda16b093a",
+    "plainhand/evaluation/judge.mjs": "face16249419325db7dafbf33b9a8212bcd3b99f1f1db5231c27bdf5eb2fd5a2",
+    "plainhand/evaluation/pdf-evidence.mjs": "e7e6d5c8b28d158057f897cb3a4080066e55909ed2957862288f5b24c2d1a3e7",
+    "plainhand/evaluation/portals.mjs": "1725edce95aa50d81547d7ab87bc1db4feea2d429df9dadb98d93da8b5ffe384",
+    "plainhand/evaluation/sandbox.mjs": "6ec20b6a820fe1e5d6c92db9eb19d1ab2f69b90eb222d05172a418fafc84d2b5",
+    "plainhand/evaluation/browser.mjs": "18a304b1fab68e48e3a34c0eb3534c1284cd1c3d8ec9fceee6f67e54d38abc2c",
+    "plainhand/benchmarks/profile-bench.mjs": "13313ad91b326065626e26aa30d2f69d7736c351f5085aef04b3fe31c03e3ab2",
+    "plainhand/agents.mjs": "64e62e8cfcabf1897f9b3e9db8741e88cdb9a596e378e9509622af111ab20b5f",
+    "plainhand/workflow.mjs": "1a5d6817b2d8781b7ee022795b8b66e81ed9d59c1f0e28c6ec90a3d4aa5cd439",
+    "plainhand/claim-calibration.mjs": "3611666d8eed1b7b3f9847e6805b7e5068c026b2b86e052c0d2d169945c2f0e8",
+    "plainhand/store.mjs": "8687a7cffec830fdf46cc01d9739a58b735e4f0ea5279505001f44493a9bb84f",
+    "plainhand/usage.mjs": "cfa48e8a6fac243230a3edbdf7d8ef48339595ead20465f3f969f674db673699",
+    "scripts/rescore.mjs": "f9ef258a0f24cc67f096407d1ddbe6bef8c90438a7c9c82f2a6d3c3e6084b16c",
+    "benchmarks/benchmark-eval.mjs": "3e521cadf89a7673512533e1bff85f6bba24f0861011eabbd5388515f4ed5c38",
+    "benchmarks/benchmark-judge.mjs": "d7fc0268f00da80b98d0df07d27d7ca987225763618fe81f29929c460376ed2d"
+  },
+  "scenarios": {
+    "count": 67,
+    "idsSha256": "7bac48a0c58bca88411038331cfcd8218db6ea25abf807ed025a992cc866a64f",
+    "ids": [
+      "profile-mech-grad",
+      "profile-career-changer",
+      "profile-quiet-junior",
+      "profile-fin-analyst",
+      "profile-accountant",
+      "profile-scientist",
+      "mech-resume",
+      "analyst-resume",
+      "swe-resume",
+      "ops-resume",
+      "designer-resume",
+      "content-resume",
+      "fin-resume",
+      "acct-resume",
+      "sci-resume",
+      "mgr-resume",
+      "sci-tailor",
+      "fin-tailor",
+      "analyst-tailor",
+      "mech-lever",
+      "analyst-greenhouse",
+      "swe-ashby",
+      "ops-sensitive",
+      "designer-conditional",
+      "content-unknown",
+      "fin-challenge",
+      "analyst-login",
+      "sci-greenhouse",
+      "ops-records",
+      "mgr-records",
+      "acct-radio",
+      "fin-icims",
+      "acct-taleo",
+      "swe-discard",
+      "swe-submit",
+      "designer-submit",
+      "acct-submit",
+      "mech-mismatch",
+      "fin-mismatch",
+      "profile-effect-fin-built",
+      "profile-effect-fin-seeded",
+      "profile-effect-fin-minimal",
+      "profile-effect-analyst-built",
+      "profile-effect-analyst-seeded",
+      "profile-effect-analyst-minimal",
+      "journey-sci",
+      "profile-effect-sci-built",
+      "profile-effect-sci-seeded",
+      "profile-effect-sci-minimal",
+      "holdout-oldrole-fin-systems",
+      "holdout-oldrole-fin-forecast",
+      "holdout-oldrole-stem-automation",
+      "holdout-oldrole-stem-ops",
+      "holdout-oldrole-tech-reliability",
+      "holdout-oldrole-tech-ml",
+      "holdout-mismatch",
+      "holdout-journey-stem",
+      "borderline-swe",
+      "borderline-fin",
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
+    ],
+    "expectedFailures": [
+      "profile-effect-fin-minimal",
+      "profile-effect-analyst-minimal",
+      "profile-effect-sci-minimal"
+    ],
+    "heldOut": [
+      "holdout-oldrole-fin-systems",
+      "holdout-oldrole-fin-forecast",
+      "holdout-oldrole-stem-automation",
+      "holdout-oldrole-stem-ops",
+      "holdout-oldrole-tech-reliability",
+      "holdout-oldrole-tech-ml",
+      "holdout-mismatch",
+      "holdout-journey-stem",
+      "borderline-swe",
+      "borderline-fin",
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
+    ],
+    "heldOutSet2": [
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
+    ],
+    "seenHeldOut": {
+      "ids": [
+        "holdout-oldrole-fin-systems",
+        "holdout-oldrole-fin-forecast",
+        "holdout-oldrole-stem-automation",
+        "holdout-oldrole-stem-ops",
+        "holdout-oldrole-tech-reliability",
+        "holdout-oldrole-tech-ml",
+        "holdout-mismatch",
+        "holdout-journey-stem",
+        "borderline-swe",
+        "borderline-fin"
+      ],
+      "reason": "Run live against v1 on 2026-11-15; seen since. A v2 comparison on them measures product change, not generalisation; fresh held-out fixtures are needed for that."
+    },
+    "seenControls": {
+      "ids": [
+        "fin-mismatch",
+        "journey-sci"
+      ],
+      "reason": "Run by the scorer lane before the freeze; kept as controlled regression checks, not held out. Unseen versions: holdout-mismatch, holdout-journey-stem."
+    },
+    "wiringOnlyInControlled": [
+      "holdout-oldrole-fin-systems",
+      "holdout-oldrole-fin-forecast",
+      "holdout-oldrole-stem-automation",
+      "holdout-oldrole-stem-ops",
+      "holdout-oldrole-tech-reliability",
+      "holdout-oldrole-tech-ml",
+      "holdout-mismatch",
+      "holdout-journey-stem",
+      "borderline-swe",
+      "borderline-fin",
+      "holdout2-oldrole-fin-recent",
+      "holdout2-oldrole-fin-match",
+      "holdout2-oldrole-tech-recent",
+      "holdout2-oldrole-tech-match",
+      "holdout2-newer-unrelated-stem",
+      "holdout2-skip-aero",
+      "holdout2-borderline-gmp",
+      "holdout2-journey-stem"
+    ]
+  },
+  "controlledGate": {
+    "command": "node benchmarks/benchmark-eval.mjs --concurrency 2",
+    "expect": "0 unexpected failures; expected-failure set exactly scenarios.expectedFailures",
+    "tier": "fixture"
+  },
+  "live": {
+    "provider": "codex",
+    "cli": "codex-cli 0.167.1",
+    "ownerDecision": "2026-11-15",
+    "paired": {
+      "scenarios": [
+        "profile-effect-fin-built",
+        "profile-effect-fin-seeded",
+        "profile-effect-fin-minimal",
+        "profile-effect-analyst-built",
+        "profile-effect-analyst-seeded",
+        "profile-effect-analyst-minimal",
+        "profile-effect-sci-built",
+        "profile-effect-sci-seeded",
+        "profile-effect-sci-minimal"
+      ],
+      "repeat": 3,
+      "command": "node benchmarks/benchmark-eval.mjs --provider codex --scenarios profile-effect-fin-built,profile-effect-fin-seeded,profile-effect-fin-minimal,profile-effect-analyst-built,profile-effect-analyst-seeded,profile-effect-analyst-minimal,profile-effect-sci-built,profile-effect-sci-seeded,profile-effect-sci-minimal --repeat 3 --concurrency 1 --agent-timeout 900"
+    },
+    "smoke": {
+      "scenarios": [
+        "holdout2-oldrole-fin-recent",
+        "holdout2-oldrole-fin-match",
+        "holdout2-oldrole-tech-recent",
+        "holdout2-oldrole-tech-match",
+        "holdout2-newer-unrelated-stem",
+        "holdout2-skip-aero",
+        "holdout2-borderline-gmp",
+        "holdout2-journey-stem",
+        "journey-sci"
+      ],
+      "repeat": 1,
+      "note": "Unseen held-out set 2 plus journey-sci. Set 1 is seen; run it only to compare with the v1 baseline (rescore).",
+      "command": "node benchmarks/benchmark-eval.mjs --provider codex --scenarios holdout2-oldrole-fin-recent,holdout2-oldrole-fin-match,holdout2-oldrole-tech-recent,holdout2-oldrole-tech-match,holdout2-newer-unrelated-stem,holdout2-skip-aero,holdout2-borderline-gmp,holdout2-journey-stem,journey-sci --concurrency 1 --agent-timeout 900"
+    },
+    "pilot": "Pre-freeze: profile-effect-fin-built took 13 calls, 331k input and 3.7k output tokens, 163 s (EVIDENCE.codex_pilot)."
+  },
+  "judge": {
+    "provider": "claude",
+    "cli": "claude 2.1.325 (Claude Code)",
+    "familyDiffersFromProviderUnderTest": true,
+    "actualModel": "recorded at run time from the CLI result; null means familyProof catalog-only",
+    "samples": {
+      "claims": 1,
+      "rubric": 3
+    },
+    "promptSha256": {
+      "CLAIMS_INSTRUCTION": "c5aa66c5a50ce10c9389bebd8920c4605948af65f6289bf53906a51f7795ea64",
+      "RUBRIC_INSTRUCTION": "630921aa115c1552abd43a9f22c7b626aa86be902888d4947cc248e253375010",
+      "RUBRIC": "037dc448e81e9c1dee4d285865480518c17290224ad2469228491f883c0a7a92"
+    },
+    "calibration": "uncalibrated: no human ratings exist"
+  },
+  "budgets": {
+    "modelCalls": 900,
+    "wallClockMinutes": 480,
+    "callTimeoutSeconds": 900,
+    "onCap": "blocked: budget, not a pass",
+    "onQuota": "blocked: provider-quota; partial evidence kept; no aggregate reported"
+  },
+  "thresholds": {
+    "existing": "unchanged: factCoverage >= 0.66, leadShare >= 0.67, Apply >= 4, Skip <= maxScore (default 3.9), zero absent claims/unsupported numbers/banned words, review/calibration and first-person gates",
+    "v4": "Interleave check compares each matched run on its own; a phrase repeated inside another line, or a group whose parts matched in different places, is not interleaving. True interleave control still fails.",
+    "v3": "Lead share no longer gates: kept experience roles must follow the run roleOrder (recent: newest first by heading dates; match: the required-fact role first, rest newest first), and a role holding a required fact may not be dropped. Within-role curation is a diagnostic.",
+    "v2": "An honest zero-match Skip (Skip band, gaps naming posting requirements) passes evidenceValid; PDF line matching picks the occurrence consistent with order so far. Reordered-line and Apply-without-evidence controls still fail.",
+    "new": "Investigate within job.scoreBand with the below-4 prepare guard; recent-role jobs keep their retainFactIds",
+    "proposed": "design §8.8, not approved; diagnostic only"
+  },
+  "usage": "Every live run records calls, input/output/cached/reasoning tokens, promptChars (Plainhand prompt size) and wall time per scenario. Codex exec --json states no model id, so actualModel is null with a reason."
+}

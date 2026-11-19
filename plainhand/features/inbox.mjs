@@ -176,7 +176,7 @@ const ASSESS_VERB = /\b(?:complete|take|finish|submit|link|invit\w+|please|requi
 const DEADLINE = /\b(?:by|before|no later than|deadline|due|until|within)\b/i;
 const DEADLINE_VERB = /\b(?:reply|respond|confirm|submit|complete|return|send|let us know|get back)\b/i;
 const first = (sentences, patterns) => { for (const s of sentences) if (patterns.some(re => re.test(straight(s)))) return s; return null; };
-const stageOf = s => /phone screen|recruiter (?:call|screen|chat)|screening call/i.test(s) ? 'Phone screen' : /technical|coding|system design/i.test(s) ? 'Technical interview' : /on-?site/i.test(s) ? 'Onsite interview' : /final/i.test(s) ? 'Final round' : /hiring manager/i.test(s) ? 'Hiring manager interview' : 'Interview';
+const stageOf = s => /phone screen|recruiter (?:call|screen|chat)|screening call/i.test(s) ? 'Phone screen' : /technical|coding|system design/i.test(s) ? 'Technical interview' : /skills? (?:test|assessment)|case (?:study|interview)|modell?ing test|take-?home|presentation|portfolio review|superday|assessment cent(?:er|re)/i.test(s) ? 'Skills assessment' : /on-?site/i.test(s) ? 'Onsite interview' : /final/i.test(s) ? 'Final round' : /hiring manager/i.test(s) ? 'Hiring manager interview' : 'Interview';
 const clip = s => s.slice(0, 300);
 
 // What the email says, by rule. Raw proposals: not yet checked against the application.

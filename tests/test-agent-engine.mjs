@@ -341,3 +341,17 @@ test('exports include the conversation and proposals, never the MCP secret', asy
     assert.ok(!JSON.stringify(exported).includes(h.app.token), 'nor the session token');
   } finally { await h.close(); }
 });
+
+test('an agent exit is classified by its real cause, not by routine auth notices', async () => {
+  const { exitReason } = await import('../plainhand/agents.mjs');
+  const notice = '⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set and takes precedence over your claude.ai login · Unset it to load your organization\'s connectors\n';
+  assert.match(exitReason(notice + 'API Error: 429 rate_limit_error', 1), /usage or billing limit/);
+  assert.match(exitReason(notice + 'Claude AI usage limit reached', 1), /usage or billing limit/);
+  assert.match(exitReason(notice + 'API Error: 529 overloaded_error', 1), /usage or billing limit/);
+  assert.match(exitReason(notice + 'Error: something else broke', 1), /exited with code 1/);
+  // Ordinary words in a draft (an accredited degree, a 401(k) plan) are not limits or sign-in problems.
+  assert.match(exitReason('Managed the accredited 401(k) plan audit', 1), /exited with code 1/);
+  assert.match(exitReason('Credit balance is too low', 1), /usage or billing limit/);
+  assert.match(exitReason('Invalid API key · Please run /login', 1), /Sign in/);
+  assert.match(exitReason('Not logged in. Run codex login.', 1), /Sign in/);
+});

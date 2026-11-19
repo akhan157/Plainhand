@@ -56,14 +56,15 @@ test('every action declares a valid tier, and the registry never exposes handler
       'record.addContact', 'record.removeContact', 'record.addInterview', 'record.setInterviewStatus', 'record.removeInterview', 'record.setNextAction',
       'jobs.add', 'jobs.select', 'jobs.setContext', 'jobs.setStatus', 'sources.add', 'sources.remove', 'corrections.propose',
       'tasks.interview', 'tasks.discover', 'tasks.evaluate', 'tasks.prepare', 'tasks.cancel',
-      'understanding.approve', 'packet.approve', 'corrections.approve', 'corrections.reject', 'jobs.confirmSubmitted']) assert.ok(names.has(name), name);
+      'understanding.approve', 'packet.approve', 'corrections.approve', 'corrections.reject', 'jobs.confirmSubmitted',
+      'conflicts.list', 'conflicts.record']) assert.ok(names.has(name), name);
     for (const definition of listed) {
       assert.ok(TIERS.includes(definition.tier), definition.name);
       assert.equal(typeof definition.description, 'string');
       assert.equal(definition.run, undefined);
       assert.equal(definition.undo, undefined);
     }
-    assert.deepEqual(h.registry.list({ tiers: ['candidate'] }).map(d => d.name).sort(), ['answers.remove', 'answers.update', 'calibration.decide', 'context.include', 'corrections.approve', 'corrections.reject', 'followups.markSent', 'format.save', 'inbox.apply', 'insights.approve', 'insights.defer', 'insights.reject', 'jobs.confirmSubmitted', 'jobs.setApplyLink', 'line.removeStatement', 'packet.approve', 'profile.removeWritingSample', 'settings.autonomy', 'standard.approve', 'understanding.approve']);
+    assert.deepEqual(h.registry.list({ tiers: ['candidate'] }).map(d => d.name).sort(), ['answers.approve', 'answers.remove', 'answers.update', 'calibration.decide', 'conflicts.record', 'context.include', 'corrections.approve', 'corrections.reject', 'followups.markSent', 'format.save', 'inbox.apply', 'insights.approve', 'insights.defer', 'insights.reject', 'jobs.confirmSubmitted', 'jobs.setApplyLink', 'line.removeStatement', 'packet.approve', 'profile.editStory', 'profile.removeStory', 'profile.removeWritingSample', 'settings.autonomy', 'settings.roleOrder', 'standard.approve', 'understanding.approve']);
     await assert.rejects(h.registry.run('jobs.delete', {}), code('unknown_action'));
     await assert.rejects(h.registry.run('workspace.digest', {}, { actor: 'robot' }), /Unknown actor/);
   } finally { await h.close(); }

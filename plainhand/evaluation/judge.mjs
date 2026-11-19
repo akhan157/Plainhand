@@ -31,9 +31,9 @@ export const RUBRIC = [
     id: 'structure',
     name: 'Structure and ordering',
     anchors: {
-      1: 'Disorganised: entries under wrong headings, repeated lines, a wall of text, or core sections (education, experience or projects) missing.',
+      1: 'Disorganised: entries under wrong headings, repeated lines, a wall of text, or core sections missing (experience, education or training, and whatever the candidate\'s field expects, such as licenses, certifications or projects).',
       3: 'Readable, but with ordering problems for the candidate\'s level, entries split or duplicated, or bullets of very uneven length.',
-      5: 'Conventional sections in a sensible order for the candidate\'s level, each entry under its correct heading, one idea per line; the cover letter has a clear opening, evidence and close.',
+      5: 'Conventional sections in a sensible order for the candidate\'s field and level, each entry under its correct heading, one idea per line; the cover letter has a clear opening, evidence and close.',
     },
   },
   {

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { now, digest } from './store.mjs';
 import { ActionError, validateInput } from './actions.mjs';
+import { canOfferSummary, finalQuestion, profileCoverage, PROFILE_AREAS, uncoveredAreas } from './profile-coverage.mjs';
 
 // The conversational layer: the provider chooses registry actions, Plainhand runs them.
 // Reads run immediately; writes and tasks become proposals the candidate confirms.
@@ -18,13 +19,20 @@ Rules:
 - Never invent facts about the candidate. Ask when something is missing. Only the candidate can confirm that an application was submitted.
 - Be brief, warm and specific, in plain sentences without markdown headings. Dates are YYYY-MM-DD; today is INPUT.today.
 - When you can answer, reply with "say" and an empty "actions" list.
-Onboarding: when INPUT.digest.profile.missing is not empty, help the candidate build their profile by conversation. Ask one specific question at a time about their experience, projects, tools and methods, goals or how they like to come across. When they answer with something worth keeping, propose profile.addStory with their exact words, or profile.update for a stated preference. When they paste something they wrote (an email, a post, a past cover letter), offer to keep it as a writing sample with profile.addWritingSample so drafts sound like them. Once they have shared a few stories, ask at least one question about the tools, software or methods they use at work unless the conversation already covered them; save the answer with profile.addStory in their exact words (or profile.update for a stated preference) before proposing tasks.interview to rebuild their understanding and open the profile panel so they can review and approve it. Never fill in work authorization, compensation, demographics or anything they did not say. Once the essentials are in, INPUT.digest.profile.next lists the weakest spots in their profile (thin stories, open questions) and profile.strength adds gaps that keep coming up across evaluated roles; when the candidate wants to strengthen their profile or the conversation allows, ask about the first of these, one question at a time. Ask; never assume they have the experience a gap names. Wording in applications: the candidate decides how strongly their real experience is worded, between underselling and inflating (line.get shows what they've said and chosen). When it comes up, for example whether coordinating three teammates counts as leading, or whether rounding a number is fine, ask them, and save their answer in their exact words with line.addStatement. Their choices on flagged claims are theirs to make in the packet; never make them. Applications start from the candidate's approved standard resume and cover letter (tasks.standard writes it; they approve it on the profile screen). When they ask to change an application or their standard (shorter, lead with a project, a warmer opening), propose tasks.revise with their request in their own words and the jobId when it is about one application. No line permits a claim without evidence.`;
+Onboarding: when INPUT.digest.profile.missing is not empty, or INPUT.digest.profile.interview.complete is false, help the candidate build their profile by conversation. While that is so and the candidate has not asked you for something else, every reply you send ends with exactly one specific question about the first area in INPUT.digest.profile.interview.uncovered: what each role was responsible for and the results, with numbers; each role's employer, official job title and dates; the tools, software and systems they use; certifications and licences; education and training; projects they built or led; leading, mentoring or coordinating people; regulated or quality work such as SOPs, audits or controls; and the roles they want next. One question per reply, never a list. Ask about a role's employer, official job title and dates in the candidate's own words: which employer or organisation it was at, the official job title, and when it started and ended. When they have already described results but not where that work happened, ask which employer or organisation the earlier results were at, its official job title, and when it started and ended, in their own words; never attach their story to a role they did not name. Never suggest or guess an employer, a job title or any dates: ask, then save their answer in their exact words with profile.addStory, even when it covers only part of a role or they cannot remember. An agreement, a "yes, go ahead" or a short answer is not a request to stop: ask the next uncovered question instead of closing. When they answer with something worth keeping, propose profile.addStory with their exact words, or profile.update for a stated preference, and still end that reply with the next uncovered question. When they paste something they wrote (an email, a post, a past cover letter), offer to keep it as a writing sample with profile.addWritingSample so drafts sound like them. Saying what you propose does not replace the question: an "I propose ..." reply ends with the next uncovered question too. Do not offer to rebuild the summary or the profile, and do not propose tasks.interview, while any area is still uncovered; that is allowed once INPUT.digest.profile.interview.complete is true, or when the candidate asks for a summary or says they are done, and then propose tasks.interview to rebuild their understanding and open the profile panel so they can review and approve it. Never fill in work authorization, compensation, demographics or anything they did not say. Once the essentials are in, INPUT.digest.profile.next lists the weakest spots in their profile (thin stories, open questions) and profile.strength adds gaps that keep coming up across evaluated roles; when the candidate wants to strengthen their profile or the conversation allows, ask about the first of these, one question at a time. Ask; never assume they have the experience a gap names. Wording in applications: the candidate decides how strongly their real experience is worded, between underselling and inflating (line.get shows what they've said and chosen). When it comes up, for example whether coordinating three teammates counts as leading, or whether rounding a number is fine, ask them, and save their answer in their exact words with line.addStatement. Their choices on flagged claims are theirs to make in the packet; never make them. Each application selects from the candidate's approved master resume, the complete record of what they have done, and adapts their base cover letter (tasks.standard writes both; they approve them on the profile screen). When they ask to change an application or their master resume (shorter, lead with a project, a warmer opening), propose tasks.revise with their request in their own words and the jobId when it is about one application. No line permits a claim without evidence.`;
+
+// The digest's interview coverage also counts areas the candidate already answered in
+// this conversation, including a plain "no".
+const withInterview = (digest, snapshot, history) => digest?.profile ? { ...digest, profile: { ...digest.profile, interview: profileCoverage(snapshot, history) } } : digest;
 
 export const BUDGET = { calls: 4, actions: 12 };
 const HISTORY_FILE = 'data/plainhand/conversation.jsonl';
 const PROPOSALS_FILE = 'data/plainhand/agent-proposals.json';
 const UNDO_TTL_MS = 10 * 60 * 1000; // matches the registry's undo window
 const HISTORY_LIMIT = 500, CONTEXT_MESSAGES = 20, RESULT_CHARS = 20000, SAY_CHARS = 4000, KEEP_PROPOSALS = 100;
+// A request for a writing sample is a question, not a save: it waits for every
+// interview area and is asked at most once.
+const WRITING_SAMPLE = /\bwriting samples?\b/i;
 const PANEL_TYPES = 'job|packet|record|form|profile|applications|discover|campaigns|insights|workspace';
 const OPEN_PANEL = { name: 'ui.openPanel', tier: 'read', title: 'Open a panel', description: 'Show the candidate a Plainhand screen: job (role & fit), packet, record (timeline, contacts, interviews, follow-ups), form, profile, applications, discover, campaigns, insights or workspace. id is a job id where relevant.', input: { type: `enum:${PANEL_TYPES}`, id: 'string?' } };
 
@@ -142,16 +150,21 @@ export class AgentEngine {
 
   async run(turnId, signal, provider, message, history) {
     const results = [], taintSources = [];
-    let actionsUsed = 0, repairNote = null;
+    let actionsUsed = 0, repairNote = null, interviewRepair = false, interviewNote = null;
     const finish = async (status, say, extra = {}) => {
-      if (say) await this.append({ id: randomUUID(), turnId, role: 'assistant', text: say, at: now(), status, ...extra });
+      const details = interviewNote ? { interview: interviewNote, ...extra } : extra;
+      if (say) await this.append({ id: randomUUID(), turnId, role: 'assistant', text: say, at: now(), status, ...details });
       this.emit('agent.done', { turnId, status });
       return status;
     };
     try {
       for (let call = 1; call <= BUDGET.calls; call++) {
         if (signal.aborted) return await finish('canceled', 'Stopped. Nothing was changed.');
-        const data = { message, history, today: this.today(), digest: this.registry.digest(await this.workspace.load()), actions: this.catalogue(), results, ...(repairNote ? { repair: repairNote } : {}) };
+        const snapshot = await this.workspace.load();
+        // The candidate's current message answers the last question too: a plain "no"
+        // closes that area now instead of costing one more repeated question.
+        const spoken = [...history, { role: 'user', text: message }];
+        const data = { message, history, today: this.today(), digest: withInterview(this.registry.digest(snapshot), snapshot, spoken), actions: this.catalogue(), results, ...(repairNote ? { repair: repairNote } : {}) };
         let reply;
         try {
           reply = parseReply(await this.workflow.agent(provider, AGENT_INSTRUCTION, data, { signal, usageContext: { purpose: 'agent', taskId: turnId, attempt: call }, onText: text => { if (!signal.aborted) this.emit('agent.delta', { turnId, call, text }); } }));
@@ -165,6 +178,46 @@ export class AgentEngine {
         }
         const reads = [], proposed = [], before = results.length;
         let panel = null;
+        // The interview has one deterministic next question. When a reply is part of the
+        // interview (it proposes a profile change, asks about a profile area, follows an
+        // area question, or asks for a writing sample), its last question must be about
+        // the first uncovered area; a miss costs one repair, then the reply is accepted
+        // and the miss is recorded instead of looping.
+        if (!interviewRepair) {
+          const question = finalQuestion(reply.say);
+          const writingSampleAsk = Boolean(question) && WRITING_SAMPLE.test(question);
+          const openAreas = uncoveredAreas(snapshot, spoken);
+          const asksArea = Boolean(question) && PROFILE_AREAS.some(area => area.asked.test(question));
+          const prior = [...history].reverse().find(item => item?.role === 'assistant');
+          const followsArea = Boolean(prior) && PROFILE_AREAS.some(area => area.asked.test(finalQuestion(prior.text)));
+          const interviewReply = reply.actions.some(action => action.name.startsWith('profile.')) || asksArea || followsArea || writingSampleAsk;
+          let miss = null;
+          if (interviewReply && openAreas.length) {
+            const area = openAreas[0];
+            if (writingSampleAsk) miss = { label: area.label, note: `Do not ask for a writing sample yet. End with one question about: ${area.label}.` };
+            else if (question && !area.asked.test(question)) miss = { label: area.label, note: `End with one question about: ${area.label}.` };
+          } else if (interviewReply && writingSampleAsk) {
+            // The candidate was already asked once: the conversation may request a sample
+            // only once, so a repeated request is rejected and the reply is accepted as is.
+            const askedBefore = (await this.messages()).some(item => item.role === 'assistant' && item.turnId !== turnId && WRITING_SAMPLE.test(item.text));
+            if (askedBefore) miss = { label: null, note: 'Do not ask for a writing sample again: it was already requested once in this conversation.' };
+          }
+          if (miss) {
+            interviewRepair = true;
+            repairNote = miss.note;
+            continue;
+          }
+        } else {
+          // The repair already ran. A second miss is accepted, not repaired again; the
+          // turn records what was asked so the digests can show the engine had to step in.
+          const openAreas = uncoveredAreas(snapshot, spoken);
+          const question = finalQuestion(reply.say);
+          const expected = openAreas[0]?.label || null;
+          const writingSample = Boolean(question) && WRITING_SAMPLE.test(question);
+          if (expected ? writingSample || (question && !openAreas[0].asked.test(question)) : writingSample) {
+            interviewNote = { kind: 'interview-question', expected, asked: question || null, repaired: false };
+          }
+        }
         // A reply that would pass the action budget is not run at all, so a group is never proposed in part.
         if (actionsUsed + reply.actions.length > BUDGET.actions) return await finish('budget', 'That needs more steps than I take in one go. Ask for a smaller piece and I will continue.');
         actionsUsed += reply.actions.length;
@@ -181,6 +234,13 @@ export class AgentEngine {
           // Evidence must be the candidate's own words, not the model's paraphrase.
           if (definition.candidateWords && !candidateSaid([message, ...history.filter(m => m.role === 'user').map(m => m.text)], action.input[definition.candidateWords])) {
             results.push({ name: action.name, error: `"${definition.candidateWords}" must be copied exactly from the candidate's messages.` }); continue;
+          }
+          // The interview is not over while areas are uncovered: a summary the candidate
+          // did not ask for waits, so the turn continues with the next question.
+          if (action.name === 'tasks.interview' && !canOfferSummary(snapshot, message, spoken)) {
+            const coverage = profileCoverage(snapshot, spoken);
+            results.push({ name: action.name, error: `Do not offer to rebuild the profile yet: ${coverage.covered} of ${coverage.total} areas are covered (still open: ${coverage.uncovered.join('; ')}). Ask the candidate the next uncovered question and save their answer.` });
+            continue;
           }
           if (this.registry.candidateOnly(action.name, action.input)) {
             panel ||= this.registry.panelFor(action.name, action.input);

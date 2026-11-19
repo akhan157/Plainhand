@@ -195,7 +195,7 @@ function SharingCard() {
     <h3 class="sub-heading">Sources</h3>
     <ul class="share-list">${view.sources.map(s => row('sources', s.id, s.label, s.included, s.excludable ? `${s.characters.toLocaleString()} characters` : 'Always shared; exclude individual fields below', !s.excludable))}</ul>
     <h3 class="sub-heading">Profile fields</h3>
-    <ul class="share-list">${view.fields.map(f => row('fields', f.name, FIELD_LABELS[f.name] || f.name, f.included, f.present ? (f.included ? 'Shared' : 'Not shared') : 'Empty in your profile'))}</ul>
+    <ul class="share-list">${view.fields.map(f => row('fields', f.name, FIELD_LABELS[f.name] || f.name, f.included, f.neverShared ? 'Never shared with your agent; used only in your documents and forms' : f.present ? (f.included ? 'Shared' : 'Not shared') : 'Empty in your profile', f.neverShared))}</ul>
   </div>`;
 }
 
@@ -203,6 +203,7 @@ function AnswerRow({ item }) {
   const [editing, setEditing] = useState(false);
   const [answer, setAnswer] = useState(item.answer);
   const [reviewBy, setReviewBy] = useState(item.reviewBy || '');
+  const needsReview = item.status === 'needs-review' || item.needsReview === true;
   const save = async () => {
     await api('action', { name: 'answers.update', input: { id: item.id, answer, ...(reviewBy ? { reviewBy } : {}) } });
     toast('Reusable answer updated.'); setEditing(false); refresh();
@@ -211,10 +212,13 @@ function AnswerRow({ item }) {
     ${editing ? html`<div class="field"><label for=${'answer-' + item.id}>Answer</label><textarea id=${'answer-' + item.id} value=${answer} onInput=${e => setAnswer(e.currentTarget.value)} onKeyDown=${e => { if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); } }}></textarea></div>
       <div class="field"><label for=${'answer-review-' + item.id}>Stop reusing after</label><input type="date" id=${'answer-review-' + item.id} value=${reviewBy} onInput=${e => setReviewBy(e.currentTarget.value)} /></div>
       <small>Source: “${item.evidence?.[0]?.quote || ''}”</small>`
-      : html`<p>${String(item.answer).slice(0, 180)}</p><small>${item.scope === 'global' ? 'Any application' : item.scope?.companies?.length ? item.scope.companies.join(', ') : 'This role only'} · reviewed ${item.reviewedAt}${item.reviewBy ? ' · expires ' + item.reviewBy : ''}</small>`}</div>
+      : html`<p>${String(item.answer).slice(0, 180)}</p>
+        ${needsReview ? html`<small><strong>Needs review</strong> — not reused until you re-approve it.</small>` : null}
+        <small>${item.scope === 'global' ? 'Any application' : item.scope?.companies?.length ? item.scope.companies.join(', ') : 'This role only'} · reviewed ${item.reviewedAt}${item.reviewBy ? ' · expires ' + item.reviewBy : ''}</small>`}</div>
     <div class="row-actions">${editing
       ? html`<${ActionButton} class="small primary" onClick=${save} disabled=${!answer.trim()}>Save answer</${ActionButton}><${Button} class="ghost small" onClick=${() => setEditing(false)}>Cancel</${Button}>`
-      : html`<${Button} class="ghost small" icon="edit" aria-label=${'Edit answer: ' + item.question} onClick=${() => setEditing(true)}>Edit</${Button}>
+      : html`${needsReview ? html`<${ActionButton} class="small primary" aria-label=${'Re-approve answer: ' + item.question} onClick=${async () => { await api('action', { name: 'answers.approve', input: { id: item.id } }); toast('Reusable answer approved again.'); refresh(); }}>Re-approve</${ActionButton}>` : null}
+        <${Button} class="ghost small" icon="edit" aria-label=${'Edit answer: ' + item.question} onClick=${() => setEditing(true)}>Edit</${Button}>
         <${ActionButton} class="ghost small" aria-label=${'Remove answer: ' + item.question} onClick=${async () => { await api('action', { name: 'answers.remove', input: { id: item.id } }); toast('Reusable answer removed.'); refresh(); }}>Remove</${ActionButton}>`}</div></li>`;
 }
 
@@ -311,6 +315,19 @@ function RemoteCard() {
   </${Card}>`;
 }
 
+function RoleOrderCard() {
+  const order = store.state.roleOrder === 'match' ? 'match' : 'recent';
+  const save = async next => { await api('settings/role-order', { order: next }); refresh(); };
+  return html`<${Card} title="Resume order" icon="layers" id="role-order-title" subtitle="How your experience is ordered on each tailored resume. Your master resume keeps everything either way.">
+    <div class="field appearance"><label for="role-order">Order of experience on each tailored resume</label>
+      <select id="role-order" value=${order} disabled=${store.demo} onChange=${e => save(e.currentTarget.value)}>
+        <option value="recent">Most recent first (default)</option>
+        <option value="match">Best match first</option>
+      </select>
+      <small>Most recent first lists your newest role at the top. Best match first puts the role that fits the job at the top, then the rest newest first.</small></div>
+  </${Card}>`;
+}
+
 function AutonomyCard() {
   const a = store.state.autonomy || { enabled: false, perDay: 3, minScore: 4 };
   const ready = store.state.standardStatus === 'approved';
@@ -318,9 +335,9 @@ function AutonomyCard() {
   return html`<${Card} title="How much Plainhand does on its own" icon="spark" id="autonomy-title" subtitle="It never submits. You review and send every application.">
     <div class="radio-list" role="radiogroup" aria-label="Autonomy">
       <label class="checkbox"><input type="radio" name="autonomy" checked=${!a.enabled} disabled=${store.demo} onChange=${() => save({ enabled: false })} /><span><strong>Ask me per application</strong> · it prepares a role when you choose it.</span></label>
-      <label class="checkbox"><input type="radio" name="autonomy" checked=${a.enabled} disabled=${store.demo || !ready} onChange=${() => save({ enabled: true })} /><span><strong>Prepare strong matches on its own</strong> · roles scoring ${a.minScore}/5 or more with an Apply recommendation, up to ${a.perDay} a day, from your approved standard.</span></label>
+      <label class="checkbox"><input type="radio" name="autonomy" checked=${a.enabled} disabled=${store.demo || !ready} onChange=${() => save({ enabled: true })} /><span><strong>Prepare strong matches on its own</strong> · roles scoring ${a.minScore}/5 or more with an Apply recommendation, up to ${a.perDay} a day, from your approved master resume.</span></label>
     </div>
-    ${!ready ? html`<p class="muted-text">Approve your standard application on your profile first.</p>` : a.enabled ? html`<div class="field appearance"><label for="autonomy-per-day">Up to this many a day</label><select id="autonomy-per-day" value=${String(a.perDay)} disabled=${store.demo} onChange=${e => save({ perDay: Number(e.currentTarget.value) })}>${[1, 2, 3, 5, 10].map(n => html`<option value=${String(n)}>${n}</option>`)}</select></div>` : null}
+    ${!ready ? html`<p class="muted-text">Approve your master resume on your profile first.</p>` : a.enabled ? html`<div class="field appearance"><label for="autonomy-per-day">Up to this many a day</label><select id="autonomy-per-day" value=${String(a.perDay)} disabled=${store.demo} onChange=${e => save({ perDay: Number(e.currentTarget.value) })}>${[1, 2, 3, 5, 10].map(n => html`<option value=${String(n)}>${n}</option>`)}</select></div>` : null}
   </${Card}>`;
 }
 
@@ -335,6 +352,7 @@ export function WorkspacePage() {
         <select id="theme-preference" value=${theme.preference} onChange=${e => window.plainhandTheme.set(e.currentTarget.value)}>${[['system', 'Follow system'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => html`<option value=${v}>${l}</option>`)}</select>
         <small>Follow system tracks your device, including changes while Plainhand is open.</small></div>
     </${Card}>
+    <${RoleOrderCard} />
     <${AutonomyCard} />
     <${RemoteCard} />
     <div class="two-col">

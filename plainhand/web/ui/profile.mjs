@@ -1,7 +1,7 @@
 // Profile & brain: the foundation form, resume import, the profile interview
 // conversation and the reviewed understanding.
-import { html, useState, store, api, refresh, toast, navigate, queueTask, runningTask, Icon, useDraft } from './core.mjs';
-import { ActionButton, Button, Card, PageHeading, Field, Notice, Pill, Meter } from './components.mjs';
+import { html, useState, store, api, refresh, toast, navigate, queueTask, runningTask, Icon, useDraft, openDialog, closeDialog } from './core.mjs';
+import { ActionButton, Button, Card, PageHeading, Field, Notice, Pill, Meter, Dialog } from './components.mjs';
 import { CopyRequest } from './onboarding.mjs';
 import { MessageList, Composer } from './conversation.mjs';
 import { agentAvailable, agentClient } from './agent.mjs';
@@ -20,8 +20,8 @@ const FIELDS = [
   ['email', 'Email', 'you@example.com', { type: 'email', autocomplete: 'email' }],
   ['phone', 'Phone', '+1 …', { autocomplete: 'tel' }],
   ['location', 'Location', 'City, country · remote preferences', { required: true }],
-  ['roles', 'Roles you’re looking for', 'Mechanical engineer, manufacturing engineer…', { required: true, full: true }],
-  ['graduation', 'Education & graduation', 'B.S. Mechanical Engineering · May 2027', {}],
+  ['roles', 'Roles you’re looking for', 'Financial analyst, software engineer, research scientist…', { required: true, full: true }],
+  ['graduation', 'Education & graduation', 'B.S. Finance · May 2027, plus any license or certification', {}],
   ['timezone', 'Time zone', 'America/New_York', {}],
   ['compensation', 'Compensation preferences', 'Range, currency, or still exploring', {}],
   ['eligibility', 'Work authorization', 'Your exact status, if you want to share it', {}],
@@ -91,11 +91,37 @@ function Interview() {
   return html`<${Card} title="Let’s connect the dots." icon="brain" id="interview-title" subtitle="A conversation, not another questionnaire. Only what you write becomes evidence." class="interview">
     ${!state.provider ? html`<${Notice} tone="info">First connect your AI account, then Plainhand can talk with you here. <a href="#connections">Connect it</a></${Notice}>`
       : !state.profile.resume ? html`<${Notice} tone="info">First save your basics and resume in step 1; Plainhand uses them to ask better questions.</${Notice}>`
-      : html`<${MessageList} label="Profile interview" messages=${state.conversation.length ? state.conversation.slice(-12) : [opening]} streaming=${interviewing ? ' ' : ''} authorFor=${m => m.role === 'user' ? first : 'Plainhand'} />`}
+      : html`<${MessageList} label="Profile interview" messages=${state.conversation.length ? state.conversation.slice(-12) : [opening]} streaming=${interviewing ? ' ' : null} authorFor=${m => m.role === 'user' ? first : 'Plainhand'} renderExtra=${m => !store.demo && m.role === 'user' && m.key ? html`<${StoryControls} message=${m} />` : null} />`}
     <${Composer} draftKey="interview" label="Your message" placeholder="Tell me a little about it…" disabled=${blocked} busy=${!!interviewing}
       hint="Shared with your selected agent · Enter to send"
       onSend=${async text => { await api('conversation', { text }); toast('Your agent is connecting the dots…'); refresh(); }} />
   </${Card}>`;
+}
+
+// Editing and deleting one saved story. A story is evidence, so either change clears
+// the understanding and every packet approval; earlier backups keep the old version.
+function StoryControls({ message }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(message.text);
+  if (!editing) return html`<div class="story-actions">
+    <${Button} class="link-button small" icon="edit" onClick=${() => { setText(message.text); setEditing(true); }}>Edit</${Button}>
+    <${Button} class="link-button small" icon="trash" onClick=${() => openDialog({ type: 'remove-story', storyKey: message.key })}>Delete</${Button}>
+  </div>`;
+  return html`<div class="story-edit">
+    <label class="visually-hidden" for=${'story-text-' + message.key}>Your story, in your own words</label>
+    <textarea id=${'story-text-' + message.key} rows="4" value=${text} onInput=${e => setText(e.currentTarget.value)}></textarea>
+    <div class="action-row">
+      <${Button} class="ghost" onClick=${() => setEditing(false)}>Cancel</${Button}>
+      <${ActionButton} class="primary" icon="check" disabled=${!text.trim()} onClick=${async () => { await api('story/edit', { key: message.key, text: text.trim() }); setEditing(false); toast('Story updated. Your understanding and packet approvals were cleared.'); refresh(); }}>Save story</${ActionButton}>
+    </div>
+  </div>`;
+}
+
+export function RemoveStoryDialog({ storyKey }) {
+  return html`<${Dialog} title="Delete this story?" size="sm" onClose=${closeDialog}>
+    <p>Your agent stops using it as evidence, and packets built on it have to be prepared again. Earlier backups keep old snapshots of your workspace.</p>
+    <div class="dialog-actions"><${Button} class="ghost" data-autofocus onClick=${closeDialog}>Keep it</${Button}><${ActionButton} class="primary danger-fill" icon="trash" onClick=${async () => { await api('story/remove', { key: storyKey }); closeDialog(); toast('Story deleted.'); refresh(); }}>Delete story</${ActionButton}></div>
+  </${Dialog}>`;
 }
 
 function Understanding() {
@@ -114,6 +140,39 @@ function Understanding() {
       ${!u.approved ? html`<${ActionButton} class="primary wide" icon="check" onClick=${async () => { await api('understanding/approve', {}); toast('Understanding reviewed. Your original evidence remains the source of truth.'); refresh(); }}>This reflects me</${ActionButton}>` : null}`
       : html`<p class="muted-text">After a conversation, an understanding of your background and voice appears here.</p>`}
     <${ActionButton} class="ghost wide" icon="refresh" disabled=${blocked || !!interviewing} onClick=${() => queueTask('interview')}>Build understanding</${ActionButton}>
+  </${Card}>`;
+}
+
+// Contradictions between sources (plainhand/memory-checks.mjs, computed by the server).
+// Deterministic only: the card shows both exact quotes and lets the candidate edit a
+// source or say which one is right. It never chooses.
+const CONFLICT_KIND = { employer: 'Job title', dates: 'Dates', degree: 'Education', number: 'Team size', location: 'Location', eligibility: 'Work authorization' };
+const CONFLICT_SOURCE = { profile: 'Profile details', cv: 'Resume', interview: 'Your interview answers and stories', 'structured-resume': 'Structured resume', narrative: 'Career narrative', 'proof-points': 'Proof points', stories: 'Story bank' };
+function Conflicts() {
+  const conflicts = store.state.memoryConflicts || [];
+  if (!conflicts.length) return null;
+  const edit = item => {
+    const sourceId = item.quotes[0]?.sourceId;
+    const story = sourceId === 'interview', basics = sourceId === 'profile' || sourceId === 'cv';
+    navigate(story || basics ? 'profile' : 'workspace');
+    const target = story ? 'interview-title' : basics ? 'foundation-title' : 'files-title';
+    requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const record = async (item, sourceId) => {
+    await api('conflicts/record', { id: item.id, sourceId });
+    toast('Recorded which source is right.');
+    refresh();
+  };
+  return html`<${Card} title="Facts that disagree" icon="alert" id="conflicts-title" subtitle="Your sources say different things. Plainhand will not choose for you: correct the source, or record which one is right.">
+    <ul class="plain-list conflict-list">${conflicts.map(item => html`<li key=${item.id} class="conflict-item">
+      <p><strong>${CONFLICT_KIND[item.kind] || 'Disagreement'}:</strong> ${item.topic}.</p>
+      ${item.quotes.map((quote, i) => html`<blockquote key=${i} class="conflict-quote">
+        <p>“${quote.quote}”</p>
+        <footer>${CONFLICT_SOURCE[quote.sourceId] || quote.sourceId}${(item.excluded || []).includes(quote.sourceId) ? html` · <span class="muted-text">not shared with your agent</span>` : null}</footer>
+        <${ActionButton} class="small" aria-label=${`Record that “${quote.quote.slice(0, 80)}” is right`} onClick=${() => record(item, quote.sourceId)}>This is right</${ActionButton}>
+      </blockquote>`)}
+      <div class="action-row"><${Button} class="link-button small" icon="edit" onClick=${() => edit(item)}>Edit a source</${Button}></div>
+    </li>`)}</ul>
   </${Card}>`;
 }
 
@@ -138,6 +197,7 @@ function Strength() {
   const s = store.state.profileStrength;
   if (!s) return null;
   return html`<${Card} title="Profile strength" icon="layers" id="strength-title" subtitle="How well your agent knows you, counted from what you’ve shared. Not a grade.">
+    ${s.questions?.repeated ? html`<p class="muted-text">${s.questions.repeated} ${s.questions.repeated === 1 ? 'question was' : 'questions were'} asked again even though your sources already answered ${s.questions.repeated === 1 ? 'it' : 'them'}.</p>` : null}
     <ul class="strength-rows">${strengthRows(s).map(([name, level, detail]) => html`<li key=${name}><div><strong>${name}</strong><span>${detail}</span></div><${Pill} tone=${LEVEL[level][0]}>${LEVEL[level][1]}</${Pill}></li>`)}</ul>
     ${s.next.length ? html`<h4>What would help most</h4><ol class="plain-list strength-next">${s.next.map((n, i) => html`<li key=${i}>${n.text}</li>`)}</ol>
       ${agentAvailable() ? html`<${ActionButton} class="ghost wide" icon="spark" onClick=${async () => { navigate('home'); await agentClient.send('Help me strengthen my profile'); }}>Work on this with your agent</${ActionButton}>` : null}`
@@ -145,28 +205,39 @@ function Strength() {
   </${Card}>`;
 }
 
-// The standard application (plainhand/standard.mjs): approved once, the base of every application.
+// The master resume (plainhand/standard.mjs): approved once; every application selects from it.
 function RequestBox({ id, label, placeholder, onSubmit, disabled }) {
   const [draft, setDraft, clear] = useDraft(id, '');
   async function submit(event) { event.preventDefault(); const text = (draft || '').trim(); if (!text) return; await onSubmit(text); clear(); }
   return html`<form class="request-box" onSubmit=${submit}><${Field} form=${id} name="request" label=${label} value=${draft || ''} onInput=${setDraft} placeholder=${placeholder} disabled=${disabled} /><${Button} type="submit" icon="edit" disabled=${disabled || !(draft || '').trim()}>Ask for this change</${Button}></form>`;
 }
-const STANDARD_PILL = { approved: ['success', 'Your standard'], draft: ['warn', 'Awaiting your review'], stale: ['danger', 'Out of date'] };
+const STANDARD_PILL = { approved: ['success', 'Approved'], draft: ['warn', 'Awaiting your review'], stale: ['danger', 'Out of date'] };
+const MASTER_ITEM_KIND = { role: 'Role', credential: 'Certification', degree: 'Degree', result: 'Result' };
 function Standard() {
   const state = store.state;
   const s = state.standard, status = state.standardStatus || 'none';
   const writing = runningTask('standard'), blocked = (!state.provider && !state.cloud) || !state.profile.resume || !!writing;
+  // The newest master-resume task: when it failed, say so on this card, not only in Activity.
+  const last = (state.tasks || []).find(t => t.kind === 'standard');
+  const failed = !writing && last && ['failed', 'interrupted'].includes(last.status) ? last : null;
   const pill = STANDARD_PILL[status];
-  return html`<${Card} title="Your standard application" icon="file" id="standard-title" subtitle="One resume and cover letter you approve once. Every application starts from it and changes only what the role calls for." actions=${pill ? html`<${Pill} tone=${pill[0]}>${pill[1]}</${Pill}>` : null}>
-    ${!s ? html`<p class="muted-text">After your profile has a few stories, write your standard. You review it like any application; nothing is used until you approve it.</p>
-        <${ActionButton} class="primary wide" icon="file" disabled=${blocked} onClick=${() => queueTask('standard')}>Write my standard application</${ActionButton}>` : html`
-      ${status === 'stale' ? html`<${Notice} tone="danger" title="Your profile changed">Rewrite your standard so it reflects what you've added.</${Notice}>` : null}
-      <article class="document" aria-label="Standard resume"><h4 class="doc-name">${s.draft.headline}</h4>
-        ${s.draft.resume.map((entry, i) => html`${i === 0 || s.draft.resume[i - 1].section !== entry.section ? html`<h5>${entry.section}</h5>` : null}<p key=${i}>${entry.text}</p>`)}</article>
-      <details class="trace"><summary><${Icon} name="file" />Standard cover letter</summary><article class="document letter" aria-label="Standard cover letter"><p>${s.draft.coverLetter}</p></article></details>
+  return html`<${Card} title="Your master resume" icon="file" id="standard-title" subtitle="Everything you have done, in wording you approve once. It is never sent as it is: each application picks and orders what fits that job." actions=${pill ? html`<${Pill} tone=${pill[0]}>${pill[1]}</${Pill}>` : null}>
+    ${failed ? html`<${Notice} tone="danger" title="Your master resume did not finish">${failed.message || 'The last attempt stopped before it finished.'} ${s ? 'Your earlier version is unchanged. ' : ''}Try again below.</${Notice}>` : null}
+    ${!s ? html`<p class="muted-text">After your profile has your resume and a few stories, write your master resume. You review it like any application; nothing is used until you approve it.</p>
+        <${ActionButton} class="primary wide" icon="file" disabled=${blocked} onClick=${() => queueTask('standard')}>Write my master resume</${ActionButton}>` : html`
+      ${status === 'stale' ? (s.kind === 'master'
+        ? html`<${Notice} tone="danger" title="Your profile changed">Rewrite your master resume so it reflects what you've added.</${Notice}>`
+        : html`<${Notice} tone="danger" title="Write your master resume">Plainhand now keeps a master resume with everything you have done, and picks from it for each job. Rewrite this once to replace your old standard resume.</${Notice}>`) : null}
+      ${s.coverage?.missing?.length ? html`<${Notice} tone="warn" title=${`Covers ${s.coverage.covered} of ${s.coverage.lines} lines from your resume`}>These lines from your resume aren't in it yet. Ask for them below, or rewrite it.<ul>${s.coverage.missing.map((line, i) => html`<li key=${i}>${line}</li>`)}</ul></${Notice}>` : null}
+      ${s.completeness?.missing?.length ? html`<${Notice} tone="warn" title=${`${s.completeness.missing.length} ${s.completeness.missing.length === 1 ? 'item is' : 'items are'} missing from your sources`}>Your master resume is meant to hold everything you have done. ${s.completeness.counts?.present ?? 0} of ${s.completeness.counts?.total ?? s.completeness.missing.length} roles, credentials, degrees and numbered results were found in it. Ask for these below, or rewrite it.<ul>${s.completeness.missing.slice(0, 10).map((item, i) => html`<li key=${i}><strong>${MASTER_ITEM_KIND[item.kind] || 'Item'}:</strong> ${String(item.label || item.text || '').slice(0, 300)}</li>`)}</ul></${Notice}>` : null}
+      <article class="document" aria-label="Master resume"><h4 class="doc-name">${s.draft.headline}</h4>
+        ${s.draft.resume.map((entry, i) => { const prev = s.draft.resume[i - 1], h = entry.heading, newHeading = h && (!prev || JSON.stringify(prev.heading || null) !== JSON.stringify(h) || prev.section !== entry.section);
+          // The heading is part of what is approved and of what each application receives, so show it.
+          return html`${i === 0 || prev.section !== entry.section ? html`<h5>${entry.section}</h5>` : null}${newHeading ? html`<p class="doc-role"><span class="doc-role-text"><strong>${h.org || h.title}</strong>${h.org && h.title ? html`, <em>${h.title}</em>` : null}${h.location ? html` · ${h.location}` : null}</span>${h.dates ? html`<span class="doc-dates">${h.dates}</span>` : null}</p>` : null}${entry.text ? html`<p key=${i} class=${h ? 'doc-bullet' : ''}>${entry.text}</p>` : null}`; })}</article>
+      <details class="trace"><summary><${Icon} name="file" />Base cover letter</summary><article class="document letter" aria-label="Base cover letter"><p>${s.draft.coverLetter}</p></article></details>
       ${s.calibration ? html`<p class="muted-text">${s.calibration.counts.balanced} of ${s.calibration.total} claims match your evidence${s.calibration.counts.stretched + s.calibration.counts.unsupported ? ` · ${s.calibration.counts.stretched + s.calibration.counts.unsupported} stronger than it` : ''}${s.calibration.counts.undersold ? ` · ${s.calibration.counts.undersold} undersold` : ''}.</p>` : null}
-      ${status === 'draft' && !store.demo ? html`<${ActionButton} class="primary wide" icon="check" onClick=${async () => { await api('standard/approve', {}); toast('This is now your standard. New applications start from it.'); refresh(); }}>Use this as my standard</${ActionButton}>` : null}
-      ${store.demo ? null : html`<${RequestBox} id="standard-request" label="Change your standard" placeholder="Lead with the chassis project; keep the letter under 200 words" disabled=${blocked} onSubmit=${text => queueTask('standard', null, { request: text })} />
+      ${status === 'draft' && !store.demo ? html`<${ActionButton} class="primary wide" icon="check" onClick=${async () => { await api('standard/approve', {}); toast('Master resume approved. New applications pick from it.'); refresh(); }}>Approve my master resume</${ActionButton}>` : null}
+      ${store.demo ? null : html`<${RequestBox} id="standard-request" label="Change your master resume" placeholder="Add the audit automation project; keep the letter under 200 words" disabled=${blocked} onSubmit=${text => queueTask('standard', null, { request: text })} />
         <${ActionButton} class="ghost wide" icon="refresh" disabled=${blocked} onClick=${() => queueTask('standard')}>Rewrite from scratch</${ActionButton}>`}`}
   </${Card}>`;
 }
@@ -229,7 +300,7 @@ function Samples() {
   const value = draft || { title: '', text: '' };
   async function add(event) {
     event.preventDefault();
-    try { await api('samples/add', { title: value.title, text: value.text }); clear(); toast('Writing sample saved. Your next drafts will sound more like you.'); refresh(); }
+    try { const saved = await api('samples/add', { title: value.title, text: value.text }); clear(); toast(saved?.message || 'Writing sample saved. Your next drafts will sound more like you.'); refresh(); }
     catch (error) { toast(error.message, true); }
   }
   return html`<${Card} title="How you write" icon="quote" id="samples-title" subtitle="Paste a few things you wrote yourself: an email, a post, a past cover letter, a project write-up. Your agent matches the voice; it never takes facts from them.">
@@ -268,7 +339,7 @@ function profileSteps(state) {
     { key: 'story', title: 'Tell your story', why: 'Talk about projects and jobs you’re proud of, and paste a few things you’ve written. Plainhand keeps your words exactly.', done: statements >= 3, progress: statements ? `${statements} so far · 3 or more works well` : '', locked: !basics ? 'Do step 1 first.' : !state.provider && 'Connect your AI account first (Connections).',
       body: () => html`<${Interview} /><${Samples} />` },
     { key: 'understanding', title: 'Check how Plainhand sees you', why: 'Plainhand sums up your strengths and voice. Approve it only if it’s right.', done: !!state.understanding?.approved, locked: statements < 1 && 'Tell your story first (step 3).', body: () => html`<${Understanding} />` },
-    { key: 'standard', title: 'Approve your standard application', why: 'One resume and cover letter that every application starts from.', done: state.standardStatus === 'approved', locked: !state.understanding?.approved && 'Approve how Plainhand sees you first (step 4).', body: () => html`<${Standard} />` },
+    { key: 'standard', title: 'Approve your master resume', why: 'Everything you have done, in wording you approve. Each application picks what fits the job from it.', done: state.standardStatus === 'approved', locked: !state.understanding?.approved && 'Approve how Plainhand sees you first (step 4).', body: () => html`<${Standard} />` },
   ];
 }
 function Steps() {
@@ -304,6 +375,6 @@ export function ProfilePage() {
       <${Meter} value=${done} max=${steps.length} label="Setup progress" />
     </section>
     <${Steps} />
-    ${started ? html`<h2 class="section-heading">Keep improving</h2><${Strength} /><${Line} />` : null}
+    ${started ? html`<h2 class="section-heading">Keep improving</h2><${Conflicts} /><${Strength} /><${Line} />` : null}
     ${store.demo ? null : html`<p class="footnote">Profile facts are saved to <code>config/profile.yml</code> and <code>cv.md</code>. <${Button} class="link-button inline" onClick=${() => navigate('workspace')}>See your files</${Button}></p>`}`;
 }

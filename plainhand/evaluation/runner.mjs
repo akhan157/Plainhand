@@ -17,10 +17,43 @@ import { createSandboxBrowser } from './browser.mjs';
 import { controlledAgent, profileFixtureAgent } from './agent.mjs';
 import { scenarios, personaById, jobById, portalById, expectedFor } from './corpus.mjs';
 import { personas as profilePersonas, simulatedCandidate, scoreRun } from '../benchmarks/profile-bench.mjs';
-import { scoreScenario, aggregate, markdownReport, compareToBaseline } from './score.mjs';
+import { roleOrderOf } from '../standard.mjs';
+import { scoreScenario, aggregate, markdownReport, compareToBaseline, SCORER_VERSION } from './score.mjs';
+import { pdfEvidence } from './pdf-evidence.mjs';
 
 const option = (argv, name) => { const index = argv.indexOf('--' + name); return index < 0 ? null : argv[index + 1]; };
 const has = (argv, name) => argv.includes('--' + name);
+// A scenario may set roleOrder; anything else is the product default, seeded through
+// the same reading the app uses (roleOrderOf), never a second implementation of it.
+const roleOrderValue = value => roleOrderOf({ settings: { roleOrder: value } });
+
+// Why a run records no model. Codex runs under --ignore-user-config, so the model is
+// the CLI's default, and its `exec --json` events (thread.started, turn.completed)
+// state no model id: a null here is measured absence, never an assumed default.
+const ACTUAL_MODEL_UNREPORTED = 'No provider model id was reported for these calls; no model was assumed.';
+
+// The per-scenario usage summary. Cached and reasoning tokens are kept because Codex
+// reports them and the cost figure needs the split (U14); promptChars is the length of
+// what Plainhand itself sent, which separates its context from the CLI's own prompt.
+function usageTotals(usage) {
+  if (!usage) return null;
+  const total = key => usage.totals?.[key]?.value ?? null;
+  const calls = usage.totals?.calls ?? null;
+  const promptChars = total('promptChars');
+  const actualModel = usage.totals?.actualModel ?? null;
+  return {
+    calls,
+    inputTokens: total('inputTokens'),
+    outputTokens: total('outputTokens'),
+    cachedInputTokens: total('cacheReadTokens'),
+    reasoningTokens: total('reasoningTokens'),
+    promptChars,
+    promptCharsPerCall: typeof promptChars === 'number' && calls ? Math.round(promptChars / calls) : null,
+    actualModel,
+    models: usage.totals?.models ?? [],
+    actualModelReason: actualModel ? null : ACTUAL_MODEL_UNREPORTED,
+  };
+}
 
 export const profileScenarios = profilePersonas.map(persona => ({ id: 'profile-' + persona.id, family: 'profile', persona: persona.id }));
 
@@ -120,7 +153,7 @@ async function runProfileScenario(scenario, { live, provider, agentTimeoutMs }) 
       scenario: { ...scenario, job: null, portal: null },
       persona: persona.id,
       profile,
-      usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+      usage: usageTotals(usage),
       durationMs: Date.now() - started,
     };
   } catch (error) {
@@ -205,7 +238,13 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
     const initialProfile = { ...emptyProfile(), ...(profileMode === 'seeded' ? persona.profile : persona.seedProfile) };
     const state = await app.workspace.load();
     await app.workspace.saveProfile(initialProfile, state.revision);
-    await app.workspace.mutate(latest => { latest.provider = live ? provider : 'codex'; });
+    // The candidate's role order reaches the workspace before anything is prepared,
+    // as the settings action would (settings.roleOrder). A scenario that declares one
+    // measures that choice; the default stays the product's own default.
+    await app.workspace.mutate(latest => {
+      latest.provider = live ? provider : 'codex';
+      latest.settings = { ...(latest.settings || {}), roleOrder: roleOrderValue(scenario.roleOrder) };
+    });
 
     if (profileMode === 'conversation') {
       profileResult = await runProfileConversation(app, persona.id, 10, persona);
@@ -220,6 +259,14 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       }
     }
     if (profileMode !== 'conversation') seededStrength = profileStrength(await app.workspace.load());
+    // Tailoring from the approved standard: the public flow. The standard is
+    // written for the candidate's general target, then applied to a job that
+    // needs different experience first.
+    if (scenario.withStandard) {
+      await runTask(app, base, 'standard');
+      await post(base, app.token, 'standard/approve', {});
+      standardApproved = Boolean((await app.workspace.load()).standard?.approvedAt);
+    }
 
     const { id } = await post(base, app.token, 'jobs', { company: jobSpec.company, title: jobSpec.title, url: `https://jobs.lever.co/synthetic/${scenario.id}`, description: jobSpec.description, location: jobSpec.location });
     await runTask(app, base, 'evaluate', id);
@@ -245,7 +292,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
         job: jobSpec.id,
         evaluation: evaluationResult,
         durationMs: Date.now() - started,
-        usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+        usage: usageTotals(usage),
       };
     }
 
@@ -271,11 +318,17 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
     const prepared = (await app.workspace.load()).jobs.find(job => job.id === id);
     const sources = (await app.workspace.context(await app.workspace.load())).sources;
     const pdfBytes = await app.workspace.readBinary(prepared.pdf);
-    const pdf = { bytes: pdfBytes, sha: createHash('sha256').update(pdfBytes).digest('hex'), head: pdfBytes.subarray(0, 5).toString() };
     const coverPath = (prepared.artifacts || []).find(file => /cover-letter.*\.pdf$/.test(file));
     const coverBytes = coverPath ? await app.workspace.readBinary(coverPath) : null;
     const cover = coverBytes ? { path: coverPath, bytes: coverBytes, sha: createHash('sha256').update(coverBytes).digest('hex') } : null;
-    packetResult = { packetQuestionsAsked, roleAnswered: Boolean(packetQuestionsAsked.length && persona.roleAnswers), packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null };
+    // Rendered-PDF evidence, not a header/size claim: the scorer reads the parsed
+    // text layer and item geometry of the bytes this run actually produced.
+    const evidence = await pdfEvidence(pdfBytes, { packet: prepared.packet, profile: persona.profile, job: jobSpec, sources, coverBytes });
+    const pdf = { bytes: pdfBytes, sha: createHash('sha256').update(pdfBytes).digest('hex'), head: pdfBytes.subarray(0, 5).toString(), evidence };
+    // What the workspace said when this packet was prepared: the order the app was
+    // actually asked for, recorded beside the packet it produced.
+    const preparedRoleOrder = roleOrderOf(await app.workspace.load());
+    packetResult = { packetQuestionsAsked, roleAnswered: Boolean(packetQuestionsAsked.length && persona.roleAnswers), packet: prepared.packet, sources, review: prepared.review, calibration: prepared.calibration, pdf, coverSha: cover?.sha || null, roleOrder: preparedRoleOrder };
 
     if (scenario.family === 'resume') {
       const usage = await app.workflow.usage.summary(await app.workspace.load());
@@ -289,7 +342,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
         evaluation: evaluationResult,
         packet: packetResult,
         durationMs: Date.now() - started,
-        usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+        usage: usageTotals(usage),
       };
     }
 
@@ -353,7 +406,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       evaluation: evaluationResult,
       packet: packetResult,
       application,
-      usage: { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value },
+      usage: usageTotals(usage),
       durationMs: Date.now() - started,
       retainedWorkspace: retain ? root : null,
     };
@@ -380,7 +433,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       standardApproved,
       evaluation: evaluationResult,
       packet: packetResult,
-      usage: usage ? { calls: usage.totals.calls, inputTokens: usage.totals.inputTokens.value, outputTokens: usage.totals.outputTokens.value } : null,
+      usage: usageTotals(usage),
       error: error.message,
       durationMs: Date.now() - started,
     };
@@ -463,6 +516,8 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     await writeFile(path.join(out, `${scenario.id}.json`), JSON.stringify(scored, null, 2));
     // The raw packet and its sources, for benchmark-judge.mjs; kept apart so results.json stays small.
     if (result.packet?.packet) await writeFile(path.join(out, `${scenario.id}.packet.json`), JSON.stringify({ packet: result.packet.packet, sources: result.packet.sources || [] }, null, 2));
+    // Extracted PDF text and geometry, kept outside results.json so the report stays small.
+    if (result.packet?.pdf?.evidence) await writeFile(path.join(out, `${scenario.id}.pdf-evidence.json`), JSON.stringify(result.packet.pdf.evidence, null, 2));
     // Failures keep the raw fill plan, checkpoint and page snapshots so the cause can be traced.
     if (!scored.pass && result.application) {
       const { plan, checkpoint, snapshots, readback } = result.application;
@@ -481,7 +536,9 @@ export async function runEvaluation(argv = process.argv.slice(2)) {
     comparison = compareToBaseline(summary, baseline, results);
   }
   const metadata = await runMetadata(live ? provider : null);
-  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', metadata, concurrency, agentTimeoutSec, summary, comparison, results };
+  // The scorer version travels with the numbers: v1 evidence and v2 results are never
+  // one series (compareToBaseline refuses a cross-version comparison).
+  const report = { date: new Date().toISOString(), provider: provider || 'controlled', live, scorer: { version: SCORER_VERSION }, evidenceTier: live ? 'real CLI on fictional candidates and owned sandbox' : 'deterministic harness proof on fictional candidates and owned sandbox', metadata, concurrency, agentTimeoutSec, summary, comparison, results };
   await writeFile(path.join(out, 'results.json'), JSON.stringify(report, null, 2));
   await writeFile(path.join(out, 'SUMMARY.md'), markdownReport({ evidenceTier: report.evidenceTier, provider: report.provider, summary, results, comparison }));
   console.log(`\n${summary.passed}/${summary.scenarios} scenarios passed (${summary.expectedFailures.length} expected failure${summary.expectedFailures.length === 1 ? '' : 's'}, ${summary.unexpectedFailures.length} unexpected)`);

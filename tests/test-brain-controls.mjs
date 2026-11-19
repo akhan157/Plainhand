@@ -58,7 +58,8 @@ test('excluding a source or field removes it from the provider context and inval
     const view = (await h.ui('context.get', {})).result;
     assert.deepEqual(view.sources.find(s => s.id === 'interview').included, false);
     assert.equal(view.sources.find(s => s.id === 'profile').excludable, false);
-    assert.deepEqual(view.fields.filter(f => !f.included).map(f => f.name).sort(), ['compensation', 'eligibility']);
+    assert.deepEqual(view.fields.filter(f => !f.included).map(f => f.name).sort(), ['compensation', 'eligibility', 'email', 'phone']);
+    assert.deepEqual(view.fields.filter(f => f.neverShared).map(f => f.name).sort(), ['email', 'phone'], 'contact details are never sent to a provider');
     await assert.rejects(h.ui('context.exclude', { sources: ['profile'] }), /individual fields/);
     await assert.rejects(h.ui('context.exclude', { fields: ['name'] }), /not an excludable/);
   } finally { await h.close(); }

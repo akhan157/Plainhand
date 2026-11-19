@@ -29,6 +29,13 @@ export function calendarDate(value, label, { required = false } = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(result) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== result) throw new Error(`Record the ${label} as a real date (YYYY-MM-DD).`);
   return result;
 }
+// Optional wall-clock time for an interview, in the candidate's own time zone.
+export function clockTime(value, label) {
+  const result = String(value ?? '').trim();
+  if (!result) return null;
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(result)) throw new Error(`Record the ${label} as a real time (HH:MM, 24-hour).`);
+  return result;
+}
 function choice(value, options, fallback, label) {
   const result = String(value || fallback).trim().toLowerCase();
   if (!options.includes(result)) throw new Error(`Choose a valid ${label}.`);
@@ -68,6 +75,7 @@ export function addInterview(job, input, { id = randomUUID(), at = new Date().to
   if (record.interviews.length >= LIMIT) throw new Error('This application already has the maximum number of interview rounds.');
   const interview = {
     id, stage: text(input?.stage, 'interview stage', 200, { required: true }), date: calendarDate(input?.date, 'interview date', { required: true }),
+    time: clockTime(input?.time, 'interview time'),
     status: choice(input?.status, INTERVIEW_STATUSES, 'scheduled', 'interview status'), interviewer: text(input?.interviewer, 'interviewer', 200),
     preparation: text(input?.preparation, 'preparation notes', 2000, { multiline: true }), notes: text(input?.notes, 'interview notes', 4000, { multiline: true }), addedAt: at,
   };
@@ -125,8 +133,9 @@ export function followUpQueue(jobs, { asOf = today(), limit = 8 } = {}) {
   for (const job of jobs) {
     const next = recordOf(job).nextAction;
     const last = (job.statusHistory || []).at(-1)?.at || job.submittedAt || job.updatedAt || job.createdAt || '';
-    if (next) items.push({ job, action: next.text, due: next.due, overdue: Boolean(next.due && next.due < asOf), dueToday: next.due === asOf, last });
-    else if (ACTIVE_STATUSES.includes(job.status)) items.push({ job, action: null, due: null, overdue: false, dueToday: false, last });
+    const submittedPacket = job.submittedAt && job.submittedPacket ? job.submittedPacket : null;
+    if (next) items.push({ job, action: next.text, due: next.due, overdue: Boolean(next.due && next.due < asOf), dueToday: next.due === asOf, last, submittedPacket });
+    else if (ACTIVE_STATUSES.includes(job.status)) items.push({ job, action: null, due: null, overdue: false, dueToday: false, last, submittedPacket });
   }
   const rank = item => item.action ? (item.due ? 0 : 1) : 2;
   items.sort((a, b) => rank(a) - rank(b) || String(a.due || '').localeCompare(String(b.due || '')) || String(a.last).localeCompare(String(b.last)));

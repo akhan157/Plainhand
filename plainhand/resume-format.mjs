@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { runProcess } from './agents.mjs';
+import { parseDates } from './evaluation/roles.mjs';
 
 export const DEFAULT_FORMAT = {
   source: 'default',
@@ -132,7 +133,7 @@ const headingText = (text, format) => format.headings.case === 'upper' ? text.to
 
 export function formatCss(format) {
   const f = cleanFormat(format), m = f.margins;
-  return `@page{size:${f.page === 'a4' ? 'A4' : 'Letter'};margin:${m.top}in ${m.right}in ${m.bottom}in ${m.left}in}*{box-sizing:border-box;margin:0;padding:0}
+  return `@page{size:${f.page === 'a4' ? 'A4' : 'Letter'};margin:${m.top}in ${m.right}in ${m.bottom}in ${m.left}in}*{box-sizing:border-box;margin:0;padding:0}.nobreak{white-space:nowrap}
 body{font-family:${fontStack(f.font)};font-size:${f.font.size}pt;line-height:${f.font.lineHeight};color:#000}
 h1{font-size:${f.name.size}pt;line-height:1.1;text-align:${f.name.align};margin-bottom:2pt}
 .contact{text-align:${f.contact.align};margin-bottom:6pt}
@@ -143,17 +144,180 @@ ul{list-style:none;margin:1pt 0 2pt}li{padding-left:${f.bullet === 'none' ? 0 : 
 p.line{margin:1pt 0}.letter p{margin:0 0 9pt}`;
 }
 
+// The model may re-type a role's heading for its next line; case and spacing alone do
+// not make it a different role. Every field a heading carries is compared, so two
+// different roles never merge.
+export const headingKey = heading => {
+  if (!heading || typeof heading !== 'object') return 'null';
+  const norm = value => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const fields = ['org', 'title', 'location', 'dates'].map(key => norm(heading[key]));
+  return fields.some(Boolean) ? JSON.stringify(fields) : 'null';
+};
+
 // Consecutive entries of a section under the same heading form one block.
 export function groupEntries(resume) {
   const sections = [];
   for (const entry of resume) {
     let section = sections.find(s => s.name === entry.section);
     if (!section) sections.push(section = { name: entry.section, blocks: [] });
-    const key = JSON.stringify(entry.heading || null), last = section.blocks.at(-1);
+    const key = headingKey(entry.heading), last = section.blocks.at(-1);
     if (last && last.key === key) last.lines.push(entry.text);
-    else section.blocks.push({ key, heading: entry.heading || null, lines: [entry.text] });
+    else section.blocks.push({ key, heading: key === 'null' ? null : entry.heading, lines: [entry.text] });
   }
   return sections;
+}
+
+// A heading whose only non-empty fields are structural words ("Experience",
+// "Role") is a placeholder: it repeats the section label instead of naming an
+// employer or title. It is dropped when the same section already has a real
+// heading, because the section heading already says where the line belongs.
+const STRUCTURAL_HEADING = new Set([
+  'experience', 'work experience', 'professional experience', 'relevant experience',
+  'employment', 'employment history', 'work history', 'career', 'career history',
+  'role', 'roles', 'position', 'positions', 'job', 'jobs', 'work',
+  'project', 'projects', 'education', 'training', 'education and training',
+  'certification', 'certifications', 'certificate', 'certificates', 'license',
+  'licenses', 'licence', 'licences', 'licenses and certifications',
+  'skills', 'publication', 'publications', 'summary', 'profile', 'volunteer',
+  'volunteering', 'research', 'award', 'awards', 'honor', 'honors', 'honour',
+  'honours', 'interest', 'interests', 'language', 'languages', 'reference', 'references',
+]);
+const headingValue = value => String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const genericHeadingField = value => STRUCTURAL_HEADING.has(headingValue(value));
+const realHeadingField = value => Boolean(String(value ?? '').trim()) && !genericHeadingField(value);
+const HEADING_FIELDS = ['org', 'title', 'location', 'dates'];
+const realHeading = heading => Boolean(heading && typeof heading === 'object' && HEADING_FIELDS.some(key => realHeadingField(heading[key])));
+const placeholderHeading = (heading, sectionHasRealHeading) => {
+  if (!heading || typeof heading !== 'object' || !sectionHasRealHeading) return heading;
+  if (HEADING_FIELDS.some(key => key !== 'org' && key !== 'title' && String(heading[key] ?? '').trim())) return heading;
+  if (!genericHeadingField(heading.org) && !genericHeadingField(heading.title)) return heading;
+  const next = { ...heading };
+  if (genericHeadingField(next.org)) next.org = '';
+  if (genericHeadingField(next.title)) next.title = '';
+  return HEADING_FIELDS.some(key => String(next[key] ?? '').trim()) ? next : null;
+};
+
+// Where a section belongs when the draft's own array order disagrees. The observed
+// defect was Skills and a credential-progress section leading the resume. Only the
+// positions every resume convention agrees on are enforced: contact/summary, then
+// Experience, then the supporting sections. Education and Projects share a tier and
+// keep the draft's own order, because their preferred order differs by field (a new
+// graduate leads with education, a designer with projects) and the drafter already
+// follows the field's convention. The candidate's saved format replaces all of it.
+const CONVENTIONAL_SECTIONS = [
+  { rank: 0, pattern: /^(?:contact|summary|profile|objective|headline|about|overview)$/ },
+  { rank: 100, pattern: /^(?:experience|work experience|professional experience|relevant experience|employment(?: history)?|work history|career(?: history)?)$/ },
+  { rank: 200, pattern: /^(?:education|training|education (?:&|and) training|projects?|project experience|portfolio)$/ },
+  { rank: 300, pattern: /^(?:certifications?|licen[cs]es?|licensure|credentials?|certifications? (?:&|and) licen[cs]es?|licenses? (?:&|and) certifications?|professional development)$/ },
+  { rank: 400, pattern: /^(?:skills?|technical skills|core competenc(?:y|ies)|competenc(?:y|ies)|areas of expertise)$/ },
+  { rank: 600, pattern: /^(?:publications?|papers?|presentations?|research(?: experience)?)$/ },
+  { rank: 700, pattern: /^(?:awards?|honou?rs?|achievements?)$/ },
+  { rank: 800, pattern: /^(?:volunteer(?:ing)?|community(?: service)?|service)$/ },
+  { rank: 900, pattern: /^(?:languages?)$/ },
+  { rank: 1000, pattern: /^(?:interests?|hobbies|activities)$/ },
+  { rank: 1100, pattern: /^(?:references?)$/ },
+];
+// An unrecognised section ("CFA Progress", "Research Accomplishments") sits after the
+// supporting sections and before skills, so it never leads the resume.
+const UNKNOWN_SECTION_RANK = 350;
+const sectionName = value => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+const conventionalRank = name => CONVENTIONAL_SECTIONS.find(entry => entry.pattern.test(sectionName(name)))?.rank ?? UNKNOWN_SECTION_RANK;
+// The candidate's saved format wins for the sections it names; anything it does not
+// name follows that section's conventional rank after them.
+function orderedSectionNames(names, formatSections) {
+  const listed = (Array.isArray(formatSections) ? formatSections : []).map(sectionName).filter(Boolean);
+  const rank = listed.length
+    ? name => {
+      const own = sectionName(name);
+      const at = listed.findIndex(item => item === own || own.includes(item) || item.includes(own));
+      return at >= 0 ? at * 10 : 100000 + conventionalRank(name);
+    }
+    : conventionalRank;
+  return names.map((name, index) => ({ name, index })).sort((a, b) => rank(a.name) - rank(b.name) || a.index - b.index).map(({ name }) => name);
+}
+
+// An accomplishment cannot be attached to a role the draft never names. With exactly
+// one Experience role, heading-less lines in a section whose name is none of the other
+// resume categories sit under that role, and a line that only repeats the role's title
+// is dropped. With more than one role nothing moves: the draft is asked to place them.
+const EXPERIENCE_LIKE = /experience|employment|work history|career/i;
+// Only a section named for accomplishments is read as a role's lines; "Selected
+// Projects" or "Volunteer Leadership" is its own entry and never moved under a job.
+const ACCOMPLISHMENT_SECTION = /accomplishments?|achievements?|responsibilit|highlights?|key results?|contributions?/i;
+const OTHER_CATEGORY = /contact|progress|exam|course|study|studies|membership|affiliation/i;
+const repeatOfTitle = entry => Boolean(entry?.heading && typeof entry.heading === 'object' && String(entry.heading.title || '').trim())
+  && headingValue(entry.text) === headingValue(entry.heading.title);
+export function repairMisplacedAccomplishments(resume) {
+  const entries = Array.isArray(resume) ? resume.filter(entry => entry && typeof entry === 'object') : [];
+  const experience = entries.filter(entry => EXPERIENCE_LIKE.test(sectionName(entry.section)));
+  const roles = [], seen = new Set();
+  for (const entry of experience) {
+    if (!entry.heading || typeof entry.heading !== 'object') continue;
+    const key = headingKey(entry.heading);
+    if (key === 'null' || seen.has(key)) continue;
+    seen.add(key);
+    roles.push(entry.heading);
+  }
+  const loose = entries.filter(entry => !(entry.heading && typeof entry.heading === 'object')
+    && !EXPERIENCE_LIKE.test(sectionName(entry.section))
+    && conventionalRank(entry.section) === UNKNOWN_SECTION_RANK
+    && ACCOMPLISHMENT_SECTION.test(sectionName(entry.section))
+    && !OTHER_CATEGORY.test(sectionName(entry.section)));
+  if (roles.length > 1) return { resume: entries, moved: 0, dropped: 0, ambiguous: loose.length > 0, roles, sections: [...new Set(loose.map(entry => String(entry?.section ?? '')))] };
+  if (!roles.length || (!loose.length && !experience.some(repeatOfTitle))) return { resume: entries, moved: 0, dropped: 0, ambiguous: false, roles, sections: [] };
+  const heading = roles[0];
+  const moved = loose.map(entry => ({ ...entry, section: experience[0].section, heading }));
+  const dropped = experience.filter(repeatOfTitle);
+  return {
+    resume: [...entries.filter(entry => !loose.includes(entry) && !dropped.includes(entry)), ...moved],
+    moved: moved.length, dropped: dropped.length, ambiguous: false, roles, sections: [...new Set(loose.map(entry => String(entry?.section ?? '')))],
+  };
+}
+
+// The renderer groups entries by section, but the packet is reviewed and indexed
+// in its own array order. Make the array match what a reader sees: one contiguous
+// run per section (first appearance wins), and one block per heading inside it, so
+// a heading repeated around an intervening entry cannot split or repeat.
+// Stable throughout; null headings keep their own position instead of being
+// collected across a real heading. Call before humanize and review: their
+// resume:<index> keys then name the same entries the candidate sees.
+// `sections` is the candidate's saved format section order, when it has one.
+export function normalizeResume(resume, { sections = [] } = {}) {
+  const raw = Array.isArray(resume) ? resume.filter(entry => entry && typeof entry === 'object') : [];
+  // A section name the model invents to explain an unknown employer ("Experience —
+  // employer and dates not supplied") is not a section at all: those lines go under
+  // Experience with heading null, which is what the draft meant. A real experience
+  // section (the conventional name) and a career break are left alone.
+  const properExperience = raw.map(entry => String(entry.section ?? '')).find(name => conventionalRank(name) === 100);
+  const entries = raw.map(entry => {
+    const name = String(entry?.section ?? '');
+    return /experience|employment|work history/i.test(name) && conventionalRank(name) !== 100
+      ? { ...entry, section: properExperience || 'Experience' }
+      : entry;
+  });
+  const sectionOrder = [];
+  const bySection = new Map();
+  for (const entry of entries) {
+    const name = String(entry.section ?? '');
+    if (!bySection.has(name)) { bySection.set(name, []); sectionOrder.push(name); }
+    bySection.get(name).push(entry);
+  }
+  const ordered = [];
+  for (const name of orderedSectionNames(sectionOrder, sections)) {
+    const section = bySection.get(name);
+    const hasRealHeading = section.some(entry => realHeading(entry.heading));
+    const groups = new Map();
+    let nullGroup = 0;
+    for (const entry of section) {
+      const heading = placeholderHeading(entry.heading, hasRealHeading);
+      const next = heading === entry.heading ? entry : { ...entry, heading };
+      const key = heading ? headingKey(heading) : `\u0000null:${nullGroup++}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(next);
+    }
+    for (const group of groups.values()) ordered.push(...group);
+  }
+  return ordered;
 }
 
 // Sections in the candidate's order, matched by name; others keep their draft order.
@@ -169,6 +333,64 @@ function header(profile, format) {
   return `<h1>${esc(profile.name)}</h1><div class="contact">${contact}</div>`;
 }
 
+// A hyphenated word ("liquid-handling", "three-statement") never breaks across lines:
+// a text extractor or an ATS reads a break at its hyphen as "liquid- handling" or
+// "liquidhandling", so the line no longer matches what the candidate approved.
+const HYPHENATED = /[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+/g;
+const prose = text => esc(text).replace(HYPHENATED, word => `<span class="nobreak">${word}</span>`);
+// Newest role first, by start date, the definition the rest of Plainhand uses (two
+// roles that start the same year may go either way). A draft already in that order
+// is left exactly as drafted. Otherwise dated roles are sorted among the slots dated
+// roles occupy; a role whose dates cannot be read keeps its slot; a line with no
+// heading travels with the role above it. Every employment section counts
+// ("Experience", "Work History", "Professional Roles"); they are one section.
+// Employment sections only. "Volunteer Roles", "Teaching Positions", "Board
+// Appointments", Projects and Research are their own sections, never merged into
+// Experience; a role-like name counts only when it says professional.
+const EXPERIENCE_NAME = /^(?:(?:relevant |professional |work |industry )?experience|employment(?: history)?|work history|career(?: history| roles)?|(?:professional )?(?:history|roles|positions|appointments))$/i;
+export function orderRolesNewestFirst(resume) {
+  const entries = Array.isArray(resume) ? resume : [];
+  const isExperience = entry => EXPERIENCE_NAME.test(String(entry?.section ?? '').trim());
+  const slots = entries.map((entry, index) => (isExperience(entry) ? index : -1)).filter(index => index >= 0);
+  if (!slots.length) return entries;
+  // A resume has one experience section; a draft that drifts to a second name
+  // ("Experience" then "Work History") is one section under the first name, and all
+  // its roles are ordered together, as the scorer reads them.
+  // Employment sections apart from each other (Education between them) keep their
+  // own place: each is ordered where it stands, and nothing is moved across.
+  const contiguous = slots.every((index, at) => !at || index === slots[at - 1] + 1);
+  if (!contiguous) {
+    let out = [...entries];
+    for (const name of [...new Set(slots.map(index => entries[index].section))]) {
+      const own = out.map((entry, index) => (entry.section === name ? index : -1)).filter(index => index >= 0);
+      const ordered = orderRolesNewestFirst(own.map(index => out[index]));
+      own.forEach((index, at) => { out[index] = ordered[at]; });
+    }
+    return out;
+  }
+  const sectionName = entries[slots[0]].section;
+  const run = slots.map(index => ({ ...entries[index], section: sectionName }));
+  const groups = [];
+  for (const entry of run) {
+    const key = entry?.heading && typeof entry.heading === 'object' ? headingKey(entry.heading) : null;
+    const existing = key && groups.find(group => group.key === key);
+    if (existing) existing.rows.push(entry);
+    else if (!key && groups.length) groups.at(-1).rows.push(entry);
+    else groups.push({ key, rows: [entry], dates: key ? parseDates(entry.heading.dates) : null });
+  }
+  const dated = groups.filter(group => group.dates && Number.isFinite(Number(group.dates.start)));
+  const inOrder = dated.every((group, index) => !index || Number(group.dates.start) <= Number(dated[index - 1].dates.start));
+  const sameSection = slots.every(index => entries[index].section === sectionName);
+  if (inOrder && sameSection) return entries;
+  const sorted = inOrder ? dated : [...dated].sort((a, b) => (Number(b.dates.start) - Number(a.dates.start))
+    || ((b.dates.ongoing ? Infinity : Number(b.dates.end ?? b.dates.start)) - (a.dates.ongoing ? Infinity : Number(a.dates.end ?? a.dates.start))));
+  let next = 0;
+  const ordered = groups.map(group => (dated.includes(group) ? sorted[next++] : group)).flatMap(group => group.rows);
+  const out = entries.filter((entry, index) => !slots.includes(index));
+  out.splice(slots[0], 0, ...ordered);
+  return out;
+}
+
 export function renderResumeHtml(format, profile, packet, title = 'Resume') {
   const f = cleanFormat(format);
   const blocks = orderSections(groupEntries(packet.resume), f).map(section => `<h2>${esc(headingText(section.name, f))}</h2>` + section.blocks.map(block => {
@@ -176,15 +398,18 @@ export function renderResumeHtml(format, profile, packet, title = 'Resume') {
     const head = h ? (f.entry.datesRight
       ? `<div class="head"><span class="org">${esc(h.org || h.title || '')}</span><span class="where">${esc(h.location || '')}</span></div>${h.org && h.title ? `<div class="head"><span class="title">${esc(h.title)}</span><span class="dates">${esc(h.dates || '')}</span></div>` : h.dates ? `<div class="head"><span></span><span class="dates">${esc(h.dates)}</span></div>` : ''}`
       : `<div class="head"><span><span class="org">${esc(h.org || '')}</span>${h.title ? `, <span class="title">${esc(h.title)}</span>` : ''}${h.location ? `, ${esc(h.location)}` : ''}${h.dates ? ` (${esc(h.dates)})` : ''}</span></div>`) : '';
-    const lines = h || block.lines.length > 1 ? `<ul>${block.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : `<p class="line">${esc(block.lines[0])}</p>`;
-    return head + lines;
+    // A heading-only entry (an education or credential row whose heading carries the
+    // school or issuer, the credential and the dates) has no line to bullet.
+    const lines = block.lines.filter(line => String(line ?? '').trim());
+    const body = !lines.length ? '' : (h || lines.length > 1 ? `<ul>${lines.map(l => `<li>${prose(l)}</li>`).join('')}</ul>` : `<p class="line">${prose(lines[0])}</p>`);
+    return head + body;
   }).join('')).join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(profile.name)} — ${esc(title)}</title><style>${formatCss(f)}</style></head><body>${header(profile, f)}${blocks}</body></html>`;
 }
 
 export function renderLetterHtml(format, profile, job, letter) {
   const f = cleanFormat(format);
-  const paragraphs = String(letter).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+  const paragraphs = String(letter).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${prose(p)}</p>`).join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(profile.name)} — ${esc(job.title)}</title><style>${formatCss(f)}</style></head><body>${header(profile, f)}<div class="letter">${paragraphs}</div></body></html>`;
 }
 

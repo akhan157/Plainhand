@@ -145,7 +145,7 @@ function Calibration({ job }) {
   const item = c => html`<li key=${c.id}><p class="cal-claim">“${c.text}”</p>${c.reason ? html`<p class="muted-text">${c.reason}</p>` : null}${c.suggestion ? html`<p class="cal-suggestion"><strong>Closer to your evidence:</strong> ${c.suggestion}</p>` : null}${choices(c)}</li>`;
   const [tone, label] = BANDS[calibration.band] || BANDS.balanced;
   return html`<${Section} title="How strongly this describes you" id="pk-calibration">
-    ${job.humanizer ? html`<p class="from-standard"><${Icon} name="spark" />Humanizer pass: ${job.humanizer.changed} ${job.humanizer.changed === 1 ? 'part' : 'parts'} rewritten to remove AI writing patterns${job.humanizer.tellsAfter.length ? ` · ${job.humanizer.tellsAfter.length} left to check` : ' · none left'}</p>` : null}
+    ${job.humanizer ? html`<p class="from-standard"><${Icon} name="spark" />${job.humanizer.folded ? 'Humanizer rules applied while drafting' : html`Humanizer pass: ${job.humanizer.changed} ${job.humanizer.changed === 1 ? 'part' : 'parts'} rewritten to remove AI writing patterns`}${job.humanizer.tellsAfter.length ? ` · ${job.humanizer.tellsAfter.length} left to check` : ' · none left'}</p>` : null}
     <div class="cal-head"><${Pill} tone=${tone}>${label}</${Pill}><span>${calibration.counts.balanced} of ${calibration.total} claims match your evidence${calibration.counts.withinLine ? ` · ${calibration.counts.withinLine} within your line` : ''}${calibration.modelRated ? '' : ' · rule checks only'}</span></div>
     ${over.length ? html`<h4>Stronger than your evidence</h4><ul class="plain-list cal-list">${over.map(item)}</ul>` : null}
     ${under.length ? html`<h4>You can say more</h4><ul class="plain-list cal-list">${under.map(item)}</ul>` : null}
@@ -182,8 +182,8 @@ function PacketTab({ job }) {
       : html`<${Notice} tone="success">Source references and a separate factual review passed. Read the actual wording and documents before approving.</${Notice}>`}
     ${packet.questions.length ? html`<${Notice} tone="warn" title="Your agent needs a few answers before approval"><ul class="plain-list">${packet.questions.map((q, i) => html`<li key=${i}>${q}</li>`)}</ul><${Button} class="small" iconEnd="arrow" onClick=${() => setJobTab('fit')}>Add answers in role context</${Button}></${Notice}>` : null}
     ${packet.suggestions?.length ? html`<${Section} title="Optional ways to strengthen this application" id="pk-suggest"><ul class="plain-list">${packet.suggestions.map((s, i) => html`<li key=${i}>${s}</li>`)}</ul></${Section}>` : null}
-    ${job.fromStandard ? html`<p class="from-standard"><${Icon} name="layers" />From your standard: ${[[job.fromStandard.kept, 'kept'], [job.fromStandard.changed, 'reworded'], [job.fromStandard.added, 'added'], [job.fromStandard.removed, 'left out']].filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(' · ') || 'unchanged'}</p>` : null}
-    ${job.autoSelectedAt ? html`<${Notice} tone="info" title="Prepared on its own">Plainhand prepared this strong match from your standard. Nothing has been sent; review it like any other.</${Notice}>` : null}
+    ${job.fromStandard ? html`<p class="from-standard"><${Icon} name="layers" />${job.fromStandard.total ? `Uses ${job.fromStandard.total - job.fromStandard.removed} of the ${job.fromStandard.total} lines in your master resume` : 'From your master resume'}${[[job.fromStandard.changed, 'reworded for this job'], [job.fromStandard.added, 'added from your other sources']].filter(([n]) => n).map(([n, w]) => ` · ${n} ${w}`).join('')}</p>` : null}
+    ${job.autoSelectedAt ? html`<${Notice} tone="info" title="Prepared on its own">Plainhand prepared this strong match from your master resume. Nothing has been sent; review it like any other.</${Notice}>` : null}
     <${Calibration} job=${job} />
     <${AtsCheck} job=${job} />
     ${store.demo || job.submittedAt ? null : html`<${RequestBox} id=${'revise-' + job.id} label="Ask for a change" placeholder="Make it shorter; lead with the pump project" disabled=${!!preparing || !!runningTask('revise', job.id)} onSubmit=${text => queueTask('revise', job.id, { request: text })} />`}
@@ -192,7 +192,7 @@ function PacketTab({ job }) {
       <article class="document" aria-label="Resume">
         <h4 class="doc-name">${store.state.profile.name}</h4><p class="doc-contact">${[store.state.profile.email, store.state.profile.location].filter(Boolean).join(' · ')}</p>
         ${packet.resume.map((entry, i) => { const prev = packet.resume[i - 1], h = entry.heading, newHeading = h && (!prev || JSON.stringify(prev.heading || null) !== JSON.stringify(h) || prev.section !== entry.section);
-          return html`${i === 0 || prev.section !== entry.section ? html`<h5>${entry.section}</h5>` : null}${newHeading ? html`<p class="doc-heading"><strong>${h.org || h.title}</strong>${h.org && h.title ? html`, <em>${h.title}</em>` : null}${h.dates ? html`<span>${h.dates}</span>` : null}</p>` : null}<p key=${i} class=${h ? 'doc-bullet' : ''}>${entry.text}</p>`; })}
+          return html`${i === 0 || prev.section !== entry.section ? html`<h5>${entry.section}</h5>` : null}${newHeading ? html`<p class="doc-heading"><strong>${h.org || h.title}</strong>${h.org && h.title ? html`, <em>${h.title}</em>` : null}${h.dates ? html`<span>${h.dates}</span>` : null}</p>` : null}${entry.text ? html`<p key=${i} class=${h ? 'doc-bullet' : ''}>${entry.text}</p>` : null}`; })}
       </article>
       <details class="trace"><summary><${Icon} name="quote" />Trace resume entries to your evidence</summary>${packet.resume.map((e, i) => html`<${Evidence} key=${i} text=${e.text} evidence=${e.evidence} />`)}</details>
     </${Section}>
@@ -230,6 +230,34 @@ function ApplyLink({ job }) {
   </${Notice}>`;
 }
 
+// Applying by hand (docs/internal/PRODUCT-DEFINITION.md, "What manual means"): for a
+// site Plainhand can't drive, everything approved is here to download or copy, and
+// the candidate confirms the submission themselves.
+async function copyText(text, what) {
+  try { await navigator.clipboard.writeText(text); toast(`${what} copied.`); }
+  catch { toast('Copying is blocked in this browser. Select the text and copy it instead.', true); }
+}
+function ManualKit({ job, title }) {
+  const packet = job.packet, link = job.applyUrl || job.url;
+  const docs = (job.artifacts || []).filter(file => !file.endsWith('.md'));
+  const [kit, setKit] = useState(null);
+  const saveKit = async () => {
+    try { const result = await api('jobs/manual-kit', { id: job.id }); setKit(result); toast(`Application kit saved to ${result.directory}.`); }
+    catch (error) { toast(error.message, true); }
+  };
+  return html`<${Section} title=${title || `Apply on ${hostOf(link)} yourself`} id="ap-manual">
+    <ol class="plain-list manual-steps">
+      <li><strong>Open the application.</strong> ${link ? html`<${LinkButton} class="small" href=${safeLink(link)} external>Open ${hostOf(link)}</${LinkButton}>` : null}</li>
+      <li><strong>Attach your approved documents.</strong> <span class="download-row">${store.demo ? html`<${Pill} tone="warn">Sample documents · demo only</${Pill}>` : docs.length ? docs.map(file => html`<a key=${file} class="button small" href=${artifactHref(file)} download><${Icon} name="download" />${artifactLabel(file)}</a>`) : html`<span class="muted-text">Regenerate the packet to make the PDFs.</span>`}</span></li>
+      <li><strong>Paste your answers.</strong> Each one is the approved wording.</li>
+      <li><strong>Keep a copy.</strong> <${Button} class="small" icon="download" disabled=${!packet || store.demo || store.state.cloud} onClick=${saveKit}>Save kit files</${Button}> <span class="muted-text">${kit ? kit.directory : 'The documents, answers and posting link in one folder.'}</span></li>
+    </ol>
+    ${packet?.coverLetter ? html`<div class="qa"><h4>Cover letter text</h4><p class="muted-text">For sites that ask you to paste it.</p><${Button} class="small" icon="copy" onClick=${() => copyText(packet.coverLetter, 'Cover letter')}>Copy cover letter</${Button}></div>` : null}
+    ${(packet?.answers || []).map((a, i) => html`<div class="qa" key=${i}><h4>${a.question}</h4><p>${a.answer}</p><${Button} class="small" icon="copy" onClick=${() => copyText(a.answer, 'Answer')}>Copy answer</${Button}></div>`)}
+    <p class="muted-text">Questions the packet doesn't cover, such as pay, work authorization or demographics, are yours to answer on the site.${store.state.cloud ? ' With the Plainhand extension installed, click it on the application page, including LinkedIn and Indeed, to fill from these same approved answers.' : ''} You make the final submit click.</p>
+  </${Section}>`;
+}
+
 const CHECK_REASONS = { sensitive: 'Personal or legal', 'no-information': 'Not in your profile', document: 'Document', choice: 'Your choice' };
 function PresubmitCheck({ check, preview }) {
   if (!check?.items?.length) return null;
@@ -252,14 +280,24 @@ function ApplyTab({ job }) {
   const [plan, setPlan, clearPlan] = useDraft('plan:' + job.id, null);
   // One browser action at a time: the others wait until it finishes.
   const [running, setRunning] = useState(null);
+  const [manual, setManual] = useState(false);
   if (!job.approvedHash || job.stale) return html`<${Empty} icon="lock" title="A quick review before the next step.">Review and approve the exact application packet before opening form assistance.</${Empty}><div class="center-row"><${Button} class="primary" iconEnd="arrow" onClick=${() => setJobTab('packet')}>Review application packet</${Button}></div>`;
-  if (store.state.cloud) return html`<${Notice}>Review your approved documents, then fill the employer’s form yourself or use the Plainhand extension on a computer. The website cannot open a local application browser. You make the final submit click.</${Notice}><${CopyRequest} text=${'@Plainhand help me prepare to fill the application for ' + job.company + ' — ' + job.title + '. Job ID: ' + job.id} />${job.url ? html`<${LinkButton} href=${safeLink(job.applyUrl || job.url)} external>Open application</${LinkButton}>` : null}<${Button} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>I submitted this application</${Button}>`;
+  const submitted = job.status === 'Applied' || !!job.submittedAt;
+  const finish = html`<section class="finish" aria-labelledby="finish-title">
+      <h3 id="finish-title">Finished submitting?</h3>
+      <p class="muted-text">After you review and submit on the employer’s site, confirm it here. Filling a form or saving a draft does not count as an application.</p>
+      <${Button} icon="checkCircle" disabled=${submitted} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>${submitted ? 'Submission confirmed' : 'I submitted this application'}</${Button}>
+    </section>`;
+  if (store.state.cloud) return html`<${Notice}>The website can't open an application browser. Apply with the kit below, or ask your connected chat for help.</${Notice}><${ManualKit} job=${job} title="Apply with your approved packet" /><${CopyRequest} text=${'@Plainhand help me prepare to fill the application for ' + job.company + ' — ' + job.title + '. Job ID: ' + job.id} />${finish}`;
+  // A job-board posting without the employer's own link: Plainhand doesn't open the
+  // board, so the candidate applies there by hand (or adds the employer's link).
+  if (isBoard(job.url) && !job.applyUrl) return html`<${QueueNav} job=${job} kind="apply" /><${ApplyLink} job=${job} /><${ManualKit} job=${job} />${finish}`;
   const checkpoint = job.browserCheckpoint;
   const observation = plan?.observation;
-  const submitted = job.status === 'Applied' || !!job.submittedAt;
   const setAnswer = (key, value) => setPlan({ ...plan, answers: { ...plan.answers, [key]: value } });
   const n = plan?.steps?.length || 0;
-  const act = (name, fn) => async () => { setRunning(name); try { await fn(); } finally { setRunning(null); } };
+  // When Plainhand can't open or fill the form, the manual kit takes over.
+  const act = (name, fn) => async () => { setRunning(name); try { await fn(); } catch (error) { setManual(true); throw error; } finally { setRunning(null); } };
   const blocked = name => !!running && running !== name;
   return html`
     <${QueueNav} job=${job} kind="apply" />
@@ -269,7 +307,6 @@ function ApplyTab({ job }) {
       <${ActionButton} class="primary" icon="external" disabled=${blocked('open')} onClick=${act('open', async () => { toast('Opening a separate application browser on this computer…'); setPlan(await api('browser/open', { id: job.id })); refresh(); })}>${plan ? 'Inspect form again' : 'Open & inspect application'}</${ActionButton}>
       <${ActionButton} class="primary" disabled=${blocked('autofill')} onClick=${act('autofill', async () => { toast('Filling supported form steps from your approved packet…'); setPlan(await api('browser/autofill', { id: job.id })); refresh(); })}>Autofill to final review</${ActionButton}>
       <${ActionButton} disabled=${blocked('resume')} onClick=${act('resume', async () => { setPlan(await api('browser/resume', { id: job.id })); refresh(); })}>Resume inspection</${ActionButton}>
-      <${LinkButton} class="ghost" href=${safeLink(job.applyUrl || job.url)} external>Apply manually</${LinkButton}>
     </div>
     ${observation ? html`<div class="observation">
       <${Notice} tone=${['challenge', 'login', 'paused', 'needs-answers'].includes(observation.state) ? 'warn' : 'neutral'}>${observation.message || 'Application inspected.'}</${Notice}>
@@ -305,11 +342,8 @@ function ApplyTab({ job }) {
       ${checkpoint.result.validation?.length ? html`<${Notice} tone="danger">${checkpoint.result.validation.join(' ')}</${Notice}>` : null}
       <${ActionButton} class="primary" icon="external" onClick=${async () => { const r = await api('browser/handoff', { id: job.id }); clearPlan(); toast(r.message); refresh(); }}>Take over the browser</${ActionButton}>
     </${Section}>` : null}
-    <section class="finish" aria-labelledby="finish-title">
-      <h3 id="finish-title">Finished submitting?</h3>
-      <p class="muted-text">After you review and submit on the employer’s site, confirm it here. Filling a form or saving a draft does not count as an application.</p>
-      <${Button} icon="checkCircle" disabled=${submitted} onClick=${() => openDialog({ type: 'confirm-submit', id: job.id })}>${submitted ? 'Submission confirmed' : 'I submitted this application'}</${Button}>
-    </section>`;
+    ${manual ? html`<${ManualKit} job=${job} title="Apply by hand" />` : html`<div class="action-row"><${Button} class="ghost small" icon="file" onClick=${() => setManual(true)}>Apply by hand instead</${Button}></div>`}
+    ${finish}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -335,7 +369,7 @@ function timeline(job) {
   if (job.approvedHash) add(job.approvedAt || job.updatedAt || job.createdAt, 'Packet approved for browser assistance', 'checkCircle');
   if (job.browserCheckpoint) add(job.browserCheckpoint.at || job.updatedAt || job.createdAt, 'Form progress saved', 'layers');
   for (const contact of job.record?.contacts || []) add(contact.addedAt, `Contact added: ${contact.name}${contact.role ? ', ' + contact.role : ''}`, 'user');
-  for (const round of job.record?.interviews || []) add(round.date + 'T12:00:00.000Z', `${round.stage} interview (${round.status})`, 'calendar', true);
+  for (const round of job.record?.interviews || []) add(round.date + 'T' + (round.time || '12:00') + ':00.000Z', `${round.stage} interview${round.time ? ' at ' + round.time : ''} (${round.status})`, 'calendar', true);
   for (const change of job.statusHistory || []) add(change.at, `${change.from || 'New'} → ${change.to}`, 'arrow');
   const KINDS = { 'thank-you': 'Thank-you note', 'check-in': 'Check-in', reply: 'Reply' };
   for (const note of job.followups || []) if (note.status === 'sent') add(note.sentAt, `${KINDS[note.kind] || 'Follow-up'} sent${note.channel ? ' by ' + note.channel : ''}`, 'send');
@@ -347,7 +381,7 @@ function RecordTab({ job }) {
   const next = record.nextAction;
   const contacts = record.contacts || [], rounds = record.interviews || [];
   const [nextDraft, setNext, clearNext] = useDraft('next:' + job.id, { text: next?.text || '', due: next?.due || '' });
-  const emptyRound = { stage: '', date: '', interviewer: '', status: 'scheduled', preparation: '', notes: '' };
+  const emptyRound = { stage: '', date: '', time: '', interviewer: '', status: 'scheduled', preparation: '', notes: '' };
   const [round, setRound, clearRound] = useDraft('round:' + job.id, emptyRound);
   const emptyContact = { name: '', role: '', type: 'recruiter', email: '', phone: '', linkedin: '', notes: '' };
   const [contact, setContact, clearContact] = useDraft('contact:' + job.id, emptyContact);
@@ -370,14 +404,15 @@ function RecordTab({ job }) {
     <${FollowUps} job=${job} />
     <${Section} title="Interviews" id="rec-rounds">
       ${rounds.length ? html`<ul class="record-list">${rounds.map(r => html`<li key=${r.id}><span class=${'record-icon' + (r.status === 'completed' ? ' done' : '')}><${Icon} name=${r.status === 'completed' ? 'checkCircle' : 'calendar'} /></span>
-        <div class="record-main"><strong>${r.stage} · <${Day} iso=${r.date} weekday=${false} /></strong><p>${[r.interviewer && 'With ' + r.interviewer, r.preparation && 'Prep: ' + r.preparation, r.notes].filter(Boolean).join(' · ') || 'No notes yet.'}</p></div>
+        <div class="record-main"><strong>${r.stage}${r.time ? ' · ' + r.time : ''} · <${Day} iso=${r.date} weekday=${false} /></strong><p>${[r.interviewer && 'With ' + r.interviewer, r.preparation && 'Prep: ' + r.preparation, r.notes].filter(Boolean).join(' · ') || 'No notes yet.'}</p></div>
         <div class="record-tools"><label class="visually-hidden" for=${'round-' + r.id}>Status for ${r.stage} interview</label>
         <select class="compact-select" id=${'round-' + r.id} value=${r.status} onChange=${async e => { const el = e.currentTarget; try { await api('jobs/record/interview-status', { id: job.id, entryId: r.id, status: el.value }); toast('Interview round updated.'); refresh(); } catch (error) { el.value = r.status; fail(error); } }}>${['scheduled', 'completed', 'canceled'].map(v => html`<option value=${v}>${v[0].toUpperCase() + v.slice(1)}</option>`)}</select>
         ${remove('interview', r, r.stage + ' interview')}</div></li>`)}</ul>` : html`<p class="muted-text">No interview rounds recorded.</p>`}
       <${Disclosure} label="Add interview round" id=${'round-form-' + job.id} open=${roundOpen} onToggle=${() => setRoundOpen(!roundOpen)}>
-        <form class="form-grid" onSubmit=${async e => { e.preventDefault(); try { await api('jobs/record/interview', { id: job.id, interview: { stage: round.stage, date: round.date, status: round.status, interviewer: round.interviewer, preparation: round.preparation, notes: round.notes } }); clearRound(); setRoundOpen(false); toast('Interview round added.'); refresh(); } catch (error) { fail(error); } }}>
+        <form class="form-grid" onSubmit=${async e => { e.preventDefault(); try { await api('jobs/record/interview', { id: job.id, interview: { stage: round.stage, date: round.date, time: round.time, status: round.status, interviewer: round.interviewer, preparation: round.preparation, notes: round.notes } }); clearRound(); setRoundOpen(false); toast('Interview round added.'); refresh(); } catch (error) { fail(error); } }}>
           <${Field} form=${'round-' + job.id} name="stage" label="Stage" placeholder="Recruiter screen, technical, onsite…" required value=${round.stage} onInput=${v => setRound({ ...round, stage: v })} />
           <${Field} form=${'round-' + job.id} name="date" label="Date" type="date" required value=${round.date} onInput=${v => setRound({ ...round, date: v })} />
+          <${Field} form=${'round-' + job.id} name="time" label="Time (optional)" type="time" value=${round.time} onInput=${v => setRound({ ...round, time: v })} />
           <${Field} form=${'round-' + job.id} name="interviewer" label="Interviewer" placeholder="Optional" value=${round.interviewer} onInput=${v => setRound({ ...round, interviewer: v })} />
           <${Field} form=${'round-' + job.id} name="roundStatus" label="Status" value=${round.status} options=${[['scheduled', 'Scheduled'], ['completed', 'Completed'], ['canceled', 'Canceled']]} onInput=${v => setRound({ ...round, status: v })} />
           <${Field} form=${'round-' + job.id} name="preparation" label="Preparation" full placeholder="Topics, stories to use, or a prep link" value=${round.preparation} onInput=${v => setRound({ ...round, preparation: v })} />

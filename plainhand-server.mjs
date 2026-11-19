@@ -5,25 +5,28 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { Workspace, digest, now, requireText, cleanText, syncTracker, hasEvidence } from './plainhand/store.mjs';
+import { Workspace, digest, now, requireText, cleanText, syncTracker, hasEvidence, storyKey } from './plainhand/store.mjs';
 import { Workflow, assertPacketFresh, packetIdentity, suggestFormAnswers } from './plainhand/workflow.mjs';
 import { AnswerBank } from './plainhand/answer-bank.mjs';
-import { Corrections } from './plainhand/corrections.mjs';
+import { Corrections, offerTypedAnswers } from './plainhand/corrections.mjs';
 import { AuditLog } from './plainhand/audit.mjs';
 import { followUpQueue } from './plainhand/application-record.mjs';
 import { providerDescription } from './plainhand/posting-integrity.mjs';
 import { createRegistry, STATUS_VALUES, CORE_ATTENTION } from './plainhand/actions.mjs';
 import { profileStrength } from './plainhand/profile-strength.mjs';
+import { memoryReport } from './plainhand/memory-checks.mjs';
 import { currentCalibration } from './plainhand/claim-calibration.mjs';
 import { candidateLine } from './plainhand/claim-line.mjs';
 import { presubmitCheck } from './plainhand/presubmit.mjs';
 import { deriveFormat, cleanFormat, DEFAULT_FORMAT, renderResumeHtml } from './plainhand/resume-format.mjs';
 import { isSensitiveLabel } from './plainhand/field-policy.mjs';
-import { standardStatus, autonomyOf } from './plainhand/standard.mjs';
+import { standardStatus, autonomyOf, roleOrderOf } from './plainhand/standard.mjs';
 import { AgentEngine } from './plainhand/agent.mjs';
 import { FEATURES } from './plainhand/features/index.mjs';
 import { markStalePrep } from './plainhand/features/interview-prep.mjs';
-import { importWorkspace, preview as previewImport } from './plainhand/workspace-import.mjs';
+import { importWorkspace, preview as previewImport, exportWorkspace, recoverInterruptedImport } from './plainhand/workspace-import.mjs';
+import { migrateWorkspace } from './plainhand/migrations.mjs';
+import { applicationsCsv, calendarIcs } from './plainhand/exports.mjs';
 import { providerById, inspectProviders, installProvider, providerCommand, runProcess, executeAgent, FORM_INSTRUCTION } from './plainhand/agents.mjs';
 import { createLocalChatgpt } from './plainhand/chatgpt-local.mjs';
 import { NAVIGATION_INSTRUCTION } from './plainhand/browser-driver.mjs';
@@ -45,7 +48,7 @@ function assetFile(pathname) {
   return file;
 }
 
-// Fictional content for previewing a resume format before a standard application exists.
+// Fictional content for previewing a resume format before a master resume exists.
 const FORMAT_SAMPLE = {
   profile: { name: 'Riley Example', email: 'riley@example.invalid', phone: '+1 617 555 0100', location: 'Boston, MA', links: '' },
   resume: [
@@ -59,6 +62,13 @@ const FORMAT_SAMPLE = {
 
 export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, browser, providers = inspectProviders, features = FEATURES, startFeatures = true, chatgptOptions = {} } = {}) {
   const workspace = new Workspace(root);
+  // A workspace written by an older Plainhand is migrated before anything reads it. The
+  // state file is backed up first; a corrupt or newer-than-this-code state is refused.
+  const migration = await migrateWorkspace(workspace);
+  if (migration.status === 'migrated') console.log(`Workspace state migrated ${migration.from} → ${migration.to} (backup: ${migration.backup}).`);
+  // An import that crashed before its state commit is rolled back (or finished) before
+  // anything reads this workspace.
+  await recoverInterruptedImport(workspace);
   browser ||= new ApplicationBrowser({ storage: workspace, launch: configuredBrowserLaunch() });
   // Sign in with ChatGPT: tokens live encrypted in this workspace; executeAgent runs the
   // 'chatgpt' provider through this agent.
@@ -92,7 +102,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
   }
   async function formPlan(state, job, fields) {
     const plan = { id: job.id, fields, observation: browser.status ? await browser.status(job.id) : { state: 'ready' }, answers: suggestFormAnswers(fields, state.profile, job.packet, { bank: await new AnswerBank(workspace).load(), job }), approval: job.approvedHash };
-    const unanswered = fields.filter(f => !plan.answers[f.key] && f.type !== 'file' && !/sponsor|authoriz|eligible|gender|race|veteran|disabil|salary|compens|consent|agree|legal|citizen|relocat|privacy|country|ethnic/i.test(f.label));
+    const unanswered = fields.filter(f => !plan.answers[f.key] && f.type !== 'file' && !isSensitiveLabel(f.label));
     if (unanswered.length) {
       try {
         const context = await workspace.context(state);
@@ -152,7 +162,14 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         for (const job of state.jobs) markStalePrep(job);
         // Calibration as seen through the candidate's current line and choices.
         for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
-        return json(res, 200, { ...state,
+        // Detection reads every local source, including excluded ones; only the card
+        // receives it. The provider context above still honours the exclusions.
+        const fullContext = await workspace.context({ ...state, contextPrefs: {} });
+        const memory = memoryReport(state, fullContext.sources);
+        return json(res, 200, { ...state, memory: { conflicts: memory.conflicts, questions: memory.questions }, memoryConflicts: memory.open,
+          // Each story carries the key the edit and delete routes accept, including an
+          // older message that has no id of its own.
+          conversation: (state.conversation || []).map(message => ({ ...message, key: storyKey(message) })),
           answerBank: await new AnswerBank(workspace).load(),
           corrections: await new Corrections(workspace).list(),
           audit: await new AuditLog(workspace).list({ limit: 20 }),
@@ -163,6 +180,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
           resumeFormat: state.resumeFormat || null,
           standardStatus: standardStatus(state, context.hash),
           autonomy: autonomyOf(state),
+          roleOrder: roleOrderOf(state),
           featureAttention: registry.digest(state).attention.filter(item => !CORE_ATTENTION.includes(item.kind)),
           usage: await workflow.usage.summary(state), contextHash: context.hash, sourceManifest: context.sources.map(s => ({ id: s.id, characters: s.text.length })), tracker: await workspace.read('data/applications.md'), loginSessions: [...logins.values()], applicationSessions: [...appBrowserPlans.keys()], localCaptchaSolver: { installed: !!(browser.solver && await browser.solver.ready()), type: 'recaptcha-audio', feePerSolve: 0 }, remote: await remoteStatus(workspace) });
       }
@@ -191,7 +209,17 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       if (req.method === 'GET' && url.pathname === '/api/export') {
         res.setHeader('Content-Disposition', 'attachment; filename="plainhand-workspace.json"');
         const conversation = await agent.history({ limit: 500 });
-        return json(res, 200, { ...(await workspace.load()), agentUsage: await workflow.usage.records(), agentConversation: conversation.messages, agentProposals: await agent.proposals(), exportedAt: now() });
+        return json(res, 200, await exportWorkspace(workspace, { agentUsage: await workflow.usage.records(), agentConversation: conversation.messages, agentProposals: await agent.proposals(), exportedAt: now() }));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/applications.csv') {
+        const state = await workspace.load();
+        res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-applications.csv"', 'Cache-Control': 'no-store' });
+        return res.end(applicationsCsv({ ...state, tracker: await workspace.read('data/applications.md') }));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/calendar.ics') {
+        const state = await workspace.load();
+        res.writeHead(200, { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-calendar.ics"', 'Cache-Control': 'no-store' });
+        return res.end(calendarIcs(state));
       }
       if (req.method === 'GET' && url.pathname === '/api/artifact') {
         const requested = url.searchParams.get('path');
@@ -270,7 +298,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/conversation') {
         const text = requireText(input.text, 'message', 15000);
-        await workspace.mutate(state => { state.conversation.push({ role: 'user', text, at: now() }); state.understanding = null; for (const j of state.jobs) j.approvedHash = null; });
+        await workspace.mutate(state => { state.conversation.push({ id: randomUUID(), role: 'user', text, at: now() }); state.understanding = null; for (const j of state.jobs) j.approvedHash = null; });
         const { taskId } = await ui('tasks.interview', {});
         return json(res, 202, { taskId });
       }
@@ -357,6 +385,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/tasks/cancel') { await ui('tasks.cancel', { taskId: input.id }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/jobs/apply-link') return json(res, 200, await ui('jobs.setApplyLink', { jobId: input.id, applyUrl: input.applyUrl }));
+      if (url.pathname === '/api/jobs/manual-kit') return json(res, 200, await ui('jobs.manualKit', { jobId: input.id }));
       if (url.pathname === '/api/format/derive') {
         // Reads layout from the candidate's own resume PDF; nothing is saved until they choose to.
         const pdf = Buffer.from(String(input.content || ''), 'base64');
@@ -365,7 +394,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/format/save') return json(res, 200, await ui('format.save', input.reset ? { reset: true } : { format: input.format }));
       if (url.pathname === '/api/format/preview') {
-        // A first-page image of the standard application (or a fictional sample) in this format.
+        // A first-page image of the master resume (or a fictional sample) in this format.
         const state = await workspace.load(), format = cleanFormat(input.format || state.resumeFormat || DEFAULT_FORMAT);
         const sample = state.standard?.draft?.resume?.length ? state.standard.draft : FORMAT_SAMPLE;
         const profile = sample === FORMAT_SAMPLE ? FORMAT_SAMPLE.profile : state.profile;
@@ -381,6 +410,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/standard/approve') { await ui('standard.approve', {}); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/settings/autonomy') return json(res, 200, await ui('settings.autonomy', { enabled: input.enabled === true, ...(input.perDay != null ? { perDay: Number(input.perDay) } : {}), ...(input.minScore != null ? { minScore: Number(input.minScore) } : {}) }));
+      if (url.pathname === '/api/settings/role-order') return json(res, 200, await ui('settings.roleOrder', { order: input.order }));
 
       // Read-only remote view through the candidate's own Vercel account. The
       // dashboard snapshot is the only thing that leaves this computer; the
@@ -395,6 +425,9 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
       }
       if (url.pathname === '/api/samples/add') return json(res, 200, await ui('profile.addWritingSample', { title: input.title || '', text: input.text }));
       if (url.pathname === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
+      if (url.pathname === '/api/story/edit') return json(res, 200, await ui('profile.editStory', { key: input.key, text: input.text }));
+      if (url.pathname === '/api/story/remove') { await ui('profile.removeStory', { key: input.key }); return json(res, 200, { ok: true }); }
+      if (url.pathname === '/api/conflicts/record') return json(res, 200, await ui('conflicts.record', { id: input.id, sourceId: input.sourceId }));
       if (url.pathname === '/api/calibration/decide') { return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true }); }
       if (url.pathname === '/api/line/remove') { await ui('line.removeStatement', { index: input.index }); return json(res, 200, { ok: true }); }
       if (url.pathname === '/api/packet/approve') { await ui('packet.approve', { jobId: input.id }); return json(res, 200, { ok: true }); }
@@ -475,14 +508,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
             job.browserCheckpoint = { at: now(), packetHash: job.approvedHash, result, check, navigation: job.browserCheckpoint?.navigation || [] }; job.stage = 'awaiting-user-submit'; await syncTracker(workspace, state);
             await workspace.saveBrowserCheckpoint(job);
             // Answers the candidate typed are offered for reuse; they reach the answer bank only after approval.
-            const corrections = new Corrections(workspace), known = await corrections.list();
-            let offered = 0;
-            for (const field of plan?.fields || []) {
-              const typed = typeof input.answers[field.key] === 'string' ? input.answers[field.key].trim() : '';
-              if (typed.length < 8 || field.type === 'file' || isSensitiveLabel(field.label) || typed === (plan.answers[field.key] || '').trim()) continue;
-              if (known.some(c => c.question === field.label && c.answer === typed && c.status !== 'rejected')) continue;
-              try { await corrections.propose({ jobId: job.id, question: field.label, previous: plan.answers[field.key] || null, answer: typed, evidence: [{ sourceId: 'candidate-answer', quote: typed.slice(0, 500) }], scope: 'global' }); offered++; } catch {}
-            }
+            const offered = await offerTypedAnswers(new Corrections(workspace), { job, fields: plan?.fields || [], answers: input.answers, planned: plan?.answers || {} });
             return { ...result, check, offered };
           }
           if (url.pathname === '/api/browser/handoff') {
@@ -502,7 +528,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
   server.on('listening', () => { workspace.write(LOCAL_API_FILE, JSON.stringify({ port: server.address().port, mcpToken, pid: process.pid, startedAt: now() }) + '\n').catch(() => {}); });
   server.headersTimeout = 15000;
   const close = async () => {
-    for (const controller of workflow.controllers.values()) controller.abort();
+    workflow.stop();
     agent.turn?.controller.abort();
     cancelVercelLogin();
     for (const controller of loginControllers.values()) controller.abort();

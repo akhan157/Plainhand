@@ -5,6 +5,8 @@
 // fromModel quote text a model wrote from postings or the resume, so they stay out of
 // the always-sent agent digest.
 
+import { memoryReport } from './memory-checks.mjs';
+
 const FOUNDATION = [['name', 'your name'], ['resume', 'your resume'], ['roles', 'the roles you want'], ['location', 'your location'], ['story', 'the story your resume doesn’t tell'], ['voice', 'a sample of how you write']];
 const MIN_EVALUATIONS = 3;
 const STORY_SOURCES = new Set(['interview', 'stories', 'narrative', 'proof-points']);
@@ -85,9 +87,11 @@ function review(state) {
 }
 
 export function profileStrength(state) {
+  const memory = memoryReport(state);
   const result = { foundation: foundation(state.profile, (state.conversation || []).some(m => m.role === 'user'), (state.writingSamples || []).length > 0), depth: depth(state), coverage: coverage(state.jobs), review: review(state) };
   const next = [];
   const { foundation: f, depth: d, coverage: c, review: r } = result;
+  if (memory.conflicts.open) next.push({ kind: 'conflict', text: `${memory.conflicts.open} ${memory.conflicts.open === 1 ? 'fact disagrees' : 'facts disagree'} between your sources. Edit the source or record which is right.` });
   if (f.missing.length) next.push({ kind: 'foundation', text: `Add ${f.missing.slice(0, 2).join(' and ')}.` });
   if (d.statements < 3) next.push({ kind: 'depth', text: 'Tell your agent about a project or job you’re proud of: what you did, how, and what came of it.' });
   else if (d.withNumbers < Math.min(3, d.statements)) next.push({ kind: 'depth', text: 'Add results with numbers to your stories (size, time saved, people, budget, scores).' });
@@ -97,7 +101,7 @@ export function profileStrength(state) {
   if (r.status === 'needs-review') next.push({ kind: 'review', text: 'Review how your agent sees you and approve it only if it reflects you.' });
   else if (r.firstQuestion) next.push({ kind: 'review', fromModel: true, text: `Open question: ${r.firstQuestion}` });
   const levels = Object.values(result).map(x => x.level);
-  return { ...result, summary: { strong: levels.filter(l => l === 'strong').length, good: levels.filter(l => l === 'good').length, thin: levels.filter(l => l === 'thin').length, notEnoughData: levels.filter(l => l === 'not-enough-data').length }, next: next.slice(0, 4) };
+  return { ...result, conflicts: memory.conflicts, questions: memory.questions, summary: { strong: levels.filter(l => l === 'strong').length, good: levels.filter(l => l === 'good').length, thin: levels.filter(l => l === 'thin').length, notEnoughData: levels.filter(l => l === 'not-enough-data').length }, next: next.slice(0, 4) };
 }
 
 export function logUnderstanding(state, entry) {

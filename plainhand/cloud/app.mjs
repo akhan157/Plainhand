@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { randomUUID, createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { digest, now as isoNow, requireText, cleanText } from '../store.mjs';
+import { digest, now as isoNow, requireText, cleanText, storyKey } from '../store.mjs';
 import { Workflow } from '../workflow.mjs';
 import { AnswerBank } from '../answer-bank.mjs';
 import { Corrections } from '../corrections.mjs';
@@ -22,18 +22,20 @@ import { createRegistry, STATUS_VALUES, CORE_ATTENTION } from '../actions.mjs';
 import { profileStrength } from '../profile-strength.mjs';
 import { currentCalibration } from '../claim-calibration.mjs';
 import { candidateLine } from '../claim-line.mjs';
-import { standardStatus, autonomyOf } from '../standard.mjs';
+import { standardStatus, autonomyOf, roleOrderOf } from '../standard.mjs';
 import { FEATURES } from '../features/index.mjs';
 import { markStalePrep } from '../features/interview-prep.mjs';
 import { StorageError } from '../storage.mjs';
 import { newCodeVerifier } from './supabase-auth.mjs';
 import { importResume } from './resume-import.mjs';
+import { exportWorkspace } from '../workspace-import.mjs';
 import { readConnectionCheck } from './connection-check.mjs';
 import { handleWorkspaceTransfer } from './workspace-transfer.mjs';
 import { renderCloudPacket, verifyCloudJob } from './runtime.mjs';
 import { publicPage } from './public-pages.mjs';
 import { reportServerError } from './diagnostics.mjs';
 import { setupCoverage } from '../web/ui/connect-data.mjs';
+import { applicationsCsv, calendarIcs } from '../exports.mjs';
 
 const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web');
 const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png' };
@@ -262,6 +264,9 @@ export function createCloudApp(deps) {
     for (const job of state.jobs) if (job.calibration) job.calibration = currentCalibration(state, job);
     return { ...state,
       cloud: true,
+      // Each story carries the key the edit and delete routes accept, including an
+      // older message that has no id of its own.
+      conversation: (state.conversation || []).map(message => ({ ...message, key: storyKey(message) })),
       connectionCheck: await readConnectionCheck(workspace),
       onboarding: JSON.parse(await workspace.read('data/plainhand/onboarding.json') || 'null'),
       answerBank: await new AnswerBank(workspace).load(),
@@ -274,6 +279,7 @@ export function createCloudApp(deps) {
       resumeFormat: state.resumeFormat || null,
       standardStatus: standardStatus(state, context.hash),
       autonomy: autonomyOf(state),
+      roleOrder: roleOrderOf(state),
       featureAttention: registry.digest(state).attention.filter(item => !CORE_ATTENTION.includes(item.kind)),
       usage: await workflow.usage.summary(state), contextHash: context.hash, sourceManifest: context.sources.map(s => ({ id: s.id, characters: s.text.length })),
       tracker: await workspace.read('data/applications.md'), loginSessions: [], applicationSessions: [] };
@@ -297,7 +303,14 @@ export function createCloudApp(deps) {
       }
       if (p === '/api/providers') return json(res, 200, []);
       if (p === '/api/export') {
-        return json(res, 200, { ...(await workspace.load()), agentUsage: await workflow.usage.records(), exportedAt: isoNow() }, { 'Content-Disposition': 'attachment; filename="plainhand-workspace.json"' });
+        return json(res, 200, await exportWorkspace(workspace, { agentUsage: await workflow.usage.records(), exportedAt: isoNow() }), { 'Content-Disposition': 'attachment; filename="plainhand-workspace.json"' });
+      }
+      if (p === '/api/applications.csv') {
+        const state = await workspace.load();
+        return send(res, 200, applicationsCsv({ ...state, tracker: await workspace.read('data/applications.md') }), { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-applications.csv"', 'Cache-Control': 'no-store' });
+      }
+      if (p === '/api/calendar.ics') {
+        return send(res, 200, calendarIcs(await workspace.load()), { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="plainhand-calendar.ics"', 'Cache-Control': 'no-store' });
       }
       if (p === '/api/artifact') {
         const requested = url.searchParams.get('path');
@@ -392,8 +405,11 @@ export function createCloudApp(deps) {
     if (p === '/api/format/save') return json(res, 200, await ui('format.save', input.reset ? { reset: true } : { format: input.format }));
     if (p === '/api/standard/approve') { await ui('standard.approve', {}); return json(res, 200, { ok: true }); }
     if (p === '/api/settings/autonomy') return json(res, 200, await ui('settings.autonomy', { enabled: input.enabled === true, ...(input.perDay != null ? { perDay: Number(input.perDay) } : {}), ...(input.minScore != null ? { minScore: Number(input.minScore) } : {}) }));
+    if (p === '/api/settings/role-order') return json(res, 200, await ui('settings.roleOrder', { order: input.order }));
     if (p === '/api/samples/add') return json(res, 200, await ui('profile.addWritingSample', { title: input.title || '', text: input.text }));
     if (p === '/api/samples/remove') { await ui('profile.removeWritingSample', { id: input.id }); return json(res, 200, { ok: true }); }
+    if (p === '/api/story/edit') return json(res, 200, await ui('profile.editStory', { key: input.key, text: input.text }));
+    if (p === '/api/story/remove') { await ui('profile.removeStory', { key: input.key }); return json(res, 200, { ok: true }); }
     if (p === '/api/calibration/decide') return json(res, 200, (await ui('calibration.decide', { jobId: input.id, claimId: input.claimId, decision: input.decision })) || { ok: true });
     if (p === '/api/line/remove') { await ui('line.removeStatement', { index: input.index }); return json(res, 200, { ok: true }); }
     if (p === '/api/packet/approve') { await ui('packet.approve', { jobId: input.id }); return json(res, 200, { ok: true }); }

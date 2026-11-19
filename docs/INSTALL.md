@@ -107,13 +107,20 @@ Plainhand never reads your credentials; the provider signs in on its own.
 ## Updating
 
 ```bash
-git pull
-npm run setup
+plainhand update
 ```
 
-Your data lives in `data/`, `config/profile.yml`, `cv.md` and `output/` and is
-not touched by updates. **Workspace → Export workspace** makes a backup you
-can import into a fresh copy.
+In a checkout the same command is `npm run update`. It installs the release's
+dependencies, brings your workspace data to the release's format, and asks you
+to restart Plainhand. Your data lives in `data/`, `config/profile.yml`, `cv.md`
+and `output/`, and is never copied or replaced; the pre-update state is backed
+up under `data/plainhand/backups/`.
+
+Copies older than the release that introduced the command update once with the
+installer line above, or in a checkout with
+`git fetch --tags && git checkout vX.Y.Z && npm ci`.
+
+Full steps, including rollback: [UPDATING.md](UPDATING.md).
 
 ## Troubleshooting
 

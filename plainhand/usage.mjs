@@ -4,6 +4,18 @@ const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const amount = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 const label = value => typeof value === 'string' ? value.replace(/[\x00-\x1f]/g, '').slice(0, 100) : null;
 const sum = values => values.every(v => v !== null) ? values.reduce((a, b) => a + b, 0) : null;
+// The length of the task prompt Plainhand itself sends: the instruction plus the JSON
+// input (the same shape as agents.mjs `agentTask`). Length only, never the text, so the
+// ledger can separate Plainhand's context from the CLI's own prompt without storing
+// candidate data. tests/test-plainhand-usage.mjs keeps it equal to agentTask's output.
+export const taskPromptChars = (instruction, data) => `TASK:\n${instruction}\n\nINPUT DATA:\n${JSON.stringify(data)}`.length;
+// The model ids a provider's own output states, and nothing else. Codex 0.167's
+// `exec --json` carries no model: `thread.started` has only a thread_id and
+// `turn.completed` only usage, so under --ignore-user-config the run has no model
+// identity to record. Newer or other builds may name one; it is read from the events
+// if so. An empty list means unreported, not "the default".
+const statedModels = events => [...new Set(events.flatMap(event => [event?.model, event?.model_slug, event?.response?.model, event?.session?.model]).map(label).filter(Boolean))].slice(0, 10);
+const modelOf = models => models.length === 1 ? models[0] : null;
 export function agentUsage(provider, output = '') {
   const empty = { inputTokens: null, uncachedInputTokens: null, outputTokens: null, cacheReadTokens: null, cacheWriteTokens: null, reasoningTokens: null, reportedUsd: null, models: [] };
   let events;
@@ -16,10 +28,11 @@ export function agentUsage(provider, output = '') {
     return { ...empty, inputTokens: sum([input, read, write]), uncachedInputTokens: input, outputTokens: count(u.output_tokens), cacheReadTokens: read, cacheWriteTokens: write, reportedUsd: amount(envelope.total_cost_usd), models: Object.keys(envelope.modelUsage || {}).map(label).filter(Boolean).slice(0, 10) };
   }
   if (provider === 'codex') {
+    const models = statedModels(events);
     const turns = events.filter(e => e?.type === 'turn.completed' && e.usage);
-    if (!turns.length) return empty;
+    if (!turns.length) return { ...empty, models };
     const metric = key => sum(turns.map(e => count(e.usage[key])));
-    return { ...empty, inputTokens: metric('input_tokens'), outputTokens: metric('output_tokens'), cacheReadTokens: metric('cached_input_tokens'), cacheWriteTokens: metric('cache_write_input_tokens'), reasoningTokens: metric('reasoning_output_tokens') };
+    return { ...empty, inputTokens: metric('input_tokens'), outputTokens: metric('output_tokens'), cacheReadTokens: metric('cached_input_tokens'), cacheWriteTokens: metric('cache_write_input_tokens'), reasoningTokens: metric('reasoning_output_tokens'), models };
   }
   // Antigravity's metering contract is unverified. Never guess from prose or
   // confuse a model-written "usage" object with provider metadata.
@@ -43,7 +56,10 @@ export class UsageLedger {
   }
   async track(agent, provider, instruction, data, options = {}) {
     const context = options.usageContext || {};
-    const record = { id: randomUUID(), provider, purpose: label(context.purpose) || 'agent', jobId: label(context.jobId), taskId: label(context.taskId), retryOf: label(context.retryOf), attempt: count(context.attempt) || 1, startedAt: new Date().toISOString(), status: 'running', ...agentUsage(provider) };
+    // Calls are recorded with how many characters Plainhand sent (U14): the sum of
+    // these is the context attributable to Plainhand, against the input tokens Codex
+    // reports for the call plus its own prompt. The text itself is never stored.
+    const record = { id: randomUUID(), provider, purpose: label(context.purpose) || 'agent', jobId: label(context.jobId), taskId: label(context.taskId), retryOf: label(context.retryOf), attempt: count(context.attempt) || 1, startedAt: new Date().toISOString(), status: 'running', promptChars: taskPromptChars(instruction, data), actualModel: null, ...agentUsage(provider) };
     await this.workspace.write(this.file(record.id), JSON.stringify(record));
     const start = Date.now();
     try {
@@ -51,6 +67,9 @@ export class UsageLedger {
         for (const key of ['inputTokens', 'uncachedInputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens']) record[key] = count(usage[key]);
         record.reportedUsd = amount(usage.reportedUsd);
         record.models = Array.isArray(usage.models) ? usage.models.map(label).filter(Boolean).slice(0, 10) : [];
+        // One stated model is the call's model; several (a subagent on another model)
+        // or none leave it unreported rather than guessing.
+        record.actualModel = modelOf(record.models);
       } });
       record.status = 'succeeded'; return result;
     } catch (error) { record.status = options.signal?.aborted ? 'canceled' : 'failed'; throw error; }
@@ -63,7 +82,8 @@ export class UsageLedger {
     const records = await this.records();
     const aggregate = entries => {
       const metric = key => { const available = entries.filter(e => e[key] !== null && e[key] !== undefined); return { value: available.length ? available.reduce((n, e) => n + e[key], 0) : null, reportedCalls: available.length }; };
-      return { calls: entries.length, succeeded: entries.filter(e => e.status === 'succeeded').length, failed: entries.filter(e => e.status === 'failed').length, retriedCalls: entries.filter(e => e.retryOf).length, repeatedAttempts: entries.filter(e => e.attempt > 1).length, ...Object.fromEntries(['inputTokens', 'uncachedInputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens', 'reportedUsd', 'durationMs'].map(key => [key, metric(key)])) };
+      const models = [...new Set(entries.flatMap(e => Array.isArray(e.models) ? e.models : []))].sort();
+      return { calls: entries.length, succeeded: entries.filter(e => e.status === 'succeeded').length, failed: entries.filter(e => e.status === 'failed').length, retriedCalls: entries.filter(e => e.retryOf).length, repeatedAttempts: entries.filter(e => e.attempt > 1).length, models, actualModel: modelOf(models), ...Object.fromEntries(['inputTokens', 'uncachedInputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'reasoningTokens', 'promptChars', 'reportedUsd', 'durationMs'].map(key => [key, metric(key)])) };
     };
     const group = key => [...new Set(records.map(e => e[key]).filter(Boolean))].map(id => ({ id, ...aggregate(records.filter(e => e[key] === id)) }));
     return { totals: aggregate(records), byProvider: group('provider'), byJob: group('jobId'), recent: records.slice(0, 50), impact: { evaluatedJobs: state.jobs.filter(j => j.evaluation).length, preparedPackets: state.jobs.filter(j => j.packet).length, applicationsWithFills: state.jobs.filter(j => j.browserCheckpoint?.result?.filled?.length).length, confirmedSubmissions: state.jobs.filter(j => j.submittedAt).length }, updatedAt: records[0]?.finishedAt || records[0]?.startedAt || null };

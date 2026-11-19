@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { UNDO_TOOL, TAINT_NOTE, FALLBACK_PANELS, PANEL_VIEWS, UNDO_DEFINITION, toolFor, toolName, candidateSteps } from './plainhand/mcp-tools.mjs';
+import { UNDO_TOOL, TAINT_NOTE, FALLBACK_PANELS, UNDO_DEFINITION, toolFor, toolName, candidateSteps, panelPath } from './plainhand/mcp-tools.mjs';
 
 // Shared with the hosted connector (plainhand/cloud/mcp.mjs); re-exported for existing callers.
 export { UNDO_TOOL, toolName, liteToJsonSchema, toolFor } from './plainhand/mcp-tools.mjs';
@@ -82,8 +82,8 @@ export function createBridge({ dataRoot = APP_ROOT, fetchImpl = fetch } = {}) {
 
   async function candidateLink(error, port, action, input) {
     const panel = error.panel || FALLBACK_PANELS[action.name]?.(input) || null;
-    const view = PANEL_VIEWS[panel?.type];
-    const url = `http://127.0.0.1:${port}/${view ? '#' + view : ''}`;
+    // Same path the hosted connector uses, so a form panel opens the role's Apply tab.
+    const url = `http://127.0.0.1:${port}${panelPath(panel)}`;
     let job = '';
     if (panel?.id && ['job', 'packet', 'record'].includes(panel.type)) {
       try { const { data } = await call('action', { name: 'jobs.get', input: { jobId: panel.id, include: [] } }); job = `${data.result.company} — ${data.result.title}`; } catch { /* the link still works */ }

@@ -32,8 +32,15 @@ const tierOf = (text, tiers) => {
   return tier;
 };
 // Numbers as written ("18%", "$2,000", "40", "7075"), normalized; years are dates, not results.
+// Each occurrence is kept with its position, because whose number it is depends on
+// where it sits, not only on its value.
+export function numberOccurrences(text) {
+  return [...String(text || '').matchAll(/\$?\d[\d,]*(?:\.\d+)?%?/g)]
+    .map(match => ({ raw: match[0], value: match[0].replace(/[$,]/g, ''), index: match.index }))
+    .filter(occurrence => occurrence.value);
+}
 export function numbersIn(text) {
-  return [...new Set((String(text || '').match(/\$?\d[\d,]*(?:\.\d+)?%?/g) || []).map(n => n.replace(/[$,]/g, '')).filter(Boolean))];
+  return [...new Set(numberOccurrences(text).map(occurrence => occurrence.value))];
 }
 const isYear = n => /^(19|20)\d\d$/.test(n);
 // "about 20%", "nearly $2,000", "~40": rounding the reader is told about.
@@ -51,15 +58,98 @@ export function genericPhrases(text) {
   return GENERIC_PHRASES.filter(p => new RegExp(`(^|[^a-z])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`).test(lowerText));
 }
 
+// Whose number is it? A posting number may be repeated only where the employer is
+// that number's subject: "your 28-bed unit", "the position's 12-hour shifts",
+// "your company operates in 28 countries". A number in an explicit application-
+// intent sentence is about the role too ("I am applying to lead your 25
+// engineers"). Anywhere else it is the candidate's claim, even with no "I" in
+// front of it: "Led your 25 engineers", "Managed your team of 25", "My experience
+// includes leading your 25 engineers", "We currently manage your team of 25".
+const EMPLOYER_NOUN = '(?:your|yours|the (?:role|position|posting|job|team|unit|department|store|program|programme|organization|organisation|company))';
+const EMPLOYER_REF = new RegExp(`\\b${EMPLOYER_NOUN}(?:['\u2019]s)?\\b`, 'gi');
+const EMPLOYER_START = new RegExp(`^\\s*(?:(?:at|for|in|with|across|inside|within|joining)\\s+)?${EMPLOYER_NOUN}\\b`, 'i');
+const INTENT = /\b(?:applying|application for|writing to apply|hope to|hoping to|excited to|would like to|would love to|want to|keen to|eager to|interested in|looking to)\b/gi;
+const CANDIDATE_SUBJECT = /\b(?:i|we|my|our|me)\b/i;
+// Past and present accomplishment verbs. A present-tense role verb after "applying
+// to" is stripped below, so "I am applying to lead your 25 engineers" stays a role
+// fact while "We currently manage your team of 25" does not.
+const CLAIM_VERB = /\b(?:led|lead|leads|leading|manag(?:e|es|ed|ing)|build|builds|built|building|ran|run|runs|running|own|owns|owned|owning|direct|directs|directed|directing|head|heads|headed|heading|design|designs|designed|designing|develop|develops|developed|developing|increase|increases|increased|increasing|reduce|reduces|reduced|reducing|cut|cuts|cutting|grow|grows|grew|growing|save|saves|saved|saving|deliver|delivers|delivered|delivering|achiev(?:e|es|ed|ing)|driv(?:e|es|ing)|drove|driven|oversee|oversees|oversaw|overseen|overseeing|supervis(?:e|es|ed|ing)|found|founded|founding|launch(?:es|ed|ing)?|negoti(?:ate|ates|ated|ating)|train(?:s|ed|ing)?|hir(?:e|es|ed|ing)|mentor(?:s|ed|ing)?|coordinat(?:e|es|ed|ing)|creat(?:e|es|ed|ing)|implement(?:s|ed|ing)?|analy(?:ze|zes|zed|zing|se|ses|sed|sing)|test(?:s|ed|ing)?|maintain(?:s|ed|ing)?|support(?:s|ed|ing)?)\b/i;
+const MEASURE = /\b(?:by|from)\s*$/i;
+// A clause boundary is sentence punctuation, a newline, or a comma that is not
+// inside a number ("2,000").
+const CLAUSE_BOUNDARY = /(?<!\d)[.;!?,\n](?!\d)/g;
+function clauseBefore(text, index) {
+  let start = 0;
+  for (const match of text.matchAll(CLAUSE_BOUNDARY)) { if (match.index < index) start = match.index + 1; else break; }
+  return text.slice(start, index);
+}
+// The clause after the number, starting after its digits and ending at the next number, so a terminator right after
+// it ends the clause. A comma before a relative clause ("25 engineers, whom I
+// managed") does not end it. A fresh regex keeps the shared one's state untouched.
+function clauseAfter(text, index, length = 0) {
+  // Ownership words belong to the nearest number, so the clause also ends at the next one.
+  let rest = text.slice(index + length);
+  const next = rest.search(/\$?\d/);
+  if (next >= 0) rest = rest.slice(0, next);
+  for (const match of rest.matchAll(new RegExp(CLAUSE_BOUNDARY.source, 'g'))) {
+    if (match.index === 0) return '';
+    if (rest[match.index] === ',' && /^\s*(?:whom|who|which|whose|that)\b/i.test(rest.slice(match.index + 1))) continue;
+    return rest.slice(0, match.index);
+  }
+  return rest;
+}
+// Ownership after the number makes it the candidate's: "the 25 engineers I managed",
+// "reports to me", "grew under my leadership", "is my current team". Interest or
+// intent is not ownership: "appeals to me", "the team I want to lead", "i.e.".
+const OWNERSHIP_VERB = '(?:led|lead|manag(?:e|ed|ing)|built|build|ran|run|own(?:ed)?|oversaw|oversee|direct(?:ed)?|head(?:ed)?|grew|grow(?:ing)?|scal(?:ed)?|hir(?:ed)?|mentor(?:ed)?|supervis(?:ed)?|coach(?:ed)?|inherit(?:ed)?|launch(?:ed)?)';
+const CANDIDATE_AFTER = new RegExp(
+  `\\b(?:i|we)\\s+(?:['’]?(?:ve|d|m|ll)\\s+)?(?:have\\s+|had\\s+)?${OWNERSHIP_VERB}\\b`
+  + '|\\b(?:report(?:s|ed|ing)?|answer(?:s|ed|ing)?|work(?:s|ed|ing)?|belong(?:s|ed)?)\\s+(?:to|for|under|into)\\s+(?:me|us|my|our)\\b'
+  + '|\\b(?:under|by)\\s+(?:me|us|my\\s+(?:leadership|direction|management|guidance|supervision|charge))\\b'
+  + '|\\b(?:is|are|was|were)\\s+(?:my|our)\\b(?:\\s+\\w+){0,2}\\s+(?:team|org|organization|department|group|reports?|people|staff)\\b', 'i');
+function lastEmployerRef(tail) {
+  let last = null;
+  for (const match of tail.matchAll(EMPLOYER_REF)) last = match;
+  return last;
+}
+// The employer starts the clause and no candidate subject or accomplishment governs it.
+function employerFactFrame(tail) {
+  return EMPLOYER_START.test(tail) && !CANDIDATE_SUBJECT.test(tail) && !CLAIM_VERB.test(tail);
+}
+// An application-intent frame: the role verb after the intent is not a claim about
+// the candidate's history.
+function intentFrame(tail) {
+  const intents = [...tail.matchAll(INTENT)];
+  const match = intents.at(-1);
+  if (!match) return false;
+  let rest = tail.slice(match.index + match[0].length);
+  rest = /\bto\s*$/i.test(match[0]) ? rest.replace(/^\s+[A-Za-z][A-Za-z'\u2019-]*\b/, '') : rest.replace(/^\s+to\s+[A-Za-z][A-Za-z'\u2019-]*\b/i, '');
+  return !CANDIDATE_SUBJECT.test(rest) && !CLAIM_VERB.test(rest) && !MEASURE.test(rest);
+}
+function employerAttributed(text, occurrence, postingNumbers) {
+  if (!postingNumbers.has(occurrence.value)) return false;
+  const tail = clauseBefore(text, occurrence.index);
+  const ref = lastEmployerRef(tail);
+  if (!ref) return false;
+  const between = tail.slice(ref.index + ref[0].length);
+  if ((between.match(/[A-Za-z0-9'\u2019.-]+/g) || []).length > 3) return false;
+  if (CANDIDATE_AFTER.test(clauseAfter(text, occurrence.index, occurrence.raw.length))) return false;
+  return employerFactFrame(tail) || intentFrame(tail);
+}
+
 // Rule-based signals for one claim against its own evidence quotes and all source text.
-export function claimSignals(text, quotes, sourceText) {
+export function claimSignals(text, quotes, sourceText, jobText = '') {
   const evidence = quotes.join('\n');
   const signals = [];
   const sourceNumbers = new Set(numbersIn(sourceText));
+  const postingNumbers = new Set(numbersIn(jobText));
   // A number near one in the claim's own evidence is rounding (stretched); otherwise invented.
   const evidenceNumbers = numbersIn(quotes.join('\n')).map(parseFloat).filter(Number.isFinite);
-  for (const n of numbersIn(text)) {
-    if (sourceNumbers.has(n)) continue;
+  const checked = new Set();
+  for (const occurrence of numberOccurrences(text)) {
+    const n = occurrence.value;
+    if (sourceNumbers.has(n) || employerAttributed(text, occurrence, postingNumbers) || checked.has(n)) continue;
+    checked.add(n);
     const value = parseFloat(n), near = evidenceNumbers.find(e => e && Math.abs(value - e) / e <= 0.25);
     const stated = near !== undefined && HEDGE.test(roundingContext(text, n));
     signals.push(stated ? { rating: 'stretched', code: 'number-rounded-stated', detail: `${n} is stated as rounding the evidence's ${near}` } : near !== undefined ? { rating: 'stretched', code: 'number-rounded', detail: `${n} rounds the evidence's ${near} without saying so` } : { rating: 'unsupported', code: 'number-not-in-sources', detail: `${n} is not in any source` });
@@ -84,7 +174,7 @@ const claimsOf = packet => [
 
 // The reviewer's ratings are matched to claims by id ("resume:0", "answer:2") or exact text;
 // cover-letter ratings arrive as their own claims.
-export function gradePacket(packet, sources, modelRatings = [], line = null) {
+export function gradePacket(packet, sources, modelRatings = [], line = null, { jobText = '' } = {}) {
   const sourceText = sources.map(s => s.text).join('\n');
   const clip = value => typeof value === 'string' ? value.slice(0, 1000) : '';
   const rated = Array.isArray(modelRatings) ? modelRatings.slice(0, 200).filter(r => r && RATINGS.includes(r.rating)).map(r => ({ id: clip(r.id), claim: clip(r.claim), rating: r.rating, kind: KINDS.includes(r.kind) ? r.kind : 'other', reason: clip(r.reason), suggestion: clip(r.suggestion) })) : [];
@@ -93,12 +183,19 @@ export function gradePacket(packet, sources, modelRatings = [], line = null) {
   for (const r of rated) if (/^cover/i.test(String(r.id || '')) && typeof r.claim === 'string' && lower(packet.coverLetter).includes(lower(r.claim).trim()))
     claims.push({ id: `cover:${claims.filter(c => c.part === 'cover').length}`, part: 'cover', label: 'Cover letter', text: r.claim, quotes: [] });
   // Numbers in the cover letter are checked even when the reviewer rates nothing there.
-  for (const n of numbersIn(packet.coverLetter)) if (!numbersIn(sourceText).includes(n) && !claims.some(c => c.part === 'cover' && numbersIn(c.text).includes(n)))
-    claims.push({ id: `cover:${claims.filter(c => c.part === 'cover').length}`, part: 'cover', label: 'Cover letter', text: sentenceWith(packet.coverLetter, n), quotes: [] });
+  // Each occurrence is judged where it sits: one employer fact does not exempt a
+  // second, candidate-owned use of the same number.
+  const sourceNumbers = new Set(numbersIn(sourceText)), postingNumbers = new Set(numbersIn(jobText));
+  for (const occurrence of numberOccurrences(packet.coverLetter)) {
+    if (sourceNumbers.has(occurrence.value) || employerAttributed(packet.coverLetter, occurrence, postingNumbers)) continue;
+    const text = sentenceAt(packet.coverLetter, occurrence.index);
+    if (claims.some(claim => claim.part === 'cover' && claim.text === text)) continue;
+    claims.push({ id: `cover:${claims.filter(c => c.part === 'cover').length}`, part: 'cover', label: 'Cover letter', text, quotes: [] });
+  }
 
   const results = claims.map(claim => {
     const model = fromModel(claim);
-    const signals = claimSignals(claim.text, claim.quotes, sourceText);
+    const signals = claimSignals(claim.text, claim.quotes, sourceText, jobText);
     // Inflation signals always count. Undersell signals count only without a model rating:
     // a skills list or a short answer may rightly leave a number out, which takes judgment.
     const candidates = [model?.rating || 'balanced', ...signals.filter(s => s.rating !== 'undersold' || !model).map(s => s.rating)];
@@ -118,8 +215,13 @@ export function currentCalibration(state, job) {
   return calibrationFor(state, job, summarize);
 }
 
-function sentenceWith(text, number) {
-  return (String(text).match(/[^.!?]+[.!?]?/g) || [String(text)]).find(s => numbersIn(s).includes(number))?.trim() || number;
+function sentenceAt(text, index) {
+  const value = String(text);
+  const before = value.slice(0, index);
+  const start = Math.max(before.lastIndexOf('.'), before.lastIndexOf('!'), before.lastIndexOf('?')) + 1;
+  const endInSentence = value.slice(index).search(/[.!?]/);
+  const end = endInSentence < 0 ? value.length : index + endInSentence + 1;
+  return value.slice(start, end).trim() || value;
 }
 
 // The band counts only claims outside the candidate's line; unsupported always counts.

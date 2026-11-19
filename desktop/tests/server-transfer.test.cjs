@@ -18,6 +18,8 @@ test('real desktop subprocess export/import backs up data, resets approvals and 
   const filename = path.join(root, 'transfer.json'); await exportFile(connection, filename);
   const data = JSON.parse(await fs.readFile(filename, 'utf8'));
   assert.equal(data.secret, undefined); assert.equal(JSON.stringify(data).includes('test-only-existing-machine-secret'), false);
+  // An import needs a candidate (workspace-import.mjs refuses an export with no name or resume).
+  data.profile = { ...data.profile, name: 'Test Candidate', resume: 'Fictional resume: Engineer at Example, 2020 to 2024.' };
   data.jobs = [{ id: 'test-job', company: 'Example', title: 'Engineer', approvedHash: 'old-hash', browserCheckpoint: { secret: true }, packet: { resume: [] }, stage: 'approved' }];
   data.secret = 'must-not-import'; data.tasks = [{ id: 'old-task', status: 'running' }];
   await fs.writeFile(filename, JSON.stringify(data));

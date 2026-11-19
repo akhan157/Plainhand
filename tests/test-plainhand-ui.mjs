@@ -4,6 +4,8 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
 import { createPlainhand } from '../plainhand-server.mjs';
+import { Workspace } from '../plainhand/store.mjs';
+import { AnswerBank } from '../plainhand/answer-bank.mjs';
 import { candidate, fixtureAgent, fixtureProviders } from '../plainhand/test-fixtures.mjs';
 import { fixtureApplicationBrowser } from '../plainhand/test-browser-fixture.mjs';
 
@@ -13,12 +15,23 @@ await mkdir(shots, { recursive: true });
 console.log(`Browser evidence: ${shots}`);
 const ats = fixtureApplicationBrowser({ gated: true });
 const app = await createPlainhand({ root, providers: fixtureProviders, browser: ats.application, workflowOptions: {
-  agent: (provider, instruction, data, options) => { options?.onUsage?.({ inputTokens: 120, outputTokens: 35, cacheReadTokens: 80, cacheWriteTokens: 0, reportedUsd: 0.001, models: ['synthetic-test-model'] }); return fixtureAgent(provider, instruction, data); },
+  agent: (provider, instruction, data, options) => {
+    options?.onUsage?.({ inputTokens: 120, outputTokens: 35, cacheReadTokens: 80, cacheWriteTokens: 0, reportedUsd: 0.001, models: ['synthetic-test-model'] });
+    const result = fixtureAgent(provider, instruction, data);
+    // One sourced role heading, as the master task returns it: the candidate must see it before approving.
+    if (instruction.includes("Write the candidate's master resume") && result.resume?.length > 1) {
+      result.resume = result.resume.map((entry, i) => i === 1 ? { ...entry, heading: { org: 'Example University', title: 'B.S. Mechanical Engineering', location: '', dates: '2027' } } : entry);
+    }
+    return result;
+  },
   verifier: async job => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: 'Graduate engineering design and testing role. '.repeat(15), checkedAt: new Date().toISOString(), reason: 'Synthetic test browser snapshot.' }),
   scanner: async () => [{ title: 'Graduate Engineer', company: 'Test Company', location: 'Boston', url: 'https://jobs.lever.co/test/123' }],
 } });
 await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${app.server.address().port}`;
+// One held reusable answer, so the settings list shows the review state the candidate
+// must resolve and the re-approve control that clears it.
+await new AnswerBank(new Workspace(root)).add({ question: 'Describe a hands-on project', answer: 'I designed and tested a lightweight chassis.', evidence: [{ sourceId: 'cv', quote: 'Designed and tested a lightweight chassis' }], status: 'needs-review', verifiedAt: null, needsReview: true });
 let browser;
 const errors = [];
 const navLink = (page, name) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
@@ -58,6 +71,13 @@ try {
   await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light', 'Explicit choice overrides system preference.');
   await navLink(page, 'Workspace').click();
+  await page.getByRole('heading', { name: 'Reusable answers', exact: true }).waitFor();
+  await shot(page, '12-answer-needs-review.png');
+  assert.equal(await page.getByText('Needs review', { exact: true }).count(), 1, 'a held answer says it needs review');
+  await page.getByRole('button', { name: 'Re-approve answer: Describe a hands-on project' }).click();
+  await page.getByRole('status').filter({ hasText: 'Reusable answer approved again.' }).waitFor();
+  await page.getByText('Needs review', { exact: true }).waitFor({ state: 'detached' });
+  assert.equal(await page.getByLabel('Color theme', { exact: true }).count(), 1);
   await page.getByLabel('Color theme', { exact: true }).selectOption('system');
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
   await page.emulateMedia({ colorScheme: 'light' });
@@ -75,7 +95,7 @@ try {
   await page.evaluate(() => window.plainhandTheme.set('light'));
   await shot(page, '02-overview-demo.png');
   await page.evaluate(() => window.plainhandTheme.set('dark'));
-  await page.getByRole('button', { name: 'Mechanical Engineer, New Graduate', exact: true }).click();
+  await page.getByRole('button', { name: 'Financial Analyst, Rotational Program', exact: true }).click();
   await page.getByRole('tab', { name: 'Packet', exact: true }).click();
   await page.getByRole('heading', { name: 'Resume preview', exact: true }).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Resume PDF' }).count(), 0, 'The sample workspace offers no real documents.');
@@ -99,6 +119,8 @@ try {
   await navLink(page, 'Profile & brain').click();
   const storyStep = page.getByRole('button', { name: /^\d Tell your story/ });
   if (await storyStep.getAttribute('aria-expanded') !== 'true') await storyStep.click();
+  await page.getByRole('textbox', { name: 'Your message' }).waitFor();
+  assert.equal(await page.locator('[aria-label="Profile interview"] .message.streaming').count(), 0, 'No "Plainhand is replying" bubble while nothing is running.');
   await page.getByRole('textbox', { name: 'Your message' }).fill('I personally designed the chassis and ran the physical tests.');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await app.workflow.queue;
@@ -109,6 +131,33 @@ try {
   await strength.getByText(/1 of 1 summary approved/).waitFor();
   assert.ok(await strength.getByText(/in your words/).count(), 'Profile strength counts the candidate’s own statements.');
   await shot(page, '04-profile.png');
+  // The master resume shows every heading the drafter receives, before the candidate approves it.
+  const masterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  // E2E finding 1: a failed master-resume task is shown on its card, not only in Activity.
+  await app.workspace.mutate(state => { state.tasks.unshift({ id: 'failed-master', kind: 'standard', jobId: null, input: {}, status: 'failed', message: 'The master resume contains a claim without an exact source reference.', createdAt: new Date().toISOString() }); });
+  await page.reload();
+  await navLink(page, 'Profile & brain').click();
+  if (await masterStep.getAttribute('aria-expanded') !== 'true') await masterStep.click();
+  const masterFailed = page.getByText('Your master resume did not finish');
+  await masterFailed.waitFor();
+  assert.ok(await page.getByText(/claim without an exact source reference/).count(), 'The failure message is on the master card.');
+  await page.getByRole('button', { name: 'Write my master resume' }).click();
+  await page.getByRole('button', { name: 'Approve my master resume' }).waitFor({ timeout: 30000 });
+  assert.equal(await masterFailed.count(), 0, 'A later successful run clears the failure notice.');
+  const master = page.locator('article[aria-label="Master resume"]');
+  await master.locator('.doc-role', { hasText: 'Example University' }).waitFor();
+  assert.match(await master.locator('.doc-role').first().innerText(), /Example University[\s\S]*B\.S\. Mechanical Engineering[\s\S]*2027/, 'the heading used by tailoring is visible before approval');
+  await page.evaluate(() => window.plainhandTheme.set('light'));
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  await shot(page, '04b-master-heading-light.png');
+  await page.evaluate(() => window.plainhandTheme.set('dark'));
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+  await shot(page, '04c-master-heading-dark.png');
+  await page.evaluate(() => window.plainhandTheme.set('light'));
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  await page.getByRole('button', { name: 'Approve my master resume' }).click();
+  await page.getByRole('status').filter({ hasText: 'Master resume approved' }).waitFor();
+  await page.getByRole('button', { name: 'Approve my master resume' }).waitFor({ state: 'detached' });
   await navLink(page, 'Jobs').click();
   await page.getByRole('button', { name: 'Add a company board', exact: true }).click();
   await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Test Company');
@@ -169,6 +218,15 @@ try {
   assert.equal(await ats.page.evaluate(() => window.submissionCount), 0, 'Automation never submitted the fixture form.');
   await ats.page.screenshot({ path: path.join(shots, '12-filled-employer-fixture.png'), fullPage: true });
   await shot(page, '13-reviewed-form-dark.png');
+  // The manual kit is always one click away: approved documents and answers to copy.
+  await page.getByRole('button', { name: 'Apply by hand instead', exact: true }).click();
+  await page.getByRole('heading', { name: 'Apply by hand', exact: true }).waitFor();
+  await panel(page).locator('section[aria-labelledby="ap-manual"]').getByRole('link', { name: 'Resume PDF', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Copy cover letter', exact: true }).waitFor();
+  await panel(page).locator('section[aria-labelledby="ap-manual"]').getByRole('button', { name: 'Save kit files', exact: true }).click();
+  await page.getByRole('status').filter({ hasText: 'Application kit saved to output/manual-kit/' }).waitFor();
+  await page.getByRole('heading', { name: 'Apply by hand', exact: true }).scrollIntoViewIfNeeded();
+  await shot(page, '13b-manual-kit.png');
   await page.getByRole('button', { name: 'Take over the browser', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'The browser is yours.' }).waitFor();
   assert.equal(await ats.page.evaluate(() => window.submissionCount), 0);
@@ -193,9 +251,11 @@ try {
   await page.getByRole('button', { name: 'Add interview round', exact: true }).click();
   await page.getByRole('textbox', { name: 'Stage', exact: true }).fill('Recruiter screen');
   await page.getByLabel('Date', { exact: true }).fill(interviewDate);
+  await page.getByLabel('Time (optional)', { exact: true }).fill('09:15');
   await page.getByRole('textbox', { name: 'Interviewer', exact: true }).fill('Dana Lee');
   await page.getByRole('button', { name: 'Save interview round', exact: true }).click();
   await panel(page).locator('.record-list strong', { hasText: 'Recruiter screen' }).locator(`time[datetime="${interviewDate}"]`).waitFor();
+  assert.match(await panel(page).locator('.record-list strong', { hasText: 'Recruiter screen' }).innerText(), /09:15/, 'the saved interview time is visible');
   await page.getByRole('button', { name: 'Add contact', exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Dana Lee');
   await page.getByRole('textbox', { name: 'Their role', exact: true }).fill('Technical recruiter');
@@ -208,10 +268,115 @@ try {
   await shot(page, '06c-application-record.png');
   assert.match(await readFile(path.join(root, 'data/applications.md'), 'utf8'), new RegExp(`next: Send a thank-you note to the recruiter by ${dueDate}`));
   assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Applied', 'Recording an interview does not change the status.');
+  // A row that only exists in applications.md: no matching app job, and the app
+  // must never turn it into one, offer a stage, or write it back.
+  const trackerPath = path.join(root, 'data/applications.md');
+  const legacyLine = '| 42 | 2026-10-01 | Arcwell Energy | Manufacturing Engineer | 3.8/5 | Evaluated | — | — | legacy row |';
+  await writeFile(trackerPath, (await readFile(trackerPath, 'utf8')).trimEnd() + '\n' + legacyLine + '\n');
   await page.getByRole('button', { name: 'Close panel' }).click();
   const followUp = page.locator('.followups li', { hasText: 'Send a thank-you note to the recruiter' });
   await followUp.locator(`time[datetime="${dueDate}"]`).waitFor();
   assert.match(await followUp.innerText(), /Send a thank-you note to the recruiter · due/);
+  const people = page.locator('.people li', { hasText: 'Dana Lee' });
+  assert.equal(await people.count(), 1, 'Every recorded contact appears once on the People card.');
+  assert.match(await people.innerText(), /Technical recruiter/);
+  assert.match(await people.innerText(), /Test Company/);
+  const peopleGroup = page.locator('.people-group').filter({ has: page.getByRole('heading', { name: /Test Company/ }) });
+  assert.equal(await peopleGroup.count(), 1, 'contacts roll up under their company');
+  assert.match(await peopleGroup.locator('.people-company .board-count').innerText(), /^1$/);
+  const csvDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export CSV', exact: true }).click();
+  const csvFile = await csvDownload;
+  assert.equal(csvFile.suggestedFilename(), 'plainhand-applications.csv');
+  const csvText = await readFile(await csvFile.path(), 'utf8');
+  assert.ok(csvText.startsWith('\uFEFF'), 'The CSV keeps its byte-order mark for Excel.');
+  assert.match(csvText, /Company,Role,Status,Fit,Next action,Due,Updated,Posting URL,Report/);
+  assert.match(csvText, /Test Company,Graduate Engineer,Applied,4\.\d,Send a thank-you note to the recruiter/);
+  assert.match(csvText, /Arcwell Energy,Manufacturing Engineer/, 'a tracker-only row is exported');
+  const icsDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Deadlines to calendar', exact: true }).click();
+  const icsFile = await icsDownload;
+  assert.equal(icsFile.suggestedFilename(), 'plainhand-calendar.ics');
+  const icsText = await readFile(await icsFile.path(), 'utf8');
+  assert.match(icsText, /^BEGIN:VCALENDAR\r\n/);
+  assert.match(icsText, new RegExp(`DTSTART;VALUE=DATE:${dueDate.replace(/-/g, '')}`));
+  assert.match(icsText, /SUMMARY:Send a thank-you note to the recruiter/);
+  assert.doesNotMatch(icsText, /Recruiter screen/, 'a completed interview round is not a deadline');
+  // The tracker row was written after this page loaded its state, so re-read it
+  // before checking the views. The download above already read the file fresh.
+  await page.reload();
+  await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'Board', exact: true }).click();
+  const column = name => page.locator('.board-column').filter({ has: page.getByRole('heading', { name, exact: true }) });
+  const appliedColumn = column('Applied');
+  await appliedColumn.locator('.board-card', { hasText: 'Graduate Engineer' }).waitFor();
+  assert.equal(await column('Interview').locator('.board-card').count(), 0);
+  await shot(page, '06d-board.png');
+  const trackerCard = page.locator('section.card').filter({ has: page.locator('#tracker-title') });
+  const trackerSubtitle = trackerCard.locator('.card-title p');
+  const legacySection = page.locator('section.board-legacy');
+  await legacySection.waitFor();
+  assert.match(await trackerSubtitle.innerText(), /1 from your existing tracker/);
+  assert.match(await legacySection.innerText(), /Arcwell Energy/);
+  assert.match(await legacySection.innerText(), /Manufacturing Engineer/);
+  assert.match(await legacySection.innerText(), /Existing tracker/);
+  assert.equal(await legacySection.locator('select, button, a, [draggable="true"]').count(), 0, 'tracker-only rows are read-only in the board');
+  assert.deepEqual(await page.locator('.board-column-head h3').allTextContents(), ['Evaluated', 'Apply', 'Applied', 'Responded', 'Interview', 'Offer', 'Rejected', 'Discarded', 'Skip'], 'the board keeps the canonical states only');
+  const columnCounts = (await page.locator('.board-column .board-count').allInnerTexts()).reduce((sum, value) => sum + Number(value), 0);
+  assert.equal(columnCounts, 1, 'a tracker-only row never joins a stage column');
+  await page.evaluate(() => window.plainhandTheme.set('light'));
+  await shot(page, '06d-board-legacy-light.png');
+  await page.evaluate(() => window.plainhandTheme.set('dark'));
+  const search = page.locator('#app-search');
+  await search.fill('arcwell');
+  await legacySection.waitFor();
+  assert.equal(await page.locator('.board-card').count(), 0, 'search filters the app jobs');
+  assert.match(await trackerSubtitle.innerText(), /0 evaluated roles/);
+  assert.match(await trackerSubtitle.innerText(), /1 from your existing tracker/);
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 1, 'the table applies the same search rule to tracker-only rows');
+  assert.match(await page.locator('table.tracker tbody tr').innerText(), /Arcwell Energy/);
+  await search.fill('');
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 2);
+  await search.fill('zzzz-no-such-role');
+  await page.getByText('Your search is taking shape.').waitFor();
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 0);
+  assert.equal((await trackerSubtitle.innerText()).trim(), '0 evaluated roles', 'the count matches what is on screen');
+  await search.fill('');
+  await page.getByRole('tab', { name: 'Board', exact: true }).click();
+  await legacySection.waitFor();
+  // Chromium's pointer-driven drag does not carry the dragstart data transfer
+  // reliably, so dispatch the same events the pointer produces, with a real
+  // DataTransfer, and let the app's own handlers do the work.
+  const dragTo = async (card, target) => {
+    const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+    await card.dispatchEvent('dragstart', { dataTransfer });
+    await target.dispatchEvent('dragover', { dataTransfer });
+    await target.dispatchEvent('drop', { dataTransfer });
+    await card.dispatchEvent('dragend', { dataTransfer });
+  };
+  await dragTo(appliedColumn.locator('.board-card', { hasText: 'Graduate Engineer' }), column('Interview'));
+  await page.getByRole('status').filter({ hasText: 'Moved to Interview.' }).waitFor();
+  await column('Interview').locator('.board-card', { hasText: 'Graduate Engineer' }).waitFor();
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Interview', 'Dragging a card writes the stage.');
+  await dragTo(column('Interview').locator('.board-card', { hasText: 'Graduate Engineer' }), appliedColumn);
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor();
+  await page.getByRole('button', { name: 'Not yet' }).click();
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor({ state: 'detached' });
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Interview', 'Dropping into Applied only asks; it changes nothing until you confirm.');
+  // The same card's stage menu is the keyboard path into Applied.
+  const stageSelect = page.getByRole('combobox', { name: 'Status for Test Company Graduate Engineer', exact: true });
+  await stageSelect.selectOption('Apply');
+  await page.getByRole('status').filter({ hasText: 'Tracker updated.' }).waitFor();
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Apply', 'the stage menu writes a non-Applied stage');
+  await stageSelect.focus();
+  await page.keyboard.press('ArrowDown'); // Apply -> Applied
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor();
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Apply', 'the keyboard path into Applied changes nothing until confirmation');
+  await page.getByRole('button', { name: 'Not yet' }).click();
+  await page.getByRole('dialog', { name: 'Confirm your submission' }).waitFor({ state: 'detached' });
+  assert.equal((await app.workspace.load()).jobs.find(j => j.title === 'Graduate Engineer').status, 'Apply', 'declining the keyboard confirmation keeps the recorded stage');
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await navLink(page, 'AI usage').click();
   await page.getByRole('heading', { name: 'Recorded usage', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'By application', exact: true }).waitFor();
@@ -229,6 +394,23 @@ try {
   await page.getByRole('heading', { name: 'Profile & brain', exact: true }).waitFor();
   await shot(page, '08-mobile-profile.png');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  const mobileMasterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  if (await mobileMasterStep.getAttribute('aria-expanded') !== 'true') await mobileMasterStep.click();
+  const mobileMaster = page.locator('article[aria-label="Master resume"]');
+  await mobileMaster.locator('.doc-role', { hasText: 'Example University' }).waitFor();
+  await mobileMaster.scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'the approved master headings fit the phone viewport');
+  await shot(page, '08b-master-heading-mobile.png');
+  await page.goto(base + '#applications');
+  await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'Board', exact: true }).click();
+  const mobileLegacy = page.locator('section.board-legacy');
+  await mobileLegacy.waitFor();
+  assert.match(await mobileLegacy.innerText(), /Arcwell Energy/);
+  assert.ok((await mobileLegacy.boundingBox()).width <= 390, 'the read-only tracker section fits the phone viewport');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'the stage columns scroll inside the board on mobile');
+  await shot(page, '06e-board-legacy-mobile.png');
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await page.goto(base + '#applications');
   await page.getByRole('button', { name: 'Graduate Engineer', exact: true }).click();
   await page.getByRole('dialog', { name: 'Graduate Engineer at Test Company' }).getByRole('tab', { name: 'Record', exact: true }).click();
@@ -275,11 +457,27 @@ try {
   assert.equal(await privatePage.locator('html').getAttribute('data-theme'), 'light', 'Theme remains usable when browser storage is blocked.');
   await privateContext.close();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+  // Facts that disagree: two factual file sources put different team sizes on the same
+  // programme. The card shows both exact quotes and the candidate resolves it; the
+  // conflict must disappear from the live state, not stay as a dismissed husk.
+  await app.workspace.write('modes/_profile.md', '# Candidate narrative\n\nI coordinated 3 contractors on the chassis programme.\n');
+  await app.workspace.write('interview-prep/story-bank.md', 'STAR: I led a team of 5 engineers on the chassis programme.\n');
+  await page.goto(base + '#profile');
+  await page.getByRole('heading', { name: 'Facts that disagree', exact: true }).waitFor();
+  const conflictCard = page.locator('section[aria-labelledby="conflicts-title"]');
+  assert.equal(await conflictCard.locator('blockquote.conflict-quote').count(), 2, 'the card lists both quotes');
+  assert.match(await conflictCard.innerText(), /3 contractors/);
+  assert.match(await conflictCard.innerText(), /5 engineers/);
+  assert.equal(await conflictCard.getByRole('button', { name: 'Edit a source', exact: true }).count(), 1);
+  await conflictCard.getByRole('button', { name: /Record that .*5 engineers.* is right/ }).click();
+  await page.getByRole('status').filter({ hasText: 'Recorded which source is right.' }).waitFor();
+  await page.getByRole('heading', { name: 'Facts that disagree', exact: true }).waitFor({ state: 'detached' });
+  assert.equal((await app.workspace.load()).conflictReview.decisions.length, 1);
   await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
   await shot(page, '14-mobile-profile-light.png');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.deepEqual(errors, [], 'No browser or CSP errors');
-  await writeFile(path.join(shots, 'workflow-proof.json'), JSON.stringify({ checkedAt: new Date().toISOString(), theme: 'light/dark/system, preference persistence, OS change, cross-tab sync, blocked storage, unsaved form preservation, dark secondary text AA contrast', audited, workflow: ['profile persisted', 'candidate interview reviewed', 'source discovery', 'evaluation', 'role selected', 'real PDF downloaded', 'packet approved', 'form inspected', 'evidence-backed answer generated', 'real resume uploaded', 'sensitive answers left blank', 'browser handed to candidate', 'candidate confirmation simulated', 'tracker persisted'], automatedSubmissions: 0, model: 'explicit synthetic fixture', employer: 'explicit local browser fixture', browserErrors: errors }, null, 2));
+  await writeFile(path.join(shots, 'workflow-proof.json'), JSON.stringify({ checkedAt: new Date().toISOString(), theme: 'light/dark/system, preference persistence, OS change, cross-tab sync, blocked storage, unsaved form preservation, dark secondary text AA contrast', audited, workflow: ['profile persisted', 'candidate interview reviewed', 'source discovery', 'evaluation', 'role selected', 'real PDF downloaded', 'packet approved', 'form inspected', 'evidence-backed answer generated', 'real resume uploaded', 'sensitive answers left blank', 'browser handed to candidate', 'candidate confirmation simulated', 'conflict card shown with both quotes and resolved', 'tracker persisted'], automatedSubmissions: 0, model: 'explicit synthetic fixture', employer: 'explicit local browser fixture', browserErrors: errors }, null, 2));
   console.log('Plainhand full browser workflow passed: themes, persistence, interview, discovery, evaluation, real PDFs/downloads, approval, real browser form filling/upload, handoff, confirmed tracking, and mobile layouts.');
   console.log(`Screenshots: ${shots}`);
 } catch (error) {

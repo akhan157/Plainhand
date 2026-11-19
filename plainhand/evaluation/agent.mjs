@@ -12,7 +12,8 @@ import {
 import { HUMANIZE_INSTRUCTION } from '../humanize.mjs';
 import { NAVIGATION_INSTRUCTION } from '../browser-driver.mjs';
 import { fixtureAgent } from '../test-fixtures.mjs';
-import { absentClaimsIn } from './corpus.mjs';
+import { captures, absentClaimsIn } from './corpus.mjs';
+import { personaRoles } from './roles.mjs';
 
 const numberTokens = text => (String(text || '').match(/\d[\d.,]*%?/g) || []);
 
@@ -35,48 +36,98 @@ function fallbackEvidence(context, persona) {
     const quote = String(source.text).split(/\n/).map(line => line.trim()).find(line => line.length >= 8 && line.length <= 300);
     if (quote) return [{ sourceId: source.id, quote }];
   }
-  return [{ sourceId: 'cv', quote: persona.degreeEvidence }];
+  return [{ sourceId: 'cv', quote: persona.educationEvidence }];
 }
 
 function evidenceFor(persona, fact, context) {
   return quoteEvidence(fact.text, context) || fallbackEvidence(context, persona);
 }
 
-function factSection(fact) {
-  if (['tools', 'sql'].includes(fact.id)) return 'Skills';
-  if (['fsae', 'app', 'dashboard', 'design-system', 'editorial', 'scheduling'].includes(fact.id)) return 'Projects';
-  return 'Experience';
+// Each persona fact names its own resume section (Skills, Projects, Licenses &
+// Certifications ...); anything unnamed is Experience. No field is assumed.
+const factSection = fact => fact.section || 'Experience';
+
+// The persona's master roles, and which role each available fact came from: a fact
+// belongs to the role whose master lines state it. A fact under no role is a section
+// line (certifications, education) and stays outside the role groups.
+function masterRoles(persona, facts) {
+  const roles = personaRoles(persona).map(role => ({ role, facts: [] }));
+  const loose = [];
+  for (const fact of facts) {
+    const entry = roles.find(item => item.role.body.some(line => captures(fact.text, line)));
+    (entry ? entry.facts : loose).push(fact);
+  }
+  return { roles: roles.filter(item => item.facts.length), loose };
 }
 
-function resumeEntries(persona, job, context, facts) {
-  const required = job.requiredFactIds.map(id => facts.find(f => f.id === id)).filter(Boolean);
-  const rest = facts.filter(f => !required.includes(f));
-  const chosen = [...required, ...rest].slice(0, 5);
-  return chosen.map(fact => ({
-    section: factSection(fact),
-    heading: fact.id === 'pumps' || fact.id === 'ta' ? { org: persona.employer, title: persona.title, location: persona.profile.location.split(',')[0], dates: persona.dates } : null,
-    text: fact.text,
-    evidence: evidenceFor(persona, fact, context),
-  }));
+const headingOf = role => ({ org: role.org, title: role.title, location: '', dates: role.dates });
+
+// Dropping a role leaves an unexplained gap when the nearest *kept* role on either
+// side of it in the record is more than a year away in the dates. Such a role is kept
+// with exactly one short line, as the product instructs. A role older than every kept
+// role is simply left off (that is not a gap), which is why the neighbours are found by
+// walking the persona's own role list outward instead of comparing start years.
+function bridgesGap(entry, all, kept) {
+  const sorted = [...all].sort((a, b) => b.role.start - a.role.start);
+  const at = sorted.indexOf(entry);
+  const above = sorted.slice(0, at).reverse().find(item => kept.includes(item)) || null;
+  const below = sorted.slice(at + 1).find(item => kept.includes(item)) || null;
+  const endOf = role => role.end ?? role.start;
+  if (above && above.role.start - endOf(entry.role) > 1) return true;
+  if (below && entry.role.start - endOf(below.role) > 1) return true;
+  return false;
 }
 
-function packetFor(persona, job, context) {
+// The candidate's own order (settings.roleOrder, handed to the packet as INPUT.roleOrder):
+// newest first, or the role that best matches the job first and the rest newest first.
+// A role's match is the number of the job's required facts it states, never a job's
+// expected outcome, so the fixture cannot be tuned to a scenario.
+function orderRoles(roles, requiredIds, roleOrder) {
+  const newestFirst = (a, b) => (b.role.start - a.role.start) || ((b.role.end ?? b.role.start) - (a.role.end ?? a.role.start));
+  const sorted = [...roles].sort(newestFirst);
+  if (roleOrder !== 'match') return sorted;
+  const requiredCount = item => item.facts.filter(fact => requiredIds.has(fact.id)).length;
+  const match = sorted.reduce((best, item) => requiredCount(item) > requiredCount(best) ? item : best, sorted[0]);
+  if (!requiredCount(match)) return sorted;
+  return [match, ...sorted.filter(item => item !== match)];
+}
+
+function roleEntries(persona, job, context, facts, roleOrder) {
+  const requiredIds = new Set(job.requiredFactIds || []);
+  const needed = new Set([...(job.requiredFactIds || []), ...(job.retainFactIds || [])]);
+  const { roles, loose } = masterRoles(persona, facts);
+  const hasNeeded = item => item.facts.some(fact => needed.has(fact.id));
+  const kept = roles.filter(hasNeeded);
+  // A candidate with no role holding a needed fact still has experience worth showing.
+  if (!kept.length && roles.length) kept.push(roles.reduce((newest, item) => item.role.start > newest.role.start ? item : newest, roles[0]));
+  for (const entry of roles) if (!kept.includes(entry) && bridgesGap(entry, roles, kept)) kept.push(entry);
+  const entries = [];
+  for (const entry of orderRoles(kept, requiredIds, roleOrder)) {
+    // A role kept only to explain the dates carries one short line, not its record.
+    const lines = hasNeeded(entry) ? [...entry.facts].sort((a, b) => Number(requiredIds.has(b.id)) - Number(requiredIds.has(a.id))) : entry.facts.slice(0, 1);
+    for (const fact of lines) entries.push({ section: 'Experience', heading: headingOf(entry.role), text: fact.text, evidence: evidenceFor(persona, fact, context) });
+  }
+  for (const fact of loose) entries.push({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) });
+  return entries;
+}
+
+function packetFor(persona, job, context, roleOrder) {
   const facts = availableFacts(persona, context);
   const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0] || null;
-  const educationEvidence = quoteEvidence(persona.degreeEvidence, context) || fallbackEvidence(context, persona);
+  const educationEvidence = quoteEvidence(persona.educationEvidence, context) || fallbackEvidence(context, persona);
   return {
     headline: `${persona.profile.roles.split(',')[0]} for ${job.title}`,
     resume: [
-      ...resumeEntries(persona, job, context, facts),
+      ...roleEntries(persona, job, context, facts, roleOrder),
       {
         section: 'Education',
         heading: null,
-        text: persona.degreeEvidence,
+        text: persona.educationEvidence,
         evidence: educationEvidence,
       },
     ],
     coverLetter: `I am applying for the ${job.title} role at ${job.company}.${persona.profile.story ? ' ' + persona.profile.story : ''}${fact ? ' ' + fact.text : ''}`,
-    answers: fact ? [{ question: 'Describe a relevant project.', answer: fact.text, evidence: evidenceFor(persona, fact, context) }] : [],
+    answers: fact ? [{ question: 'Describe a relevant accomplishment.', answer: fact.text, evidence: evidenceFor(persona, fact, context) }] : [],
     questions: [],
     suggestions: [],
   };
@@ -85,10 +136,10 @@ function packetFor(persona, job, context) {
 function standardFor(persona, context) {
   const facts = availableFacts(persona, context);
   const entries = facts.map(fact => ({ section: factSection(fact), heading: null, text: fact.text, evidence: evidenceFor(persona, fact, context) }));
-  entries.push({ section: 'Education', heading: null, text: persona.degreeEvidence, evidence: quoteEvidence(persona.degreeEvidence, context) || fallbackEvidence(context, persona) });
+  entries.push({ section: 'Education', heading: null, text: persona.educationEvidence, evidence: quoteEvidence(persona.educationEvidence, context) || fallbackEvidence(context, persona) });
   return {
     headline: persona.profile.roles,
-    resume: entries.slice(0, 8),
+    resume: entries,
     coverLetter: `I am a ${persona.profile.roles.split(',')[0]}.${persona.profile.story ? ' ' + persona.profile.story : ''}`,
     suggestions: [],
   };
@@ -145,18 +196,30 @@ function formSuggestions(persona, job, fields, context) {
         continue;
       }
     }
-    if (/degree/.test(label)) {
-      if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: quoteEvidence(persona.degreeEvidence, context) });
+    if (/degree|education/.test(label)) {
+      if (field.options?.some(option => option.value === persona.degree)) suggestions.push({ key: field.key, answer: persona.degree, evidence: quoteEvidence(persona.educationEvidence, context) });
+      continue;
+    }
+    if (/licen[cs]e|certification/.test(label)) {
+      const fact = facts.find(f => f.id === persona.credentialFact);
+      if (fact) suggestions.push({ key: field.key, answer: fact.text, evidence: evidenceFor(persona, fact, context) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
+      continue;
+    }
+    if (/years of experience/.test(label)) {
+      const option = field.options?.find(item => item.value === persona.experienceBand);
+      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.facts[0].text, context) || fallbackEvidence(context, persona) });
+      else if (field.required) questions.push({ key: field.key, question: field.label });
       continue;
     }
     if (/start|earliest/.test(label)) { questions.push({ key: field.key, question: 'What is your exact earliest start date?' }); continue; }
     if (/level|experience/.test(label)) {
       const option = field.options?.find(item => item.value === persona.level) || field.options?.find(item => /professional/i.test(item.label));
-      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.degreeEvidence, context) });
+      if (option) suggestions.push({ key: field.key, answer: option.value, evidence: quoteEvidence(persona.educationEvidence, context) });
       continue;
     }
     if (/employer|company/.test(label)) {
-      suggestions.push({ key: field.key, answer: persona.employer, evidence: quoteEvidence(persona.degreeEvidence, context) });
+      suggestions.push({ key: field.key, answer: persona.employer, evidence: quoteEvidence(persona.educationEvidence, context) });
       continue;
     }
     if (/project|achievement|describe|relevant|why|motivat/.test(label)) {
@@ -191,17 +254,33 @@ export function controlledAgent({ scenario, persona, job }) {
       const candidateCorpus = [persona.profile.resume, persona.profile.roles, ...facts.map(f => f.text)].join(' ').toLowerCase();
       const matchedTerms = (job.atsTerms || []).filter(term => candidateCorpus.includes(term.toLowerCase()));
       if ((job.atsTerms || []).length > 0 && matchedTerms.length === 0) {
+        // An honest Skip states no matches: the posting's requirements have nothing in
+        // the profile behind them, and the gaps name those requirements (scorer v2).
         return {
           score: 2.2,
           recommendation: 'Skip',
           summary: `The role requires ${job.atsTerms.join(', ')} experience not present in the available profile.`,
-          matches: [{ text: 'General background documented in the available profile.', evidence: fallbackEvidence(data.context, persona) }],
+          matches: [],
           gaps: [`No documented experience with ${job.atsTerms.join(', ')}.`],
           questions: [],
           legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
         };
       }
       const fact = job.requiredFactIds.map(id => facts.find(f => f.id === id)).find(Boolean) || facts[0];
+      // Partial evidence: the job needs a fact this persona does not have at all.
+      // Keyed on the fixture's own facts, never on the job's expected answer.
+      // Wiring only; the live tier measures whether a real model calls it borderline.
+      if (job.requiredFactIds.some(id => !persona.facts.some(f => f.id === id))) {
+        return {
+          score: 3.4,
+          recommendation: 'Investigate',
+          summary: `Part of what this ${job.title} role requires is not in the available profile.`,
+          matches: [{ text: fact ? `Documented ${job.atsTerms[0] || 'experience'} relevant to the role.` : 'Background documented in the available profile.', evidence: fact ? evidenceFor(persona, fact, data.context) : fallbackEvidence(data.context, persona) }],
+          gaps: ['A required part of the role is not documented in the available profile.'],
+          questions: [],
+          legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
+        };
+      }
       return {
         score: 4.6,
         recommendation: 'Apply',
@@ -212,7 +291,9 @@ export function controlledAgent({ scenario, persona, job }) {
         legitimacyNotes: ['Owned evaluation sandbox; no employer was contacted.'],
       };
     }
-    if (instruction === PACKET_INSTRUCTION) return packetFor(persona, job, data.context);
+    // The fixture follows the candidate's order setting, as the product's packet
+    // instruction does (INPUT.roleOrder), so the controlled gate measures the gate.
+    if (instruction === PACKET_INSTRUCTION) return packetFor(persona, job, data.context, data.roleOrder ?? scenario.roleOrder ?? 'recent');
     if (instruction === STANDARD_INSTRUCTION) return standardFor(persona, data.context);
     if (instruction === REVIEW_INSTRUCTION) return reviewBody(persona, data.packet || {}, data.context || { sources: [] });
     if (instruction === FORM_INSTRUCTION) return formSuggestions(persona, job, data.fields, data.context);
@@ -224,9 +305,9 @@ export function controlledAgent({ scenario, persona, job }) {
 }
 
 const PROFILE_QUESTIONS = [
-  'What project are you proudest of, and what did you do on it?',
-  'What did you do in your last job or internship?',
-  'Which tools or skills do you use most?',
+  'What project or piece of work are you proudest of, and what did you do on it?',
+  'What did you do in your last job, internship or training?',
+  'Which tools, skills or certifications do you use most?',
   'What kind of role are you looking for next?',
   'How would you like your writing to sound?',
   'Have you led or coordinated other people?',

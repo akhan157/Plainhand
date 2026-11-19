@@ -1,0 +1,530 @@
+{
+  "checkpoint": "2026-11-15",
+  "kind": "scope_review_and_p2_diagnostics",
+  "base_sha": "fb396422d49e3f76f4fed5beb710397950ffa973",
+  "author_tip": "93965287794589c9f05137ff34728e0b202dee97",
+  "author": "claude-pool/claude-sonnet-5-5 high",
+  "reviewer": "gpt-6.1-sol medium",
+  "commands": [
+    "node lib/doctor.mjs --json",
+    "node lib/update-system.mjs check",
+    "git status --short --branch",
+    "git branch -avv",
+    "git worktree list --porcelain",
+    "git log main..t3/competitor-workflow-improvements-1",
+    "git diff --stat main...t3/competitor-workflow-improvements-1",
+    "git diff --stat main...t3/competitor-workflow-improvements",
+    "git merge-base main t3/competitor-workflow-improvements-1",
+    "git merge-base main t3/competitor-workflow-improvements",
+    "git merge-base --is-ancestor t3/app-benchmark-testing-harness main",
+    "git merge-base --is-ancestor t3/eval-harness-lane1-corpus main",
+    "git merge-base --is-ancestor t3/eval-harness-lane2-upgrade main",
+    "git diff --check"
+  ],
+  "results": {
+    "doctor_missing": [
+      "cv.md",
+      "config/profile.yml",
+      "portals.yml"
+    ],
+    "update_check": "fork",
+    "three_eval_ancestor_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "product_tests": "not_run: documentation-only",
+    "product_branches_integrated": "tracking only; continuation remains unmerged",
+    "main_modified": false,
+    "push": false,
+    "external_evidence_directory": null,
+    "merged_tree_documentation_validation": "13/13 register IDs and not_run statuses match; required records exist; no host paths; git diff --check clean"
+  },
+  "register_counts": {
+    "PASS": 0,
+    "in_progress": 6,
+    "blocked": 0,
+    "not_run": 7,
+    "FAIL": 0
+  },
+  "failed_attempt": {
+    "provider": "opencode",
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "role": "read-only review",
+    "result": "Insufficient balance; no verdict"
+  },
+  "review_correction": "Documentation checker initially matched scope rows as acceptance rows; narrowed to U followed by two digits; original error was IndexError and created no register.",
+  "scope_merge_sha": "e7024bbb794dbadf8f1aeefe1fa64b2a259bc666",
+  "review_amendment_sha": "298d6fd5b23eea639643f4c277f1776b6e05dbed",
+  "p2": {
+    "author_tip": "b756eec9c564add3471bee8db574c916ef98769b",
+    "merge_sha": "de26e0a808056f074ec2f2c80cc5e2cd4b6011b1",
+    "disposition": "source inventory accepted with root corrections; no product PASS",
+    "reviewer": "gpt-6.1-sol medium",
+    "authors": [
+      "claude-pool/claude-sonnet-5-5 high (429 failure; partial draft preserved)",
+      "pi/deepseek/deepseek-flash thinking max (configured metered fallback)"
+    ]
+  },
+  "diagnostics": [
+    {
+      "path": "output/goal-review/scorer-counterexamples.json",
+      "sha256": "ecab16d35daddf33d7048f59d9440eaea95bf7f4fd95439010a42c27a8db26c6",
+      "target": "e4da45fa2d21ce1f5945ce11662a73afda03b53f",
+      "result": "posting-number false pass; numeric heading skipped; PDF metadata-only counterexample",
+      "scope": "direct synthetic scorePacket inputs; no model/browser/PDF render"
+    },
+    {
+      "path": "output/goal-review/import-key-loss.json",
+      "sha256": "6bd72f2100c387f8093b4d81d74b81ee8746745a48dd040626d5a59dca4e016c",
+      "target": "e4da45fa2d21ce1f5945ce11662a73afda03b53f",
+      "result": "five exported keys absent after direct importWorkspace",
+      "scope": "fictional temporary workspace removed after probe"
+    }
+  ],
+  "runtime": {
+    "container": "plainhand-goal-tracking-pg",
+    "state_verified": "stopped by root after merged-tree cloud/browser checks",
+    "loopback_port": 32769,
+    "owner": "root",
+    "cleanup": "stop exact container after tracking lane and root verification; do not touch other containers",
+    "cleanup_result": "docker stop plainhand-goal-tracking-pg exited 0; --rm container"
+  },
+  "tracking": {
+    "source": "867c32956a38788a3099b045b19be450fcd16a86",
+    "author": "e538b6aafbd8a260958086b160de7129983a241d",
+    "root_correction": "b385760846d5e66713d70269344d614fd58a484f",
+    "merge": "9ec623777e1c77157b975a1f92e07175babaa0f4",
+    "disposition": "accepted bounded tracking increment; U10 remains in_progress",
+    "commands": [
+      {
+        "command": "node --test --test-concurrency=2 tests/test-exports.mjs tests/test-web-modules.mjs tests/test-css.mjs",
+        "result": "16 pass, 0 fail, 0 skip"
+      },
+      {
+        "command": "PLAINHAND_TEST_DATABASE_URL=<dedicated-loopback-test-db> node --test --test-concurrency=2 tests/test-cloud-app.mjs",
+        "result": "18 pass, 0 fail, 0 skip"
+      },
+      {
+        "command": "TMPDIR=$PWD/output/goal-review/tracking-root/tmp PLAINHAND_UI_OUTPUT=$PWD/output/goal-review/tracking-root/shots node tests/test-plainhand-ui.mjs",
+        "result": "exit 0, browserErrors [], automatedSubmissions 0; synthetic agent and local fixture"
+      }
+    ],
+    "screenshots_inspected": [
+      {
+        "path": "output/goal-review/tracking-root/shots/06d-board.png",
+        "sha256": "6d28161420422f275b0fa8e64080d15c9d0f53e0b1e2f4da8dd5de4c41e65b91"
+      },
+      {
+        "path": "output/goal-review/tracking-root/shots/06d-board-legacy-light.png",
+        "sha256": "8d543313f7e446e1c29de71c393976b1a9e3cb8711b770b927af42544c8d3caa"
+      },
+      {
+        "path": "output/goal-review/tracking-root/shots/06e-board-legacy-mobile.png",
+        "sha256": "e98556ff7614475763d930e9c43572a5a4c022d8ba0dfd4f67948028356805a1"
+      },
+      {
+        "path": "output/goal-review/tracking-root/shots/workflow-proof.json",
+        "sha256": "2f3592c43e59fa3fd85566d9fbfd30cd23d5f3accc946b8110da891c4f67eeb8"
+      }
+    ],
+    "limitations": [
+      "Hosted browser not run; hosted download claims are HTTP-level only",
+      "Full test:plainhand and test:cloud suites not run",
+      "No live model quality or real employer submission claim"
+    ]
+  },
+  "controlled_wiring": {
+    "target": "8012a8315145f4162b843ae9dbb65096ef8eb85c",
+    "command": "node benchmarks/benchmark-eval.mjs --scenarios mech-lever,analyst-greenhouse,swe-ashby --concurrency 1 --out output/goal-review/controlled-wiring-8012a83",
+    "result": "exit 0; 3/3 controlled scenarios; 15 synthetic calls; 45837ms; matching DOM uploads; no sensitive fills, false-ready or readback mismatches",
+    "judge_probe": "loadEvidence + benchmark-judge main with injected negative-control judge: 6 calls, 36 invalid source quotes downgraded, 18 rubric excerpts flagged; calibration-template 21 null ratings",
+    "limitations": [
+      "All three portal shapes use synthetic Lever host; not separate ATS host evidence",
+      "No live model, independent semantic verdict, human rating or calibration",
+      "PDFs rendered by workflow then temporary workspaces removed; no retained standalone PDF visual/text fidelity evidence",
+      "Existing scorer false-pass defects remain; controlled scores do not close product rows"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/results.json",
+        "sha256": "c4a4a91f417f66661f7c63ec723485821bd41568814bc7285694ee709453dcc7"
+      },
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/wiring-proof.json",
+        "sha256": "c248d1822058e1ef3179601fb5488be0e0cd2b197aedac50d23116f7d78720f5"
+      },
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/judge.json",
+        "sha256": "7ba36bd02e924fba42beaee1157eb1949122de750e0b673839eee26d09b77597"
+      },
+      {
+        "path": "output/goal-review/controlled-wiring-8012a83/human-ratings.template.json",
+        "sha256": "082f191f2c6ab94336a32aceb3b1c94cb889a756cf1506507dbc7cee7301117e"
+      }
+    ]
+  },
+  "setup_memory_regressions": {
+    "target": "02145c8",
+    "commands": [
+      {
+        "command": "node --test --test-concurrency=2 tests/test-setup.mjs tests/test-workspace-import.mjs tests/test-brain-controls.mjs tests/test-writing-samples.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs",
+        "result": "18 pass, 0 fail, 0 skip; 5923.7ms"
+      },
+      {
+        "command": "npm run setup -- --check",
+        "result": "exit 0, this host Ready; Node 26.12.1, dependencies/Chromium/pdftotext/connector binaries found; no installs"
+      }
+    ],
+    "limits": [
+      "Existing import tests do not cover five lost state keys; direct failing probe remains authoritative",
+      "Not a fresh clone/machine install or end-to-end onboarding",
+      "No live model/provider-switch downstream quality claim"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/memory-transfer-regressions-02145c8.log",
+        "sha256": "29bb234538f83d81d4fdf483db24c50f41b963ba3b3a38817f78a734077fbb5f"
+      },
+      {
+        "path": "output/goal-review/setup-check-02145c8.log",
+        "sha256": "fe4a2a22884366fb84169fa1b53366166aa78737d52d3771dd77ae93853457a7"
+      }
+    ]
+  },
+  "memory_restart_probe": {
+    "target": "e0dd48f",
+    "result": {
+      "target": "e0dd48ff8af518230f252b225a3cb2c1857e9562",
+      "kind": "real app initialization across separate Node processes with fictional seeded memory; provider-setting switch only; no model calls or generated packet",
+      "processRestartMemoryEqual": true,
+      "providerSettingSwitchMemoryEqual": true,
+      "contextHashStable": true,
+      "excludedCompensationAbsent": true,
+      "approvedCorrectionAndBankPersist": true,
+      "answerBankInDraftContext": false,
+      "sourceIds": [
+        "profile",
+        "cv",
+        "interview",
+        "writing-samples"
+      ],
+      "limits": [
+        "No actual provider inference, voice judgment or later-packet correction reuse tested",
+        "Import losses, durable story editing/deletion and contradiction surfacing remain open"
+      ]
+    },
+    "artifacts": [
+      {
+        "path": "output/goal-review/probe-memory-restart.mjs",
+        "sha256": "046114ae975de8787ffe5044af97fe302b3dfeb505d1d9aea90a41d6a6f20eab"
+      },
+      {
+        "path": "output/goal-review/memory-restart-proof.json",
+        "sha256": "06729124ed79697817ec0b091c8d3aa2fc7ab77fdd5b6651e66675cceb91b8a7"
+      }
+    ],
+    "finding": "Answer bank is not a Workspace.context source (sourceIds profile/cv/interview/writing-samples); approved corrections persist but are not shown to be reused in later drafting. Durable-memory design b9652fc recommends keeping bank out of context and using exact-label reuse; root decision pending."
+  },
+  "continuation_integration": {
+    "source_tip": "5729bf65b5eb6dc714a7950063056355789ca7ca",
+    "root_reviewer": "Claude Opus 5.5 (author Pi DeepSeek)",
+    "root_correction": "claim-calibration: first-person subject or to/under/by me|us after a posting number in the same clause makes it a candidate claim (leak: \"The team of 12 reports to me today.\")",
+    "checks": [
+      "focused 7 files: 91 pass 0 fail (cloud-extension-api, standard, claim-calibration, claim-line, plainhand, field-policy, exports)",
+      "test-plainhand-ui real Chromium: 1/1 pass, exit 0, 40.4s",
+      "adversarial attribution probe 10/10 expected",
+      "test:plainhand 47 files: 455 pass 0 fail at f366946 (+review edits, no source change)",
+      "benchmark-calibration rules: exact 22/37, missed inflation 12, false alarms 0 — identical at 5729bf6 and f366946 — VACUOUS for the attribution rule: the bench passes no jobText, so employerAttributed never runs (independent review finding)",
+      "after review-driven revision: test:plainhand 457 pass 0 fail"
+    ],
+    "not_run": [
+      "full npm test",
+      "Postgres test:cloud",
+      "live providers",
+      "benchmark"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/continuation-root/shots/04b-master-heading-light.png",
+        "sha256": "b23a789638c79f94e46dc7fc63055612b166261e86e4c5377d7f934ff93e80eb"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/04c-master-heading-dark.png",
+        "sha256": "2e90018b9f8e6ad6242cb404dd295eef950d281ccd02ef259212f0203cc5fe78"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/08b-master-heading-mobile.png",
+        "sha256": "4fe059c2b613b5e59c0d29515c54ad000eda8aac57300d615bcd4a4ebc4c554c"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/12-filled-employer-fixture.png",
+        "sha256": "fbd57b9c3b511ded418343c8b34b068d7293f0caa921050ccffbc5451158652d"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/13b-manual-kit.png",
+        "sha256": "86e4d5daad73b73225d73c7b8e1f635d0379d69149c7c67795c77740a6ce44c3"
+      },
+      {
+        "path": "output/goal-review/continuation-root/shots/workflow-proof.json",
+        "sha256": "73be9861a0a69596d79075aa859f9bff8781cdcf169654a68f18b193eb8af485"
+      },
+      {
+        "path": "output/goal-review/continuation-merge-focused.log",
+        "sha256": "af6e0a7bc453a485c2993a1960529325989e332e5cd9f8413bf393cada468f48"
+      },
+      {
+        "path": "output/goal-review/continuation-merge-ui.log",
+        "sha256": "0709e6310b2cf619218ae7c5fbca2514d055831a235d381e5a7de1c84b422541"
+      },
+      {
+        "path": "output/goal-review/probe-attribution.mjs",
+        "sha256": "465b046860e18f4dee4c8f0c9e0bf0453b1ce3f264ed84de37c3d2abe87f1eeb"
+      },
+      {
+        "path": "output/goal-review/probe-attribution.json",
+        "sha256": "ecbf04cabdbabcede865100962e9de933186688dbf560ff5e13c27648bb4201d"
+      },
+      {
+        "path": "output/goal-review/f366946-test-plainhand.log",
+        "sha256": "83820043350abe95c79f62c1bebf21a377fe0a7e348c85d4568319cddf545c48"
+      },
+      {
+        "path": "output/goal-review/f366946-bench-calibration.log",
+        "sha256": "592b7d92548ab6bdc0ea4065b74d1072e47b2554b17b3d5433f1f7bfe3189d1b"
+      },
+      {
+        "path": "output/goal-review/calib-fix2-test-plainhand.log",
+        "sha256": "e2556a0ad6990cf5e22feae8917051cacfe62388eb5af9b6945bdf065eb5246d"
+      }
+    ],
+    "residual_leaks": [
+      "Your 25 engineers, a team I built from scratch, ship weekly. (non-relativizer appositive; needs ordered ownership frames, deferred)"
+    ],
+    "independent_review": {
+      "reviewer": "Pi deepseek/deepseek-flash, read-only, thread node ...ff0fb3b5",
+      "verdict": "reject (revise)",
+      "findings": [
+        "9 employer-interest sentences newly flagged (bare I/we, i.e., \"appeals to me\")",
+        "after-clause started at first digit so a sentence-final number absorbed the next sentence",
+        "5 leaks incl. \"whom I managed\", \"is my current team\", \"under my leadership\"",
+        "$2,000 test lost meaning (two signals, count assertion stayed green)",
+        "bench evidence vacuous"
+      ]
+    }
+  },
+  "memory_m2": {
+    "source_tip": "112beffe310f6500e0d3f4e212239067f8f5193f",
+    "author": "Pi deepseek/deepseek-flash",
+    "root_reviewer": "Claude Opus 5.5",
+    "root_finding": "Identity gate rejected any answer with an unsourced year, so availability answers (\"I can start in June 2026\") failed hasEvidence and aborted the whole prepare; \"hope to join ... at Northwind\" read as an employer claim.",
+    "root_correction": "Replaced with reviewer-validated rule: no word list; years before the current year must be sourced; dated title/employer frames checked through the current year. Tests now assert hasEvidence on laundering negatives and current-year availability positives.",
+    "checks": [
+      "gate + calibration files 31/31",
+      "test:plainhand + cloud-extension-api: 485 pass 0 fail",
+      "after revision: test:plainhand + cloud-extension-api 485 pass 0 fail"
+    ],
+    "not_run": [
+      "browser/UI",
+      "live models",
+      "hosted Postgres"
+    ],
+    "residuals": [
+      "undated title/employer claims left to reviewer",
+      "candidate-answer bank provenance until M4",
+      "a bare current-year date with no role frame (\"parental leave in 2026\") is not checked",
+      "existing false positives: salary-history years, \"since 2020\", career-start years not in sources"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/m2-merge-test-plainhand.log",
+        "sha256": "073fbfa2de76c9d89af8aa957e6269626e0c54d13c2f76194da7a16b0c26e641"
+      },
+      {
+        "path": "output/goal-review/m2-fix2-test-plainhand.log",
+        "sha256": "a0a70a26bc388e11e8eefd7ac6d9e69c3a692d51bce1f985279d41966602890d"
+      }
+    ],
+    "independent_review": {
+      "verdict": "reject",
+      "finding": "Sentence-level intent-word exemption laundered 9/12 planted historical identity claims (e.g. \"I can confirm I was Director at Northwind in 2019\"); tests never crossed the exemption boundary."
+    }
+  },
+  "scorer_integration": {
+    "source_tip": "c2c8323af966e1d1697e1b383d3368b701e5bb4e",
+    "author": "Pi deepseek/deepseek-flash",
+    "root_reviewer": "Claude Opus 5.5",
+    "author_evidence": "numeric suite on pre-fix score.mjs 2/40 pass; mutation (pooled posting tokens) 20/40 fail; real Chromium render pdfjs+poppler passed; 101 bytes + %PDF- no longer passes",
+    "root_review": "pass expression only stricter (magic-byte predicate removed, numeric checks added); only removed test line is the fake PDF input; package.json conflict resolved as union",
+    "root_correction": "Author left profile-effect-analyst-built failing on \"six years\" vs sourced \"2020 to 2026\". Root judged it a scorer false positive: tenure derived from a sourced year range now supports N or N+1 only when followed by \"years\"; \"nine years\" and \"six teams\" still unsupported. Not independently reviewed.",
+    "checks": [
+      "test:plainhand + cloud-extension-api: 539 pass 0 fail",
+      "controlled benchmark --concurrency 2: 44/46, 2 expected failures, 0 unexpected"
+    ],
+    "not_run": [
+      "live models",
+      "judge",
+      "hosted"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/scorer-merge-test-plainhand.log",
+        "sha256": "75fb6c2a85ba5276c38377127f67701165b1cca3098097b59072686e66bb5478"
+      },
+      {
+        "path": "output/goal-review/scorer-merge-controlled.log",
+        "sha256": "fea6e52969e2633d259dbefe420cb7b7cb460adc7e26ce556ea2fe52fa37de4d"
+      },
+      {
+        "path": "output/goal-review/scorer-merge-controlled-SUMMARY.md",
+        "sha256": "7f3f892ab28d44c2486e1494ea5d204a53c0b0f42e192529ee1fe6a4d3b310bc"
+      }
+    ]
+  },
+  "memory_m1": {
+    "source_tip": "1fdfcb7878f77b6c10fc49de063863868dadd570",
+    "author": "Pi deepseek/deepseek-flash",
+    "root_reviewer": "Claude Opus 5.5",
+    "author_evidence": "falsifiers on pre-fix product 2/11 pass, after 11/11; full list 473/473",
+    "root_review": "no authority carried: standard/job approvals reset, autonomy enabled:false, connectionChecks/browserCheckpoint dropped; package.json conflict resolved as union",
+    "root_probe": "independent export->import on two real app instances: writingSamples, claimLine, standard draft (unapproved), resumeFormat, settings (autonomy off) all present; no connectionChecks; no secret-named export keys. Original five-key loss closed.",
+    "checks": [
+      "test:plainhand + cloud-extension-api: 548 pass 0 fail"
+    ],
+    "not_run": [
+      "hosted Postgres transfer tests",
+      "browser/UI (held answer lacks needs-review badge in settings UI)",
+      "real-model"
+    ],
+    "artifacts": [
+      {
+        "path": "output/goal-review/m1-merge-test-plainhand.log",
+        "sha256": "8c2af60909a57869825a9ba28df90b9ee666cdf9a10f992441d8b0006b251201"
+      },
+      {
+        "path": "output/goal-review/probe-import-keys.mjs",
+        "sha256": "a41a6eace89b96e9de2a71a80abaa0c86e7778baf97ede44f4e50d9237d5d362"
+      },
+      {
+        "path": "output/goal-review/import-keys-after-m1.json",
+        "sha256": "4ff0312de9dfafca6c2fcb761214610c73726283797d2cf2ff1a35ff7a309ee6"
+      }
+    ]
+  },
+  "codex_pilot": {
+    "date": "2026-11-15",
+    "commit": "bc543d904843978c802cb245f28c345fa40e8fdb",
+    "dirty": true,
+    "note": "Pre-freeze pilot, not baseline evidence. Started on clean bc543d9; the dirty flag reflects fixture edits made while it ran, so the tree it recorded is not a frozen one.",
+    "scenario": "profile-effect-fin-built",
+    "provider": "codex",
+    "providerVersion": "codex-cli 0.167.1",
+    "result": "PASS",
+    "calls": 13,
+    "profileConversationCalls": 8,
+    "inputTokens": 331228,
+    "outputTokens": 3692,
+    "cacheReadTokens": null,
+    "reasoningTokens": null,
+    "wallSeconds": 163.5,
+    "u14_observations": [
+      "Input:output tokens about 90:1; about 25k input tokens per call, so context size is the main cost lever.",
+      "Cached-input and reasoning tokens are parsed by the usage ledger but dropped by the runner summary; not measured."
+    ],
+    "evidence": "output/goal-review/pilot-codex-fin-built (git-ignored)"
+  },
+  "prefreeze_fixtures": {
+    "date": "2026-11-15",
+    "commit": "e016533aba2dfbd0532a931f6d791063a25d7062",
+    "added": [
+      "corpus-holdout.mjs: 3 held-out personas, 6 old-role scenarios, holdout-mismatch, holdout-journey-stem, borderline-swe, borderline-fin",
+      "profile-effect-sci built/seeded/minimal",
+      "scoreEvaluation scoreBand + Investigate guard"
+    ],
+    "leak_record": "fin-mismatch and journey-sci were run by the scorer lane, so they are not held out; replaced by holdout-mismatch and holdout-journey-stem. Held-out status applies to this baseline only; later lanes can read the committed fixtures.",
+    "controlled_gate": "56/59, 3 expected failures (*-minimal), 0 unexpected (output/goal-review/pre-freeze-controlled)",
+    "controlled_caveat": "Controlled old-role and borderline passes are wiring-only: the fixture agent orders required facts first and returns Investigate on a missing required fact. Only the live tier measures them.",
+    "fixture_fix": "Lab persona certification sentence lengthened; the fixture assistant ignores messages of 40 chars or fewer.",
+    "suite": "test:plainhand 528/528",
+    "independent_review": {
+      "reviewer": "Pi DeepSeek V4.1 Flash, max thinking",
+      "verdict": "accept-with-fixes",
+      "reviewed": "e016533",
+      "findings": "B1 borderline-swe label not unique (junior posting); B2 production Apply->Investigate rewrite hid the model label; M1 old-role retention unmeasured; M2 summed tenure failed; M3 tenure laundering via degree/publication/break ranges and 'years ago'; M4 held-out tailoring gated on undeclared Apply; M5 borderline-fin Skip defensible; M6 seen controls unrecorded; minors on band/label consistency, rounding, typo ids",
+      "report": "output/review-prefreeze/REPORT.md in the review worktree (git-ignored)"
+    },
+    "fixes": {
+      "production": "workflow.mjs stores modelRecommendation before the below-4 rewrite (additive)",
+      "scorer": "recCorrect grades modelRecommendation; band<->Investigate consistency; tenure merges ranges, skips degree/publication/certification/break sentences, rejects 'N years ago'; retainFactIds; evaluationGate:false for held-out tailoring rows; held-out tag in report",
+      "fixtures": "borderline jobs rewritten (no junior framing, core match plus one required gap), band max 3.9 (one-decimal rounding), fin headline 15 years, one retained old-role fact per recent-role job, seen-control comment",
+      "mutation": "3 new scorer tests fail on e016533 score.mjs and pass after",
+      "after_fix_regressions_caught": "line-level tenure filter dropped a seeded job line (fixed per sentence); retaining every old-role bullet was too strict (one fact per role)",
+      "controlled_gate": "56/59, 3 expected (*-minimal), 0 unexpected (output/goal-review/pre-freeze-controlled-3)",
+      "suite": "test:plainhand 532/532",
+      "re_review": "pending"
+    },
+    "re_review": {
+      "reviewer": "Pi DeepSeek V4.1 Flash, max thinking",
+      "reviewed": "03db26c",
+      "verdict": "accept-with-fixes",
+      "findings": "F1 blocker: abbreviated degree split and Projects ranges laundered the career total; F2 stem-ops retained a fact the posting never names; F3 evaluationGate bypass unbound; F4 'before that' read as tenure; F5 'master' title excluded; F6 report hid model label",
+      "verified_ok": "B2 end to end through the real workflow, no production consumer of modelRecommendation; bandConsistent; retention mechanism; merged totals; posting ranges",
+      "applied": "all six; F1 and F3 patches are the reviewer's own (simulated by the reviewer before proposing)",
+      "residuals": [
+        "a range supports N years of any field, not only its role",
+        "recency ('the past 6 years') not modeled",
+        "a project line outside a Projects heading joins the total",
+        "borderline 3.0 floor: a careful model may score borderline-swe 2.5-2.9 Skip; live-only risk",
+        "controlled passes on held-out and borderline rows are wiring-only"
+      ],
+      "gate": "56/59, 0 unexpected (pre-freeze-controlled-4)",
+      "suite": "533/533"
+    }
+  },
+  "baseline_live": {
+    "date": "2026-11-15",
+    "commit": "00ce1bfbffa4ec0edec6045f0caf3b0b5333384f",
+    "dirty": false,
+    "manifestCheck": "passed",
+    "provider": "codex (codex-cli 0.167.1)",
+    "judge": {
+      "packets": 20,
+      "unsupported": 0,
+      "supported": 409,
+      "partial": 8,
+      "overall": "4.03 paired, 4.0 smoke",
+      "weakest": "structure ~3.4-3.5, cover ~3.6-3.7",
+      "subset": "chosen after deterministic results were known"
+    },
+    "calls": {
+      "paired": 189,
+      "smoke": 75,
+      "judge": "80 (computed: 20 packets x 4)",
+      "total": 344,
+      "cap": 900
+    },
+    "tokens": {
+      "paired": {
+        "input": 4657173,
+        "output": 67804
+      },
+      "smoke": {
+        "input": 1843081,
+        "output": 59408
+      }
+    },
+    "deterministic": {
+      "paired": "11/27 (9 expected, 7 unexpected)",
+      "smoke": "5/11"
+    },
+    "findings": "docs/internal/baseline/BASELINE-RESULTS.md",
+    "measurement_defects": [
+      "PDF order probe false positive on repeated wording",
+      "honest zero-match Skip fails evidenceValid"
+    ],
+    "evidence": "output/baseline-00ce1bf (git-ignored)",
+    "modelIdentity": "not recorded; Codex ran with --ignore-user-config (CLI default model/effort); familyProof catalog-only",
+    "cachedReasoningTokens": "parsed by usage.mjs but dropped by the runner summary; workspaces deleted; not measured",
+    "review_gap": "root's third-round scorer edits (03db26c..00ce1bf) were not independently reviewed"
+  }
+}

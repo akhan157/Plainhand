@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { personas, simulatedCandidate, captured, scoreRun } from '../plainhand/benchmarks/profile-bench.mjs';
+import { holdout2Personas } from '../plainhand/evaluation/corpus-holdout-2.mjs';
 
 const persona = personas.find(p => p.id === 'mech-grad');
 
@@ -10,6 +11,23 @@ test('the simulated candidate answers the best-matching fact once, and says "hav
   assert.equal(c.reply('Any experience with GD&T in production?').factId, 'gdt');
   assert.notEqual(c.reply('What project are you proudest of?').factId, 'fsae', 'a fact is not repeated');
   assert.equal(c.reply('Thanks, that helps.').onTopic, false);
+});
+
+test('a role-details question is answered from the candidate’s records, one role at a time', () => {
+  const hana = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const candidate = simulatedCandidate(hana);
+  const first = candidate.reply('Which employer was the earlier assay work at, with its official job title and dates?');
+  assert.equal(first.role, true);
+  assert.match(first.text, /Example Genomics Lab/, 'a role the seeded resume does not state answers first');
+  assert.match(first.text, /Senior Research Associate/);
+  assert.match(first.text, /2016 to 2023/, 'the dates come from the candidate’s own resume');
+  const second = candidate.reply('Which employer was the other work at, with its title and dates?');
+  assert.match(second.text, /Example Cell Analysis/);
+  assert.match(second.text, /Research Technician/);
+  assert.match(second.text, /2012 to 2016/);
+  // A general work question is not a role-details question.
+  const general = simulatedCandidate(persona).reply('What did you do in your last job?');
+  assert.equal(general.role, undefined);
 });
 
 test('keywords match at a word start only', () => {
@@ -64,4 +82,62 @@ test('a fact saved as a profile field update counts as captured', () => {
   const result = scoreRun({ persona, candidateMessages: [voice.text], saved: [], updates: [{ field: 'voice', value: voice.text }], turns: [], revealed: new Set(['voice']) });
   assert.equal(result.captured, 1);
   assert.deepEqual(result.unsupportedUpdates, []);
+});
+
+test('asked where the work just described happened, the simulated candidate names that work and its own role', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const candidate = simulatedCandidate(persona);
+  const first = candidate.reply('What were you responsible for, and what results did you achieve?').text;
+  const answer = candidate.reply('Which employer was this work at, what was your official job title, and when did it start and end?').text;
+  const fact = persona.facts.find(item => item.text === first);
+  assert.ok(fact, 'the first answer is a persona fact');
+  // The persona's resume places this fact under one dated role heading.
+  const lines = persona.profile.resume.split('\n');
+  const at = lines.findIndex(line => line.includes(fact.text.replace(/\.$/, '')));
+  const heading = lines.slice(0, at).reverse().find(line => /—.*(?:19|20)\d{2}/.test(line) && persona.records.some(record => line.startsWith(record.employer)));
+  assert.ok(heading);
+  assert.ok(answer.includes(heading.split(' — ')[0]), `${answer} names ${heading}`);
+  assert.ok(answer.startsWith(first.split(/,|\s+(?:that|which|so|and I)\s+/)[0]), 'and the work it is about');
+});
+
+test('a role phrase in a statement before a different question is not a role question', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-stem-assay');
+  const candidate = simulatedCandidate(persona);
+  candidate.reply('What were you responsible for, and what results did you achieve?');
+  const answer = candidate.reply("I haven't yet heard which employer or role this work was at, so I'm not attaching it. Do you hold any certifications or licences relevant to your lab work?").text;
+  assert.match(answer, /Green Belt/, answer);
+});
+
+test('only a question about credentials held gets the certification', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-fin-close');
+  assert.doesNotMatch(simulatedCandidate(persona).reply('Did you need a drivers licence for that kind of site work?').text, /CPA/);
+  assert.doesNotMatch(simulatedCandidate(persona).reply('Would you be willing to get a certification later?').text, /CPA/);
+  assert.match(simulatedCandidate(persona).reply('Do you hold any certifications or licences?').text, /CPA/);
+});
+
+test('review d291f66: driver licences and hypothetical credentials never get the certification; a combined question still does', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-fin-close');
+  const reply = question => simulatedCandidate(persona).reply(question).text;
+  assert.doesNotMatch(reply("Have you ever held a driver's licence?"), /CPA/);
+  assert.doesNotMatch(reply('Are you willing to obtain any certifications required for the role?'), /CPA/);
+  assert.doesNotMatch(reply('Would you obtain any credentials the client requires?'), /CPA/);
+  assert.match(reply('Do you hold any certifications, or a drivers licence?'), /CPA/);
+  assert.match(reply('Do you have any certifications?'), /CPA/);
+});
+
+test('review 07ce879: every driving-licence spelling is excluded; polite held-credential questions still count', async () => {
+  const { simulatedCandidate } = await import('../plainhand/benchmarks/profile-bench.mjs');
+  const { holdout2Personas } = await import('../plainhand/evaluation/corpus-holdout-2.mjs');
+  const persona = holdout2Personas.find(item => item.id === 'holdout2-fin-close');
+  const reply = question => simulatedCandidate(persona).reply(question).text;
+  for (const question of ['Do you have a driver licence?', "Do you have a Drivers' licence?", 'Do you have a driver’s licence?']) assert.doesNotMatch(reply(question), /CPA/, question);
+  for (const question of ['Would you be able to share which certifications you hold?', 'Would you have any certifications to share?', 'Do you have any certifications? I would appreciate it.']) assert.match(reply(question), /CPA/, question);
 });

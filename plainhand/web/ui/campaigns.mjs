@@ -43,7 +43,7 @@ function CampaignForm({ campaign, sources, onDone }) {
   const prefix = campaign ? 'edit-' + campaign.id.slice(0, 8) : 'new-campaign';
   return html`<form class="campaign-form form-grid" onSubmit=${e => e.preventDefault()} aria-label=${campaign ? `Edit ${campaign.name}` : 'New campaign'}>
     <${Field} form=${prefix} name="name" label="Campaign name" placeholder="Boston mechanical roles" required full value=${form.name} onInput=${set('name')} />
-    <${Field} form=${prefix} name="terms" label="Role keywords" placeholder="Mechanical Engineer, Design Engineer" required value=${form.terms} onInput=${set('terms')} hint="A role is kept when its title contains any of these. Separate with commas." />
+    <${Field} form=${prefix} name="terms" label="Role keywords" placeholder="Financial Analyst, Data Analyst" required value=${form.terms} onInput=${set('terms')} hint="A role is kept when its title contains any of these. Separate with commas." />
     <${Field} form=${prefix} name="locations" label="Locations" placeholder="Boston, Remote" value=${form.locations} onInput=${set('locations')} hint="Leave empty for any location." />
     <${Field} form=${prefix} name="exclusions" label="Leave out" placeholder="Senior, Intern, a company name" value=${form.exclusions} onInput=${set('exclusions')} hint="Roles whose title or company contains any of these are skipped." />
     <${Field} form=${prefix} name="schedule" label="Schedule" value=${form.schedule} onInput=${set('schedule')} options=${schedules} hint="Scheduled scans run while Plainhand is open. A scan missed while it was closed runs once at the next start." />

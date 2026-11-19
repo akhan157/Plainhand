@@ -1,3 +1,4 @@
+import { PRIVATE_PROFILE_FIELDS } from '../store.mjs';
 import { defaultFieldAnswers } from '../jobs.mjs';
 // Entirely fictional profiles/forms. No employer data or personal workspace input.
 export const profiles = {
@@ -42,7 +43,7 @@ export function oracleForm(profile, fields) {
   const suggestions = [], questions = [], defaults = defaultFieldAnswers(fields, profile);
   for (const field of fields) {
     const value = defaults[field.key] || (field.name === 'achievement' ? quote : expected[field.name]);
-    if (value) suggestions.push({ key: field.key, answer: value, evidence: defaults[field.key] ? [{ sourceId: 'profile', quote: JSON.stringify(Object.fromEntries(Object.entries(profile).filter(([key]) => key !== 'resume')), null, 2) }] : field.name === 'database' ? [{ sourceId: 'proof-points', quote: 'Atlas stored its records in SQLite.' }] : [{ sourceId: 'cv', quote: profile.resume }] });
+    if (value) suggestions.push({ key: field.key, answer: value, evidence: defaults[field.key] ? [{ sourceId: 'profile', quote: JSON.stringify(Object.fromEntries(Object.entries(profile).filter(([key]) => key !== 'resume' && !PRIVATE_PROFILE_FIELDS.includes(key))), null, 2) }] : field.name === 'database' ? [{ sourceId: 'proof-points', quote: 'Atlas stored its records in SQLite.' }] : [{ sourceId: 'cv', quote: profile.resume }] });
     else if (field.required || field.name === 'optionalStart') questions.push({ key: field.key, question: `Please provide ${field.label}.` });
   }
   return { suggestions, questions };

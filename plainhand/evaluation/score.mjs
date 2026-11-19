@@ -1,7 +1,31 @@
 // Scores a completed scenario from recorded evidence, never from the model's own
 // claim that it did well. Ground truth is the fictional persona and job corpus.
 import { hasEvidence } from '../store.mjs';
+import { ROLE_ORDERS, DEFAULT_ROLE_ORDER } from '../standard.mjs';
 import { captures, expectedFor, fieldOwner, hasWord, absentClaimsIn, personaById, jobById, portalById } from './corpus.mjs';
+import { splitSentences, coverLetterClaims, headingText, jobSource } from './claims.mjs';
+import { packetRoles, personaRoles, newestFirstOrder } from './roles.mjs';
+import { pdfEvidencePassed, pdfEvidenceSummary } from './pdf-evidence.mjs';
+
+// The scorer's version. A check that changes what a pass means is a new version, and a
+// pass from one version is never combined with, or compared against, another: v1
+// evidence (which recorded no version) is reported beside v2, never mixed with it.
+// v2: an honest zero-match Skip is valid (the PDF line-order rule is unchanged in
+// meaning but its occurrence choice was corrected; see pdf-evidence.mjs).
+// v3: the lead-share gate is replaced by a role-order gate keyed on the run's
+// roleOrder. Lead share encoded one expectation, "the old relevant role leads",
+// which the owner's default (settings.roleOrder: recent, kept roles newest first)
+// contradicts by design whenever a newer role is kept. The gate now reads the dates
+// in the role headings and checks the order the candidate asked for; a role holding
+// a job-required fact may never be dropped, and whether the required role's first
+// line is a required fact is reported as within-role curation, not gated.
+// v4: the PDF interleaved-line gate compares each line's own contiguous runs, not a
+// span merged across a heading's separate parts. A heading title anchored at an
+// earlier duplicate of its opening words no longer makes that duplicate's line look
+// interleaved with the heading; a shared word elsewhere in the document is not a
+// reading-order defect. No other check changes meaning.
+export const SCORER_VERSION = 4;
+const roleOrderValue = value => ROLE_ORDERS.includes(value) ? value : DEFAULT_ROLE_ORDER;
 
 const norm = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 const numberTokens = text => (String(text || '').match(/\d(?:[\d.,]*\d)?%?|\d%?/g) || []);
@@ -41,9 +65,331 @@ export function numberSupported(token, sourceTokens) {
   return !canonical.endsWith('%') && sourceTokens.has(canonical + '%');
 }
 
-export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false }) {
-  // The posting is an allowed source for numbers: a packet may quote "10+ years".
-  const sourceTokens = sourceNumberTokens(numberCheckSource([...(sources || []), ...(job?.description ? [{ id: 'job', text: job.description }] : [])]));
+// ---- Subject-aware numeric grounding (design §4, REVIEW amendment rows) ----
+// The posting is evidence about the employer, never about the candidate. Each
+// number mention is attributed to the candidate or to the employer from the
+// clause it sits in, and a posting number only supports an employer mention.
+// Headlines and headings are always the candidate's record.
+const CANDIDATE_CUE = /\b(?:i|me|my|mine|we|us|our|ours|myself|ourselves)\b/gi;
+// A non-global copy for boolean tests (a /g regex remembers lastIndex).
+const CANDIDATE_CUE_ANY = /\b(?:i|me|my|mine|we|us|our|ours|myself|ourselves)\b/i;
+// Only subject/object pronouns after a number retroactively make it the
+// candidate's ("the 25 engineers I led"); a possessive ("my reporting") does not.
+const CANDIDATE_AFTER = /\b(?:i|we|me|us)\b/i;
+const EMPLOYER_PRONOUN = /\b(?:you|your|yours)\b/gi;
+const ROLE_NOUN = /\b(?:the|this)\s+(?:role|position|posting|job)\b/gi;
+// A requirement/description predicate is what makes "the role" the employer's.
+const ROLE_PREDICATE = /\b(?:requires|requiring|required|calls for|offers|covers|includes|involves|entails|asks for|ask for|is|are|was|were|will)\b/i;
+const EMPLOYER_PREDICATE = /\b(?:is|are|was|were|has|have|had|operates|operate|covers|cover|includes|include|serves|serve|employs|employ|spans|span|runs|run)\b/i;
+// Accomplishment verbs: a number inside a candidate action ("led your 25
+// engineers") is a candidate claim even when an employer pronoun is nearby.
+const CLAIM_VERB = /\b(?:led|lead|leads|leading|manag(?:e|es|ed|ing)|build|builds|built|building|wrote|write|writes|written|writing|ran|run|runs|running|own|owns|owned|owning|direct|directs|directed|directing|head|heads|headed|heading|design|designs|designed|designing|develop|develops|developed|developing|increas(?:e|es|ed|ing)|reduc(?:e|es|ed|ing)|cut|cuts|cutting|grow|grows|grew|growing|save|saves|saved|saving|deliver|delivers|delivered|delivering|achiev(?:e|es|ed|ing)|driv(?:e|es|ing)|drove|driven|oversee|oversees|oversaw|overseen|overseeing|supervis(?:e|es|ed|ing)|found|founded|founding|launch(?:es|ed|ing)?|negoti(?:ate|ates|ated|ating)|train(?:s|ed|ing)?|hir(?:e|es|ed|ing)|mentor(?:s|ed|ing)?|coordinat(?:e|es|ed|ing)|creat(?:e|es|ed|ing)|implement(?:s|ed|ing)?|analy(?:ze|zes|zed|zing|se|ses|sed|sing)|test(?:s|ed|ing)?|maintain(?:s|ed|ing)?|support(?:s|ed|ing)?|transform(?:s|ed|ing)?|automat(?:e|es|ed|ing)|standardiz(?:e|es|ed|ing))\b/i;
+const INTENT = /\b(?:applying|application for|writing to apply|hope to|hoping to|excited to|would like to|would love to|want to|keen to|eager to|interested in|looking to)\b/gi;
+const MEASURE = /\b(?:by|from)\s*$/i;
+// Where one owner's statement ends, so a mixed sentence is attributed per clause.
+const CLAUSE_BOUNDARY = /[;:!?…\n]|—|–|--/g;
+const COORDINATOR = /\b(?:and|but|or|nor|while|whereas|although|though|because|so|then)\b/i;
+const LEADING_PREPOSITION = /^(?:at|for|in|with|across|inside|within|joining|as|about|on|from|by)\s*$/i;
+
+const clauseStart = (text, index) => {
+  let start = 0;
+  for (const match of text.matchAll(CLAUSE_BOUNDARY)) { if (match.index < index) start = match.index + match[0].length; else break; }
+  return start;
+};
+// After a number: the rest of its clause, stopping at a new coordinated clause so
+// "Your company operates in 28 countries and I managed ..." keeps the first 28
+// as the employer's.
+const clauseAfter = (text, index) => {
+  const rest = text.slice(index);
+  const boundary = rest.search(CLAUSE_BOUNDARY);
+  let end = boundary < 0 ? rest.length : boundary;
+  const coordinator = rest.slice(0, end).search(COORDINATOR);
+  if (coordinator >= 0) end = coordinator;
+  return rest.slice(0, end);
+};
+const wordTokens = text => (String(text).match(/[A-Za-z0-9'’.-]+/g) || []);
+const firstWord = text => (String(text).match(/^[\s"'([\-•*]*([A-Za-z][A-Za-z'’-]*)/) || [])[1] || '';
+const verbInitial = text => { const word = firstWord(text); return Boolean(word) && CLAIM_VERB.test(word); };
+
+// Owner cues in one visible sentence, as spans from each cue to the next.
+function ownerCues(text, part) {
+  const cues = [];
+  for (const match of text.matchAll(CANDIDATE_CUE)) cues.push({ index: match.index, length: match[0].length, kind: 'candidate' });
+  for (const match of text.matchAll(EMPLOYER_PRONOUN)) cues.push({ index: match.index, length: match[0].length, kind: 'employer' });
+  for (const match of text.matchAll(ROLE_NOUN)) {
+    const role = { index: match.index, length: match[0].length };
+    if (part === 'resume') {
+      // In a resume, "the role" is the candidate's own role, not the employer's.
+      cues.push({ ...role, kind: 'candidate' });
+      continue;
+    }
+    const after = text.slice(match.index + match[0].length, match.index + match[0].length + 80);
+    if (ROLE_PREDICATE.test(after)) cues.push({ ...role, kind: 'employer' });
+  }
+  return cues.sort((a, b) => a.index - b.index);
+}
+
+// "I built reports for your 28-country team": the employer frame is explicit for
+// the intent frame ("excited to join") or for a compound/possessive/"of" scope
+// attached to the employer noun, unless a candidate verb takes it as its object.
+function intentFrame(tail) {
+  const intents = [...tail.matchAll(INTENT)];
+  const match = intents.at(-1);
+  if (!match) return false;
+  let rest = tail.slice(match.index + match[0].length);
+  rest = /to\s*$/i.test(match[0]) ? rest.replace(/^\s+[A-Za-z][A-Za-z'’.-]*\b/, '') : rest.replace(/^\s+to\s+[A-Za-z][A-Za-z'’.-]*\b/i, '');
+  return !CANDIDATE_AFTER.test(rest) && !CLAIM_VERB.test(rest) && !MEASURE.test(rest);
+}
+function attachedToEmployer(tail, cueEnd, afterNumber) {
+  const between = tail.slice(cueEnd);
+  if (!/^\s*(?:['’]s)?\s*$/.test(between)) {
+    // "your team of 28": an of-phrase on the employer noun.
+    return /^\s+[A-Za-z][A-Za-z'’-]*\s+of\s*$/i.test(between);
+  }
+  if (/^-[A-Za-z0-9]/.test(afterNumber)) return true;
+  if (/^\s*['’]s\s*$/.test(between)) return true;
+  return false;
+}
+
+// The owner of one number mention, from the cue spans plus the guards above.
+function mentionOwner(scan, mention, part) {
+  const cues = ownerCues(scan, part);
+  const last = cues.filter(cue => cue.index < mention.index).at(-1);
+  if (!last) return verbInitial(scan) ? 'implicit' : 'ambiguous';
+  if (last.kind === 'candidate') return 'candidate';
+  const start = clauseStart(scan, last.index);
+  const tail = scan.slice(start, mention.index);
+  const prefix = scan.slice(start, last.index);
+  const after = clauseAfter(scan, mention.index + mention.token.length);
+  const cueAfter = CANDIDATE_AFTER.test(after);
+  if (!cueAfter) {
+    const employerInitial = !prefix.trim() || LEADING_PREPOSITION.test(prefix);
+    if (employerInitial && !CANDIDATE_CUE_ANY.test(prefix)) return 'employer';
+    if (!CANDIDATE_CUE_ANY.test(prefix) && EMPLOYER_PREDICATE.test(tail.slice(last.index - start + last.length)) && !CANDIDATE_CUE_ANY.test(tail)) return 'employer';
+    if (intentFrame(tail)) return 'employer';
+    // A candidate verb directly taking the employer noun phrase as its object
+    // ("led your 25 engineers") is a candidate claim, not an employer scope.
+    const beforeCue = wordTokens(prefix);
+    const objectAttachment = beforeCue.length > 0 && CLAIM_VERB.test(beforeCue.at(-1));
+    if (!objectAttachment && attachedToEmployer(tail, last.index - start + last.length, after)) return 'employer';
+  }
+  // The employer frame did not hold: fail closed, and label how the owner was lost.
+  if (cueAfter) return 'candidate';
+  if (verbInitial(scan)) return 'implicit';
+  if (CLAIM_VERB.test(tail)) return 'candidate';
+  return 'ambiguous';
+}
+
+const numberMentions = text => {
+  const scan = percentWords(text);
+  const mentions = [];
+  for (const match of scan.matchAll(/\d(?:[\d.,]*\d)?%?/g)) mentions.push({ token: match[0], canonical: canonicalNumber(match[0]), index: match.index });
+  for (const [word, digit] of Object.entries(NUMBER_WORDS)) for (const match of scan.matchAll(new RegExp(`\\b${word}\\b`, 'gi'))) mentions.push({ token: match[0], canonical: digit, index: match.index });
+  return mentions.sort((a, b) => a.index - b.index);
+};
+
+// The visible packet text the judge reads (claims.mjs), as ordered numeric units.
+function visibleNumberUnits(packet, persona) {
+  const units = [];
+  splitSentences(packet?.headline).forEach((sentence, i) => units.push({ unitId: `headline:${i}`, part: 'resume', fixed: true, text: sentence }));
+  const headings = new Set();
+  (packet?.resume || []).forEach((entry, e) => {
+    const heading = headingText(entry?.heading);
+    if (heading && !headings.has(heading)) {
+      headings.add(heading);
+      units.push({ unitId: `heading:${e}`, part: 'resume', fixed: true, text: heading });
+    }
+    splitSentences(entry?.text).forEach((sentence, i) => units.push({ unitId: `resume:${e}.${i}`, part: 'resume', fixed: false, text: sentence }));
+  });
+  (packet?.answers || []).forEach((answer, n) => {
+    splitSentences(answer?.answer).forEach((sentence, i) => units.push({ unitId: `answer:${n}.${i}`, part: 'answer', fixed: false, text: sentence }));
+  });
+  coverLetterClaims(packet?.coverLetter, persona?.profile?.name || '').forEach((sentence, i) => units.push({ unitId: `cover:${i}`, part: 'cover', fixed: false, text: sentence }));
+  return units;
+}
+
+// Tenure a source states as a year range: "2020 to 2026" supports "six years" (or
+// one more, counting both ends). Only a mention followed by "years" uses it, so a
+// range never licenses an unrelated count ("six teams"). A career total may cover
+// several roles, so the merged length of all ranges counts too, without the gaps.
+// Degree, publication, certification and break lines have the same shape as tenure
+// and never license years of work. Known residuals: a range supports "N years" of
+// any field, not only the role it belongs to; recency ("the past 6 years") is not
+// modeled; a project line outside a Projects heading still joins the total.
+const YEAR_RANGE = /\b((?:19|20)\d{2})\s*(?:to|through|until|-|\u2013|\u2014)\s*((?:19|20)\d{2})\b/gi;
+// A Projects or Education section may license its own "N years", never the career total.
+const NON_CAREER_HEADING = /^(?:projects?|education|publications?|certifications?|licenses?|awards?|honors?|volunteer\w*|activities)\b/i;
+const CAREER_HEADING = /^(?:experience|employment|work history|professional experience)\b/i;
+const NOT_EMPLOYMENT = /\b(?:publications?|published|papers?|degree|bachelor|master(?:['\u2019]s| of| degree)|phd|ph\.d|doctorate|education|university|college|certif\w*|licen[cs]e|career break|break|sabbatical|family care|took a year)\b/i;
+export function tenureYears(sourceText) {
+  const spans = new Set(), ranges = [];
+  const add = span => { if (span > 0 && span < 60) { spans.add(String(span)); spans.add(String(span + 1)); } };
+  // Per line and sentence: a seeded profile can put a degree and a job on one line.
+  // "B.S." or "Ph.D." must not split a degree line before the filter sees it.
+  let section = '';
+  for (const line of String(sourceText || '').split(/\n|(?<!\b[A-Za-z]\.)(?<=\.)\s+/)) {
+    const heading = line.trim().replace(/^["'\s]+/, '');
+    if (NON_CAREER_HEADING.test(heading)) { section = 'other'; continue; }
+    if (CAREER_HEADING.test(heading)) { section = 'experience'; continue; }
+    if (NOT_EMPLOYMENT.test(line)) continue;
+    for (const match of line.matchAll(YEAR_RANGE)) {
+      const start = Number(match[1]), end = Number(match[2]);
+      add(end - start);
+      if (end > start && end - start < 60 && section !== 'other') ranges.push([start, end]);
+    }
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+  let total = 0, cursor = null;
+  for (const [start, end] of ranges) {
+    if (cursor && start <= cursor[1]) cursor[1] = Math.max(cursor[1], end);
+    else { if (cursor) total += cursor[1] - cursor[0]; cursor = [start, end]; }
+  }
+  if (cursor) total += cursor[1] - cursor[0];
+  if (ranges.length > 1) add(total);
+  return spans;
+}
+const isTenureMention = (scan, mention) => /^\s*\+?\s*(?:full\s+)?years?\b(?!\s*(?:ago|earlier|prior|later|from now|hence|before|back)\b)/i.test(scan.slice(mention.index + mention.token.length));
+
+// Structured per-mention verdicts plus the compatibility fields scorePacket keeps.
+export function numericGrounding({ packet, persona, job, sources }) {
+  const ownPhone = String(persona?.profile?.phone || '').replace(/\D/g, '').slice(-10);
+  const hideOwnPhone = text => String(text ?? '').replace(/\+?\d[\d\s().-]{7,}\d/g, match => ownPhone.length === 10 && match.replace(/\D/g, '').endsWith(ownPhone) ? ' ' : match);
+  const candidateSources = (sources || []).filter(source => source && typeof source.text === 'string')
+    .map(source => ({ id: String(source.id), tokens: sourceNumberTokens(numberCheckSource([source])), tenure: tenureYears(source.text) }));
+  const postingTokens = sourceNumberTokens(numberCheckSource([jobSource(job)]));
+  const numberChecks = [];
+  for (const unit of visibleNumberUnits(packet, persona)) {
+    const scan = hideOwnPhone(unit.text);
+    for (const mention of numberMentions(scan)) {
+      const owner = unit.fixed ? 'candidate' : mentionOwner(scan, mention, unit.part);
+      const allowedSources = owner === 'employer' ? ['candidate', 'posting'] : ['candidate'];
+      const tenure = isTenureMention(scan, mention);
+      const byCandidate = [...new Set(candidateSources.filter(source => numberSupported(mention.canonical, source.tokens) || (tenure && source.tenure.has(mention.canonical))).map(source => source.id))];
+      const byPosting = owner === 'employer' && numberSupported(mention.canonical, postingTokens);
+      const supportedBy = [...byCandidate, ...(byPosting ? ['job'] : [])];
+      const supported = supportedBy.length > 0;
+      const uncertain = !supported && (owner === 'implicit' || owner === 'ambiguous');
+      const reason = supported
+        ? `Supported by ${supportedBy.join(', ')}.`
+        : owner === 'employer'
+          ? 'The posting does not state this number either.'
+          : owner === 'implicit'
+            ? 'A verb-initial bullet with no subject is the candidate\'s own claim; the owner is unresolved and only candidate sources can support it.'
+            : owner === 'ambiguous'
+              ? 'The owner is unresolved (a bare description or a mixed sentence); only candidate sources can support it.'
+              : 'An explicit candidate claim; only candidate sources can support it.';
+      numberChecks.push({
+        token: mention.token,
+        canonical: mention.canonical,
+        part: unit.part,
+        unitId: unit.unitId,
+        sentence: unit.text,
+        owner,
+        allowedSources,
+        supportedBy,
+        supported,
+        uncertain,
+        ambiguous: owner === 'implicit' || owner === 'ambiguous',
+        reason,
+      });
+    }
+  }
+  const unsupportedNumbers = [...new Set(numberChecks.filter(check => !check.supported).map(check => check.canonical))];
+  return {
+    numberChecks,
+    unsupportedNumbers,
+    numericPostingOnly: numberChecks.filter(check => check.supportedBy.length === 1 && check.supportedBy[0] === 'job'),
+    numericUncertainty: numberChecks.filter(check => check.uncertain),
+    numericPassed: numberChecks.every(check => check.supported),
+  };
+}
+
+// Tailoring: the facts this job needs must be in the resume itself (a cover letter
+// mention does not count), every role holding one of them must be kept, and the kept
+// roles must be in the order the candidate's setting asks for. Lead share is still
+// reported, but it no longer decides: under `recent` a newer kept role leads, which
+// is correct, so "the old role's facts lead" cannot be a pass condition.
+export function tailoringOf(packet, persona, job, { roleOrder } = {}) {
+  const entries = (packet?.resume || []).map(entry => String(entry.text || ''));
+  const all = entries.join('\n');
+  // A fact may be split across bullets ("Taught ... 150 students." / "Built the
+  // grade tracker."), so presence is judged on the whole resume and position is
+  // the bullet holding most of the fact's words.
+  const words = text => new Set((String(text).toLowerCase().match(/[a-z0-9%$&]+/g) || []).filter(w => w.length >= 4 || /\d/.test(w)));
+  const share = (fact, text) => { const need = words(fact.text), have = words(text); let n = 0; for (const w of need) if (have.has(w)) n++; return need.size ? n / need.size : 0; };
+  const present = persona.facts.filter(fact => captures(fact.text, all));
+  const position = fact => entries.reduce((best, text, index) => share(fact, text) > best.score ? { index, score: share(fact, text) } : best, { index: Infinity, score: 0 }).index;
+  const ranked = present.map(fact => ({ fact, at: position(fact) })).sort((a, b) => a.at - b.at).map(item => item.fact);
+  const requiredIds = new Set(job.requiredFactIds);
+  const inResume = job.requiredFactIds.filter(id => ranked.some(fact => fact.id === id));
+  const lead = ranked.slice(0, inResume.length);
+  const leadShare = inResume.length ? Math.round(lead.filter(fact => requiredIds.has(fact.id)).length / inResume.length * 100) / 100 : null;
+
+  // The order gate. Roles come from the heading dates (roles.mjs), never from the
+  // order of the bullets: a heading whose dates cannot be read is reported and left
+  // out of the comparison instead of being counted as ordered.
+  const requested = roleOrderValue(roleOrder);
+  const experience = packetRoles(packet);
+  const factsOf = ids => ids.map(id => persona.facts.find(fact => fact.id === id)).filter(Boolean);
+  const rolesHolding = ids => experience.roles
+    .map(role => ({ role, facts: ids.filter(id => { const fact = persona.facts.find(item => item.id === id); return Boolean(fact) && captures(fact.text, role.text); }) }))
+    .filter(item => item.facts.length > 0);
+  // Under `match` the first role is the one holding the job's required facts (the old
+  // relevant role on an old-role row). Ties go to the earlier role, so the answer is
+  // read from the packet and never from a job's expected outcome.
+  const holding = rolesHolding(job.requiredFactIds);
+  const requiredRole = holding.reduce((best, item) => item.facts.length > (best?.facts.length || 0) ? item : best, null);
+  const restNewestFirst = newestFirstOrder(experience.roles.slice(1));
+  let roleOrderOk, roleOrderReason;
+  if (!experience.roles.length) {
+    roleOrderOk = false;
+    roleOrderReason = experience.unparseable.length ? 'no-role-with-parseable-dates' : 'no-role-headings';
+  } else if (requested === 'match') {
+    const requiredFirst = requiredRole ? requiredRole.role.key === experience.roles[0].key : true;
+    roleOrderOk = requiredFirst && restNewestFirst;
+    roleOrderReason = !requiredFirst ? 'required-role-not-first' : restNewestFirst ? 'match-first' : 'rest-not-newest-first';
+  } else {
+    roleOrderOk = newestFirstOrder(experience.roles);
+    roleOrderReason = roleOrderOk ? 'newest-first' : 'not-newest-first';
+  }
+  // The master's own roles are the ground truth for "was that role kept". A role the
+  // job needs may lose lines, but never its identity: keeping the fact while dropping
+  // the role that earned it reports the work under the wrong employer. A role whose
+  // dates could not be read still counts as kept when its org and title say so.
+  const sameRole = (role, master) => (role.start === master.start && (role.end === null || master.end === null || role.end === master.end))
+    || (norm(role.heading?.org) === norm(master.org) && norm(role.heading?.title) === norm(master.title));
+  const droppedRequiredRoles = personaRoles(persona)
+    .map(master => ({ master, facts: job.requiredFactIds.filter(id => { const fact = persona.facts.find(item => item.id === id); return Boolean(fact) && captures(fact.text, master.body.join('\n')); }) }))
+    .filter(item => item.facts.length > 0 && !experience.groups.some(role => sameRole(role, item.master)))
+    .map(item => ({ heading: item.master.label, dates: item.master.dates, facts: item.facts }));
+  // Within-role curation, reported and not gated: inside the role that holds the
+  // required facts, the first line should be one of them. The controlled fixture
+  // guarantees this by construction, so it is not evidence that a real model does.
+  const firstLine = requiredRole ? (requiredRole.role.entries[0] ?? '') : '';
+  const curation = requiredRole ? {
+    heading: requiredRole.role.label,
+    firstLine,
+    requiredFirst: factsOf(requiredRole.facts).some(fact => captures(fact.text, firstLine)),
+  } : null;
+  return {
+    requiredInResume: inResume.length,
+    requiredTotal: job.requiredFactIds.length,
+    missingFromResume: job.requiredFactIds.filter(id => !inResume.includes(id)),
+    leadShare,
+    order: ranked.map(fact => fact.id),
+    roleOrder: requested,
+    roles: experience.roles.map(role => ({ heading: role.label, dates: role.dates, start: role.start, end: role.end, gap: role.gap, lines: role.entries.length })),
+    unparseableRoles: experience.unparseable,
+    excludedHeadings: experience.excluded,
+    roleOrderOk,
+    roleOrderReason,
+    requiredRole: requiredRole ? { heading: requiredRole.role.label, dates: requiredRole.role.dates, facts: requiredRole.facts } : null,
+    curation,
+    droppedRequiredRoles,
+  };
+}
+
+export function scorePacket({ packet, persona, job, sources, review, calibration, pdf, packetQuestionsAsked = [], roleAnswered = false, expectTailoring = false, roleOrder = DEFAULT_ROLE_ORDER }) {
   const claims = [...(packet?.resume || []).map(entry => entry.text), ...(packet?.answers || []).map(answer => answer.answer), packet?.coverLetter || ''].filter(Boolean);
   // The candidate's own phone is contact detail, not a claim; any other phone stays checked.
   const ownPhone = String(persona.profile?.phone || '').replace(/\D/g, '').slice(-10);
@@ -53,7 +399,9 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const missing = required.filter(fact => !covered.includes(fact));
   // Per sentence; a sentence that negates is the candidate's honest answer, not a claim.
   const absentClaims = absentClaimsIn(text, persona);
-  const unsupportedNumbers = [...new Set(numberTokens(percentWords(text)))].filter(number => !numberSupported(number, sourceTokens));
+  // The posting supports only an employer/role statement, per mention (design §4).
+  const numeric = numericGrounding({ packet, persona, job, sources });
+  const unsupportedNumbers = numeric.unsupportedNumbers;
   const atsCovered = job.atsTerms.filter(term => text.toLowerCase().includes(term.toLowerCase()));
   const bannedWords = persona.voice.banned.filter(word => hasWord(text, word));
   const coverLetter = String(packet?.coverLetter || '');
@@ -61,16 +409,36 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
   const sentences = coverLetter.match(/[^.!?]+[.!?]?/g) || [];
   const averageSentenceWords = sentences.length ? Math.round(sentences.reduce((n, sentence) => n + sentence.trim().split(/\s+/).filter(Boolean).length, 0) / sentences.length * 10) / 10 : null;
   const reviewPassed = review?.passed === true && (review.issues || []).length === 0;
-  const pdfValid = Boolean(pdf?.bytes?.length > 100 && pdf?.head === '%PDF-');
+  // A rendered PDF's structured evidence, never a header and a byte count.
+  const pdfValid = pdfEvidencePassed(pdf?.evidence);
+  const pdfState = pdf?.evidence?.state || 'absent';
   const coverage = required.length ? Math.round(covered.length / required.length * 100) / 100 : null;
   const atsCoverage = job.atsTerms.length ? Math.round(atsCovered.length / job.atsTerms.length * 100) / 100 : null;
+  const tailoring = tailoringOf(packet, persona, job, { roleOrder });
+  // A tailored resume keeps every required fact, keeps the roles that earned them,
+  // and orders the kept roles the way the candidate asked. Lead share is reported
+  // beside this, not gated (see tailoringOf).
+  const tailored = tailoring.requiredInResume === tailoring.requiredTotal
+    && tailoring.roleOrderOk === true
+    && tailoring.droppedRequiredRoles.length === 0;
+  // A job that needs the recent role first still needs the older relevant role kept.
+  const resumeText = (packet?.resume || []).map(entry => String(entry.text || '')).join('\n');
+  const retainIds = job.retainFactIds || [];
+  const retainedIds = retainIds.filter(id => { const fact = persona.facts.find(item => item.id === id); return Boolean(fact) && captures(fact.text, resumeText); });
+  const retentionOk = retainedIds.length === retainIds.length;
   return {
+    tailoring,
+    retention: { required: retainIds, present: retainedIds, ok: retentionOk },
     required: required.length,
     covered: covered.length,
     missingFacts: missing.map(fact => fact.id),
     factCoverage: coverage,
     absentClaims: absentClaims.map(absent => absent.id),
     unsupportedNumbers,
+    numberChecks: numeric.numberChecks,
+    numericPostingOnly: numeric.numericPostingOnly,
+    numericUncertainty: numeric.numericUncertainty,
+    numericPassed: numeric.numericPassed,
     atsCoverage,
     atsCovered,
     bannedWords,
@@ -82,9 +450,14 @@ export function scorePacket({ packet, persona, job, sources, review, calibration
     roleAnswered,
     calibration: calibration || null,
     pdfValid,
+    pdfState,
+    pdfPageCount: pdf?.evidence?.pageCount ?? null,
+    pdfTextSha256: pdf?.evidence?.textSha256 ?? null,
+    pdfAtsParseTier: pdf?.evidence?.atsParseTier ?? null,
+    pdfEvidence: pdfEvidenceSummary(pdf?.evidence),
     pdfBytes: pdf?.bytes?.length ?? null,
     pdfHead: pdf?.head ?? null,
-    pass: Boolean(coverage !== null && coverage >= 0.66 && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!persona.voice.firstPerson || firstPerson)),
+    pass: Boolean(coverage !== null && coverage >= 0.66 && retentionOk && !absentClaims.length && !unsupportedNumbers.length && !bannedWords.length && reviewPassed && pdfValid && !(calibration?.counts?.unsupported > 0) && (!expectTailoring || tailored) && (!persona.voice.firstPerson || firstPerson) && numeric.numberChecks.every(check => check.supported) && numeric.numericUncertainty.length === 0),
   };
 }
 
@@ -268,18 +641,58 @@ export function scoreApplication({ scenario, persona, job, snapshots, plan, chec
   };
 }
 
+// What an honest Skip has to say: the requirements the posting names that the sources
+// do not support. Only the posting's own vocabulary is used, so rephrasing is fine and
+// an empty or vague gaps list is not. Stopwords and the fixture marker are excluded so
+// the check cannot be satisfied by saying "synthetic test job".
+const GAP_STOPWORDS = new Set(['ability', 'about', 'after', 'against', 'along', 'among', 'another', 'because', 'before', 'being', 'between', 'candidate', 'company', 'corporate', 'could', 'during', 'environment', 'every', 'experience', 'fictional', 'from', 'have', 'including', 'into', 'knowledge', 'looking', 'minimum', 'more', 'most', 'must', 'other', 'over', 'practice', 'preferred', 'professional', 'related', 'relevant', 'required', 'requirements', 'requires', 'role', 'seeking', 'should', 'similar', 'skills', 'strong', 'successful', 'synthetic', 'than', 'that', 'their', 'there', 'these', 'they', 'this', 'those', 'through', 'under', 'until', 'where', 'which', 'while', 'will', 'with', 'within', 'without', 'work', 'working', 'would', 'years']);
+function postingRequirementWords(job) {
+  // The posting's own vocabulary: its ATS terms as written, plus the content words of
+  // its description. Matching a phrase or one word is enough to name a requirement.
+  const terms = (Array.isArray(job?.atsTerms) ? job.atsTerms : []).map(term => String(term ?? '').trim().toLowerCase()).filter(term => term.length >= 3);
+  const text = String(job?.description || '').toLowerCase();
+  const words = (text.match(/[a-z][a-z+#.%]{4,}/g) || []).filter(word => !GAP_STOPWORDS.has(word));
+  return [...new Set([...terms, ...words])];
+}
+// A gap is a sentence naming something missing, not a placeholder: at least 20
+// characters, and at least one of them must use the posting's own requirement words.
+function gapsNameMissingRequirements(gaps, job) {
+  const named = (Array.isArray(gaps) ? gaps : []).map(gap => String(gap ?? '').trim()).filter(gap => gap.length >= 20);
+  if (!named.length) return false;
+  const words = postingRequirementWords(job);
+  if (!words.length) return false;
+  const text = named.join(' ').toLowerCase();
+  return words.some(word => text.includes(word));
+}
+
 export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithoutOverride }) {
   const validScore = typeof evaluation?.score === 'number' && evaluation.score >= 0 && evaluation.score <= 5;
   const expectedRec = job?.expectRecommendation || 'Apply';
-  const recCorrect = evaluation?.recommendation === expectedRec;
-  const scoreBandCorrect = expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
-  const evidenceValid = Array.isArray(evaluation?.matches) && evaluation.matches.length > 0 && evaluation.matches.every(match => hasEvidence(match, { sources: sources || [] }));
-  const guardCorrect = expectedRec === 'Skip' ? prepareRefusedWithoutOverride === true : true;
-  const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect);
+  // Grade the model's own label, not the app's below-4 rewrite of Apply to Investigate.
+  const recCorrect = (evaluation?.modelRecommendation ?? evaluation?.recommendation) === expectedRec;
+  // A borderline job names its band explicitly; Apply and Skip keep their fixed bands.
+  const band = job?.scoreBand;
+  const scoreBandCorrect = band
+    ? typeof evaluation?.score === 'number' && evaluation.score >= band.min && evaluation.score <= band.max
+    : expectedRec === 'Skip' ? evaluation?.score <= (job?.maxScore ?? 3.9) : evaluation?.score >= 4;
+  const matches = Array.isArray(evaluation?.matches) ? evaluation.matches : null;
+  // Any match that is present must be a real source quote. An honest Skip that states
+  // no matches is valid only inside the Skip band and only when it names the missing
+  // requirements: "no evidence, no gaps" is a refusal to assess, not an assessment.
+  // Apply and Investigate still need at least one supported match.
+  const matchesValid = Boolean(matches && matches.every(match => hasEvidence(match, { sources: sources || [] })));
+  const honestZeroMatchSkip = Boolean(expectedRec === 'Skip' && matches?.length === 0 && scoreBandCorrect && gapsNameMissingRequirements(evaluation?.gaps, job));
+  const evidenceValid = matchesValid && (matches.length > 0 || honestZeroMatchSkip);
+  // Production refuses to prepare any role below 4/5 without a recorded reason.
+  const guardCorrect = expectedRec === 'Skip' || expectedRec === 'Investigate' ? prepareRefusedWithoutOverride === true : true;
+  // A band must come with its expected label, and Investigate must come with a band.
+  const bandConsistent = Boolean(band) === (expectedRec === 'Investigate');
+  const pass = Boolean(validScore && recCorrect && scoreBandCorrect && evidenceValid && guardCorrect && bandConsistent);
   return {
     expectedRecommendation: expectedRec,
     score: evaluation?.score ?? null,
     recommendation: evaluation?.recommendation ?? null,
+    modelRecommendation: evaluation?.modelRecommendation ?? null,
     matches: Array.isArray(evaluation?.matches) ? evaluation.matches.length : null,
     summary: evaluation?.summary ?? null,
     gaps: Array.isArray(evaluation?.gaps) ? evaluation.gaps : [],
@@ -287,6 +700,7 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
     recCorrect,
     scoreBandCorrect,
     evidenceValid,
+    honestZeroMatchSkip,
     guardCorrect,
     prepareRefusedWithoutOverride: prepareRefusedWithoutOverride ?? null,
     pass,
@@ -294,7 +708,11 @@ export function scoreEvaluation({ evaluation, sources, job, prepareRefusedWithou
 }
 
 export function scoreScenario(result) {
-  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
+  // The role order the run actually used travels with the packet (the runner seeds
+  // settings.roleOrder before prepare); a scenario that declares one is the fallback
+  // for evidence recorded before the field existed.
+  const roleOrder = roleOrderValue(result.packet?.roleOrder ?? result.scenario.roleOrder);
+  const packet = result.packet ? scorePacket({ ...result.packet, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job), expectTailoring: Boolean(result.scenario.withStandard), roleOrder }) : null;
   const application = result.application ? scoreApplication({ ...result.application, persona: personaById(result.scenario.persona), job: jobById(result.scenario.job) }) : null;
   const evaluation = result.evaluation ? scoreEvaluation({ ...result.evaluation, job: jobById(result.scenario.job) }) : null;
   const family = result.scenario.family;
@@ -303,7 +721,8 @@ export function scoreScenario(result) {
   else if (family === 'journey') pass = Boolean(result.profile?.pass && result.understandingApproved && result.standardApproved && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
   else if (family === 'profile-effect') pass = Boolean((!result.profile || result.profile.pass) && (!evaluation || evaluation.pass) && packet?.pass && application?.pass);
   else if (family === 'profile') pass = result.profile?.pass === true;
-  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass));
+  // Held-out tailoring rows declare no recommendation: their evaluation is reported, not gating.
+  else if (family === 'resume') pass = Boolean(packet?.pass && (!evaluation || evaluation.pass || (result.scenario.evaluationGate === false && result.scenario.holdout && !jobById(result.scenario.job)?.expectRecommendation)));
   else if (result.scenario.portal) {
     // A portal scenario is only scored once the application stage actually ran;
     // a packet that passed before a later crash is not an application result.
@@ -315,7 +734,7 @@ export function scoreScenario(result) {
   // A scenario that threw never passes, whatever stage it reached first.
   if (result.error) pass = false;
   const expectedFail = Boolean(result.scenario.expectFail);
-  return { ...result, packet, application, evaluation, expectedFail, unexpected: !pass && !expectedFail, pass: Boolean(pass) };
+  return { ...result, scorerVersion: SCORER_VERSION, packet, application, evaluation, expectedFail, unexpected: !pass && !expectedFail, pass: Boolean(pass) };
 }
 
 const avg = values => {
@@ -425,6 +844,7 @@ export function aggregate(results) {
   }
   return {
     scenarios: results.length,
+    scorerVersion: SCORER_VERSION,
     passed: results.filter(result => result.pass).length,
     failed: results.filter(result => !result.pass).map(result => result.scenario.id),
     expectedFailures: results.filter(result => !result.pass && (result.expectedFail ?? result.scenario.expectFail)).map(result => result.scenario.id),
@@ -447,6 +867,22 @@ export function aggregate(results) {
       bannedWords: packets.reduce((n, item) => n + (item.bannedWords?.length || 0), 0),
       firstPerson: packets.filter(item => item.voiceFirstPerson).length,
       atsCoverage: avg(packets.map(item => item.atsCoverage)),
+      // The v3 role-order gate and its two supporting facts, so a reviewer can see
+      // which order each run was scored under and what could not be read.
+      roleOrderPassed: packets.filter(item => item.tailoring?.roleOrderOk).length,
+      roleOrders: [...new Set(packets.map(item => item.tailoring?.roleOrder).filter(Boolean))].sort(),
+      unparseableRoleHeadings: packets.reduce((n, item) => n + (item.tailoring?.unparseableRoles?.length || 0), 0),
+      droppedRequiredRoles: packets.reduce((n, item) => n + (item.tailoring?.droppedRequiredRoles?.length || 0), 0),
+      requiredRoleFirstLine: packets.filter(item => item.tailoring?.curation?.requiredFirst).length,
+      curatedRoles: packets.filter(item => item.tailoring?.curation).length,
+      // Per-mention numeric evidence and the rendered-PDF tier, so a reviewer can
+      // see whether a posting number was used legitimately or a candidate claim was
+      // laundered, and whether the PDF tier actually ran.
+      numberMentions: packets.reduce((n, item) => n + (item.numberChecks?.length || 0), 0),
+      numericUncertain: packets.reduce((n, item) => n + (item.numericUncertainty?.length || 0), 0),
+      numericPostingOnly: packets.reduce((n, item) => n + (item.numericPostingOnly?.length || 0), 0),
+      pdfPassed: packets.filter(item => item.pdfValid).length,
+      pdfBlocked: packets.filter(item => item.pdfState === 'unavailable' || item.pdfState === 'error').length,
     } : null,
     application: applications.length ? {
       runs: applications.length,
@@ -476,6 +912,18 @@ export function aggregate(results) {
 
 export function compareToBaseline(summary, baseline, currentResults = []) {
   if (!baseline?.summary) return null;
+  // A pass under a different scorer version means something else: report the version
+  // instead of a delta, so no one reads two versions as one series.
+  const versionOf = source => source?.scorerVersion ?? source?.scorer?.version ?? 1;
+  const baselineVersion = versionOf(baseline), currentVersion = versionOf(summary);
+  if (baselineVersion !== currentVersion) {
+    return {
+      comparable: false,
+      baselineScorerVersion: baselineVersion,
+      scorerVersion: currentVersion,
+      reason: `Scorer v${baselineVersion} and v${currentVersion} results are not comparable: a changed check changes what a pass means. Re-run the baseline under the current scorer.`,
+    };
+  }
   const before = baseline.summary, after = summary;
   const delta = (path) => {
     const get = (object, keys) => keys.reduce((value, key) => value == null ? null : value[key], object);
@@ -498,6 +946,8 @@ export function compareToBaseline(summary, baseline, currentResults = []) {
     return runs.length > 0 && runs.every(item => item.pass === true);
   });
   return {
+    comparable: true,
+    scorerVersion: currentVersion,
     scenarios: { before: before.scenarios, after: after.scenarios, delta: delta(['scenarios']) },
     passed: { before: before.passed, after: after.passed, delta: delta(['passed']) },
     factCoverage: { before: before.resume?.factCoverage ?? null, after: after.resume?.factCoverage ?? null, delta: delta(['resume', 'factCoverage']) },
@@ -513,6 +963,10 @@ export function compareToBaseline(summary, baseline, currentResults = []) {
 }
 
 export function markdownReport({ evidenceTier, provider, summary, results, comparison }) {
+  // Version is reported per run; a report that somehow holds two versions says so
+  // instead of presenting one number.
+  const versions = [...new Set(results.map(result => result.scorerVersion ?? 1))].sort();
+  const scorerVersion = versions.length ? versions.join(' + ') + (versions.length > 1 ? ' (MIXED: not one series)' : '') : SCORER_VERSION;
   const line = (result) => {
     const parts = [];
     if (result.evaluation) parts.push(`eval ${result.evaluation.score ?? 'n/a'}/5 ${result.evaluation.recommendation ?? ''}`.trim());
@@ -520,13 +974,13 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
     if (result.application) parts.push(`form ${result.application.completionRate === null ? 'n/a' : Math.round(result.application.completionRate * 100) + '%'}`, `app-filled ${result.application.appFilledRate == null ? 'n/a' : Math.round(result.application.appFilledRate * 100) + '%'}`, `stop ${result.application.stop}`);
     if (result.profile) parts.push(`capture ${Math.round((result.profile.captureRate || 0) * 100)}%`);
     if (result.application?.submission.expected) parts.push(result.application.submission.accepted ? 'submitted' : 'submit-failed');
-    return `| ${result.scenario.id} | ${result.pass ? 'PASS' : result.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
+    return `| ${result.scenario.id}${result.scenario.holdout ? ' (held out)' : ''} | ${result.pass ? 'PASS' : result.expectedFail ? 'EXPECTED FAIL' : 'FAIL'} | ${parts.join(' · ')} | ${result.error || ''} |`;
   };
   const failures = results.filter(result => !result.pass).map(result => {
     const reasons = [];
     if (result.error) reasons.push(result.error);
-    if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
-    if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}`);
+    if (result.evaluation && !result.evaluation.pass) reasons.push(`evaluation: score ${result.evaluation.score ?? 'n/a'}, recommendation ${result.evaluation.recommendation ?? 'n/a'}${result.evaluation.modelRecommendation && result.evaluation.modelRecommendation !== result.evaluation.recommendation ? ` (model said ${result.evaluation.modelRecommendation})` : ''}, evidence ${result.evaluation.evidenceValid}, guard ${result.evaluation.guardCorrect}`);
+    if (result.packet && !result.packet.pass) reasons.push(`resume: coverage ${result.packet.factCoverage}, unsupported ${result.packet.unsupportedNumbers.length}${result.packet.numericUncertainty?.length ? ` (${result.packet.numericUncertainty.length} uncertain)` : ''}, absent ${result.packet.absentClaims.length}, review ${result.packet.reviewPassed}, pdf ${result.packet.pdfState}${result.packet.tailoring ? `, role order ${result.packet.tailoring.roleOrderOk ? 'ok' : result.packet.tailoring.roleOrderReason} (${result.packet.tailoring.roleOrder})${result.packet.tailoring.droppedRequiredRoles.length ? `, dropped required roles: ${result.packet.tailoring.droppedRequiredRoles.map(role => role.heading).join('; ')}` : ''}` : ''}`);
     if (result.application && !result.application.pass) reasons.push(`application: incorrect ${result.application.incorrect.join(', ') || 'none'}, app-owed rescued ${result.application.appOwedRescued?.join(', ') || 'none'}, sensitive ${result.application.sensitiveAppFilled.join(', ') || 'none'}, readback ${result.application.readbackMismatches?.join(', ') || 'ok'}, upload ${result.application.resumeUploadMatches === false || result.application.coverUploadMatches === false ? 'mismatch' : 'ok'}, stop ${result.application.stop}/${result.application.expectedStop || '-'}${result.application.warning ? `, warning: ${result.application.warning}` : ''}`);
     if ((result.scenario.portal && !result.application) && !result.error) reasons.push('application stage did not run');
     return `- **${result.scenario.id}**${result.expectedFail ? ' (expected lower-bound control)' : ''} — ${reasons.join('; ')}`;
@@ -542,7 +996,13 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Scenarios passed | ${summary.passed}/${summary.scenarios} |
 | Evaluations passed | ${summary.evaluation?.passed ?? 0}/${summary.evaluation?.runs ?? 0} |
 | Resume fact coverage | ${summary.resume?.factCoverage ?? 'n/a'} |
+| Roles in the requested order (roleOrder) | ${summary.resume?.roleOrderPassed ?? 0}/${summary.resume?.runs ?? 0} (${(summary.resume?.roleOrders || []).join(', ') || 'n/a'}) |
+| Role headings whose dates could not be read | ${summary.resume?.unparseableRoleHeadings ?? 0} |
+| Roles holding a required fact that were dropped | ${summary.resume?.droppedRequiredRoles ?? 0} |
+| Required-fact role whose first line is a required fact (diagnostic, not gated) | ${summary.resume?.requiredRoleFirstLine ?? 0}/${summary.resume?.curatedRoles ?? 0} |
 | Resume unsupported numbers | ${summary.resume?.unsupportedNumbers ?? 'n/a'} |
+| Resume numeric mentions (posting-only, uncertain) | ${summary.resume?.numberMentions ?? 'n/a'} (${summary.resume?.numericPostingOnly ?? 0} posting-only, ${summary.resume?.numericUncertain ?? 0} uncertain) |
+| PDF evidence passed (blocked on extraction) | ${summary.resume?.pdfPassed ?? 0}/${summary.resume?.runs ?? 0} (${summary.resume?.pdfBlocked ?? 0} blocked) |
 | Cover letters first person | ${summary.resume?.firstPerson ?? 0}/${summary.resume?.runs ?? 0} |
 | Application completion (fill scenarios) | ${summary.application?.completionRate ?? 'n/a'} |
 | App-filled rate (app-owed fields the app filled correctly) | ${summary.application?.appFilledRate ?? 'n/a'} |
@@ -553,6 +1013,7 @@ export function markdownReport({ evidenceTier, provider, summary, results, compa
 | Submissions accepted | ${summary.application?.submissionsAccepted ?? 0}/${summary.application?.submissionsExpected ?? 0} |
 | Profile capture rate | ${summary.profile?.captureRate ?? 'n/a'} |
 | Model calls | ${summary.calls} |
+| Scorer version | ${scorerVersion} |
 | Duration | ${(summary.durationMs / 1000).toFixed(1)}s |
 
 ${summary.profileEffect?.length ? `## Profile effectiveness

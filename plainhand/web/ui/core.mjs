@@ -85,6 +85,23 @@ export async function api(path, data) {
   return result;
 }
 
+// Download a server-generated file with the session token in a header, so the
+// token never appears in the address bar or the browser history.
+export async function downloadFile(path, filename) {
+  const response = await fetch('/api/' + path, { headers: { 'X-Plainhand-Token': token } });
+  if (!response.ok) {
+    let message = 'Plainhand could not prepare the file.';
+    try { message = (await response.json()).error || message; } catch {}
+    throw new Error(message);
+  }
+  const href = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
+}
+
 let lastText = null, seq = 0, applied = 0;
 export async function refresh(force = false) {
   if (force) lastText = null;
@@ -216,7 +233,7 @@ export async function queueTask(kind, jobId = null, input = {}) {
   toast('Queued. Your agent’s progress appears here and in Activity.');
   await refresh();
 }
-export const TASK_TITLES = { interview: 'Build candidate understanding', evaluate: 'Evaluate opportunity', prepare: 'Prepare application', discover: 'Discover opportunities', 'campaign-scan': 'Scan campaigns', standard: 'Write your standard application', revise: 'Revise application' };
+export const TASK_TITLES = { interview: 'Build candidate understanding', evaluate: 'Evaluate opportunity', prepare: 'Prepare application', discover: 'Discover opportunities', 'campaign-scan': 'Scan campaigns', standard: 'Write your master resume', revise: 'Revise application' };
 // Known progress messages from plainhand/workflow.mjs, in order, so a task card
 // can show where it is. Unknown messages fall back to an indeterminate bar.
 const TASK_STEPS = {
