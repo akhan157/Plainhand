@@ -18,9 +18,11 @@
 # pool (POOL_URL, default http://127.0.0.1:8317/v1; key read from POOL_CONFIG) with a
 # `codex` wrapper first on PATH. Product code is unchanged; only the transport differs.
 # Environment: MODEL (gpt-6.2-sol), EFFORT (low), ROWS (the six non-minimal rows),
-# JUDGE (claude; none skips judging), PROVIDER (codex; controlled = fixture dry run, no calls), WORK (clones; default ~/.cache/plainhand-u14), WAIT (seconds to wait
-# and retry after a Codex usage limit; 0 = stop with exit 75).
-# Evidence: output/u14-codex62nl-<TAG>-<ROUND>/<side>/ in this repo (git-ignored). Keep it.
+# JUDGE (claude; none skips judging), PROVIDER (codex, claude, controlled),
+# WORK (clones; default ~/.cache/plainhand-u14), WAIT (seconds before retrying
+# an interrupted evaluation; 0 = stop with exit 75).
+# Evidence: output/u14-codex62nl-<TAG>-<ROUND>/<side>/ for Codex or
+# output/u14-claude-<TAG>-<ROUND>/<side>/ for Claude (git-ignored).
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,6 +35,7 @@ PROVIDER="${PROVIDER:-codex}"
 if [ "$PROVIDER" = claude ]; then MODEL="${MODEL:-claude-sonnet-5-5}"; EFFORT="${EFFORT:-medium}"; else MODEL="${MODEL:-gpt-6.2-sol}"; EFFORT="${EFFORT:-low}"; fi
 JUDGE="${JUDGE:-claude}"
 WAIT="${WAIT:-0}"
+PROVIDER_FAILURE='usage( or billing)? limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out'
 BASELINE=00ce1bf
 ROWS="${ROWS:-profile-effect-fin-built,profile-effect-fin-seeded,profile-effect-analyst-built,profile-effect-analyst-seeded,profile-effect-sci-built,profile-effect-sci-seeded}"
 SEEDED=profile-effect-fin-seeded,profile-effect-analyst-seeded,profile-effect-sci-seeded
@@ -95,15 +98,23 @@ patch_baseline() {
   fi
 }
 
-# One benchmark run. A Codex usage limit stops the run; with WAIT set it waits and retries.
+# Archive an interrupted benchmark before stopping or retrying.
 run_side() {
-  local dir="$1" out="$2" rows="$3"; shift 3
+  local dir="$1" out="$2" rows="$3" archive; shift 3
   while true; do
     if (cd "$dir" && env PLAINHAND_CODEX_MODEL="$MODEL" PLAINHAND_CODEX_EFFORT="$EFFORT" PLAINHAND_CLAUDE_MODEL="$MODEL" PLAINHAND_CLAUDE_EFFORT="$EFFORT" "$@" \
         node benchmarks/benchmark-eval.mjs $([ "$PROVIDER" = controlled ] || echo --provider "$PROVIDER") --scenarios "$rows" --out "$out") 2>&1 | tee "$out.log"; then :; fi
-    if grep -qiE "usage limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out" "$out.log"; then
-      if [ "$WAIT" -gt 0 ]; then echo "Codex usage limit; retrying in ${WAIT}s"; sleep "$WAIT"; rm -rf "$out"; continue; fi
-      echo "Codex usage limit reached: $out is incomplete; no aggregate is reported." >&2; exit 75
+    if grep -qiE "$PROVIDER_FAILURE" "$out.log"; then
+      archive="$(mktemp -d "$OUT/.incomplete.XXXXXX")"
+      mv "$out.log" "$archive/"
+      if [ -d "$out" ]; then mv "$out" "$archive/"; fi
+      echo "$PROVIDER run interrupted; partial evidence saved to $archive." >&2
+      if [ "$WAIT" -gt 0 ]; then sleep "$WAIT"; continue; fi
+      exit 75
+    fi
+    if [ ! -f "$out/results.json" ]; then
+      echo "Benchmark did not write results.json. See $out.log." >&2
+      exit 1
     fi
     break
   done
@@ -136,14 +147,38 @@ for side in $SIDES; do
     head) dir="$head_dir" ;;
     *) echo "unknown side: $side" >&2; exit 2 ;;
   esac
-  [ -f "$OUT/$side/results.json" ] && { echo "$side already measured in $OUT/$side"; continue; }
+  if [ -f "$OUT/$side/results.json" ]; then
+    if [ -f "$OUT/$side.log" ] && grep -qiE "$PROVIDER_FAILURE" "$OUT/$side.log"; then
+      archive="$(mktemp -d "$OUT/.incomplete.XXXXXX")"
+      mv "$OUT/$side" "$OUT/$side.log" "$archive/"
+    else
+      echo "$side already measured in $OUT/$side"
+      continue
+    fi
+  fi
   run_side "$dir" "$OUT/$side" "$ROWS"
 done
 
 # One judge, HEAD's, for both sides so the rubric is identical.
 for side in $SIDES; do
-  [ -f "$OUT/$side/results.json" ] && [ "$JUDGE" != none ] && [ ! -f "$OUT/$side/judge.json" ] || continue
-  (cd "$head_dir" && node benchmarks/benchmark-judge.mjs --evidence "$OUT/$side" --judge "$JUDGE" --scenarios "$ROWS") 2>&1 | tee "$OUT/$side.judge.log"
+  [ "$JUDGE" != none ] || continue
+  judge_log="$OUT/$side.judge.log"
+  if [ ! -f "$OUT/$side/judge.json" ]; then
+    (cd "$head_dir" && node benchmarks/benchmark-judge.mjs --evidence "$OUT/$side" --judge "$JUDGE" --scenarios "$ROWS") 2>&1 | tee "$judge_log" || true
+  fi
+  if [ -f "$judge_log" ] && grep -qiE "$PROVIDER_FAILURE" "$judge_log"; then
+    archive="$(mktemp -d "$OUT/.incomplete.XXXXXX")"
+    mv "$judge_log" "$archive/"
+    for file in judge.json JUDGE.md; do
+      if [ -f "$OUT/$side/$file" ]; then mv "$OUT/$side/$file" "$archive/"; fi
+    done
+    echo "$JUDGE judging interrupted; partial evidence saved to $archive." >&2
+    exit 75
+  fi
+  if [ ! -f "$OUT/$side/judge.json" ]; then
+    echo "Judge did not write judge.json. See $judge_log." >&2
+    exit 1
+  fi
 done
 report $(for side in $SIDES; do echo "$OUT/$side"; done)
 (cd "$head_dir" && for side in $SIDES; do node scripts/cost-breakdown.mjs --results "$OUT/$side/results.json"; done)

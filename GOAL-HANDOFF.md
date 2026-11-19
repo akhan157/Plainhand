@@ -1409,3 +1409,31 @@ Branch `goal/handoff-leftovers` from main `06084e1`. Not pushed.
   still parse without error on 0.170.0; record the version with repeat 2.
 - **Model matrix:** still waits on U14, per the owner's order (screen Codex 6.2-sol
   low and medium, Sonnet 5.5 low and medium, Haiku 5.5 low).
+
+## PR #10 live benchmark checkpoint — 2026-11-19
+
+- Code and UI fixes are in PR #10. Live measurements use product commit
+  `a4d9507`. Later runner changes do not change the product under test.
+- **Deciding U14 comparison:** Codex CLI 0.170.0, gpt-6.2-sol low, six
+  non-minimal rows, frozen `00ce1bf` baseline. Both sides omit the corpus label
+  and use the same neutral posting URL and verifier record. The local provider
+  pool is the transport. Keep the two complete baselines under
+  `output/u14-codex62nl-a4d9507-n{1,2}/baseline`. The old first HEAD attempt
+  timed out on both science rows and its artifacts are in `head-void-pool-429`.
+- The prior candidate `0c31aff` passed 5/6 in the one complete repeat
+  (baseline 1/6). Five packets per side were judged, with overall 4.00 and
+  honesty 4.80 on both sides. Total input was 642k against 855k, including
+  profile interviews. A second repeat was interrupted. Keep U14 open until
+  both valid repeats on the candidate can show whether cost falls at quality
+  parity.
+- **Model screening at `a4d9507`:** Sonnet 5.5 low passed 2/6, Sonnet 5.5
+  medium 4/6, and Haiku 5.5 low 1/6. The Claude judge graded all available
+  packets for both Sonnet rows (three and four, respectively) and one of four
+  for Haiku before provider limits interrupted it. The Sonnet grades are
+  self-judged. Haiku needs a completed judge run before ranking by quality.
+  Evidence is in `output/model-matrix-a4d9507-s1`. Codex screening and the
+  follow-up screens are pending.
+- **Claude companion U14:** Sonnet 5.5 medium on both sides with the same six
+  neutralized scenarios, two rounds, judged by Codex. The earlier queue
+  stopped before producing evidence. This measures Claude separately and
+  does not decide the Codex acceptance row.

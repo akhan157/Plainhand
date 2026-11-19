@@ -17,6 +17,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TAG="${TAG:?set TAG to the commit to screen}"
 ROUND="${ROUND:-s1}"
 JUDGE="${JUDGE:-claude}"
+PROVIDER_FAILURE='usage( or billing)? limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out'
 CONFIGS="${CONFIGS:-codex:gpt-6.2-sol:low codex:gpt-6.2-sol:medium claude:claude-sonnet-5-5:low claude:claude-sonnet-5-5:medium claude:claude-haiku-5-5:low}"
 ROWS="${ROWS:-profile-effect-fin-built,profile-effect-fin-seeded,profile-effect-analyst-built,profile-effect-analyst-seeded,profile-effect-sci-built,profile-effect-sci-seeded}"
 WORK="${WORK:-${XDG_CACHE_HOME:-$HOME/.cache}/plainhand-u14}"
@@ -46,9 +47,15 @@ if [ ! -e "$dir/node_modules" ]; then
   else (cd "$dir" && npm ci --silent); fi
 fi
 
+status=0
 for config in $CONFIGS; do
   IFS=: read -r provider model effort <<<"$config"
   out="$OUT/$provider-$model-$effort"
+  if [ -f "$out.log" ] && grep -qiE "$PROVIDER_FAILURE" "$out.log"; then
+    archive="$(mktemp -d "$OUT/.incomplete.XXXXXX")"
+    mv "$out.log" "$archive/"
+    if [ -d "$out" ]; then mv "$out" "$archive/"; fi
+  fi
   if [ ! -f "$out/results.json" ]; then
     case "$provider" in
       codex) vars=(PLAINHAND_CODEX_MODEL="$model" PLAINHAND_CODEX_EFFORT="$effort") ;;
@@ -57,28 +64,57 @@ for config in $CONFIGS; do
       *) echo "unknown provider: $provider" >&2; exit 2 ;;
     esac
     (cd "$dir" && env "${vars[@]}" node benchmarks/benchmark-eval.mjs $([ "$provider" = controlled ] || echo --provider "$provider") --scenarios "$ROWS" --out "$out") 2>&1 | tee "$out.log" || true
-    if grep -qiE "usage limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out" "$out.log"; then echo "$config hit a usage limit; its row is incomplete." >&2; fi
+    if grep -qiE "$PROVIDER_FAILURE" "$out.log"; then
+      echo "$config benchmark interrupted. See $out.log." >&2
+      status=75
+      continue
+    fi
+    if [ ! -f "$out/results.json" ]; then
+      echo "$config did not write results.json. See $out.log." >&2
+      if [ "$status" -eq 0 ]; then status=1; fi
+      continue
+    fi
+  fi
+  if [ "$JUDGE" != none ] && [ -f "$out.judge.log" ] && grep -qiE "$PROVIDER_FAILURE" "$out.judge.log"; then
+    archive="$(mktemp -d "$OUT/.incomplete.XXXXXX")"
+    mv "$out.judge.log" "$archive/"
+    for file in judge.json JUDGE.md; do
+      if [ -f "$out/$file" ]; then mv "$out/$file" "$archive/"; fi
+    done
   fi
   if [ -f "$out/results.json" ] && [ ! -f "$out/judge.json" ] && [ "$JUDGE" != none ]; then
     (cd "$dir" && node benchmarks/benchmark-judge.mjs --evidence "$out" --judge "$JUDGE" --scenarios "$ROWS") 2>&1 | tee "$out.judge.log" || true
+    if grep -qiE "$PROVIDER_FAILURE" "$out.judge.log"; then
+      echo "$config judging interrupted. See $out.judge.log." >&2
+      status=75
+    fi
   fi
 done
 
 node -e '
   const fs = require("fs"), path = require("path");
-  const [out, judge] = process.argv.slice(1);
+  const [out, pattern] = process.argv.slice(1);
+  const providerFailure = new RegExp(pattern, "i");
   const rows = [["config", "passed", "calls", "input tokens", "judge overall", "honesty", "unsupported", "note"]];
-  for (const name of fs.readdirSync(out).filter(n => fs.statSync(path.join(out, n)).isDirectory()).sort()) {
+  const interrupted = file => fs.existsSync(file) && providerFailure.test(fs.readFileSync(file, "utf8"));
+  for (const name of fs.readdirSync(out).filter(n => !n.startsWith(".") && fs.statSync(path.join(out, n)).isDirectory()).sort()) {
     const read = f => { try { return JSON.parse(fs.readFileSync(path.join(out, name, f), "utf8")); } catch { return null; } };
     const r = read("results.json"), j = read("judge.json");
+    if (interrupted(path.join(out, name + ".log"))) {
+      rows.push([name, "incomplete", "", "", "", "", "", "benchmark interrupted"]); continue;
+    }
     if (!r) { rows.push([name, "no results", "", "", "", "", "", ""]); continue; }
     const tokens = (r.results || []).reduce((sum, x) => sum + (x.usage?.inputTokens || 0), 0);
     const mean = v => v && typeof v === "object" ? v.mean : v;
-    const s = j?.summary;
+    const judgeInterrupted = interrupted(path.join(out, name + ".judge.log"));
+    const s = judgeInterrupted ? null : j?.summary;
+    const note = [j?.selfJudged ? "self-judged" : "",
+      judgeInterrupted ? "judging interrupted" : ""].filter(Boolean).join(", ");
     rows.push([name, `${r.summary.passed}/${r.summary.scenarios}`, r.summary.calls ?? "", tokens ? Math.round(tokens / 1000) + "k" : "n/a",
-      s ? (mean(s.overall)?.toFixed?.(2) ?? "") : "not judged", s ? (mean(s.dimensions?.honesty)?.toFixed?.(2) ?? "") : "",
-      s && s.unsupportedRate != null ? (100 * s.unsupportedRate).toFixed(1) + "%" : "", name.startsWith(judge + "-") ? "self-judged" : ""]);
+      s ? (mean(s.overall)?.toFixed?.(2) ?? "") : judgeInterrupted ? "incomplete" : "not judged", s ? (mean(s.dimensions?.honesty)?.toFixed?.(2) ?? "") : "",
+      s && s.unsupportedRate != null ? (100 * s.unsupportedRate).toFixed(1) + "%" : "", note]);
   }
   const width = rows[0].map((_, i) => Math.max(...rows.map(r => String(r[i]).length)));
   for (const r of rows) console.log(r.map((c, i) => String(c).padEnd(width[i])).join("  "));
-' "$OUT" "$JUDGE" | tee "$OUT/MATRIX.txt"
+' "$OUT" "$PROVIDER_FAILURE" | tee "$OUT/MATRIX.txt"
+exit "$status"
