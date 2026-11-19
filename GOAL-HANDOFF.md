@@ -1278,3 +1278,25 @@ holdout2-journey-stem fails again, the same way.
   label-free repeats on 6.2-sol low, both sides.
 - **Round 2 note.** The HEAD judge was interrupted by a T3 restart and re-run alone on
   the same evidence.
+
+## Side branch folded in; E2E findings — 2026-11-18
+
+- **Owner decision:** this branch is the up-to-date line of work, and it oversees the
+  "Continue Existing Branch Changes" thread (`t3/competitor-workflow-improvements-1`, forked
+  at `a46056f`, 250 commits behind). That thread had planned to push and merge to main.
+  It was told not to push, merge or file issues.
+- **Brought in by cherry-pick:**
+  - `90f4fc9`: dated resume lines in master coverage; CLI limit words in resume text.
+  - `ffe536e`: no idle "Plainhand is replying" bubble. Conflict resolved by keeping this
+    branch's line, with `null` for idle.
+  - `a29a267`: "master resume" wording in settings and the user guide, plus a guard test.
+  - Suite 777/777, gate 64/67 (expected), simulation 49/49; touched test files pass.
+- **E2E findings:** three DeepSeek testers drove the app with the fixture agent. They're
+  in `docs/internal/E2E-FINDINGS-2026-11-18.md`. Open items include:
+  - **High:** workspace import drops the master resume, format, writing samples and
+    understanding.
+  - **Medium:** adding a writing sample silently clears the understanding and stales the
+    master; a master-resume failure is silent on Profile.
+  - Ten low UI items.
+  - These were found on the side branch. Re-check them here before fixing; filing GitHub
+    issues waits for the owner (outward-facing).
