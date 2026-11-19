@@ -1325,3 +1325,32 @@ holdout2-journey-stem fails again, the same way.
 - **Follow-up:** a kept candidate decision is exempt from the letter fit rule only
   until the packet ships (see the 736812b review).
 - **External checks 1-6** stay open; they need people or authorized live writes.
+
+## U14 label-free repeat 1; CI fixes for PR #9 — 2026-11-19
+
+- **U14 repeat 1** (gpt-6.2-sol low, label removed on both sides):
+
+  | | Baseline | HEAD `f873cfb` |
+  | --- | --- | --- |
+  | Rows passed | 2/6 | 0/6 |
+  | Application calls | 34 | 33 |
+  | Input tokens | 1,430k | 1,008k (−30%) |
+  | Seeded input tokens | 534k | 243k (−55%) |
+  | Judged rows | 4 | 6 |
+  | Judge overall | 4.08 | 3.94 |
+  | Judge honesty | 4.67 | 4.61 (4.50 on the 4 rows both sides judged) |
+
+- **HEAD evaluate step.** It recommended Investigate on every row; the baseline said
+  Apply on 3. Look at why before repeat 2, because it decides the pass rate.
+- **Repeat 2** waits for the Codex weekly reset, 2026-11-24 08:25 ET. Run
+  `u14-codex62.sh` with `SIDES` per side, `TAG=f873cfb` (or the new HEAD) and
+  `ROUND=r2`, then judge.
+- **PR #9 CI fixes:**
+  - `d16d4b9`: the desktop transfer test now imports an export that has a candidate.
+  - `a7c18bd`: an import with no provider sets null, not undefined; the tracking
+    test's interview date moved to 2099 (it expired on 2026-11-19).
+- **Possible time bombs:** test-application-record, test-exports and
+  test-feature-inbox also use mid-November 2026 dates.
+- **GitHub sign-in:** `gh` was re-authorised with repo and workflow scopes. The old
+  fine-grained token could only read this repo. The KDE wallet stays locked after an
+  autologin; see the wallet notes from 2026-11-18.
