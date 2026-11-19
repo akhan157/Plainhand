@@ -137,7 +137,7 @@ done
 
 # One judge, HEAD's, for both sides so the rubric is identical.
 for side in $SIDES; do
-  [ -f "$OUT/$side/results.json" ] && [ "$JUDGE" != none ] || continue
+  [ -f "$OUT/$side/results.json" ] && [ "$JUDGE" != none ] && [ ! -f "$OUT/$side/judge.json" ] || continue
   (cd "$head_dir" && node benchmarks/benchmark-judge.mjs --evidence "$OUT/$side" --judge "$JUDGE" --scenarios "$ROWS") 2>&1 | tee "$OUT/$side.judge.log"
 done
 report $(for side in $SIDES; do echo "$OUT/$side"; done)
