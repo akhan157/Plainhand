@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # U14 paired measurement on Codex: frozen baseline 00ce1bf against a HEAD commit, both on
 # the same model and effort, with the corpus's "SYNTHETIC TEST JOB." label removed on both
-# sides (owner-approved 2026-11-18, d037477), then one Claude judge for both sides.
+# sides (owner-approved 2026-11-18, d037477) and the harness's "sandbox" verifier record and
+# "synthetic/<id>" posting URL replaced the same way on both sides (2026-11-19), then one
+# Claude judge for both sides.
 # Recreated 2026-11-19: the earlier runner lived outside the repo and was lost.
 #
 #   TAG=<head commit> ROUND=r2 scripts/u14-codex62.sh            # both sides, then judge
@@ -77,6 +79,11 @@ clone() {
 patch_baseline() {
   local dir="$1"
   sed -i 's/SYNTHETIC TEST JOB\. //g' "$dir"/plainhand/evaluation/corpus*.mjs
+  # The same neutral posting record HEAD's harness uses (portals.mjs postingPath, runner.mjs
+  # verifier): no "sandbox" verification and no "synthetic/<scenario id>" URL.
+  sed -i 's|https://jobs.lever.co/synthetic/${scenario.id}|https://jobs.lever.co/careers/${[...String(scenario.id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}|g' "$dir/plainhand/evaluation/portals.mjs" "$dir/plainhand/evaluation/runner.mjs"
+  sed -i "s|legitimacy: 'owned-sandbox'|legitimacy: 'official-ats-unconfirmed-employer'|; s|reason: 'Owned evaluation sandbox; no employer was contacted.'|reason: 'The posting page loaded and matches the saved role.'|" "$dir/plainhand/evaluation/runner.mjs"
+  if grep -q "synthetic/\|owned-sandbox" "$dir/plainhand/evaluation/runner.mjs" "$dir/plainhand/evaluation/portals.mjs"; then echo "baseline harness patch did not apply" >&2; exit 1; fi
   if ! grep -q "model_reasoning_effort" "$dir/plainhand/agents.mjs"; then
     sed -i "s/if (id === 'codex') args = \['exec', /if (id === 'codex') args = ['exec', '-m', '$MODEL', '-c', 'model_reasoning_effort=\"$EFFORT\"', /" "$dir/plainhand/agents.mjs"
     grep -q "'-m', '$MODEL'" "$dir/plainhand/agents.mjs" || { echo "baseline model patch did not apply" >&2; exit 1; }
