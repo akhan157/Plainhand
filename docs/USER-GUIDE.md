@@ -144,7 +144,7 @@ there's enough data, and suggests changes for you to accept or reject.
 
 - **Workspace → How much Plainhand does on its own:** by default it asks per
   application. You can let it prepare strong matches on its own (fit 4/5 or
-  more, from your approved standard, up to a daily limit). It still never
+  more, from your approved master resume, up to a daily limit). It still never
   submits.
 - **Workspace → What your agent sees:** turn off any source or profile field
   you'd rather not send to the AI provider.

@@ -373,3 +373,14 @@ test('calibration reads the sanitized posting, so an injected number cannot exem
     assert.ok(job.calibration.claims.some(claim => claim.part === 'cover' && claim.rating === 'unsupported' && /28/.test(claim.text)), 'a sentence addressed to AI tools cannot whitelist a number');
   } finally { await h.close(); }
 });
+
+test('the app and user guide call it the master resume, not the standard', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { readdirSync } = await import('node:fs');
+  const ui = readdirSync(new URL('../plainhand/web/ui/', import.meta.url)).filter(f => f.endsWith('.mjs'));
+  const files = [...ui.map(f => `../plainhand/web/ui/${f}`), '../docs/USER-GUIDE.md'];
+  for (const file of files) {
+    const text = (await readFile(new URL(file, import.meta.url), 'utf8')).split('\n').filter(line => !/^\s*\/\//.test(line)).join('\n');
+    assert.doesNotMatch(text, /approved standard|your standard\b|standard application/i, file);
+  }
+});
