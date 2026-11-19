@@ -259,6 +259,11 @@ try {
   await page.getByRole('button', { name: 'Open record' }).first().click();
   await page.getByRole('heading', { name: 'Next action', exact: true }).waitFor();
   await page.getByRole('textbox', { name: 'What happens next?', exact: true }).fill('Send a thank-you note to the recruiter');
+  // E2E finding 5: a reload keeps the open role, its tab and the half-typed next action.
+  await page.waitForTimeout(400);
+  await page.reload();
+  await panel(page).getByRole('tab', { name: 'Record', exact: true, selected: true }).waitFor();
+  assert.equal(await page.getByRole('textbox', { name: 'What happens next?', exact: true }).inputValue(), 'Send a thank-you note to the recruiter', 'the unsent draft survives a reload');
   await page.getByLabel('Due date', { exact: true }).fill(dueDate);
   await page.getByRole('button', { name: 'Save next action', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Next action saved.' }).waitFor();
