@@ -1437,3 +1437,27 @@ Branch `goal/handoff-leftovers` from main `06084e1`. Not pushed.
   neutralized scenarios, two rounds, judged by Codex. The earlier queue
   stopped before producing evidence. This measures Claude separately and
   does not decide the Codex acceptance row.
+
+### Codex reruns completed at 15:13 ET
+
+| Repeat | Scenario passes, baseline / candidate | Application calls, baseline / candidate | Total input tokens, baseline / candidate | Seeded input tokens, baseline / candidate |
+| --- | --- | --- | --- | --- |
+| n1 | 1/6 / 5/6 | 35 / 34 | 854,874 / 577,139 | 317,651 / 135,666 |
+| n2 | 1/6 / 6/6 | 30 / 32 | 742,601 / 581,909 | 231,464 / 126,303 |
+
+Application calls exclude the one-time profile interview. Total input includes
+it. In n1 the candidate's science-built evaluation asked to verify the five-year
+experience requirement because the CV had year-only dates. n2 passed that row.
+Both candidate result sets are at `output/u14-codex62nl-a4d9507-n{1,2}/head`.
+The complete baseline judge reports cover five packets in n1 and six in n2.
+The candidate's packet judgments are pending. U14 remains open.
+
+The Claude provider still returned HTTP 429 at 14:49 ET with a retry window
+through about 16:20 ET. The continuation is scheduled in this thread for
+16:24 ET. Use Claude Opus 5.5 for the pending comparison and matrix judgments,
+consistent with the earlier Claude judge in the proxy logs.
+
+Verification on the branch: `npm run test:plainhand` passed 784/784,
+`npm run test:full` passed, and simulated provider interruption and retry checks
+passed for both runners. The full suite evidence is under
+`output/verification-2026-11-19T19-56-59-241Z`.
