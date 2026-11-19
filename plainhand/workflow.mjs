@@ -407,6 +407,8 @@ export class Workflow {
       const result = await this.agent(state.provider || this.defaultProvider, instruction, { context, ...extra }, { signal: controller.signal, usageContext: { taskId: id, jobId: task.jobId, retryOf: task.retryOf, purpose, attempt } });
       check(); return result;
     };
+    // A task may say what it did in place of the generic "Finished" (discovery: how many roles).
+    let finished = 'Finished';
     try {
       await this.progress(id, task.kind === 'discover' ? 'Reading your saved job sources' : 'Assembling your candidate context');
       if (task.kind === 'interview') {
@@ -429,8 +431,9 @@ export class Workflow {
           catch (error) { failures.push(`${source.name}: ${error.message}`); }
         }
         check();
+        let added = 0;
         await this.workspace.mutate(latest => {
-          let added = 0;
+          added = 0;
           for (const item of found) {
             if (latest.jobs.some(j => j.url === item.url || (j.company.toLowerCase() === item.company.toLowerCase() && j.title.toLowerCase() === item.title.toLowerCase()))) continue;
             latest.jobs.push({ ...item, id: randomUUID(), stage: 'inbox', createdAt: now(), description: '', selected: false }); added++;
@@ -438,6 +441,7 @@ export class Workflow {
           latest.events.unshift({ at: now(), text: `Discovery added ${added} new roles. ${failures.length ? failures.join(' ') : 'No applications were started.'}` });
         });
         if (failures.length === sources.length) throw new Error(failures.join(' '));
+        finished = `${added ? `${added} new role${added === 1 ? '' : 's'} added` : 'No new roles'} from ${sources.length - failures.length} of ${sources.length} source${sources.length === 1 ? '' : 's'}.${failures.length ? ` Could not read ${failures.join(' ')}` : ''}`;
       } else if (task.kind === 'evaluate') {
         await this.progress(id, 'Opening the posting to verify the exact role');
         job.verification = await this.verifier(job);
@@ -838,7 +842,7 @@ export class Workflow {
         await this.handlers.get(task.kind).handler({ task, state, job, context, run, check, assertJob, workspace: this.workspace, signal: controller.signal, progress: message => this.progress(id, message) });
       } else throw new Error('Unknown task type.');
       check();
-      await this.workspace.mutate(latest => { const t = latest.tasks.find(t => t.id === id); if (t.status !== 'canceled') Object.assign(t, { status: 'complete', message: 'Finished', finishedAt: now() }); });
+      await this.workspace.mutate(latest => { const t = latest.tasks.find(t => t.id === id); if (t.status !== 'canceled') Object.assign(t, { status: 'complete', message: finished, finishedAt: now() }); });
     } catch (error) {
       if (error instanceof TaskPaused) return;
       await this.workspace.mutate(latest => {

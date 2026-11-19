@@ -347,6 +347,7 @@ input[type=file]:focus-visible + textarea, #resume-file:focus-visible { outline:
 .source-chip .icon-button { width: 28px; height: 28px; border-radius: 50%; }
 .source-chip .icon-button .icon { width: 15px; height: 15px; }
 .scan-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--sp-3); align-items: end; }
+.scan-result { margin-top: var(--sp-3); }
 .card > .task-card { margin-top: var(--sp-3); }
 
 /* ---------- Applications ---------- */

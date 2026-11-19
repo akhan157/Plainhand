@@ -45,6 +45,9 @@ export function JobsPage() {
   const [query, setQuery] = useState('');
   const [scan, setScan] = useDraft('scan-filters', { filter: '', location: '' });
   const discovering = runningTask('discover');
+  // The latest check stays on the page with its result (or its error and a Retry),
+  // instead of only in Activity. Tasks are stored newest first.
+  const lastCheck = discovering || state.tasks.find(t => t.kind === 'discover') || null;
   return html`
     <${PageHeading} title="Jobs" subtitle="Save a role you found, or check the company boards you follow. Nothing starts an application by itself."
       actions=${html`<${Button} class="primary" icon="plus" onClick=${() => openDialog({ type: 'add-job' })}>Add a job</${Button}>`} />
@@ -58,19 +61,27 @@ export function JobsPage() {
         <${ActionButton} type="submit" class="primary" icon="refresh" disabled=${!state.sources.length || !!discovering} onClick=${() => queueTask('discover', null, { filter: scan.filter, location: scan.location })}>Check sources</${ActionButton}>
       </form>
       <small class="hint">Text filters only. Your agent evaluates the deeper fit after you save or open a role.</small>
-      ${discovering ? html`<${TaskCard} task=${discovering} compact onCancel=${() => api('tasks/cancel', { id: discovering.id }).then(refresh)} />` : null}
+      ${lastCheck ? html`<div class="scan-result" aria-live="polite"><${TaskCard} task=${lastCheck} compact onCancel=${() => api('tasks/cancel', { id: lastCheck.id }).then(refresh)} onRetry=${() => queueTask('discover', null, { ...lastCheck.input, retryOf: lastCheck.id })} /></div>` : null}
     </${Card}>
     <${Card} title="Your roles" icon="briefcase" id="roles-title">
       <${JobList} jobs=${state.jobs} filter=${filter} setFilter=${setFilter} query=${query} setQuery=${setQuery} />
     </${Card}>`;
 }
 
+// People paste links without the scheme ("jobs.lever.co/acme/123"). The field is plain
+// text so the browser's own URL bubble never blocks the form; a host-looking value gets
+// https:// and the server still validates the result.
+export const withScheme = value => {
+  const text = String(value || '').trim();
+  return text && !/^[a-z][a-z0-9+.-]*:/i.test(text) && /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]|$)/.test(text) ? 'https://' + text : text;
+};
+
 export function AddJobDialog() {
   const [job, setJob, clear] = useDraft('new-job', { company: '', title: '', url: '', location: '', description: '' });
   const set = key => value => setJob({ ...job, [key]: value });
   async function submit(event) {
     event.preventDefault();
-    const result = await api('jobs', job);
+    const result = await api('jobs', { ...job, url: withScheme(job.url) });
     clear(); closeDialog(); await refresh(); openJob(result.id, 'fit');
     toast('Role saved. Evaluate it when you’re ready.');
   }
@@ -78,7 +89,7 @@ export function AddJobDialog() {
     <form class="form-grid" onSubmit=${e => submit(e).catch(error => toast(error.message, true))}>
       <${Field} form="job" name="company" label="Company" placeholder="Company name" required value=${job.company} onInput=${set('company')} />
       <${Field} form="job" name="title" label="Role" placeholder="Financial Analyst" required value=${job.title} onInput=${set('title')} />
-      <${Field} form="job" name="url" label="Job posting URL" type="url" placeholder="https://…" required full value=${job.url} onInput=${set('url')} />
+      <${Field} form="job" name="url" label="Job posting URL" autocomplete="url" placeholder="https://… or jobs.lever.co/…" required full value=${job.url} onInput=${set('url')} />
       <${Field} form="job" name="location" label="Location" placeholder="City, country or remote" full value=${job.location} onInput=${set('location')} />
       <${Field} form="job" name="description" label="Job description" area full placeholder="Paste the full description when the posting is behind a sign-in or a script-only page." value=${job.description} onInput=${set('description')} />
       <div class="form-footer full"><small>Saving a role does not start an application.</small><button type="submit" class="button primary">Save role<${Icon} name="arrow" /></button></div>
@@ -90,14 +101,14 @@ export function AddSourceDialog() {
   const [source, setSource, clear] = useDraft('new-source', { name: '', url: '' });
   async function submit(event) {
     event.preventDefault();
-    await api('sources', source);
+    await api('sources', { ...source, url: withScheme(source.url) });
     clear(); closeDialog(); refresh();
     toast('Company board added. Check sources to discover roles.');
   }
   return html`<${Dialog} title="Follow a company board" description="Add a public career board: Greenhouse, Lever, Ashby, Workable, SmartRecruiters or Recruitee." onClose=${closeDialog}>
     <form class="form-grid" onSubmit=${e => submit(e).catch(error => toast(error.message, true))}>
       <${Field} form="source" name="name" label="Company name" placeholder="A company you care about" required full value=${source.name} onInput=${v => setSource({ ...source, name: v })} />
-      <${Field} form="source" name="url" label="Career board URL" type="url" placeholder="https://jobs.lever.co/company" required full value=${source.url} onInput=${v => setSource({ ...source, url: v })} />
+      <${Field} form="source" name="url" label="Career board URL" autocomplete="url" placeholder="https://jobs.lever.co/company" required full value=${source.url} onInput=${v => setSource({ ...source, url: v })} />
       <div class="form-footer full"><small>Sources are checked only when you ask.</small><button type="submit" class="button primary"><${Icon} name="plus" />Add source</button></div>
     </form>
   </${Dialog}>`;

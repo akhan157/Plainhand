@@ -161,13 +161,17 @@ try {
   await navLink(page, 'Jobs').click();
   await page.getByRole('button', { name: 'Add a company board', exact: true }).click();
   await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Test Company');
-  await page.getByRole('textbox', { name: 'Career board URL' }).fill('https://jobs.lever.co/test');
+  // Pasted without the scheme, as people do: the app adds https:// instead of a browser bubble.
+  await page.getByRole('textbox', { name: 'Career board URL' }).fill('jobs.lever.co/test');
   await page.evaluate(() => window.plainhandTheme.set('light'));
   assert.equal(await page.getByRole('textbox', { name: 'Company name', exact: true }).inputValue(), 'Test Company', 'Theme changes preserve unsaved source details.');
   await page.evaluate(() => window.plainhandTheme.set('dark'));
   await page.getByRole('button', { name: 'Add source', exact: true }).click();
   await page.getByRole('button', { name: 'Check sources', exact: true }).click();
   await page.getByRole('button', { name: 'Graduate Engineer', exact: true }).waitFor({ timeout: 10000 });
+  // The check's result stays on Jobs, not only in Activity.
+  await page.locator('.task-card').filter({ hasText: '1 new role added from 1 of 1 source.' }).waitFor();
+  assert.equal(await page.locator('.source-chip a').first().getAttribute('href'), 'https://jobs.lever.co/test', 'a pasted board link without https:// is saved with it');
   await page.getByRole('button', { name: 'Graduate Engineer', exact: true }).click();
   await panel(page).getByRole('heading', { name: 'Graduate Engineer', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Evaluate fit' }).click();
