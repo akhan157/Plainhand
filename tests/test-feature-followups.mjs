@@ -142,6 +142,13 @@ test('a wrong recipient name or company is blocked by rule, even when the audit 
   assert.ok(checkFollowup(message({ sign: 'Alex Smith' }), rules).some(i => /signed “Alex Smith”/.test(i)));
   assert.ok(checkFollowup(message({ extra: ' We met on March 3.' }), rules).some(i => /date “March 3”/.test(i)));
   assert.deepEqual(checkFollowup(message({ extra: ' Thank you again for the onsite on October 20.' }), rules), [], 'a recorded date is allowed');
+  // A number is grounded only by a number in the sources, never by part of a date or
+  // timestamp: this test used to pass or fail depending on whether today had a 12 in it.
+  const dated = { ...job, submittedAt: '2026-12-12T12:12:00.000Z', record: { ...job.record, interviews: [{ id: 'r2', stage: 'Onsite', date: '2026-12-12', status: 'completed' }] } };
+  const datedRules = { ...rules, job: dated, sources: followupSources(dated, { recipient }) };
+  assert.ok(checkFollowup(message({ extra: ' I led a team of 12 engineers.' }), datedRules).some(i => /number “12”/.test(i)), 'a date in the record does not ground a count');
+  assert.ok(checkFollowup(message({ extra: ' I led a team of 20 engineers.' }), rules).some(i => /number “20”/.test(i)), 'nor does a written date such as October 20');
+  assert.deepEqual(checkFollowup(message({ extra: ' Thank you again for the onsite on December 12.' }), datedRules), [], 'the date itself is still allowed');
   assert.ok(checkFollowup(message({ extra: ' I am free on Friday.' }), rules).some(i => /Friday/.test(i)));
   assert.ok(checkFollowup(message({ extra: ' Email me at someone@evil.example.' }), rules).some(i => /not a link or address/.test(i)));
   assert.ok(checkFollowup(message({ extra: ' I am just checking in.' }), rules).some(i => /just checking in/.test(i)));

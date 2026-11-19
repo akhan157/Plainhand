@@ -118,9 +118,14 @@ export function checkFollowup(message, { kind, job, recipient, sources, candidat
   for (const day of WEEKDAYS) if (containsWord(text, day) && !containsWord(mentionable, day) && !weekdays.has(day)) issues.push(`“${day[0].toUpperCase() + day.slice(1)}” does not match any date in the record or the message you pasted.`);
   let numeric = text;
   for (const date of dateMatches) numeric = numeric.replace(date.text, ' ');
+  // Dates are checked above, on both sides. A number in the message is grounded only by
+  // a number in the sources, never by a piece of a date or timestamp: otherwise "a team
+  // of 12" passes whenever the record holds a date in December or on the 12th.
+  let numericSources = mentionable.replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?/g, ' ');
+  for (const date of datesIn(numericSources)) numericSources = numericSources.replace(date.text, ' ');
   for (const m of numeric.matchAll(/\d+(?:[.,]\d+)*%?/g)) {
     const token = m[0].replace(/[.,]$/, '');
-    if (!new RegExp(`(^|[^\\d])${escapeRegex(token)}($|[^\\d])`).test(mentionable)) issues.push(`The number “${token}” is not in the packet or the record.`);
+    if (!new RegExp(`(^|[^\\d])${escapeRegex(token)}($|[^\\d])`).test(numericSources)) issues.push(`The number “${token}” is not in the packet or the record.`);
   }
   for (const m of text.matchAll(/https?:\/\/[^\s)>\]]+|[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/gi)) if (!lower(mentionable).includes(lower(m[0]).replace(/[.,;]$/, ''))) issues.push(`“${m[0]}” is not a link or address from your packet or record.`);
   if (/\[[^\]]*\]|\{[^}]*\}|<[^>]+>|\bTBD\b|\bX{2,}\b|lorem ipsum/i.test(text)) issues.push('The message contains a placeholder.');
