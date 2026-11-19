@@ -133,9 +133,17 @@ try {
   await shot(page, '04-profile.png');
   // The master resume shows every heading the drafter receives, before the candidate approves it.
   const masterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  // E2E finding 1: a failed master-resume task is shown on its card, not only in Activity.
+  await app.workspace.mutate(state => { state.tasks.unshift({ id: 'failed-master', kind: 'standard', jobId: null, input: {}, status: 'failed', message: 'The master resume contains a claim without an exact source reference.', createdAt: new Date().toISOString() }); });
+  await page.reload();
+  await navLink(page, 'Profile & brain').click();
   if (await masterStep.getAttribute('aria-expanded') !== 'true') await masterStep.click();
+  const masterFailed = page.getByText('Your master resume did not finish');
+  await masterFailed.waitFor();
+  assert.ok(await page.getByText(/claim without an exact source reference/).count(), 'The failure message is on the master card.');
   await page.getByRole('button', { name: 'Write my master resume' }).click();
   await page.getByRole('button', { name: 'Approve my master resume' }).waitFor({ timeout: 30000 });
+  assert.equal(await masterFailed.count(), 0, 'A later successful run clears the failure notice.');
   const master = page.locator('article[aria-label="Master resume"]');
   await master.locator('.doc-role', { hasText: 'Example University' }).waitFor();
   assert.match(await master.locator('.doc-role').first().innerText(), /Example University[\s\S]*B\.S\. Mechanical Engineering[\s\S]*2027/, 'the heading used by tailoring is visible before approval');

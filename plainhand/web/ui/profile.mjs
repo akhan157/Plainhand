@@ -217,8 +217,12 @@ function Standard() {
   const state = store.state;
   const s = state.standard, status = state.standardStatus || 'none';
   const writing = runningTask('standard'), blocked = (!state.provider && !state.cloud) || !state.profile.resume || !!writing;
+  // The newest master-resume task: when it failed, say so on this card, not only in Activity.
+  const last = (state.tasks || []).find(t => t.kind === 'standard');
+  const failed = !writing && last && ['failed', 'interrupted'].includes(last.status) ? last : null;
   const pill = STANDARD_PILL[status];
   return html`<${Card} title="Your master resume" icon="file" id="standard-title" subtitle="Everything you have done, in wording you approve once. It is never sent as it is: each application picks and orders what fits that job." actions=${pill ? html`<${Pill} tone=${pill[0]}>${pill[1]}</${Pill}>` : null}>
+    ${failed ? html`<${Notice} tone="danger" title="Your master resume did not finish">${failed.message || 'The last attempt stopped before it finished.'} ${s ? 'Your earlier version is unchanged. ' : ''}Try again below.</${Notice}>` : null}
     ${!s ? html`<p class="muted-text">After your profile has your resume and a few stories, write your master resume. You review it like any application; nothing is used until you approve it.</p>
         <${ActionButton} class="primary wide" icon="file" disabled=${blocked} onClick=${() => queueTask('standard')}>Write my master resume</${ActionButton}>` : html`
       ${status === 'stale' ? (s.kind === 'master'
@@ -296,7 +300,7 @@ function Samples() {
   const value = draft || { title: '', text: '' };
   async function add(event) {
     event.preventDefault();
-    try { await api('samples/add', { title: value.title, text: value.text }); clear(); toast('Writing sample saved. Your next drafts will sound more like you.'); refresh(); }
+    try { const saved = await api('samples/add', { title: value.title, text: value.text }); clear(); toast(saved?.message || 'Writing sample saved. Your next drafts will sound more like you.'); refresh(); }
     catch (error) { toast(error.message, true); }
   }
   return html`<${Card} title="How you write" icon="quote" id="samples-title" subtitle="Paste a few things you wrote yourself: an email, a post, a past cover letter, a project write-up. Your agent matches the voice; it never takes facts from them.">
