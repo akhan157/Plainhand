@@ -20,6 +20,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 ## Confirmed, not fixed
 
 ### 0. Importing a workspace drops the master resume, resume format, writing samples and understanding — high
+- **Status on goal/plainhand-personal-engine: does not apply.** The goal branch's `plainhand/workspace-import.mjs` restores writing samples, the resume format, the master resume (as a draft to re-approve) and the understanding (marked for review), and tells the candidate so. The finding was against the side branch's older import.
 - Area: Workspace → Import a workspace. Cause verified in source: `plainhand/workspace-import.mjs:8` `STATE_KEYS`
   omits `standard`, `resumeFormat`, `writingSamples` (also `settings`, `agentUsage`), and the import then calls
   `workspace.saveProfile(...)` (`workspace-import.mjs:60`), which sets `state.understanding = null` (`store.mjs:150`).
@@ -36,6 +37,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
   (screenshot); export used: `export-A.json`.
 
 ### 0b. Adding a writing sample silently clears the understanding and makes the master resume stale — medium
+- **Status: fixed in 96c8f1f.** The reset is kept; the message now names what needs approving again.
 - Area: Profile & brain → step 3 → "How you write". `actions.mjs:308` deliberately sets `state.understanding = null`
   (and clears packet approvals) when a sample is added; the context hash change also marks the master resume stale.
   Clearing may be intended (the understanding describes voice), but nothing tells the user.
@@ -46,6 +48,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot).
 
 ### 1. Master resume failures are silent on Profile & brain — medium (found by A and B)
+- **Status: fixed in 6650e7b.** The card shows the failure; the browser test covers it.
 - Area: Profile & brain → step 5 "Approve your master resume" (`Standard` in `plainhand/web/ui/profile.mjs`, ~line 150).
 - Steps: 1) Profile & brain → step 5. 2) Press "Write my master resume" in a workspace where the task fails
   (e.g. the drafter returns a claim with no exact source quote). 3) Watch the card.
