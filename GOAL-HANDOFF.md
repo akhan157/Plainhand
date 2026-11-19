@@ -1395,7 +1395,17 @@ Branch `goal/handoff-leftovers` from main `06084e1`. Not pushed.
     duplicate clause removed, then a re-measure.
   - If not, compare against the baseline clone's evaluate output for the same rows.
   - Keep the output directories this time.
-  - Repeat 2 itself: `SIDES` per side, `TAG` = the new HEAD, `ROUND=r2`, then judge.
-    The runner script has to be recreated or recovered first.
+  - Repeat 2 itself: `TAG=<new HEAD> ROUND=r2 scripts/u14-codex62.sh`.
+- **Runner recreated** as `scripts/u14-codex62.sh` (in the repo now, `c899dee`):
+  - `TAG=<head> MODE=probe` runs the seeded-row probe above.
+  - `TAG=<head> ROUND=r2` runs both sides, judges both with HEAD's judge, and prints a
+    per-row evaluate table (score, label, model label) plus the cost report.
+  - The baseline clone of `00ce1bf` gets only the label removal and the model and
+    effort flags. `WAIT=<seconds>` waits out a usage limit instead of stopping.
+  - A dry run with `PROVIDER=controlled JUDGE=none` passed end to end (clones, patch,
+    both sides, report).
+- **Codex quota, checked 2026-11-19:** the CLI answers "try again at Nov 24th, 2026
+  8:25 AM". The CLI is now 0.170.0 (U14 was measured on 0.167.1). HEAD's lean flags
+  still parse without error on 0.170.0; record the version with repeat 2.
 - **Model matrix:** still waits on U14, per the owner's order (screen Codex 6.2-sol
   low and medium, Sonnet 5.5 low and medium, Haiku 5.5 low).
