@@ -338,7 +338,9 @@ export async function recoverInterruptedImport(workspace) {
 export function preview(data) {
   validateExport(data);
   return { name: data.profile.name || '', exportedAt: data.exportedAt || null, jobs: (data.jobs || []).length, applied: (data.jobs || []).filter(job => job.submittedAt).length,
-    conversation: (data.agentConversation || []).length, sources: (data.sources || []).length, approvalsReset: (data.jobs || []).filter(job => job.approvedHash).length,
+    // The profile interview is what builds the candidate's profile; the assistant thread is
+    // the separate Home chat. Each is counted and labelled on its own.
+    interview: (data.conversation || []).length, assistant: (data.agentConversation || []).length, sources: (data.sources || []).length, approvalsReset: (data.jobs || []).filter(job => job.approvedHash).length,
     answerBank: (data.answerBank || []).length, corrections: (data.corrections || []).length, files: Object.keys(object(data.files) ? data.files : {}).filter(file => EXPORT_FILES.includes(file)).length };
 }
 

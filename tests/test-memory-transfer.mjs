@@ -111,6 +111,9 @@ test('a rich workspace moves with every memory intact and no authority', async t
   const exported = await exportOf(source);
   const preview = transfer.preview(exported);
   assert.deepEqual([preview.answerBank, preview.corrections, preview.approvalsReset], [5, 3, 1]);
+  // The preview counts the profile interview as such, not the Home assistant thread.
+  assert.deepEqual([preview.interview, preview.assistant], [(exported.conversation || []).length, (exported.agentConversation || []).length]);
+  assert.ok(preview.interview > 0, 'the fixture has interview messages to count');
 
   const result = await transfer.importWorkspace({ workspace: target, data: exported });
   const state = await target.load();
