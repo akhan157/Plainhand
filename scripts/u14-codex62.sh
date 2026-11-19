@@ -28,17 +28,17 @@ TAG="${TAG:?set TAG to the HEAD commit to measure}"
 ROUND="${ROUND:-r1}"
 MODE="${MODE:-pair}"
 SIDES="${SIDES:-baseline head}"
-MODEL="${MODEL:-gpt-6.2-sol}"
-EFFORT="${EFFORT:-low}"
-JUDGE="${JUDGE:-claude}"
 PROVIDER="${PROVIDER:-codex}"
+# PROVIDER=claude is the companion measurement (Claude Code CLI, default Sonnet 5.5 medium).
+if [ "$PROVIDER" = claude ]; then MODEL="${MODEL:-claude-sonnet-5-5}"; EFFORT="${EFFORT:-medium}"; else MODEL="${MODEL:-gpt-6.2-sol}"; EFFORT="${EFFORT:-low}"; fi
+JUDGE="${JUDGE:-claude}"
 WAIT="${WAIT:-0}"
 BASELINE=00ce1bf
 ROWS="${ROWS:-profile-effect-fin-built,profile-effect-fin-seeded,profile-effect-analyst-built,profile-effect-analyst-seeded,profile-effect-sci-built,profile-effect-sci-seeded}"
 SEEDED=profile-effect-fin-seeded,profile-effect-analyst-seeded,profile-effect-sci-seeded
 WORK="${WORK:-${XDG_CACHE_HOME:-$HOME/.cache}/plainhand-u14}"
 SHORT="$(git -C "$REPO" rev-parse --short "$TAG")"
-OUT="$REPO/output/u14-codex62nl-$SHORT-$ROUND"
+if [ "$PROVIDER" = claude ]; then OUT="$REPO/output/u14-claude-$SHORT-$ROUND"; else OUT="$REPO/output/u14-codex62nl-$SHORT-$ROUND"; fi
 mkdir -p "$WORK" "$OUT"
 
 if [ "${POOL:-}" = cliproxy ]; then
@@ -84,7 +84,12 @@ patch_baseline() {
   sed -i 's|https://jobs.lever.co/synthetic/${scenario.id}|https://jobs.lever.co/careers/${[...String(scenario.id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}|g' "$dir/plainhand/evaluation/portals.mjs" "$dir/plainhand/evaluation/runner.mjs"
   sed -i "s|legitimacy: 'owned-sandbox'|legitimacy: 'official-ats-unconfirmed-employer'|; s|reason: 'Owned evaluation sandbox; no employer was contacted.'|reason: 'Title, job description, and application control observed on a supported ATS. Employer identity is not independently verified.'|" "$dir/plainhand/evaluation/runner.mjs"
   if grep -q "synthetic/\|owned-sandbox" "$dir/plainhand/evaluation/runner.mjs" "$dir/plainhand/evaluation/portals.mjs"; then echo "baseline harness patch did not apply" >&2; exit 1; fi
-  if ! grep -q "model_reasoning_effort" "$dir/plainhand/agents.mjs"; then
+  if [ "$PROVIDER" = claude ]; then
+    if ! grep -q "'-p', '--model', '$MODEL'" "$dir/plainhand/agents.mjs"; then
+      sed -i "s/if (id === 'claude') args = \['-p', /if (id === 'claude') args = ['-p', '--model', '$MODEL', '--effort', '$EFFORT', /" "$dir/plainhand/agents.mjs"
+      grep -q "'-p', '--model', '$MODEL'" "$dir/plainhand/agents.mjs" || { echo "baseline claude model patch did not apply" >&2; exit 1; }
+    fi
+  elif ! grep -q "model_reasoning_effort" "$dir/plainhand/agents.mjs"; then
     sed -i "s/if (id === 'codex') args = \['exec', /if (id === 'codex') args = ['exec', '-m', '$MODEL', '-c', 'model_reasoning_effort=\"$EFFORT\"', /" "$dir/plainhand/agents.mjs"
     grep -q "'-m', '$MODEL'" "$dir/plainhand/agents.mjs" || { echo "baseline model patch did not apply" >&2; exit 1; }
   fi
@@ -94,7 +99,7 @@ patch_baseline() {
 run_side() {
   local dir="$1" out="$2" rows="$3"; shift 3
   while true; do
-    if (cd "$dir" && env PLAINHAND_CODEX_MODEL="$MODEL" PLAINHAND_CODEX_EFFORT="$EFFORT" "$@" \
+    if (cd "$dir" && env PLAINHAND_CODEX_MODEL="$MODEL" PLAINHAND_CODEX_EFFORT="$EFFORT" PLAINHAND_CLAUDE_MODEL="$MODEL" PLAINHAND_CLAUDE_EFFORT="$EFFORT" "$@" \
         node benchmarks/benchmark-eval.mjs $([ "$PROVIDER" = controlled ] || echo --provider "$PROVIDER") --scenarios "$rows" --out "$out") 2>&1 | tee "$out.log"; then :; fi
     if grep -qiE "usage limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out" "$out.log"; then
       if [ "$WAIT" -gt 0 ]; then echo "Codex usage limit; retrying in ${WAIT}s"; sleep "$WAIT"; rm -rf "$out"; continue; fi
@@ -127,7 +132,7 @@ fi
 
 for side in $SIDES; do
   case "$side" in
-    baseline) dir="$(clone "$BASELINE" "baseline-$BASELINE")"; patch_baseline "$dir" ;;
+    baseline) dir="$(clone "$BASELINE" "baseline-$BASELINE-$PROVIDER")"; patch_baseline "$dir" ;;
     head) dir="$head_dir" ;;
     *) echo "unknown side: $side" >&2; exit 2 ;;
   esac
