@@ -176,6 +176,9 @@ test('master coverage names resume lines the master left out and ignores contact
     { section: 'Experience', heading, text: 'Rebuilt the monthly reporting pack in Power Query, cutting preparation from 3 days to 1.' },
     { section: 'Experience', heading, text: 'Trained two new analysts on the forecast model and wrote its user guide.' }]);
   assert.deepEqual(full.missing, []);
+  // Year ranges are not phone numbers: a bullet with one still counts.
+  const ranged = masterCoverage('Led the 2019-2023 audit of 40 vendor contracts for the treasury team.\nCall +1 (617) 555-0107 any time', []);
+  assert.equal(ranged.lines, 1, 'the dated bullet counts; the phone line does not');
   // A curated standard resume from before the master resume existed is out of date.
   assert.equal(standardStatus({ standard: { draft: { headline: 'x', resume: [], coverLetter: '' }, approvedHash: 'h' } }, null), 'stale');
 });

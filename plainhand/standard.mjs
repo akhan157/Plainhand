@@ -88,10 +88,13 @@ export function compareToStandard(packet, standard) {
 // role headings), so rewording and merged bullets still count. Contact lines and
 // short labels are not counted.
 const contentWords = text => (String(text || '').toLowerCase().match(/[a-z0-9%$&+#.]+/g) || []).map(w => w.replace(/^\.+|\.+$/g, '')).filter(w => w.length >= 4 || /\d/.test(w));
+// A contact line: an email, a link, or a phone number (9 or more digits; a date
+// range such as 2019-2023 or 01.2020 - 03.2023 is not one).
+const isContact = line => /@|https?:\/\//.test(line) || (line.match(/\+?\(?\d[\d\s().-]{7,}\d/g) || []).some(m => m.replace(/\D/g, '').length >= 9 && !/^(?:\d{1,2}[./])?(?:19|20)\d\d\s*[-–]\s*(?:\d{1,2}[./])?(?:19|20)\d\d$/.test(m.trim()));
 export function masterCoverage(resumeText, entries) {
   const have = new Set(contentWords((entries || []).map(e => [e.text, e.section, e.heading?.org, e.heading?.title, e.heading?.location, e.heading?.dates].filter(Boolean).join(' ')).join('\n')));
   const lines = String(resumeText || '').split(/\r?\n/).map(line => line.replace(/^[\s•·*\-–—▪◦]+/, '').trim())
-    .filter(line => !/@|https?:\/\/|\+?\d[\d\s().-]{7,}\d/.test(line) && contentWords(line).length >= 4);
+    .filter(line => !isContact(line) && contentWords(line).length >= 4);
   const missing = lines.filter(line => { const need = [...new Set(contentWords(line))]; return need.filter(w => have.has(w)).length / need.length < 0.6; });
   return { lines: lines.length, covered: lines.length - missing.length, missing: missing.slice(0, 12).map(line => line.slice(0, 300)) };
 }
