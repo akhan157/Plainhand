@@ -282,7 +282,7 @@ function ApplyTab({ job }) {
   const [running, setRunning] = useState(null);
   const [manual, setManual] = useState(false);
   if (!job.approvedHash || job.stale) return html`<${Empty} icon="lock" title="A quick review before the next step.">Review and approve the exact application packet before opening form assistance.</${Empty}><div class="center-row"><${Button} class="primary" iconEnd="arrow" onClick=${() => setJobTab('packet')}>Review application packet</${Button}></div>`;
-  const submitted = job.status === 'Applied' || !!job.submittedAt;
+  const submitted = SUBMITTED.includes(job.status) || !!job.submittedAt;
   const finish = html`<section class="finish" aria-labelledby="finish-title">
       <h3 id="finish-title">Finished submitting?</h3>
       <p class="muted-text">After you review and submit on the employer’s site, confirm it here. Filling a form or saving a draft does not count as an application.</p>
@@ -302,21 +302,21 @@ function ApplyTab({ job }) {
   return html`
     <${QueueNav} job=${job} kind="apply" />
     ${isBoard(job.url) ? html`<${ApplyLink} job=${job} />` : null}
-    <${Notice} tone="info">Plainhand fills standard fields and uploads your exact approved resume and cover letter, continuing through supported form steps. Unresolved questions and the final submit click always come back to you.</${Notice}>
+    ${submitted ? html`<${Notice} tone="success" title="Submitted">You confirmed this application was submitted${job.submittedAt ? html` on <${Day} iso=${job.submittedAt.slice(0, 10)} />` : ''}. Browser assistance is off for it, so a duplicate can't be started.</${Notice}>` : html`<${Notice} tone="info">Plainhand fills standard fields and uploads your exact approved resume and cover letter, continuing through supported form steps. Unresolved questions and the final submit click always come back to you.</${Notice}>
     <div class="action-row">
       <${ActionButton} class="primary" icon="external" disabled=${blocked('open')} onClick=${act('open', async () => { toast('Opening a separate application browser on this computer…'); setPlan(await api('browser/open', { id: job.id })); refresh(); })}>${plan ? 'Inspect form again' : 'Open & inspect application'}</${ActionButton}>
       <${ActionButton} class="primary" disabled=${blocked('autofill')} onClick=${act('autofill', async () => { toast('Filling supported form steps from your approved packet…'); setPlan(await api('browser/autofill', { id: job.id })); refresh(); })}>Autofill to final review</${ActionButton}>
       <${ActionButton} disabled=${blocked('resume')} onClick=${act('resume', async () => { setPlan(await api('browser/resume', { id: job.id })); refresh(); })}>Resume inspection</${ActionButton}>
-    </div>
+    </div>`}
     ${observation ? html`<div class="observation">
       <${Notice} tone=${['challenge', 'login', 'paused', 'needs-answers'].includes(observation.state) ? 'warn' : 'neutral'}>${observation.message || 'Application inspected.'}</${Notice}>
       ${observation.solver ? html`<${Notice}>${observation.solver.message}</${Notice}>` : null}
       <div class="action-row">${observation.liveUrl ? html`<${LinkButton} href=${safeLink(observation.liveUrl)} external>View application browser</${LinkButton}>` : null}
-      ${['challenge', 'login', 'paused'].includes(observation.state) ? html`<${ActionButton} onClick=${async () => { const r = await api('browser/attention', { id: job.id }); toast(r.message); }}>Handle sign-in or verification</${ActionButton}>` : null}</div>
+      ${!submitted && ['challenge', 'login', 'paused'].includes(observation.state) ? html`<${ActionButton} onClick=${async () => { const r = await api('browser/attention', { id: job.id }); toast(r.message); }}>Handle sign-in or verification</${ActionButton}>` : null}</div>
     </div>` : null}
     ${plan?.navigation?.length ? html`<p class="muted-text">Your agent took ${plan.navigation.length} navigation ${plan.navigation.length === 1 ? 'step' : 'steps'}.</p>` : null}
     ${n ? html`<p class="progress-note"><${Icon} name="check" /><span>${n} form ${n === 1 ? 'step' : 'steps'} processed in this run.</span></p>` : null}
-    ${plan?.fields?.length ? html`<form class="answers-form" onSubmit=${async e => { e.preventDefault(); try { const r = await api('browser/fill', { id: job.id, answers: plan.answers }); toast(`${r.filled.length} fields filled.${r.offered ? ` ${r.offered} of your answers can be saved for next time; approve them in Workspace.` : ''} Review the rest in the application browser.`); refresh(); } catch (error) { toast(error.message, true); } }}>
+    ${plan?.fields?.length && !submitted ? html`<form class="answers-form" onSubmit=${async e => { e.preventDefault(); try { const r = await api('browser/fill', { id: job.id, answers: plan.answers }); toast(`${r.filled.length} fields filled.${r.offered ? ` ${r.offered} of your answers can be saved for next time; approve them in Workspace.` : ''} Review the rest in the application browser.`); refresh(); } catch (error) { toast(error.message, true); } }}>
       <h3>Review the form answers</h3>
       <p class="muted-text">Only the fields below are filled. Leave anything you’re unsure about blank. Checkboxes, demographic choices and legal attestations stay with you in the application browser.</p>
       ${plan.warning ? html`<${Notice} tone="warn">${plan.warning}</${Notice}>` : null}
@@ -340,7 +340,7 @@ function ApplyTab({ job }) {
       ${checkpoint.result.uploads?.length ? html`<ul class="plain-list uploads">${checkpoint.result.uploads.map((u, i) => html`<li key=${i}>${u.label}: ${UPLOAD_STATES[u.state] || 'check attachment in browser'}</li>`)}</ul>` : null}
       ${checkpoint.result.failed?.length ? html`<${Notice} tone="danger">Could not verify: ${checkpoint.result.failed.join(', ')}</${Notice}>` : null}
       ${checkpoint.result.validation?.length ? html`<${Notice} tone="danger">${checkpoint.result.validation.join(' ')}</${Notice}>` : null}
-      <${ActionButton} class="primary" icon="external" onClick=${async () => { const r = await api('browser/handoff', { id: job.id }); clearPlan(); toast(r.message); refresh(); }}>Take over the browser</${ActionButton}>
+      ${submitted ? null : html`<${ActionButton} class="primary" icon="external" onClick=${async () => { const r = await api('browser/handoff', { id: job.id }); clearPlan(); toast(r.message); refresh(); }}>Take over the browser</${ActionButton}>`}
     </${Section}>` : null}
     ${manual ? html`<${ManualKit} job=${job} title="Apply by hand" />` : html`<div class="action-row"><${Button} class="ghost small" icon="file" onClick=${() => setManual(true)}>Apply by hand instead</${Button}></div>`}
     ${finish}`;

@@ -234,6 +234,10 @@ try {
   await page.getByRole('button', { name: 'Yes, I submitted it' }).click();
   await page.getByRole('status').filter({ hasText: 'Application recorded.' }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Submission confirmed' }).isDisabled(), true, 'Applied is recorded only once, after confirmation.');
+  // Once submitted, browser assistance is replaced by a notice: no button can start a duplicate.
+  await panel(page).getByText('Browser assistance is off for it', { exact: false }).waitFor();
+  for (const name of ['Open & inspect application', 'Inspect form again', 'Autofill to final review', 'Resume inspection', 'Take over the browser', 'Handle sign-in or verification']) assert.equal(await panel(page).getByRole('button', { name, exact: true }).count(), 0, `${name} is gone after submission`);
+  await shot(page, '13c-apply-after-submission.png');
   await page.getByRole('button', { name: 'Close panel' }).click();
   await navLink(page, 'Applications').click();
   await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
