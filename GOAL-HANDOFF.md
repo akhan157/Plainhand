@@ -1300,3 +1300,28 @@ holdout2-journey-stem fails again, the same way.
   - Ten low UI items.
   - These were found on the side branch. Re-check them here before fixing; filing GitHub
     issues waits for the owner (outward-facing).
+
+## Merge checkpoint and next-thread plan — 2026-11-18
+
+- **State at merge:** register 14/15 accepted (U01-U13, U15). Suite 779/779, controlled
+  gate 64/67 (3 expected), simulation 49/49, browser UI workflow passed. The branch
+  fast-forwards onto main.
+- **U14 (open):** a self-resuming runner (outside the repo, under the user cache) is
+  measuring HEAD `f873cfb` against baseline `00ce1bf`, both on gpt-6.2-sol low with
+  the corpus label removed. It waits out Codex limits, then runs r1 head, r2 baseline,
+  r2 head, and judges all four. Output: `output/u14-codex62nl-f873cfb-r1` and `-r2`
+  (gitignored). Code after `f873cfb` changed only UI and messages, not the packet path.
+  Decide U14 from both repeats with the same table as above. Accept only if honesty and
+  overall match the baseline and input tokens are lower. If analyst-built alone carries
+  any gain, swap the rule's example phrase (see the 58828e0 caveat) and re-measure.
+- **Model matrix (owner, after U14):**
+  - Codex gpt-6.2-sol low and medium; Claude Sonnet 5.5 low and medium, and Haiku 5.5
+    low.
+  - One screening round each, then a second round for the top two per subscription.
+  - Six non-minimal rows, one fixed judge; the Claude judge on Claude runs is
+    self-judging.
+- **Open E2E items:** the ten low items in `docs/internal/E2E-FINDINGS-2026-11-18.md`.
+  Filing them as GitHub issues waits for the owner.
+- **Follow-up:** a kept candidate decision is exempt from the letter fit rule only
+  until the packet ships (see the 736812b review).
+- **External checks 1-6** stay open; they need people or authorized live writes.
