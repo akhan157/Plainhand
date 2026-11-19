@@ -71,7 +71,7 @@ onboarding order creates that file first.
 
 `git clone` of this worktree at `60211d75`, then the documented path
 (`docs/INSTALL.md` §2–4), in a temp dir under
-`/home/ak/.cache/plainhand-eval-tmp`:
+`~/.cache/plainhand-eval-tmp`:
 
 | Step | Time | Result |
 | --- | --- | --- |

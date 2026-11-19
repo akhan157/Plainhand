@@ -189,7 +189,7 @@ Mutation reverted (`cp` of the saved file); the same suite then reported
 
 ## 6. Test runs (post-fix)
 
-All with `TMPDIR=/home/ak/.cache/plainhand-eval-tmp` and `--test-concurrency=2`.
+All with `TMPDIR=~/.cache/plainhand-eval-tmp` and `--test-concurrency=2`.
 
 | Command | Result |
 |---|---|
@@ -280,7 +280,7 @@ No existing assertion was deleted or loosened; no threshold was changed.
    rerun is the acceptance check.
 9. **Environment note.** This worktree had no `node_modules`; no install was run
    (forbidden). The already-pinned dependencies were made resolvable by a local,
-   git-ignored symlink `node_modules -> /home/ak/Plainhand/node_modules`
+   git-ignored symlink `node_modules -> ~/Plainhand/node_modules`
    (same base commit, `pdfjs-dist` 6.5.438 verified). This is environment setup,
    not a dependency change; the symlink is not committed.
 10. **Named production divergence** `I built reports for your 28-country team.`
@@ -302,13 +302,13 @@ node --test --test-name-pattern="a PDF is evidence only" tests/test-bench-eval.m
 <revert mutation>; node --test tests/test-eval-numeric-grounding.mjs                 # 40/40 pass
 node --test tests/test-eval-numeric-grounding.mjs tests/test-pdf-evidence.mjs tests/test-bench-eval.mjs
 node --test tests/test-ats-check.mjs tests/test-eval-judge.mjs tests/test-claim-calibration.mjs tests/test-resume-format.mjs
-node benchmarks/benchmark-eval.mjs --concurrency 2 --out /home/ak/.cache/plainhand-eval-tmp/full-controlled
+node benchmarks/benchmark-eval.mjs --concurrency 2 --out ~/.cache/plainhand-eval-tmp/full-controlled
 node benchmarks/benchmark-eval.mjs --scenarios mech-resume,swe-submit --concurrency 1 --out ...
 git diff --check
 ```
 
 Evidence files (outside the repository, kept for root):
-`/home/ak/.cache/plainhand-eval-tmp/{prefix-probe.log,prefix-numeric.log,
+`~/.cache/plainhand-eval-tmp/{prefix-probe.log,prefix-numeric.log,
 prefix-pdf-gate.log,mutation.log,prefix-analyst-built/,e2e-debug7/,full-controlled/}`.
 
 ## 11. What root should do next

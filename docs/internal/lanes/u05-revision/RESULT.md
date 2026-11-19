@@ -15,7 +15,7 @@ contrast under budget.
 | Dispatch HEAD | `e772525e3dde84772544e7a481f93e6358b938a0` (clean at start) |
 | Author | implementation sub-agent, DeepSeek Flash |
 | Reviewer | root, different model family |
-| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repository; no tracked file depends on it) |
+| TMPDIR | `~/.cache/plainhand-eval-tmp` (outside the repository; no tracked file depends on it) |
 | Dependencies | `npm ci --no-audit --no-fund` in this lane; `node_modules` is ignored and untracked |
 | Resources | `free -h` checked before every gate: 6.7 GiB available at dispatch, 4.8 GiB before the full gate, never below 2 GiB. All test suites ran with `--test-concurrency=2` |
 | Live calls | none by the author. No live or paid model call was made; the contrast script ran only its `--help`, missing-provider and unknown-provider paths |
@@ -205,7 +205,7 @@ proposal existed. That was a test defect, not a product defect.
 
 ## 6. Gates actually run
 
-All from the lane worktree, with `TMPDIR=/home/ak/.cache/plainhand-eval-tmp`.
+All from the lane worktree, with `TMPDIR=~/.cache/plainhand-eval-tmp`.
 
 | Gate | Command | Result |
 |---|---|---|

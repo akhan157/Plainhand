@@ -9,7 +9,7 @@ here) or **retired** (the artifact it measured no longer exists).
 Nothing in the matrix is deleted or rewritten. A re-run supersedes a count for the
 current tree; a carried row keeps its historical result and gains no new verdict.
 
-Commands were run with `TMPDIR=/home/ak/.cache/plainhand-eval-tmp`, one browser
+Commands were run with `TMPDIR=~/.cache/plainhand-eval-tmp`, one browser
 suite at a time, no live provider, no paid call.
 
 ## Evaluation harness, 10 November 2026

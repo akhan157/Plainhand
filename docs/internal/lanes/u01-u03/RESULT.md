@@ -15,7 +15,7 @@ benchmark entry points, push, merge or deploy. Review of the diff is the root's.
 | Measured code commit | `8fab5570cd1e59ecafd2fd2b298b104c24543df8` (message-only rewrites changed the SHA; the tree is unchanged) |
 | Author | implementation sub-agent, DeepSeek Flash |
 | Reviewer | root, different model family |
-| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repository) |
+| TMPDIR | `~/.cache/plainhand-eval-tmp` (outside the repository) |
 | Dependencies | `npm ci --no-audit --no-fund` in this lane; `node_modules` is ignored |
 | Resources | `free -h` checked before work and before the full gates; at least 4.0 GiB available, never below 2 GiB |
 | Live calls | none. The U01 proof uses the controlled fixture agent; no provider or paid model call was made |

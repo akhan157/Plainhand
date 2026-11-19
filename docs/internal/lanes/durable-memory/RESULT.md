@@ -10,14 +10,14 @@ merged, pushed or deployed.
 
 | Item | Value |
 |---|---|
-| Worktree | `/home/ak/.t3/worktrees/Plainhand/t3-a02877dc-e8d92f1d637a1a02` (cwd confirmed before edits) |
+| Worktree | `~/.t3/worktrees/Plainhand/t3-a02877dc-e8d92f1d637a1a02` (cwd confirmed before edits) |
 | Branch | `t3/durable-memory-m2-evidence-allowlist` |
 | Expected and actual dispatch HEAD | `31d7ba1bb80443a177312173db68413326661849` (tree clean at start) |
 | Author | Pi `deepseek/deepseek-flash`, `PI_REASONING_LEVEL=max`, existing metered account; bounded implementation sub-agent, no delegation |
 | Reviewer | root, different model family; root reads the diff |
 | Host | `free -h` before the full suite: 5.8 GiB available, swap heavily used. Runs capped at `--test-concurrency=2`; no install, browser or provider call left running |
-| Test dependencies | `node_modules` symlinked to the main checkout `/home/ak/Plainhand/node_modules` (same `package.json`; not a tracked file, not an install) |
-| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repo) |
+| Test dependencies | `node_modules` symlinked to the main checkout `~/Plainhand/node_modules` (same `package.json`; not a tracked file, not an install) |
+| TMPDIR | `~/.cache/plainhand-eval-tmp` (outside the repo) |
 
 ## 2. Exact commits
 
@@ -105,7 +105,7 @@ new tests and their imports.
 **Before, on dispatch HEAD `31d7ba1`** (the four product files restored to the
 pin's blobs for the probe and the saved test run; their blob hashes were
 checked against the dispatch diff before running; probe script in
-`/home/ak/.cache/plainhand-eval-tmp/m2-before-probe.txt`):
+`~/.cache/plainhand-eval-tmp/m2-before-probe.txt`):
 
 ```
 HEAD sample grounds claim: true
@@ -119,7 +119,7 @@ The new tests were then run against HEAD (product files stashed, test files
 present):
 
 ```
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 \
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 \
   tests/test-evidence-sources.mjs tests/test-writing-samples.mjs \
   tests/test-answer-bank.mjs tests/test-corrections.mjs
 ℹ tests 14   ℹ pass 10   ℹ fail 4
@@ -129,7 +129,7 @@ The four failures are the intended ones: the new file cannot import
 `FACTUAL_SOURCE_IDS`/`identityProblem` (the gate does not exist yet); the
 writing-sample claim is accepted (`true !== false`); the reusable answer and
 the correction are accepted (missing expected rejection). Outputs are kept
-outside the repo: `/home/ak/.cache/plainhand-eval-tmp/m2-before-tests.txt`
+outside the repo: `~/.cache/plainhand-eval-tmp/m2-before-tests.txt`
 (14/10/4), `m2-after-gate-tests.txt` (16/16 after the fix) and
 `m2-focused-after.txt` (the 87-test focused run).
 
@@ -155,7 +155,7 @@ The falsifiers are now asserted:
 
 ## 6. Tests that actually ran, with counts
 
-All with `TMPDIR=/home/ak/.cache/plainhand-eval-tmp` and
+All with `TMPDIR=~/.cache/plainhand-eval-tmp` and
 `--test-concurrency=2`, scripted providers only:
 
 | Command | Result |
@@ -229,21 +229,21 @@ No assertion was relaxed to reach green.
   touched.
 - **Test environment.** The worktree had no dependencies; `node_modules` was
   symlinked to the main checkout (same `package.json`) to run tests. The symlink
-  is ignored and untracked. `/home/ak/.cache/plainhand-eval-tmp` holds only
+  is ignored and untracked. `~/.cache/plainhand-eval-tmp` holds only
   synthetic probe and test output.
 
 ## 9. Commands that actually ran
 
 ```bash
 # before evidence, product files stashed at the dispatch pin
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --input-type=module -e '<hasEvidence/validEvidence/Corrections probe>'
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --input-type=module -e '<hasEvidence/validEvidence/Corrections probe>'
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs
 
 # after
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-writing-samples.mjs tests/test-plainhand.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs tests/test-brain-controls.mjs tests/test-standard.mjs tests/test-bench-eval.mjs tests/test-evidence-sources.mjs
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-exports.mjs tests/test-feature-interview-prep.mjs tests/test-feature-skill-plan.mjs tests/test-profile-bench.mjs tests/test-actions.mjs tests/test-cloud-extension-api.mjs
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 $(node -e "console.log(require('./package.json').scripts['test:plainhand'].replace(/^node --test /,''))")
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-writing-samples.mjs tests/test-plainhand.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs tests/test-brain-controls.mjs tests/test-standard.mjs tests/test-bench-eval.mjs tests/test-evidence-sources.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-exports.mjs tests/test-feature-interview-prep.mjs tests/test-feature-skill-plan.mjs tests/test-profile-bench.mjs tests/test-actions.mjs tests/test-cloud-extension-api.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 $(node -e "console.log(require('./package.json').scripts['test:plainhand'].replace(/^node --test /,''))")
 git diff --check
 node --check plainhand/store.mjs plainhand/answer-bank.mjs plainhand/corrections.mjs plainhand/agents.mjs
 ```
@@ -278,14 +278,14 @@ merged, pushed or deployed.
 
 | Item | Value |
 |---|---|
-| Worktree | `/home/ak/.t3/worktrees/Plainhand/t3-547ceca5-2ef5e49e29ed75db` (cwd confirmed before edits) |
+| Worktree | `~/.t3/worktrees/Plainhand/t3-547ceca5-2ef5e49e29ed75db` (cwd confirmed before edits) |
 | Branch | Started `t3/547ceca5`; renamed externally to `t3/durable-memory-m1-transfer` at the same HEAD (reflog `HEAD@{0}: Branch: renamed refs/heads/t3/547ceca5`), no content change by this lane |
 | Expected and actual dispatch HEAD | `5712e16b35c2bfa0ebb1a06cfcdc887c10b7ea9a` (matched; tree clean at start) |
 | Author | Pi `deepseek/deepseek-flash`, existing metered account; bounded implementation sub-agent, no delegation |
 | Reviewer | root, different model family; root reads the diff |
 | Host | `free -h` before the final full suite: 5.9 GiB available, swap heavily used. Runs capped at `--test-concurrency=2`; no install, container, browser or provider call |
-| Test dependencies | `node_modules` symlinked to `/home/ak/Plainhand/node_modules` (same `package.json`; ignored, untracked, not an install) |
-| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repo) |
+| Test dependencies | `node_modules` symlinked to `~/Plainhand/node_modules` (same `package.json`; ignored, untracked, not an install) |
+| TMPDIR | `~/.cache/plainhand-eval-tmp` (outside the repo) |
 
 ## 2. Exact commits
 
@@ -393,7 +393,7 @@ documented version-1 shape, built from the workspace's own state, bank, correcti
 and four source files):
 
 ```
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 \
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 \
   tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
 ℹ tests 11   ℹ pass 2   ℹ fail 9
 ```
@@ -404,7 +404,7 @@ the export has no allow-list helper; the legacy-export case is matched by the ba
 without a quote check; the injected failure (corrections is never written) and the
 marker recovery cannot run; the structured resume does not travel; the route export
 has no `files`. The two existing import tests still pass on the pin. Log:
-`/home/ak/.cache/plainhand-eval-tmp/m1-before-final.txt`.
+`~/.cache/plainhand-eval-tmp/m1-before-final.txt`.
 
 **After `fc87c94`, same files:** `tests 11, pass 11, fail 0`.
 
@@ -440,7 +440,7 @@ The falsifiers now asserted:
 | Focused 13-file set (after) | **97 tests, 97 pass, 0 fail** |
 | Full `test:plainhand` list, 52 files (after) | **473 tests, 473 pass, 0 fail** |
 
-All with `TMPDIR=/home/ak/.cache/plainhand-eval-tmp` and `--test-concurrency=2`,
+All with `TMPDIR=~/.cache/plainhand-eval-tmp` and `--test-concurrency=2`,
 scripted providers only. Hosted `tests/test-cloud-*.mjs` were **not run**: no
 Postgres was available (`PLAINHAND_TEST_DATABASE_URL` unset, no listener on 5432)
 and no container was started. That tier, including the in-memory `TransferMemory`
@@ -502,12 +502,12 @@ tests, remains root's gate.
 
 ```bash
 # before evidence: product files restored from 5712e16, test files present
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
 
 # after
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs tests/test-standard.mjs tests/test-actions.mjs tests/test-exports.mjs tests/test-brain-controls.mjs tests/test-plainhand-usage.mjs tests/test-agent-engine.mjs tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-claim-line.mjs
-TMPDIR=/home/ak/.cache/plainhand-eval-tmp node --test --test-concurrency=2 $(node -e "console.log(require('./package.json').scripts['test:plainhand'].replace(/^node --test /,''))")
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 tests/test-memory-transfer.mjs tests/test-workspace-import.mjs tests/test-answer-bank.mjs tests/test-corrections.mjs tests/test-standard.mjs tests/test-actions.mjs tests/test-exports.mjs tests/test-brain-controls.mjs tests/test-plainhand-usage.mjs tests/test-agent-engine.mjs tests/test-evidence-sources.mjs tests/test-writing-samples.mjs tests/test-claim-line.mjs
+TMPDIR=~/.cache/plainhand-eval-tmp node --test --test-concurrency=2 $(node -e "console.log(require('./package.json').scripts['test:plainhand'].replace(/^node --test /,''))")
 git diff --check
 node --check plainhand/workspace-import.mjs plainhand/answer-bank.mjs plainhand/corrections.mjs plainhand-server.mjs plainhand/cloud/app.mjs plainhand/cloud/workspace-transfer.mjs tests/test-memory-transfer.mjs tests/test-workspace-import.mjs tests/test-cloud-workspace-transfer.mjs
 ```

@@ -4,7 +4,7 @@
 - Branch: `t3/review-root-fixes-commits`
 - Reviewed base: `789dcd523baef5951ce0626b41410f3c519b50e3` (HEAD at review start)
 - Date: 2026-11-16
-- Environment: `TMPDIR=/home/ak/.cache/plainhand-eval-tmp`, Node v26.12.1, x64 Linux. The
+- Environment: `TMPDIR=~/.cache/plainhand-eval-tmp`, Node v26.12.1, x64 Linux. The
   worktree had no `node_modules`; `npm ci --ignore-scripts` added 162 packages. No live or
   paid model calls. No push, no merge, no product changes kept: every temporary revert was
   restored and `git status --short` was clean before this file was written.
@@ -74,7 +74,7 @@ still lists certifications as uncovered, and the onboarding instruction tells th
 ask the first uncovered area again. The area clears on the following turn, so the
 "every turn" loop is broken, but each "no" still costs one repeated question.
 
-Reproduction (probe outside the repo, `/home/ak/.cache/plainhand-eval-tmp/probe-interview.mjs`):
+Reproduction (probe outside the repo, `~/.cache/plainhand-eval-tmp/probe-interview.mjs`):
 scripted three-turn conversation `hi` → "Do you hold any certifications or licences?" →
 `No.` → `Excel.`; the digest passed to the agent was:
 

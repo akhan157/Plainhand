@@ -15,7 +15,7 @@ employer site or application was contacted or submitted.
 | Dispatch HEAD | `81126ab3079e859d68694d0b7ade6e0bbe8b2cda` (clean at start) |
 | Author | implementation sub-agent |
 | Reviewer | root, different model family |
-| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` |
+| TMPDIR | `~/.cache/plainhand-eval-tmp` |
 | Dependencies | `npm ci --no-audit --no-fund` in this lane (162 packages, cached) |
 | Resources | `free -h` checked before every gate: 7.5 GiB available at dispatch, never below 3.5 GiB. Chromium suites ran one at a time, test concurrency 2 |
 | Live calls | none. Every provider call is the repository fixture agent |

@@ -168,7 +168,7 @@ Mutated tier run (`settings.autonomy`, candidate → write): `NO_ERROR`; the
 unmutated suite reports `candidate_only` for all 23 candidate actions and both
 actors.
 
-Environment: `TMPDIR=/home/ak/.cache/plainhand-eval-tmp`; no live or paid model
+Environment: `TMPDIR=~/.cache/plainhand-eval-tmp`; no live or paid model
 calls. The controlled benchmark used the deterministic fixture agent.
 
 ## Gaps examined and left alone

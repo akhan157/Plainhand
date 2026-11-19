@@ -101,7 +101,7 @@ system prompt or drop its plan-mode context, and no mock capture was made for it
 claim that it is already small.
 
 Raw captures (sizes and message bodies, no credentials) are outside the repo at
-`/home/ak/.cache/plainhand-eval-tmp/u14/captures/`; the mock and driver live in
+`~/.cache/plainhand-eval-tmp/u14/captures/`; the mock and driver live in
 the same scratch directory. The prompts in them are synthetic.
 
 ## 2. Per-purpose call breakdown
@@ -243,13 +243,13 @@ sizes, not billed tokens.
 ## 5. Gates
 
 - `npm run test:plainhand` — **PASS, 619/619 tests, 0 failures**, 39.9 s
-  (Node v26.12.1, `TMPDIR=/home/ak/.cache/plainhand-eval-tmp`). The first run hung
+  (Node v26.12.1, `TMPDIR=~/.cache/plainhand-eval-tmp`). The first run hung
   in `tests/test-application-record.mjs` because the now-cached second evaluation
   never called the blocking fixture; the test was corrected as described in §3c
   and the full suite then passed.
 - `npm run test:plainhand-ui` — **PASS**, "Plainhand full browser workflow passed"
   (headless Chromium; screenshots under
-  `/home/ak/.cache/plainhand-eval-tmp/plainhand-ui-evidence-*`, outside the repo).
+  `~/.cache/plainhand-eval-tmp/plainhand-ui-evidence-*`, outside the repo).
 - `node benchmarks/benchmark-eval.mjs --concurrency 2` — **PASS: 64/67, 3
   expected failures, 0 unexpected** (the three `*-minimal` rows; 162.2 s).
   Evidence: `output/evaluation-controlled-2026-11-16T03-54-36-538Z`.

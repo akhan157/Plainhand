@@ -13,15 +13,15 @@ Spec: [ASSIGNMENT.md](ASSIGNMENT.md) §4 finding 9, §5 invariants (I8) and §8 
 
 | Item | Value |
 |---|---|
-| Worktree | `/home/ak/.t3/worktrees/Plainhand/t3-e5bfbea1-d2317e6599b93837` (cwd confirmed before edits) |
+| Worktree | `~/.t3/worktrees/Plainhand/t3-e5bfbea1-d2317e6599b93837` (cwd confirmed before edits) |
 | Branch | `t3/memory-m5-m6` |
 | Base / dispatch HEAD | `91ded5e8bb61880c3f5ac9fa014909767f2ba76d` (M4 merge; tree clean at start) |
 | Implementation commit | `833ecacbfe5f0e872d303367c1725eb8306a3cae` |
 | Author | Pi `deepseek/deepseek-flash`; bounded implementation sub-agent, no delegation |
 | Reviewer | root, different model family; root reads the diff |
 | Host | 7.4 GiB available before the benchmark, 7.7 GiB before the final suite; suite capped at `--test-concurrency=2` |
-| Dependencies | `node_modules` symlinked to `/home/ak/Plainhand/node_modules` (same `package.json`; ignored, not an install) |
-| TMPDIR | `/home/ak/.cache/plainhand-eval-tmp` (outside the repo) |
+| Dependencies | `node_modules` symlinked to `~/Plainhand/node_modules` (same `package.json`; ignored, not an install) |
+| TMPDIR | `~/.cache/plainhand-eval-tmp` (outside the repo) |
 | Provider calls | none live or paid; every model response in tests and the probe is a scripted fixture |
 
 ## 2. Files changed
@@ -182,7 +182,7 @@ Evidence from the final run:
 | `free -h` before work and before the benchmark | 6.6–7.7 GiB available |
 | `npm run test:plainhand -- --test-concurrency=2` | **586/586 pass, 0 fail** (44.5 s) |
 | `node benchmarks/benchmark-eval.mjs --concurrency 2` | **64/67**, 3 expected failures (`profile-effect-{fin,analyst,sci}-minimal`), **0 unexpected**; evidence `output/evaluation-controlled-2026-11-16T02-56-44-267Z` |
-| `npm run test:plainhand-ui` | pass; browser evidence `/home/ak/.cache/plainhand-eval-tmp/plainhand-ui-evidence-1OXxIe` |
+| `npm run test:plainhand-ui` | pass; browser evidence `~/.cache/plainhand-eval-tmp/plainhand-ui-evidence-1OXxIe` |
 | `node --check` on every changed module/test/script | pass |
 | `git diff --check` | clean |
 
