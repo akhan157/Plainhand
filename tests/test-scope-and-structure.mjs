@@ -660,7 +660,7 @@ test('review d3fe1cd: Project Manager and MBA Associate are roles, so an ongoing
 
 test('U14 Codex round 2: the letter prompt no longer models a "matches" sentence, and the summary field comes from the candidate\'s own roles', () => {
   assert.doesNotMatch(PACKET_INSTRUCTION, /matches the Y I did/);
-  assert.match(PACKET_INSTRUCTION, /In the letter, never use any phrasing that says the candidate's work, experience or background matches, covers, aligns with, mirrors or meets the posting's/);
+  assert.match(PACKET_INSTRUCTION, /In the letter, never use any phrasing that says the candidate's work, experience or background matches, covers, aligns with, mirrors, meets or is part of the posting's/);
   // Review 066e804: the examples must not be the U14 fin fixture's own terms.
   for (const instruction of [PACKET_INSTRUCTION, REVIEW_INSTRUCTION]) assert.doesNotMatch(instruction, /business unit|product line|finance director|business leaders/i);
   assert.match(PACKET_INSTRUCTION, /never the target role's or the posting's field when no source says they worked in it/);

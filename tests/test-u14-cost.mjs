@@ -336,5 +336,8 @@ test('U14: an unsettled reference drops only the link, never the stated result; 
   // ba03976 n1: the analyst packets left out "failure rates dropped from 14% to 9%" because the
   // source tied it to an unnamed "it" (judge honesty 4, "undersold by omission").
   for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /Leave out only the link, never the result/);
-  assert.match(PACKET_INSTRUCTION, /at most one short clause per paragraph/);
+  assert.match(PACKET_INSTRUCTION, /at most one short clause per paragraph, in the posting's own words/);
+  // 0c31aff n1/n2: the letter added "That is also part of the Data Analyst role" and reworded
+  // "non-technical stakeholders" as "people who don't work with data"; the review blocked both.
+  assert.match(PACKET_INSTRUCTION, /mirrors, meets or is part of the posting's work/);
 });
