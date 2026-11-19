@@ -423,8 +423,11 @@ tr.legacy td { color: var(--text-2); }
 .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-5); }
 .provider { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); min-width: 0; }
 .provider.selected { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
-.provider header { display: flex; gap: var(--sp-3); align-items: center; }
-.provider header > div { flex: 1; min-width: 0; }
+.provider { container-type: inline-size; }
+.provider header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--sp-3); row-gap: var(--sp-2); align-items: center; }
+.provider header > div { min-width: 0; }
+/* A narrow card gives the subtitle the full width; the status pill sits under the title. */
+@container (max-width: 440px) { .provider header > .pill { grid-column: 2; justify-self: start; } }
 .provider h2 { font-size: var(--fs-lg); }
 .provider header small { color: var(--text-3); }
 .provider > p { color: var(--text-2); margin: 0; }
@@ -693,7 +696,8 @@ blockquote.sample { margin: 0; padding: var(--sp-3) var(--sp-4); border-left: 3p
   .sidenav { padding: var(--sp-3) var(--sp-2); align-items: stretch; }
   .nav-item { justify-content: center; padding: 10px; }
   .nav-item .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .nav-item .nav-badge, .nav-item .status-dot { position: absolute; top: 3px; right: 6px; min-width: 18px; height: 18px; padding: 0 4px; font-size: 12px; }
+  /* Corner of the 56px item, clear of the centred 20px icon, with a ring to separate it from the active fill. */
+  .nav-item .nav-badge, .nav-item .status-dot { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 11px; box-shadow: 0 0 0 2px var(--surface); }
   .nav-item .status-dot { min-width: 8px; height: 8px; padding: 0; top: 8px; right: 12px; }
   .nav-item.active::before { left: -8px; }
   .nav-user { justify-content: center; padding-inline: 0; }
