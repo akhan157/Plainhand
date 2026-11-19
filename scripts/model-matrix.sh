@@ -57,7 +57,7 @@ for config in $CONFIGS; do
       *) echo "unknown provider: $provider" >&2; exit 2 ;;
     esac
     (cd "$dir" && env "${vars[@]}" node benchmarks/benchmark-eval.mjs $([ "$provider" = controlled ] || echo --provider "$provider") --scenarios "$ROWS" --out "$out") 2>&1 | tee "$out.log" || true
-    if grep -qiE "usage limit|rate limit|quota" "$out.log"; then echo "$config hit a usage limit; its row is incomplete." >&2; fi
+    if grep -qiE "usage limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out" "$out.log"; then echo "$config hit a usage limit; its row is incomplete." >&2; fi
   fi
   if [ -f "$out/results.json" ] && [ ! -f "$out/judge.json" ] && [ "$JUDGE" != none ]; then
     (cd "$dir" && node benchmarks/benchmark-judge.mjs --evidence "$out" --judge "$JUDGE" --scenarios "$ROWS") 2>&1 | tee "$out.judge.log" || true

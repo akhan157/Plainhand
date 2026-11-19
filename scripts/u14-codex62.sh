@@ -96,7 +96,7 @@ run_side() {
   while true; do
     if (cd "$dir" && env PLAINHAND_CODEX_MODEL="$MODEL" PLAINHAND_CODEX_EFFORT="$EFFORT" "$@" \
         node benchmarks/benchmark-eval.mjs $([ "$PROVIDER" = controlled ] || echo --provider "$PROVIDER") --scenarios "$rows" --out "$out") 2>&1 | tee "$out.log"; then :; fi
-    if grep -qiE "usage limit|rate limit|quota" "$out.log"; then
+    if grep -qiE "usage limit|rate limit|quota|429|Too Many Requests|is not usable|agent timed out" "$out.log"; then
       if [ "$WAIT" -gt 0 ]; then echo "Codex usage limit; retrying in ${WAIT}s"; sleep "$WAIT"; rm -rf "$out"; continue; fi
       echo "Codex usage limit reached: $out is incomplete; no aggregate is reported." >&2; exit 75
     fi
