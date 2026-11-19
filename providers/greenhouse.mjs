@@ -29,9 +29,14 @@ function resolveApiUrl(entry) {
     assertGreenhouseUrl(entry.api);
     return entry.api;
   }
-  const url = entry.careers_url || '';
-  const match = url.match(/job-boards(?:\.eu)?\.greenhouse\.io\/([^/?#]+)/);
-  if (match) return `https://boards-api.greenhouse.io/v1/boards/${match[1]}/jobs`;
+  // Board pages live on boards.greenhouse.io (the classic host, also used for the
+  // embed form `/embed/job_board?for=<slug>`) and on job-boards(.eu).greenhouse.io.
+  let parsed;
+  try { parsed = new URL(entry.careers_url || ''); } catch { return null; }
+  if (!['boards.greenhouse.io', 'job-boards.greenhouse.io', 'job-boards.eu.greenhouse.io'].includes(parsed.hostname)) return null;
+  const [first, second] = parsed.pathname.split('/').filter(Boolean);
+  const slug = first === 'embed' && second === 'job_board' ? parsed.searchParams.get('for') : first;
+  if (slug && /^[A-Za-z0-9_-]+$/.test(slug)) return `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`;
   return null;
 }
 

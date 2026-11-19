@@ -117,6 +117,9 @@ test('undo restores the previous state once, and refuses when the record changed
     await assert.rejects(h.registry.undo(added.undoToken), /changed since/);
     assert.equal((await h.app.workspace.load()).jobs[0].record.contacts.length, 2, 'a refused undo changes nothing');
 
+    // A board discovery cannot read is refused when it is added, not silently kept.
+    await assert.rejects(h.registry.run('sources.add', { name: 'Test Co', url: 'https://example.com/not-a-board' }), /supported company board/);
+    assert.equal((await h.app.workspace.load()).sources.length, 0);
     const source = await h.registry.run('sources.add', { name: 'Acme', url: 'https://boards.greenhouse.io/acme' });
     await h.registry.undo(source.undoToken);
     assert.equal((await h.app.workspace.load()).sources.length, 0);

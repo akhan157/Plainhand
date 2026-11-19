@@ -107,12 +107,18 @@ function discoveryTarget(target) {
   return parsed.protocol === 'https:' && !parsed.username && !parsed.password && !parsed.port &&
     (DISCOVERY_HOSTS.has(parsed.hostname) || /^[a-z0-9-]+\.recruitee\.com$/i.test(parsed.hostname));
 }
+// Reuse the career-ops provider adapters behind a Plainhand-owned boundary. Adding a
+// source and checking it use the same detection, so a board that is accepted can be read.
+const BOARD_PROVIDERS = [greenhouse, lever, ashby, workable, smartrecruiters, recruitee];
+export const UNSUPPORTED_BOARD = 'Use a supported company board URL (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, or Recruitee).';
+export function boardProvider(name, url) {
+  try { return BOARD_PROVIDERS.find(p => p.detect({ name, careers_url: url })) || null; } catch { return null; }
+}
 export async function discover(source, filter = '', location = '') {
   const url = jobUrl(source.url);
   const entry = { name: source.name, careers_url: url };
-  // Reuse the career-ops provider adapters behind a Plainhand-owned boundary.
-  const provider = [greenhouse, lever, ashby, workable, smartrecruiters, recruitee].find(p => p.detect(entry));
-  if (!provider) throw new Error('Use a supported company board URL (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, or Recruitee).');
+  const provider = boardProvider(source.name, url);
+  if (!provider) throw new Error(UNSUPPORTED_BOARD);
   const request = async (target, options = {}) => {
     if (!discoveryTarget(target)) throw new Error('Unsupported discovery endpoint.');
     const response = await fetch(target, { redirect: 'error', signal: AbortSignal.timeout(options.timeoutMs || 30000) });

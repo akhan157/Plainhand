@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { digest, now, requireText, cleanText, syncTracker, recordStatusChange, storyKey, PRIVATE_PROFILE_FIELDS } from './store.mjs';
-import { jobUrl, isBoardUrl } from './jobs.mjs';
+import { jobUrl, isBoardUrl, boardProvider, UNSUPPORTED_BOARD } from './jobs.mjs';
 import { assertPacketFresh, packetIdentity } from './workflow.mjs';
 import { Corrections } from './corrections.mjs';
 import { AnswerBank, quoteInSources } from './answer-bank.mjs';
@@ -556,6 +556,7 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
     summarize: input => `Add ${input.name} as a job source`,
     run: async (ctx, input) => {
       const source = { id: randomUUID(), name: requireText(input.name, 'company', 200), url: jobUrl(input.url) };
+      if (!boardProvider(source.name, source.url)) throw new ActionError('invalid_input', UNSUPPORTED_BOARD);
       let added = false;
       await workspace.mutate(state => { if (!state.sources.some(s => s.url === source.url)) { state.sources.push(source); added = true; } });
       return { result: { id: added ? source.id : null }, undo: added ? () => workspace.mutate(state => { state.sources = state.sources.filter(s => s.id !== source.id); }) : null };
