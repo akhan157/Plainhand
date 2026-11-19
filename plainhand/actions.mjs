@@ -41,6 +41,14 @@ export class ActionError extends Error {
 
 // Lite schema: { key: 'string' | 'number' | 'boolean' | 'date' | 'string[]' | 'array' | 'object' | 'enum:a|b', with '?' for optional }.
 // An empty string is a value for 'string' (so text can be cleared) and missing for every other type.
+// What the candidate is told after adding a writing sample, including what it reset.
+export function sampleSavedMessage(cleared) {
+  const reset = [cleared?.understanding ? 'your profile summary' : '', cleared?.approvals ? `${cleared.approvals} approved application${cleared.approvals === 1 ? '' : 's'}` : ''].filter(Boolean);
+  if (!reset.length) return 'Writing sample saved. Your next drafts will sound more like you.';
+  const one = reset.length === 1 && (cleared.understanding || cleared.approvals === 1);
+  return `Writing sample saved. Your next drafts will sound more like you, so ${reset.join(' and ')} ${one ? 'needs' : 'need'} approving again.`;
+}
+
 export function validateInput(schema, input) {
   if (input !== undefined && (input === null || typeof input !== 'object' || Array.isArray(input))) throw new ActionError('invalid_input', 'Action input must be an object.');
   const value = { ...(input || {}) };
@@ -399,12 +407,17 @@ export function createRegistry({ workspace, workflow, usage = workflow?.usage, f
     summarize: input => `Save a writing sample${input.title ? ` (${input.title})` : ''}: "${String(input.text).slice(0, 100)}${String(input.text).length > 100 ? '…' : ''}"`,
     run: async (ctx, input) => {
       const text = requireText(input.text, 'writing sample', 8000), id = randomUUID();
+      // A sample changes how every draft sounds, so the understanding and packet approvals
+      // are cleared; the result says what was cleared so the candidate is told, not surprised.
+      const cleared = { understanding: false, approvals: 0 };
       await workspace.mutate(state => {
         if ((state.writingSamples || []).length >= 10) throw new ActionError('failed', 'You can keep up to 10 writing samples. Remove one first.');
         state.writingSamples = [...(state.writingSamples || []), { id, title: cleanText(input.title, 120), text, at: now() }];
+        cleared.understanding = Boolean(state.understanding);
+        cleared.approvals = state.jobs.filter(j => j.approvedHash).length;
         state.understanding = null; for (const j of state.jobs) j.approvedHash = null;
       });
-      return { result: { id }, undo: () => workspace.mutate(state => { state.writingSamples = (state.writingSamples || []).filter(s => s.id !== id); state.understanding = null; }) };
+      return { result: { id, cleared, message: sampleSavedMessage(cleared) }, undo: () => workspace.mutate(state => { state.writingSamples = (state.writingSamples || []).filter(s => s.id !== id); state.understanding = null; }) };
     } });
   define({ name: 'profile.removeWritingSample', tier: 'candidate', title: 'Remove a writing sample', description: 'The candidate removes one of their writing samples.', input: { id: 'string' }, panel: () => ({ type: 'profile' }),
     run: async (ctx, input) => {

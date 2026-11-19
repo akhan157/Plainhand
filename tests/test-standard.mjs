@@ -384,3 +384,20 @@ test('the app and user guide call it the master resume, not the standard', async
     assert.doesNotMatch(text, /approved standard|your standard\b|standard application/i, file);
   }
 });
+
+test('E2E 0b: adding a writing sample says what it reset instead of clearing it silently', async () => {
+  const { sampleSavedMessage } = await import('../plainhand/actions.mjs');
+  const h = await harness();
+  try {
+    const first = (await h.ui('profile.addWritingSample', { title: 'Note', text: 'A short note I wrote to my team about the test schedule.' })).result;
+    assert.deepEqual(first.cleared, { understanding: false, approvals: 0 });
+    assert.equal(first.message, 'Writing sample saved. Your next drafts will sound more like you.');
+    await h.app.workspace.mutate(state => { state.understanding = { text: 'Summary', approvedHash: 'x' }; });
+    const second = (await h.ui('profile.addWritingSample', { title: 'Email', text: 'A follow-up email I sent after the design review last spring.' })).result;
+    assert.deepEqual(second.cleared, { understanding: true, approvals: 0 });
+    assert.match(second.message, /so your profile summary needs approving again\.$/);
+    assert.equal((await h.app.workspace.load()).understanding, null, 'the reset itself is unchanged');
+  } finally { await h.close(); }
+  assert.equal(sampleSavedMessage({ understanding: true, approvals: 3 }), 'Writing sample saved. Your next drafts will sound more like you, so your profile summary and 3 approved applications need approving again.');
+  assert.equal(sampleSavedMessage({ understanding: false, approvals: 1 }), 'Writing sample saved. Your next drafts will sound more like you, so 1 approved application needs approving again.');
+});
