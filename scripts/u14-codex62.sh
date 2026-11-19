@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# U14 paired measurement on Codex: frozen baseline 00ce1bf against a HEAD commit, both on
+# the same model and effort, with the corpus's "SYNTHETIC TEST JOB." label removed on both
+# sides (owner-approved 2026-11-18, d037477), then one Claude judge for both sides.
+# Recreated 2026-11-19: the earlier runner lived outside the repo and was lost.
+#
+#   TAG=<head commit> ROUND=r2 scripts/u14-codex62.sh            # both sides, then judge
+#   TAG=<head commit> ROUND=r2 SIDES=head scripts/u14-codex62.sh  # one side only
+#   TAG=<head commit> MODE=probe scripts/u14-codex62.sh           # evaluate probe (below)
+#
+# MODE=probe runs the three seeded rows on HEAD twice: once as shipped and once with
+# PLAINHAND_CODEX_INSTRUCTIONS=cli (Codex's own system prompt, every other flag the same).
+# It answers whether the replaced system prompt alone turns Apply into Investigate.
+#
+# Environment: MODEL (gpt-6.2-sol), EFFORT (low), ROWS (the six non-minimal rows),
+# JUDGE (claude; none skips judging), PROVIDER (codex; controlled = fixture dry run, no calls), WORK (clones; default ~/.cache/plainhand-u14), WAIT (seconds to wait
+# and retry after a Codex usage limit; 0 = stop with exit 75).
+# Evidence: output/u14-codex62nl-<TAG>-<ROUND>/<side>/ in this repo (git-ignored). Keep it.
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TAG="${TAG:?set TAG to the HEAD commit to measure}"
+ROUND="${ROUND:-r1}"
+MODE="${MODE:-pair}"
+SIDES="${SIDES:-baseline head}"
+MODEL="${MODEL:-gpt-6.2-sol}"
+EFFORT="${EFFORT:-low}"
+JUDGE="${JUDGE:-claude}"
+PROVIDER="${PROVIDER:-codex}"
+WAIT="${WAIT:-0}"
+BASELINE=00ce1bf
+ROWS="${ROWS:-profile-effect-fin-built,profile-effect-fin-seeded,profile-effect-analyst-built,profile-effect-analyst-seeded,profile-effect-sci-built,profile-effect-sci-seeded}"
+SEEDED=profile-effect-fin-seeded,profile-effect-analyst-seeded,profile-effect-sci-seeded
+WORK="${WORK:-${XDG_CACHE_HOME:-$HOME/.cache}/plainhand-u14}"
+SHORT="$(git -C "$REPO" rev-parse --short "$TAG")"
+OUT="$REPO/output/u14-codex62nl-$SHORT-$ROUND"
+mkdir -p "$WORK" "$OUT"
+
+# A clean clone per commit, so the run records a clean tree; dependencies are installed
+# with npm ci unless the lockfile matches this repo's, in which case they are linked.
+clone() {
+  local commit="$1" dir="$WORK/$2"
+  if [ ! -d "$dir/.git" ]; then
+    git clone --quiet "$REPO" "$dir"
+    git -C "$dir" checkout --quiet --detach "$commit"
+  fi
+  if [ ! -e "$dir/node_modules" ]; then
+    if cmp -s "$dir/package-lock.json" "$REPO/package-lock.json" && [ -d "$REPO/node_modules" ]; then ln -s "$(readlink -f "$REPO/node_modules")" "$dir/node_modules"
+    else (cd "$dir" && npm ci --silent); fi
+  fi
+  echo "$dir"
+}
+
+# The frozen baseline gets exactly two patches: the label removal, and the model and
+# effort flags (00ce1bf predates PLAINHAND_CODEX_MODEL/EFFORT).
+patch_baseline() {
+  local dir="$1"
+  sed -i 's/SYNTHETIC TEST JOB\. //g' "$dir"/plainhand/evaluation/corpus*.mjs
+  if ! grep -q "model_reasoning_effort" "$dir/plainhand/agents.mjs"; then
+    sed -i "s/if (id === 'codex') args = \['exec', /if (id === 'codex') args = ['exec', '-m', '$MODEL', '-c', 'model_reasoning_effort=\"$EFFORT\"', /" "$dir/plainhand/agents.mjs"
+    grep -q "'-m', '$MODEL'" "$dir/plainhand/agents.mjs" || { echo "baseline model patch did not apply" >&2; exit 1; }
+  fi
+}
+
+# One benchmark run. A Codex usage limit stops the run; with WAIT set it waits and retries.
+run_side() {
+  local dir="$1" out="$2" rows="$3"; shift 3
+  while true; do
+    if (cd "$dir" && env PLAINHAND_CODEX_MODEL="$MODEL" PLAINHAND_CODEX_EFFORT="$EFFORT" "$@" \
+        node benchmarks/benchmark-eval.mjs $([ "$PROVIDER" = controlled ] || echo --provider "$PROVIDER") --scenarios "$rows" --out "$out") 2>&1 | tee "$out.log"; then :; fi
+    if grep -qiE "usage limit|rate limit|quota" "$out.log"; then
+      if [ "$WAIT" -gt 0 ]; then echo "Codex usage limit; retrying in ${WAIT}s"; sleep "$WAIT"; rm -rf "$out"; continue; fi
+      echo "Codex usage limit reached: $out is incomplete; no aggregate is reported." >&2; exit 75
+    fi
+    break
+  done
+}
+
+# Per-row evaluation table: the step whose Apply/Investigate split U14 has to explain.
+report() {
+  node -e '
+    const fs = require("fs"), path = require("path");
+    for (const dir of process.argv.slice(1)) {
+      const file = path.join(dir, "results.json");
+      if (!fs.existsSync(file)) { console.log(dir + ": no results.json"); continue; }
+      const { results = [] } = JSON.parse(fs.readFileSync(file, "utf8"));
+      console.log("\n" + dir);
+      for (const r of results) console.log(`  ${String(r.scenario?.id ?? r.id).padEnd(32)} ${r.pass ? "PASS" : "fail"}  eval ${r.evaluation?.score ?? "n/a"}/5 ${r.evaluation?.recommendation ?? "-"} (model: ${r.evaluation?.modelRecommendation ?? "-"})`);
+    }' "$@"
+}
+
+head_dir="$(clone "$TAG" "head-$SHORT")"
+if [ "$MODE" = probe ]; then
+  run_side "$head_dir" "$OUT/probe-shipped" "$SEEDED"
+  run_side "$head_dir" "$OUT/probe-cli-prompt" "$SEEDED" PLAINHAND_CODEX_INSTRUCTIONS=cli
+  report "$OUT/probe-shipped" "$OUT/probe-cli-prompt"
+  exit 0
+fi
+
+for side in $SIDES; do
+  case "$side" in
+    baseline) dir="$(clone "$BASELINE" "baseline-$BASELINE")"; patch_baseline "$dir" ;;
+    head) dir="$head_dir" ;;
+    *) echo "unknown side: $side" >&2; exit 2 ;;
+  esac
+  [ -f "$OUT/$side/results.json" ] && { echo "$side already measured in $OUT/$side"; continue; }
+  run_side "$dir" "$OUT/$side" "$ROWS"
+done
+
+# One judge, HEAD's, for both sides so the rubric is identical.
+for side in $SIDES; do
+  [ -f "$OUT/$side/results.json" ] && [ "$JUDGE" != none ] || continue
+  (cd "$head_dir" && node benchmarks/benchmark-judge.mjs --evidence "$OUT/$side" --judge "$JUDGE" --scenarios "$ROWS") 2>&1 | tee "$OUT/$side.judge.log"
+done
+report $(for side in $SIDES; do echo "$OUT/$side"; done)
+(cd "$head_dir" && for side in $SIDES; do node scripts/cost-breakdown.mjs --results "$OUT/$side/results.json"; done)
