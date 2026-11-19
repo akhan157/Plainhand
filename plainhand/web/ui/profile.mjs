@@ -91,7 +91,7 @@ function Interview() {
   return html`<${Card} title="Let’s connect the dots." icon="brain" id="interview-title" subtitle="A conversation, not another questionnaire. Only what you write becomes evidence." class="interview">
     ${!state.provider ? html`<${Notice} tone="info">First connect your AI account, then Plainhand can talk with you here. <a href="#connections">Connect it</a></${Notice}>`
       : !state.profile.resume ? html`<${Notice} tone="info">First save your basics and resume in step 1; Plainhand uses them to ask better questions.</${Notice}>`
-      : html`<${MessageList} label="Profile interview" messages=${state.conversation.length ? state.conversation.slice(-12) : [opening]} streaming=${interviewing ? ' ' : ''} authorFor=${m => m.role === 'user' ? first : 'Plainhand'} renderExtra=${m => !store.demo && m.role === 'user' && m.key ? html`<${StoryControls} message=${m} />` : null} />`}
+      : html`<${MessageList} label="Profile interview" messages=${state.conversation.length ? state.conversation.slice(-12) : [opening]} streaming=${interviewing ? ' ' : null} authorFor=${m => m.role === 'user' ? first : 'Plainhand'} renderExtra=${m => !store.demo && m.role === 'user' && m.key ? html`<${StoryControls} message=${m} />` : null} />`}
     <${Composer} draftKey="interview" label="Your message" placeholder="Tell me a little about it…" disabled=${blocked} busy=${!!interviewing}
       hint="Shared with your selected agent · Enter to send"
       onSend=${async text => { await api('conversation', { text }); toast('Your agent is connecting the dots…'); refresh(); }} />

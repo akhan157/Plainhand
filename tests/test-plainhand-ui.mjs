@@ -119,6 +119,8 @@ try {
   await navLink(page, 'Profile & brain').click();
   const storyStep = page.getByRole('button', { name: /^\d Tell your story/ });
   if (await storyStep.getAttribute('aria-expanded') !== 'true') await storyStep.click();
+  await page.getByRole('textbox', { name: 'Your message' }).waitFor();
+  assert.equal(await page.locator('[aria-label="Profile interview"] .message.streaming').count(), 0, 'No "Plainhand is replying" bubble while nothing is running.');
   await page.getByRole('textbox', { name: 'Your message' }).fill('I personally designed the chassis and ran the physical tests.');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await app.workflow.queue;
