@@ -1461,3 +1461,27 @@ Verification on the branch: `npm run test:plainhand` passed 784/784,
 `npm run test:full` passed, and simulated provider interruption and retry checks
 passed for both runners. The full suite evidence is under
 `output/verification-2026-11-19T19-56-59-241Z`.
+
+### U14 decision for `a4d9507` — 2026-11-19
+
+Claude Opus 5.5 finished the missing candidate judgments. The prior complete
+baseline judgments were reused. One rubric sample and one claim check were
+completed for each available packet.
+
+| Repeat | Packets judged, baseline / candidate | Overall, baseline / candidate | Honesty, baseline / candidate | Unsupported claims, baseline / candidate |
+| --- | --- | --- | --- | --- |
+| n1 | 5 / 6 | 4.00 / 4.00 | 4.80 / 4.50 | 0 / 0 |
+| n2 | 6 / 6 | 4.17 / 3.67 | 5.00 / 4.50 | 0 / 0 |
+
+n1 candidate honesty is 4.40 on the five scenarios judged on both sides. No
+baseline finance-seeded packet was available in that repeat. All 12 candidate
+packets completed both judge stages. The candidate met the input-cost condition
+(−32.5% and −21.6% total input), but failed the quality condition in both repeats.
+**U14 is not accepted.** Keep the register at 14/15 and PR #10 open.
+
+The largest honesty losses are on the analyst packets. The seeded CV's adjacent
+sentences specify which dashboard was adopted and say that the result followed
+adoption. The candidate sometimes dropped that temporal link. The judge also
+flagged an omitted relevant certificate and a summary that combined two
+separate dashboard projects. No unsupported claims were found. These findings
+do not change the evaluation pass counts or the recorded usage.
