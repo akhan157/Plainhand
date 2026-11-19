@@ -128,11 +128,17 @@ try {
   await page.getByRole('button', { name: 'This reflects me' }).click();
   await page.getByRole('status').filter({ hasText: 'Understanding reviewed.' }).waitFor();
   const strength = page.locator('section[aria-labelledby="strength-title"]');
-  await strength.getByText(/1 of 1 summary approved/).waitFor();
+  await strength.getByText('Current summary approved · 1 of 1 built so far was approved').waitFor();
   assert.ok(await strength.getByText(/in your words/).count(), 'Profile strength counts the candidate’s own statements.');
   await shot(page, '04-profile.png');
   // The master resume shows every heading the drafter receives, before the candidate approves it.
   const masterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  // E2E finding 7: when a profile edit clears the approval, the count is history, not a current approval.
+  await app.workspace.mutate(state => { state.understanding.approved = false; });
+  await page.reload();
+  await navLink(page, 'Profile & brain').click();
+  await strength.getByText('Current summary waiting for your review · 1 of 1 built so far was approved').waitFor();
+  await app.workspace.mutate(state => { state.understanding.approved = true; });
   // E2E finding 1: a failed master-resume task is shown on its card, not only in Activity.
   await app.workspace.mutate(state => { state.tasks.unshift({ id: 'failed-master', kind: 'standard', jobId: null, input: {}, status: 'failed', message: 'The master resume contains a claim without an exact source reference.', createdAt: new Date().toISOString() }); });
   await page.reload();
