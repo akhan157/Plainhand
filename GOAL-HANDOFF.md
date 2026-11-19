@@ -1354,3 +1354,48 @@ holdout2-journey-stem fails again, the same way.
 - **GitHub sign-in:** `gh` was re-authorised with repo and workflow scopes. The old
   fine-grained token could only read this repo. The KDE wallet stays locked after an
   autologin; see the wallet notes from 2026-11-18.
+
+## Handoff leftovers after PR #9 — 2026-11-19
+
+Branch `goal/handoff-leftovers` from main `06084e1`. Not pushed.
+
+- **Time bombs.** The suite was run with `Date` shifted forward (a preload, also passed
+  to child processes through `NODE_OPTIONS`). It was first checked against the pre-fix
+  `test-u10-tracking`, which it failed as expected. test-application-record, test-exports
+  and test-feature-inbox pass at every shift from +1 day to +11 years: not time bombs.
+  One real one was found, and it was a product bug: the follow-up rule check let a date
+  in the record ground a number ("a team of 12" passed on any date with a 12 in it). The
+  test would have started failing on 2026-12-01. Fixed in `0b484ef`, with a
+  clock-independent test.
+- **E2E low items 2–11: all fixed** (owner chose fixing over filing issues; none filed).
+  Commits are listed in `docs/internal/E2E-FINDINGS-2026-11-18.md`. Found on the way:
+  the Greenhouse provider could not scan `boards.greenhouse.io/<slug>` boards (`89eadab`).
+- **Gates:** `test:plainhand` 781/781. All six browser UI files pass. Playwright
+  1.62.1 wants Chromium 1234; this machine has 1255, aliased through
+  `PLAYWRIGHT_BROWSERS_PATH` for the run (no install).
+- **U14 "Investigate on every row" (repeat 1): looked at, not settled.** The raw runs
+  and the runner script (`u14-codex62.sh`) are gone from this machine, so per-row scores
+  and `modelRecommendation` can't be read. From the code, baseline `00ce1bf` against
+  `f873cfb`:
+  - Unchanged on both sides: EVALUATE_INSTRUCTION, the below-4 Apply→Investigate
+    policy, `providerJob` and the context builder (except email/phone leaving the
+    context).
+  - So on the seeded rows the only difference is the system prompt. HEAD replaces
+    Codex's coding-agent prompt with the preamble, so "Ask when evidence is missing"
+    arrives twice.
+  - The same invocation matched the baseline on gpt-6.1-sol (5/6 and 4/6). If the
+    system prompt is the cause, it shows only on 6.2-sol.
+  - `9dd5a19` adds `PLAINHAND_CODEX_INSTRUCTIONS=cli`, which keeps Codex's own prompt
+    and changes nothing else.
+- **Before repeat 2** (Codex weekly reset 2026-11-24 08:25 ET): run the three seeded
+  rows (`profile-effect-{fin,analyst,sci}-seeded`) on HEAD, once with the switch and once
+  without (about 6 evaluate calls plus their packets). Record each row's score,
+  `modelRecommendation` and gaps.
+  - If the switch restores Apply, the evaluate call needs its own system text or the
+    duplicate clause removed, then a re-measure.
+  - If not, compare against the baseline clone's evaluate output for the same rows.
+  - Keep the output directories this time.
+  - Repeat 2 itself: `SIDES` per side, `TAG` = the new HEAD, `ROUND=r2`, then judge.
+    The runner script has to be recreated or recovered first.
+- **Model matrix:** still waits on U14, per the owner's order (screen Codex 6.2-sol
+  low and medium, Sonnet 5.5 low and medium, Haiku 5.5 low).
