@@ -331,3 +331,10 @@ test('U14: the evaluation recommends on fit; posting checks and an unstated sala
   assert.match(EVALUATE_INSTRUCTION, /employer identity that is not independently verified, an unstated salary, or a detail to confirm goes in legitimacyNotes or questions and never by itself turns Apply into Investigate or Skip/);
   assert.match(EVALUATE_INSTRUCTION, /closed or not genuine may/, 'a real problem with the posting can still change it');
 });
+
+test('U14: an unsettled reference drops only the link, never the stated result; the letter tells the story', () => {
+  // ba03976 n1: the analyst packets left out "failure rates dropped from 14% to 9%" because the
+  // source tied it to an unnamed "it" (judge honesty 4, "undersold by omission").
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /Leave out only the link, never the result/);
+  assert.match(PACKET_INSTRUCTION, /at most one short clause per paragraph/);
+});
