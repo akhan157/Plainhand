@@ -273,7 +273,9 @@ export function codexExecArgs({ resultFile, instructionsFile, env = process.env 
     // below are per-call config overrides in the same style.
     '-c', 'features.shell_tool=false',
     // Replace Codex's coding-agent system prompt with Plainhand's one-paragraph contract.
-    '-c', `model_instructions_file=${tomlString(instructionsFile)}`,
+    // PLAINHAND_CODEX_INSTRUCTIONS=cli keeps Codex's own prompt instead. It is a measurement
+    // switch (U14: does the replaced system prompt alone move the evaluation?), never a default.
+    ...(String(env?.PLAINHAND_CODEX_INSTRUCTIONS ?? '').trim().toLowerCase() === 'cli' ? [] : ['-c', `model_instructions_file=${tomlString(instructionsFile)}`]),
     // No skill catalog, plugin/app instructions, permission prose or environment block:
     // this call reads no files and runs no commands.
     '-c', 'skills.include_instructions=false',

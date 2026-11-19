@@ -290,6 +290,16 @@ test('the Codex model and reasoning effort come from PLAINHAND_CODEX_MODEL and P
   assert.equal(plain.indexOf('-m'), -1);
 });
 
+test('PLAINHAND_CODEX_INSTRUCTIONS=cli drops only the system-prompt override, for the U14 evaluate probe', async () => {
+  const { codexExecArgs } = await import('../plainhand/agents.mjs');
+  const plain = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: {} });
+  const cli = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: { PLAINHAND_CODEX_INSTRUCTIONS: ' CLI ' } });
+  const at = plain.findIndex(a => a.startsWith('model_instructions_file='));
+  assert.ok(at > 0 && plain[at - 1] === '-c');
+  assert.deepEqual(cli, [...plain.slice(0, at - 1), ...plain.slice(at + 1)], 'every other switch stays, so the system prompt is the only difference');
+  assert.deepEqual(codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: { PLAINHAND_CODEX_INSTRUCTIONS: 'other' } }), plain);
+});
+
 test('review 3dd8006: the Codex model gate rejects a leading dash and holds the 80-character limit; effort is case-insensitive', async () => {
   const { codexModelArgs } = await import('../plainhand/agents.mjs');
   assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: '-m' }), []);
