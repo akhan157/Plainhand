@@ -228,9 +228,9 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
   try {
     const liveAgent = (id, instruction, data, options = {}) => executeAgent(id, instruction, data, { ...options, timeout: agentTimeoutMs });
     const workflowOptions = {
-      // What a real check of a live posting returns. The provider sees this record; calling it a
+      // What production's verifier returns for a live posting on a supported ATS (jobs.mjs). The provider sees this record; calling it a
       // sandbox made models skip or hold back on a fit they scored 4.5 to 5 (U14, 2026-11-19).
-      verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'The posting page loaded and matches the saved role.' }),
+      verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'Title, job description, and application control observed on a supported ATS. Employer identity is not independently verified.' }),
       ...(live
         ? (providerById(provider).builtIn ? {} : { agent: liveAgent })
         : { agent: controlledAgent({ scenario, persona, job: jobSpec }) }),

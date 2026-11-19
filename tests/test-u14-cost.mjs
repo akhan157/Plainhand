@@ -323,3 +323,11 @@ test('review 3dd8006: executeAgent passes PLAINHAND_CODEX_MODEL and EFFORT from 
   assert.ok(seen.args.includes('model_reasoning_effort="low"'));
   assert.equal(seen.env.PLAINHAND_CODEX_MODEL, 'gpt-6.1-sol');
 });
+
+test('U14: the evaluation recommends on fit; posting checks and an unstated salary are notes, not a downgrade', () => {
+  // gpt-6.2-sol returned 5/5 "Investigate" ("verify the employer's connection") on the verifier
+  // record production gives every live posting: "Employer identity is not independently verified."
+  assert.match(EVALUATE_INSTRUCTION, /Base the recommendation on fit/);
+  assert.match(EVALUATE_INSTRUCTION, /employer identity that is not independently verified, an unstated salary, or a detail to confirm goes in legitimacyNotes or questions and never by itself turns Apply into Investigate or Skip/);
+  assert.match(EVALUATE_INSTRUCTION, /closed or not genuine may/, 'a real problem with the posting can still change it');
+});

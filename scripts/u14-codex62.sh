@@ -82,7 +82,7 @@ patch_baseline() {
   # The same neutral posting record HEAD's harness uses (portals.mjs postingPath, runner.mjs
   # verifier): no "sandbox" verification and no "synthetic/<scenario id>" URL.
   sed -i 's|https://jobs.lever.co/synthetic/${scenario.id}|https://jobs.lever.co/careers/${[...String(scenario.id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}|g' "$dir/plainhand/evaluation/portals.mjs" "$dir/plainhand/evaluation/runner.mjs"
-  sed -i "s|legitimacy: 'owned-sandbox'|legitimacy: 'official-ats-unconfirmed-employer'|; s|reason: 'Owned evaluation sandbox; no employer was contacted.'|reason: 'The posting page loaded and matches the saved role.'|" "$dir/plainhand/evaluation/runner.mjs"
+  sed -i "s|legitimacy: 'owned-sandbox'|legitimacy: 'official-ats-unconfirmed-employer'|; s|reason: 'Owned evaluation sandbox; no employer was contacted.'|reason: 'Title, job description, and application control observed on a supported ATS. Employer identity is not independently verified.'|" "$dir/plainhand/evaluation/runner.mjs"
   if grep -q "synthetic/\|owned-sandbox" "$dir/plainhand/evaluation/runner.mjs" "$dir/plainhand/evaluation/portals.mjs"; then echo "baseline harness patch did not apply" >&2; exit 1; fi
   if ! grep -q "model_reasoning_effort" "$dir/plainhand/agents.mjs"; then
     sed -i "s/if (id === 'codex') args = \['exec', /if (id === 'codex') args = ['exec', '-m', '$MODEL', '-c', 'model_reasoning_effort=\"$EFFORT\"', /" "$dir/plainhand/agents.mjs"
