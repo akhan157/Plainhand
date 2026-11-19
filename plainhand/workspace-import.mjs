@@ -291,7 +291,7 @@ function prepareImport(data) {
   if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) throw new ImportError('The export has an invalid email address.');
   return {
     profile, files, carryFiles: object(data.files),
-    provider: typeof data.provider === 'string' ? data.provider.slice(0, 100) : undefined, jobs: Array.isArray(data.jobs) ? data.jobs : [], sources: Array.isArray(data.sources) ? data.sources : [],
+    provider: typeof data.provider === 'string' ? data.provider.slice(0, 100) : null, jobs: Array.isArray(data.jobs) ? data.jobs : [], sources: Array.isArray(data.sources) ? data.sources : [],
     tasks: Array.isArray(data.tasks) ? data.tasks : [], conversation: Array.isArray(data.conversation) ? data.conversation : [],
     events: Array.isArray(data.events) ? data.events : [], contextPrefs: object(data.contextPrefs) ? data.contextPrefs : undefined,
     inbox: Array.isArray(data.inbox) ? data.inbox : [], skillPlan: object(data.skillPlan) ? data.skillPlan : undefined,

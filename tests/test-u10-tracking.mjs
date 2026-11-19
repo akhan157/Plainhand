@@ -253,31 +253,32 @@ test('an interview with a time is a UTC event in the calendar and carries its ti
   try {
     const role = job();
     await h.workspace.mutate(state => { state.jobs.push(role); });
-    const first = (await h.run('record.addInterview', { jobId: role.id, stage: 'Technical screen', date: '2026-11-18', time: '14:30', status: 'scheduled' })).result;
+    // A fixed future date: the digest reads the real clock, so a 2026 date expired on 2026-11-19.
+    const first = (await h.run('record.addInterview', { jobId: role.id, stage: 'Technical screen', date: '2099-11-18', time: '14:30', status: 'scheduled' })).result;
     assert.equal(first.time, '14:30');
     await h.run('record.addInterview', { jobId: role.id, stage: 'Summer screen', date: '2026-07-15', time: '09:00', status: 'scheduled' });
-    const invalid = await h.run('record.addInterview', { jobId: role.id, stage: 'Bad time', date: '2026-11-19', time: '25:00' }).catch(error => error);
+    const invalid = await h.run('record.addInterview', { jobId: role.id, stage: 'Bad time', date: '2099-11-19', time: '25:00' }).catch(error => error);
     assert.match(invalid.message, /real time/, 'an impossible time is refused');
 
     const state = await h.workspace.load();
     const digestState = (await h.run('workspace.digest')).result;
     const digestJob = digestState.jobs.find(item => item.id === role.id);
-    assert.deepEqual(digestJob.upcomingInterview, { stage: 'Technical screen', date: '2026-11-18', time: '14:30' }, 'the upcoming-interview digest includes the time');
+    assert.deepEqual(digestJob.upcomingInterview, { stage: 'Technical screen', date: '2099-11-18', time: '14:30' }, 'the upcoming-interview digest includes the time');
     assert.ok(digestState.attention.some(item => item.kind === 'interview' && item.text.includes('at 14:30')), 'the briefing says the time');
 
     const ics = calendarIcs(state, { now: NOW });
     const events = vevents(ics);
     const november = events.find(event => property(event, 'SUMMARY')?.includes('Technical screen'));
     const july = events.find(event => property(event, 'SUMMARY')?.includes('Summer screen'));
-    assert.match(property(november, 'DTSTART'), /^DTSTART:20261118T193000Z$/, 'EST is five hours behind UTC');
+    assert.match(property(november, 'DTSTART'), /^DTSTART:20991118T193000Z$/, 'EST is five hours behind UTC');
     assert.match(property(july, 'DTSTART'), /^DTSTART:20260715T130000Z$/, 'EDT is four hours behind UTC, across a DST change');
     for (const line of ics.split('\r\n')) assert.ok(Buffer.byteLength(line, 'utf8') <= 75);
     assert.match(ics, /\r\n$/);
 
     // The fallback without a timezone stays a valid floating local time.
     const floating = calendarIcs({ ...state, profile: { ...state.profile, timezone: '' } }, { now: NOW });
-    assert.match(floating, /DTSTART:20261118T143000\r\n/, 'without a zone the wall-clock time is written as a floating local time');
-    assert.match(floating, /DTEND:20261118T153000\r\n/, 'a floating event ends in floating local time, not UTC');
+    assert.match(floating, /DTSTART:20991118T143000\r\n/, 'without a zone the wall-clock time is written as a floating local time');
+    assert.match(floating, /DTEND:20991118T153000\r\n/, 'a floating event ends in floating local time, not UTC');
   } finally { await h.close(); }
 });
 
