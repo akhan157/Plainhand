@@ -42,7 +42,7 @@ test('an export restores into a fresh workspace; approvals and machine state are
     const exported = (await a.request('export')).data;
 
     const preview = (await b.request('import/preview', { data: exported })).data;
-    assert.deepEqual([preview.name, preview.jobs, preview.approvalsReset, preview.conversation], [candidate.name, 1, 1, 2]);
+    assert.deepEqual([preview.name, preview.jobs, preview.approvalsReset, preview.interview, preview.assistant], [candidate.name, 1, 1, exported.conversation.length, 2]);
     assert.equal((await b.request('import', { data: exported })).status, 400, 'an import needs explicit confirmation');
     const result = (await b.request('import', { data: exported, confirm: true })).data;
     assert.equal(result.jobs, 1);

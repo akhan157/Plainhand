@@ -128,11 +128,17 @@ try {
   await page.getByRole('button', { name: 'This reflects me' }).click();
   await page.getByRole('status').filter({ hasText: 'Understanding reviewed.' }).waitFor();
   const strength = page.locator('section[aria-labelledby="strength-title"]');
-  await strength.getByText(/1 of 1 summary approved/).waitFor();
+  await strength.getByText('Current summary approved · 1 of 1 built so far was approved').waitFor();
   assert.ok(await strength.getByText(/in your words/).count(), 'Profile strength counts the candidate’s own statements.');
   await shot(page, '04-profile.png');
   // The master resume shows every heading the drafter receives, before the candidate approves it.
   const masterStep = page.getByRole('button', { name: /Approve your master resume/ });
+  // E2E finding 7: when a profile edit clears the approval, the count is history, not a current approval.
+  await app.workspace.mutate(state => { state.understanding.approved = false; });
+  await page.reload();
+  await navLink(page, 'Profile & brain').click();
+  await strength.getByText('Current summary waiting for your review · 1 of 1 built so far was approved').waitFor();
+  await app.workspace.mutate(state => { state.understanding.approved = true; });
   // E2E finding 1: a failed master-resume task is shown on its card, not only in Activity.
   await app.workspace.mutate(state => { state.tasks.unshift({ id: 'failed-master', kind: 'standard', jobId: null, input: {}, status: 'failed', message: 'The master resume contains a claim without an exact source reference.', createdAt: new Date().toISOString() }); });
   await page.reload();
@@ -161,13 +167,17 @@ try {
   await navLink(page, 'Jobs').click();
   await page.getByRole('button', { name: 'Add a company board', exact: true }).click();
   await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Test Company');
-  await page.getByRole('textbox', { name: 'Career board URL' }).fill('https://jobs.lever.co/test');
+  // Pasted without the scheme, as people do: the app adds https:// instead of a browser bubble.
+  await page.getByRole('textbox', { name: 'Career board URL' }).fill('jobs.lever.co/test');
   await page.evaluate(() => window.plainhandTheme.set('light'));
   assert.equal(await page.getByRole('textbox', { name: 'Company name', exact: true }).inputValue(), 'Test Company', 'Theme changes preserve unsaved source details.');
   await page.evaluate(() => window.plainhandTheme.set('dark'));
   await page.getByRole('button', { name: 'Add source', exact: true }).click();
   await page.getByRole('button', { name: 'Check sources', exact: true }).click();
   await page.getByRole('button', { name: 'Graduate Engineer', exact: true }).waitFor({ timeout: 10000 });
+  // The check's result stays on Jobs, not only in Activity.
+  await page.locator('.task-card').filter({ hasText: '1 new role added from 1 of 1 source.' }).waitFor();
+  assert.equal(await page.locator('.source-chip a').first().getAttribute('href'), 'https://jobs.lever.co/test', 'a pasted board link without https:// is saved with it');
   await page.getByRole('button', { name: 'Graduate Engineer', exact: true }).click();
   await panel(page).getByRole('heading', { name: 'Graduate Engineer', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Evaluate fit' }).click();
@@ -234,6 +244,10 @@ try {
   await page.getByRole('button', { name: 'Yes, I submitted it' }).click();
   await page.getByRole('status').filter({ hasText: 'Application recorded.' }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Submission confirmed' }).isDisabled(), true, 'Applied is recorded only once, after confirmation.');
+  // Once submitted, browser assistance is replaced by a notice: no button can start a duplicate.
+  await panel(page).getByText('Browser assistance is off for it', { exact: false }).waitFor();
+  for (const name of ['Open & inspect application', 'Inspect form again', 'Autofill to final review', 'Resume inspection', 'Take over the browser', 'Handle sign-in or verification']) assert.equal(await panel(page).getByRole('button', { name, exact: true }).count(), 0, `${name} is gone after submission`);
+  await shot(page, '13c-apply-after-submission.png');
   await page.getByRole('button', { name: 'Close panel' }).click();
   await navLink(page, 'Applications').click();
   await page.getByRole('heading', { name: 'Applications', exact: true }).waitFor();
@@ -245,6 +259,11 @@ try {
   await page.getByRole('button', { name: 'Open record' }).first().click();
   await page.getByRole('heading', { name: 'Next action', exact: true }).waitFor();
   await page.getByRole('textbox', { name: 'What happens next?', exact: true }).fill('Send a thank-you note to the recruiter');
+  // E2E finding 5: a reload keeps the open role, its tab and the half-typed next action.
+  await page.waitForTimeout(400);
+  await page.reload();
+  await panel(page).getByRole('tab', { name: 'Record', exact: true, selected: true }).waitFor();
+  assert.equal(await page.getByRole('textbox', { name: 'What happens next?', exact: true }).inputValue(), 'Send a thank-you note to the recruiter', 'the unsent draft survives a reload');
   await page.getByLabel('Due date', { exact: true }).fill(dueDate);
   await page.getByRole('button', { name: 'Save next action', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Next action saved.' }).waitFor();

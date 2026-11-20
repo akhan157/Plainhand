@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
-import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, DEFAULT_FORMAT, normalizeResume, repairMisplacedAccomplishments, orderRolesNewestFirst } from '../plainhand/resume-format.mjs';
+import { deriveFormat, cleanFormat, groupEntries, orderSections, renderResumeHtml, renderLetterHtml, verifyHeadings, parseBboxLayout, parseTextSizes, attachFontSizes, formatFromLayout, DEFAULT_FORMAT, normalizeResume, repairMisplacedAccomplishments, orderRolesNewestFirst } from '../plainhand/resume-format.mjs';
 import { renderPacket } from '../plainhand/workflow.mjs';
 import { createPlainhand } from '../plainhand-server.mjs';
 
@@ -190,4 +190,25 @@ test('review 983c762: volunteer and board sections are never merged; apart emplo
 test('review d2a6000: a bare Roles or Positions section is ordered newest first', () => {
   const role = (org, dates) => ({ org, title: 'T', location: '', dates });
   assert.deepEqual(orderRolesNewestFirst(normalizeResume([{ section: 'Roles', heading: role('Old', '2015 to 2018'), text: 'old' }, { section: 'Roles', heading: role('New', '2024 to 2025'), text: 'new' }])).map(entry => entry.text), ['new', 'old']);
+});
+
+// E2E finding 11: a groff/PostScript PDF (Type 1 Times) read as text 9, heading 7 and name 9,
+// and lost EDUCATION, its first heading, to the name. Line-box heights are a Chromium-calibrated
+// estimate; the PDF's real font sizes (pdftohtml) replace them when present.
+test('real font sizes replace the line-box estimate, and a heading is never taken for the name', () => {
+  // A groff-like page: box heights that read small, true sizes 10 body, 11 headings, name and
+  // contact on one body-size line. pdftohtml ran zoomed (3 units per point here).
+  const line = (y, x, text, h) => `<line xMin="${x}" yMin="${y}" xMax="${x + 6 * text.length}" yMax="${y + h}">${text.split(' ').map((w, i) => `<word xMin="${x + 40 * i}" yMin="${y}" xMax="${x + 40 * i + 30}" yMax="${y + h}">${w}</word>`).join('')}</line>`;
+  const rows = [[72, 'Jordan Avery | jordan.avery@example.invalid | (555) 010-0199', 9, 10], [96, 'EDUCATION', 7.9, 11], [108, 'Example University, B.S. Finance', 9, 10], [132, 'EXPERIENCE', 7.9, 11], [144, 'Northwind Capital, Analyst Intern', 9, 10], [156, '• Built a monthly variance model.', 9, 10], [168, '• Reconciled vendor invoices weekly.', 9, 10], [192, 'SKILLS', 7.9, 11], [204, 'Excel, SQL, Python', 9, 10]];
+  const xhtml = `<page width="595.000000" height="842.000000">${rows.map(([y, t, h]) => line(y, 54, t, h)).join('')}</page>`;
+  const xml = `<page number="1" height="2526" width="1785"><fontspec id="0" size="30" family="Times"/><fontspec id="1" size="33" family="Times"/>${rows.map(([y, t, , size]) => `<text top="${y * 3}" left="162" width="${18 * t.length}" height="30" font="${size === 11 ? 1 : 0}">${t}</text>`).join('')}</page>`;
+  const estimate = formatFromLayout(parseBboxLayout(xhtml), ['Times-Roman']);
+  assert.ok(estimate.headings.size < estimate.font.size + 0.5, 'the box estimate alone misreads this page (the defect)');
+  const runs = parseTextSizes(xml, 842);
+  assert.deepEqual([runs[0].size, runs[1].size, runs[1].top], [10, 11, 96], 'sizes and positions scale back to points');
+  const format = formatFromLayout(attachFontSizes(parseBboxLayout(xhtml), runs), ['Times-Roman']);
+  assert.deepEqual([format.font.size, format.headings.size, format.name.size, format.font.lineHeight], [10, 11, 10, 1.2]);
+  assert.deepEqual(format.sections, ['EDUCATION', 'EXPERIENCE', 'SKILLS'], 'the first heading is a section, not the name');
+  // Without pdftohtml output nothing changes: the estimate is used for every line.
+  assert.deepEqual(formatFromLayout(attachFontSizes(parseBboxLayout(xhtml), []), ['Times-Roman']), estimate);
 });

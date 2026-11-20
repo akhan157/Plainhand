@@ -61,6 +61,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot), (screenshot), (screenshot).
 
 ### 2. "Check sources" shows nothing on Jobs, despite the toast saying progress appears "here" — low
+- **Status: fixed in 5814e17.** Jobs keeps the latest check as a task card with its result ("1 new role added from 1 of 1 source.", plus any source it could not read) and a Retry when it failed.
 - Area: Jobs → Job sources → Check sources; toast text from `plainhand/web/ui/core.mjs:216`.
 - Steps: add a company board; press Check sources; wait.
 - Expected: running state and a result line on Jobs ("1 new role added" / "No new roles"), as Campaigns shows
@@ -70,6 +71,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot), (screenshot), (screenshot). Found by B and C.
 
 ### 3. "Add a company board" accepts any URL — low
+- **Status: fixed in 89eadab.** `sources.add` uses discovery's own board detection and refuses anything else. This exposed a discovery bug, fixed in the same commit: `boards.greenhouse.io/<slug>` boards (the classic host) could not be scanned.
 - Area: Jobs → Job sources → Add a company board; `sources.add` in `plainhand/actions.mjs` checks URL shape only.
 - Steps: company "Test Co", URL `https://example.com/not-a-board`, Add source.
 - Expected: rejection naming the supported boards (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee), as the dialog text promises.
@@ -79,6 +81,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot).
 
 ### 4. Apply tab keeps browser-assistance buttons enabled after submission — low
+- **Status: fixed in a5b7ff4.** A submitted application shows a notice in place of Open, Autofill, Resume, the answers form, Take over and the sign-in handler.
 - Area: Jobs → role → Apply tab (`ApplyTab` in `plainhand/web/ui/jobpanel.mjs`); server guard `plainhand-server.mjs:408`.
 - Steps: confirm "I submitted this application" → status Applied; press "Open & inspect application".
 - Expected: Open/Autofill/Resume disabled or replaced once submitted.
@@ -86,6 +89,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot), (screenshot).
 
 ### 5. Reload loses the open role, tab and typed drafts — low
+- **Status: fixed in 5ea6303.** The open role, its tab and text typed into its panel survive a reload (this tab's sessionStorage only). A reload during autofill still shows no live progress; the checkpoint appears when the server run ends.
 - Area: whole app; route hash never includes the role id (e.g. `#jobs`).
 - Steps: open a role → Apply or Record tab → type in "next action" → reload.
 - Expected: same role and tab return (and, ideally, the draft).
@@ -94,6 +98,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot), (screenshot).
 
 ### 6. Scheme-less job URL rejected only by the browser's native bubble, which covers Location — low
+- **Status: fixed in 5814e17.** The add-job and add-board URL fields are plain text; a host-looking value gets https:// and the server still validates it.
 - Area: Jobs → Add a job dialog (URL input `type=url`).
 - Steps: paste `jobs.lever.co/test/999` → Save role.
 - Expected: accept with `https://` prepended, or the app's own inline field error.
@@ -101,6 +106,7 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot), (screenshot).
 
 ### 7. "Your review: 1 of N summaries approved" while no summary is currently approved — low
+- **Status: fixed in 55ebcdb.** The line leads with the current state and words the count as history ("Current summary waiting for your review · 1 of 3 built so far was approved").
 - Area: Profile & brain → Keep improving → Profile strength ("Your review").
 - Steps: approve the understanding; save a profile edit (approval clears; step 4 offers only "Build understanding").
 - Expected: the count agrees with step 4 (0 currently approved, or wording like "approved before").
@@ -108,24 +114,28 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 - Evidence: (screenshot), (screenshot).
 
 ### 8. 768 px icon rail: Applications count badge overlaps its icon — low
+- **Status: fixed in 414211f.** The rail badge sits in the item's corner, clear of the icon, with a surface ring.
 - Area: side navigation at 768–900 px (72 px icon rail).
 - Steps: window 768 px wide with one selected application.
 - Actual: the "1" badge sits on the briefcase icon's top-right corner and the active background.
 - Evidence: (screenshot).
 
 ### 9. Import preview shows the wrong conversation count — low
+- **Status: fixed in 84b173d.** The preview counts profile interview messages and assistant chat messages separately.
 - Area: Workspace → Import a workspace → preview. `plainhand/workspace-import.mjs:28` counts `data.agentConversation`
   (the Home assistant thread) and labels it "conversation messages", while the profile interview (`conversation`) is what moves.
 - Steps: export a workspace with 8 interview messages → import it elsewhere → read the preview.
 - Actual: "0 conversation messages". Evidence: (screenshot).
 
 ### 10. Connections card header is cramped by the "In use" pill — low
+- **Status: fixed in 414211f.** On a card under 440 px wide the pill moves under the title. At 1280 px it no longer reproduced on the goal branch (one line).
 - Area: Connections → provider card header.
 - Actual: the pill shares the subtitle row, shrinking it to ~107 px, so "Uses your ChatGPT account through the Codex app"
   wraps to three lines at 1280 px and 390 px.
 - Evidence: (screenshot), (screenshot).
 
 ### 11. Reading the format from a groff/PostScript PDF gives incoherent values — low
+- **Status: fixed in 68a597f.** Sizes come from the PDF's real font sizes (pdftohtml) when available, and a section heading is never taken for the name. A fictional groff resume reads 10/11/18 pt, 1.2 spacing, all sections.
 - Area: Profile & brain → step 2 → Read format from my resume PDF.
 - Steps: upload a fictional finance resume PDF (headings 11 pt bold, body 10 pt, name and contact on one line).
 - Actual: text 9, heading 7 (smaller than body), name 9, line spacing 1.75, sections "EXPERIENCE, PROJECTS, SKILLS"
@@ -156,3 +166,4 @@ not given), so the testers drove Playwright Chromium / Chrome for Testing in hea
 
 - Tester A re-checked both fixes (1c5188c, b104492) on the running build after a reload: fixed.
 - Severity totals for open findings: 1 high (0), 2 medium (0b, 1), 9 low (2–11).
+- 2026-11-19: all ten low items (2–11) were re-checked on main after PR #9 and fixed on `goal/handoff-leftovers`; none was filed as a GitHub issue (owner chose fixing over filing).

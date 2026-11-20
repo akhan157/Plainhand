@@ -138,7 +138,8 @@ export function ImportDialog({ data, preview }) {
   return html`<${Dialog} title="Import this workspace?" size="sm" onClose=${closeDialog}>
     <p>This replaces the workspace here with the export from ${when}${preview.name ? ` for ${preview.name}` : ''}. Your current workspace is backed up first.</p>
     <ul class="check-list"><li><${Icon} name="briefcase" />${preview.jobs} role${preview.jobs === 1 ? '' : 's'}, ${preview.applied} submitted</li>
-      <li><${Icon} name="layers" />${preview.conversation} conversation message${preview.conversation === 1 ? '' : 's'}</li>
+      <li><${Icon} name="layers" />${preview.interview} profile interview message${preview.interview === 1 ? '' : 's'}</li>
+      ${preview.assistant ? html`<li><${Icon} name="layers" />${preview.assistant} assistant chat message${preview.assistant === 1 ? '' : 's'}</li>` : null}
       <li><${Icon} name="search" />${preview.sources} job source${preview.sources === 1 ? '' : 's'}</li></ul>
     ${preview.approvalsReset ? html`<${Notice} tone="warn">${preview.approvalsReset} packet approval${preview.approvalsReset === 1 ? ' is' : 's are'} reset: the PDFs are not part of an export, so review and regenerate packets before using them.</${Notice}>` : null}
     <p class="muted-text">Browser sign-ins and saved portal sessions do not move between computers.</p>${store.state.cloud ? html`<${Notice} tone="warn">Packet approvals, pending proposals, browser checkpoints and AI connection checks reset. Sign in to AI separately. Nothing is executed or submitted.</${Notice}>` : null}

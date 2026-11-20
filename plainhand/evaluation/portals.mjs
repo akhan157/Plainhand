@@ -47,7 +47,7 @@ export function renderPortal({ scenario, step = 1 }) {
   const persona = personaById(scenario.persona);
   const job = jobById(scenario.job);
   if (!portal || !persona || !job) throw new Error('Unknown evaluation scenario.');
-  const base = `https://jobs.lever.co/synthetic/${scenario.id}`;
+  const base = portalUrl(scenario);
   const head = `<!doctype html><html lang="en"><head><title>${escape(job.title)} — ${escape(job.company)}</title><style>
     body{font:16px/1.55 system-ui,Arial;margin:40px auto;max-width:700px;color:#26392e;background:#f7f8f5}
     label{display:block;margin:18px 0} input,textarea,select{display:block;width:100%;padding:11px;box-sizing:border-box;border:1px solid #bdc9b4;background:#fff}
@@ -94,4 +94,8 @@ export function portalDefinition(scenario) {
   return { ...portal, fields: portal.steps.flat() };
 }
 
-export const portalUrl = scenario => `https://jobs.lever.co/synthetic/${scenario.id}`;
+// The posting URL the model sees. It names nothing about the test (no "synthetic", no
+// scenario id): a model that reads the URL as a test fixture stops judging the fit. The
+// path is a stable hash of the scenario id, so the portal and the saved job still match.
+export const postingPath = id => [...String(id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
+export const portalUrl = scenario => `https://jobs.lever.co/careers/${postingPath(scenario.id)}`;

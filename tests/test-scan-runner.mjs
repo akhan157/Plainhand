@@ -78,3 +78,11 @@ test('scan history remembers a surfaced role so the next scan treats it as a dup
   const merged = mergeScanHistory(history, first, '2026-10-22T10:00:00.000Z');
   assert.equal(merged.length, 1, 're-seeing the same role does not grow history');
 });
+
+test('Greenhouse boards are detected on the classic, embed and job-boards hosts only', async () => {
+  const { default: greenhouse } = await import('../providers/greenhouse.mjs');
+  const api = url => greenhouse.detect({ name: 'Acme', careers_url: url })?.url || null;
+  const acme = 'https://boards-api.greenhouse.io/v1/boards/acme/jobs';
+  for (const url of ['https://boards.greenhouse.io/acme', 'https://boards.greenhouse.io/embed/job_board?for=acme', 'https://job-boards.greenhouse.io/acme/jobs/123', 'https://job-boards.eu.greenhouse.io/acme']) assert.equal(api(url), acme, url);
+  for (const url of ['https://evil.example/job-boards.greenhouse.io/acme', 'https://boards.greenhouse.io/', 'not a url']) assert.equal(api(url), null, url);
+});

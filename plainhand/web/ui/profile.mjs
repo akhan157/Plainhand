@@ -189,7 +189,8 @@ export function strengthRows(s) {
       ? `${s.coverage.evaluated} of ${s.coverage.minimum} evaluated roles needed`
       : `${pct(s.coverage.average)} of requirements backed by evidence across ${plural(s.coverage.evaluated, 'role')} · ${pct(s.coverage.storyEvidenceShare)} of evidence from your stories`],
     ['Your review', s.review.level, s.review.built
-      ? `${s.review.approved} of ${s.review.built} ${s.review.built === 1 ? 'summary' : 'summaries'} approved${s.review.openQuestions !== null ? ` · ${plural(s.review.openQuestions, 'open question')}${s.review.openQuestionsBefore !== null ? ` (was ${s.review.openQuestionsBefore})` : ''}` : ''}`
+      // Current state first; the counts are history (approvals clear when the profile changes).
+      ? `${{ approved: 'Current summary approved', 'needs-review': 'Current summary waiting for your review' }[s.review.status] || 'No current summary'} · ${s.review.approved} of ${s.review.built} built so far ${s.review.approved === 1 ? 'was' : 'were'} approved${s.review.openQuestions !== null ? ` · ${plural(s.review.openQuestions, 'open question')}${s.review.openQuestionsBefore !== null ? ` (was ${s.review.openQuestionsBefore})` : ''}` : ''}`
       : 'No understanding built yet'],
   ];
 }

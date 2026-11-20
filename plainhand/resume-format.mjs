@@ -20,6 +20,7 @@ export const DEFAULT_FORMAT = {
   bullet: '•',
 };
 const SERIF = /times|garamond|georgia|cambria|book|serif|palatino|minion|baskerville|caslon|didot|charter|libertin|merriweather/i;
+const SECTION_TITLE = /^(summary|profile|professional summary|objective|education|(work |professional |relevant )?experience|employment( history)?|projects|(technical )?skills|certifications?|licen[cs]es?( (and|&) certifications)?|publications|research|volunteer( work| experience)?|awards|honors|leadership|activities|languages|interests)$/i;
 const BULLETS = ['•', '▪', '◦', '‣', '–', '-', '*', '●', '■', '○'];
 const SEPARATORS = [' | ', ' • ', ' · ', ' ◦ ', ' - ', ' – ', ', '];
 const DATE = /\b((jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4}|\d{1,2}\/\d{4}|(19|20)\d{2}|present|current)\)?\s*$/i;
@@ -44,14 +45,51 @@ export function parseBboxLayout(xhtml) {
 }
 
 // Line-box height to point size, calibrated on Chromium-rendered PDFs (test-resume-format.mjs).
+// It is only an estimate: a box's height depends on the font's own ascent and descent, so
+// PDFs from other tools (groff, LaTeX, Type 1 fonts) read a point or more off, and a bold
+// heading can come out smaller than the body. When the PDF's real font sizes are known
+// (attachFontSizes), they are used instead.
 const PT = 1 / 1.12;
+
+// pdftohtml -xml: every text run with its font's size. pdftohtml rounds sizes to whole
+// units, so it runs zoomed in; its units per point are measured from the page height
+// (pageHeight, in points) rather than assumed, and everything is scaled back to points.
+export function parseTextSizes(xml, pageHeight = 0) {
+  const text = String(xml || '');
+  const page = +(text.match(/<page [^>]*height="([\d.]+)"/)?.[1] || 0);
+  const scale = page > 0 && pageHeight > 0 ? page / pageHeight : 1;
+  const fonts = new Map([...text.matchAll(/<fontspec id="(\d+)" size="([\d.]+)"/g)].map(m => [m[1], +m[2] / scale]));
+  return [...text.matchAll(/<text top="(-?[\d.]+)" left="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)" font="(\d+)"/g)]
+    .map(m => ({ top: +m[1] / scale, left: +m[2] / scale, right: (+m[2] + +m[3]) / scale, size: fonts.get(m[5]) }))
+    .filter(t => t.size > 0);
+}
+// Gives each layout line the real size of the text runs on it (the widest run wins).
+export function attachFontSizes(layout, runs) {
+  if (!runs?.length) return layout;
+  for (const line of layout.lines) {
+    const on = runs.filter(r => Math.abs(r.top - line.yMin) <= 2.5 && r.left < line.xMax + 1 && r.right > line.xMin - 1);
+    if (!on.length) continue;
+    const widths = new Map();
+    for (const r of on) widths.set(r.size, (widths.get(r.size) || 0) + (r.right - r.left));
+    line.size = [...widths].sort((a, b) => b[1] - a[1])[0][0];
+  }
+  return layout;
+}
 
 export function formatFromLayout(layout, fontNames = []) {
   const { width, height, lines } = layout;
   if (lines.length < 5) throw new Error('This PDF has too little text to read a format from. Use a text PDF of your resume (not a scan).');
-  const base = mode(lines.map(l => round(l.height * PT)));
-  const top = lines.slice(0, 3);
-  const nameLine = top.reduce((a, b) => (b.height > a.height ? b : a));
+  // The real size when the PDF says it on every line, otherwise the line-box estimate for all
+  // lines, so the two scales are never mixed.
+  const exact = lines.every(l => l.size > 0);
+  const pt = l => exact ? l.size : l.height * PT;
+  const base = mode(lines.map(l => round(pt(l))));
+  // The name is the largest of the first lines, but never a section heading: with the name
+  // and contact details on one body-size line, a larger first heading ("EDUCATION") must not
+  // be taken for the name (and so dropped from the sections).
+  const firstSection = lines.slice(0, 3).findIndex(l => SECTION_TITLE.test(l.text.trim()));
+  const top = lines.slice(0, firstSection > 0 ? firstSection : 3);
+  const nameLine = top.reduce((a, b) => (pt(b) > pt(a) ? b : a));
   const center = l => Math.abs((l.xMin + l.xMax) / 2 - width / 2) < width * 0.04;
   const contactLine = lines.find(l => l !== nameLine && l.yMin > nameLine.yMin && /@|\+?\d[\d\s().-]{7,}|linkedin|https?:/i.test(l.text));
   const separator = contactLine ? (SEPARATORS.map(s => [s, contactLine.text.split(s).length - 1]).sort((a, b) => b[1] - a[1])[0]?.[1] ? SEPARATORS.map(s => [s, contactLine.text.split(s).length - 1]).sort((a, b) => b[1] - a[1])[0][0] : ' · ') : ' · ';
@@ -60,7 +98,7 @@ export function formatFromLayout(layout, fontNames = []) {
     const words = l.text.split(/\s+/);
     if (words.length > 4 || /[.,;:]$/.test(l.text) || /\d/.test(l.text) || BULLETS.includes(words[0])) return false;
     const caps = l.text === l.text.toUpperCase() && /[A-Z]{3}/.test(l.text);
-    return caps || l.height * PT >= base + 0.75;
+    return caps || pt(l) >= base + 0.75;
   };
   const headings = afterHeader.filter(isHeading);
   const caseOf = t => t === t.toUpperCase() ? 'upper' : t.split(/\s+/).every(w => /^[A-Z&]/.test(w) || w.length <= 3) ? 'title' : 'as-is';
@@ -69,7 +107,7 @@ export function formatFromLayout(layout, fontNames = []) {
   // A date at the right margin, either split from its line by a wide gap or its own line on the right.
   const rightDated = dated.filter(l => right - l.xMax < 6 && (l.xMin > width * 0.55 || (l.words.length > 1 && (l.words.at(-1).xMin - l.words.at(-2).xMax > 18 || (l.words.length > 2 && l.words.at(-2).xMin - l.words.at(-3).xMax > 18)))));
   const bullets = afterHeader.map(l => l.words[0].text).filter(t => BULLETS.includes(t) || /^[•▪◦‣●■○]/.test(t)).map(t => t[0] === '-' || t[0] === '*' || t[0] === '–' ? t[0] : t[0]);
-  const body = afterHeader.filter(l => Math.abs(l.height * PT - base) < 0.6);
+  const body = afterHeader.filter(l => Math.abs(pt(l) - base) < 0.6);
   const gaps = body.slice(1).map((l, i) => l.yMin - body[i].yMin).filter(g => g > 0 && g < base * 2.2);
   const family = fontNames.find(Boolean) || '';
   const sizes = { letter: Math.abs(width - 612) < 8 && Math.abs(height - 792) < 8, a4: Math.abs(width - 595) < 8 && Math.abs(height - 842) < 8 };
@@ -81,9 +119,9 @@ export function formatFromLayout(layout, fontNames = []) {
     margins: (() => { const t = inch(Math.min(...lines.map(l => l.yMin))), l = inch(Math.min(...lines.map(x => x.xMin))), b = height - Math.max(...lines.map(x => x.yMax)), r = width - right;
       return { top: t, bottom: b > 2 * 72 ? t : inch(b), left: l, right: r > l * 72 + 36 ? l : inch(r) }; })(),
     font: { family: SERIF.test(family) ? 'serif' : 'sans', name: family.replace(/^[A-Z]{6}\+/, '').replace(/[-,](Bold|Italic|Regular|Roman|PSMT|MT|BoldMT|ItalicMT).*$/i, '').replace(/PSMT|MT$/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || (SERIF.test(family) ? 'Times New Roman' : 'Arial'), size: base, lineHeight: gaps.length ? Math.max(1, Math.min(1.8, round(median(gaps) / base, 0.05))) : 1.2 },
-    name: { size: round(nameLine.height * PT), align: center(nameLine) ? 'center' : 'left' },
+    name: { size: round(pt(nameLine)), align: center(nameLine) ? 'center' : 'left' },
     contact: { separator, align: contactLine && center(contactLine) ? 'center' : 'left' },
-    headings: { case: headings.length ? mode(headings.map(h => caseOf(h.text))) : 'upper', size: headings.length ? round(median(headings.map(h => h.height * PT))) : base, rule: true },
+    headings: { case: headings.length ? mode(headings.map(h => caseOf(h.text))) : 'upper', size: headings.length ? round(median(headings.map(h => pt(h)))) : base, rule: true },
     sections: [...new Set(headings.map(h => h.text.trim()))].slice(0, 12),
     entry: { datesRight: dated.length ? rightDated.length >= dated.length / 2 : true, titleItalic: true },
     bullet: bullets.length ? mode(bullets) : '•',
@@ -103,7 +141,11 @@ export async function deriveFormat(pdf) {
     // pdffonts: two header lines, then "name type encoding ..." rows; the most used is listed first often enough.
     const names = fonts.split('\n').slice(2).map(l => l.trim().split(/\s+/)[0]).filter(Boolean);
     const regular = names.find(n => !/bold|italic|oblique|symbol/i.test(n)) || names[0];
-    return formatFromLayout(parseBboxLayout(xhtml), [regular]);
+    // Real font sizes, when Poppler's pdftohtml is present; the estimate stands in otherwise.
+    const layout = parseBboxLayout(xhtml);
+    let runs = [];
+    try { runs = parseTextSizes((await runProcess('pdftohtml', ['-xml', '-i', '-stdout', '-q', '-f', '1', '-l', '1', '-zoom', '4', file], { timeout: 15000 })).stdout, layout.height); } catch {}
+    return formatFromLayout(attachFontSizes(layout, runs), [regular]);
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 

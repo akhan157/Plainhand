@@ -20,6 +20,7 @@ import { personas as profilePersonas, simulatedCandidate, scoreRun } from '../be
 import { roleOrderOf } from '../standard.mjs';
 import { scoreScenario, aggregate, markdownReport, compareToBaseline, SCORER_VERSION } from './score.mjs';
 import { pdfEvidence } from './pdf-evidence.mjs';
+import { portalUrl } from './portals.mjs';
 
 const option = (argv, name) => { const index = argv.indexOf('--' + name); return index < 0 ? null : argv[index + 1]; };
 const has = (argv, name) => argv.includes('--' + name);
@@ -227,7 +228,9 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
   try {
     const liveAgent = (id, instruction, data, options = {}) => executeAgent(id, instruction, data, { ...options, timeout: agentTimeoutMs });
     const workflowOptions = {
-      verifier: async () => ({ state: 'active', legitimacy: 'owned-sandbox', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'Owned evaluation sandbox; no employer was contacted.' }),
+      // What production's verifier returns for a live posting on a supported ATS (jobs.mjs). The provider sees this record; calling it a
+      // sandbox made models skip or hold back on a fit they scored 4.5 to 5 (U14, 2026-11-19).
+      verifier: async () => ({ state: 'active', legitimacy: 'official-ats-unconfirmed-employer', description: jobSpec.description, checkedAt: new Date().toISOString(), reason: 'Title, job description, and application control observed on a supported ATS. Employer identity is not independently verified.' }),
       ...(live
         ? (providerById(provider).builtIn ? {} : { agent: liveAgent })
         : { agent: controlledAgent({ scenario, persona, job: jobSpec }) }),
@@ -268,7 +271,7 @@ async function runApplicationScenario(scenario, { live, provider, retain, agentT
       standardApproved = Boolean((await app.workspace.load()).standard?.approvedAt);
     }
 
-    const { id } = await post(base, app.token, 'jobs', { company: jobSpec.company, title: jobSpec.title, url: `https://jobs.lever.co/synthetic/${scenario.id}`, description: jobSpec.description, location: jobSpec.location });
+    const { id } = await post(base, app.token, 'jobs', { company: jobSpec.company, title: jobSpec.title, url: portalUrl(scenario), description: jobSpec.description, location: jobSpec.location });
     await runTask(app, base, 'evaluate', id);
     const afterEval = await app.workspace.load();
     const evaluatedJob = afterEval.jobs.find(j => j.id === id);

@@ -31,7 +31,32 @@ let version = 0;
 export function update(patch) {
   Object.assign(store, typeof patch === 'function' ? patch(store) : patch);
   version++;
+  saveSession();
   for (const listener of listeners) listener();
+}
+
+// A reload keeps the open role, its tab and unsent drafts. They live in this browser
+// tab's sessionStorage only: nothing is sent anywhere, and closing the tab clears it.
+const SESSION_KEY = 'plainhand:session';
+const session = (() => { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || {}; } catch { return {}; } })();
+// Only text the candidate typed into a role's panel. Open/closed flags, browser plans and
+// revision-checked forms (the profile) start fresh, as they did before.
+const KEPT_DRAFTS = /^(next|round|contact|apply-link|context|followup-form|ip-practice):/;
+let restoreFocus = session.focus?.type === 'job' && typeof session.focus.id === 'string' ? session.focus : null;
+let saveTimer = null;
+function saveSession() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(writeSession, 250);
+}
+// A reload right after a change must not lose it to the debounce.
+addEventListener('pagehide', () => { if (saveTimer) { clearTimeout(saveTimer); writeSession(); } });
+function writeSession() {
+  saveTimer = null;
+  // The sample workspace's roles are not the candidate's, so its panel is not restored.
+  const focus = store.demo ? null : store.focus;
+  const kept = Object.fromEntries([...drafts].filter(([key]) => KEPT_DRAFTS.test(key)));
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ focus, drafts: kept })); }
+  catch { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ focus })); } catch {} }
 }
 // Subscribing happens after paint; an update that landed in between is caught
 // by comparing the version seen at render with the current one.
@@ -43,16 +68,16 @@ export function useStore() {
   return store;
 }
 
-// Drafts survive re-renders, tab switches and closing a panel within the session.
-const drafts = new Map();
+// Drafts survive re-renders, tab switches, closing a panel and a reload within the session.
+const drafts = new Map(Object.entries(session.drafts && typeof session.drafts === 'object' ? session.drafts : {}).filter(([key]) => KEPT_DRAFTS.test(key)));
 export function useDraft(key, initial = {}) {
   const [, force] = useReducer(n => n + 1, 0);
   const value = drafts.has(key) ? drafts.get(key) : initial;
-  const set = next => { drafts.set(key, typeof next === 'function' ? next(drafts.has(key) ? drafts.get(key) : initial) : next); force(); };
-  const clear = () => { drafts.delete(key); force(); };
+  const set = next => { drafts.set(key, typeof next === 'function' ? next(drafts.has(key) ? drafts.get(key) : initial) : next); saveSession(); force(); };
+  const clear = () => { drafts.delete(key); saveSession(); force(); };
   return [value, set, clear, drafts.has(key)];
 }
-export function clearDraft(key) { drafts.delete(key); }
+export function clearDraft(key) { drafts.delete(key); saveSession(); }
 
 // ---------------------------------------------------------------------------
 // Toasts live in the header's status region, which never overlaps content.
@@ -120,8 +145,13 @@ export async function refresh(force = false) {
     if (text === lastText && !wasOffline) return;
     lastText = text;
     const next = JSON.parse(text);
+    // Only the first workspace read after a reload reopens the role that was open, if it
+    // still exists; a later read never reopens a panel the candidate has since closed.
+    const wanted = !store.state && !store.demo ? restoreFocus : null;
+    if (!store.state) restoreFocus = null;
+    const reopen = wanted && !store.focus && next.jobs?.some(job => job.id === wanted.id) ? { focus: { type: 'job', id: wanted.id, tab: JOB_TABS.includes(wanted.tab) ? wanted.tab : 'fit' } } : {};
     if (store.demo) update({ live: next, offline: false, offlineReason: '' });
-    else update({ state: next, offline: false, offlineReason: '' });
+    else update({ state: next, offline: false, offlineReason: '', ...reopen });
   } catch (error) {
     if (!store.offline) update({ offline: true, offlineReason: error.status === 403 ? 'expired' : 'offline' });
   }
@@ -205,9 +235,9 @@ export function queues(state) {
     apply: jobs.filter(j => j.packet && j.approvedHash && !j.stale).map(j => j.id),
   };
 }
-export function openJob(id, tab = 'fit') { update({ focus: { type: 'job', id, tab: JOB_TABS.includes(tab) ? tab : 'fit' }, navOpen: false }); }
+export function openJob(id, tab = 'fit') { restoreFocus = null; update({ focus: { type: 'job', id, tab: JOB_TABS.includes(tab) ? tab : 'fit' }, navOpen: false }); }
 export function setJobTab(tab) { if (store.focus) update({ focus: { ...store.focus, tab } }); }
-export function closePanel() { update({ focus: null }); }
+export function closePanel() { restoreFocus = null; update({ focus: null }); }
 export function openDialog(dialog) { update({ dialog }); }
 export function closeDialog() { update({ dialog: null }); }
 // Panel requests from the assistant (contract §1 `agent.panel`).

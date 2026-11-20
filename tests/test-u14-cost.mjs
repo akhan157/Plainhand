@@ -290,6 +290,16 @@ test('the Codex model and reasoning effort come from PLAINHAND_CODEX_MODEL and P
   assert.equal(plain.indexOf('-m'), -1);
 });
 
+test('PLAINHAND_CODEX_INSTRUCTIONS=cli drops only the system-prompt override, for the U14 evaluate probe', async () => {
+  const { codexExecArgs } = await import('../plainhand/agents.mjs');
+  const plain = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: {} });
+  const cli = codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: { PLAINHAND_CODEX_INSTRUCTIONS: ' CLI ' } });
+  const at = plain.findIndex(a => a.startsWith('model_instructions_file='));
+  assert.ok(at > 0 && plain[at - 1] === '-c');
+  assert.deepEqual(cli, [...plain.slice(0, at - 1), ...plain.slice(at + 1)], 'every other switch stays, so the system prompt is the only difference');
+  assert.deepEqual(codexExecArgs({ resultFile: '/tmp/r.json', instructionsFile: '/tmp/i.md', env: { PLAINHAND_CODEX_INSTRUCTIONS: 'other' } }), plain);
+});
+
 test('review 3dd8006: the Codex model gate rejects a leading dash and holds the 80-character limit; effort is case-insensitive', async () => {
   const { codexModelArgs } = await import('../plainhand/agents.mjs');
   assert.deepEqual(codexModelArgs({ PLAINHAND_CODEX_MODEL: '-m' }), []);
@@ -312,4 +322,22 @@ test('review 3dd8006: executeAgent passes PLAINHAND_CODEX_MODEL and EFFORT from 
   assert.equal(seen.args[seen.args.indexOf('-m') + 1], 'gpt-6.1-sol');
   assert.ok(seen.args.includes('model_reasoning_effort="low"'));
   assert.equal(seen.env.PLAINHAND_CODEX_MODEL, 'gpt-6.1-sol');
+});
+
+test('U14: the evaluation recommends on fit; posting checks and an unstated salary are notes, not a downgrade', () => {
+  // gpt-6.2-sol returned 5/5 "Investigate" ("verify the employer's connection") on the verifier
+  // record production gives every live posting: "Employer identity is not independently verified."
+  assert.match(EVALUATE_INSTRUCTION, /Base the recommendation on fit/);
+  assert.match(EVALUATE_INSTRUCTION, /employer identity that is not independently verified, an unstated salary, or a detail to confirm goes in legitimacyNotes or questions and never by itself turns Apply into Investigate or Skip/);
+  assert.match(EVALUATE_INSTRUCTION, /closed or not genuine may/, 'a real problem with the posting can still change it');
+});
+
+test('U14: an unsettled reference drops only the link, never the stated result; the letter tells the story', () => {
+  // ba03976 n1: the analyst packets left out "failure rates dropped from 14% to 9%" because the
+  // source tied it to an unnamed "it" (judge honesty 4, "undersold by omission").
+  for (const instruction of [PACKET_INSTRUCTION, STANDARD_INSTRUCTION]) assert.match(instruction, /Leave out only the link, never the result/);
+  assert.match(PACKET_INSTRUCTION, /at most one short clause per paragraph, in the posting's own words/);
+  // 0c31aff n1/n2: the letter added "That is also part of the Data Analyst role" and reworded
+  // "non-technical stakeholders" as "people who don't work with data"; the review blocked both.
+  assert.match(PACKET_INSTRUCTION, /mirrors, meets or is part of the posting's work/);
 });

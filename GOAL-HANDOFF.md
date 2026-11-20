@@ -1354,3 +1354,193 @@ holdout2-journey-stem fails again, the same way.
 - **GitHub sign-in:** `gh` was re-authorised with repo and workflow scopes. The old
   fine-grained token could only read this repo. The KDE wallet stays locked after an
   autologin; see the wallet notes from 2026-11-18.
+
+## Handoff leftovers after PR #9 — 2026-11-19
+
+Branch `goal/handoff-leftovers` from main `06084e1`. Not pushed.
+
+- **Time bombs.** The suite was run with `Date` shifted forward (a preload, also passed
+  to child processes through `NODE_OPTIONS`). It was first checked against the pre-fix
+  `test-u10-tracking`, which it failed as expected. test-application-record, test-exports
+  and test-feature-inbox pass at every shift from +1 day to +11 years: not time bombs.
+  One real one was found, and it was a product bug: the follow-up rule check let a date
+  in the record ground a number ("a team of 12" passed on any date with a 12 in it). The
+  test would have started failing on 2026-12-01. Fixed in `0b484ef`, with a
+  clock-independent test.
+- **E2E low items 2–11: all fixed** (owner chose fixing over filing issues; none filed).
+  Commits are listed in `docs/internal/E2E-FINDINGS-2026-11-18.md`. Found on the way:
+  the Greenhouse provider could not scan `boards.greenhouse.io/<slug>` boards (`89eadab`).
+- **Gates:** `test:plainhand` 781/781. All six browser UI files pass. Playwright
+  1.62.1 wants Chromium 1234; this machine has 1255, aliased through
+  `PLAYWRIGHT_BROWSERS_PATH` for the run (no install).
+- **U14 "Investigate on every row" (repeat 1): looked at, not settled.** The raw runs
+  and the runner script (`u14-codex62.sh`) are gone from this machine, so per-row scores
+  and `modelRecommendation` can't be read. From the code, baseline `00ce1bf` against
+  `f873cfb`:
+  - Unchanged on both sides: EVALUATE_INSTRUCTION, the below-4 Apply→Investigate
+    policy, `providerJob` and the context builder (except email/phone leaving the
+    context).
+  - So on the seeded rows the only difference is the system prompt. HEAD replaces
+    Codex's coding-agent prompt with the preamble, so "Ask when evidence is missing"
+    arrives twice.
+  - The same invocation matched the baseline on gpt-6.1-sol (5/6 and 4/6). If the
+    system prompt is the cause, it shows only on 6.2-sol.
+  - `9dd5a19` adds `PLAINHAND_CODEX_INSTRUCTIONS=cli`, which keeps Codex's own prompt
+    and changes nothing else.
+- **Before repeat 2** (Codex weekly reset 2026-11-24 08:25 ET): run the three seeded
+  rows (`profile-effect-{fin,analyst,sci}-seeded`) on HEAD, once with the switch and once
+  without (about 6 evaluate calls plus their packets). Record each row's score,
+  `modelRecommendation` and gaps.
+  - If the switch restores Apply, the evaluate call needs its own system text or the
+    duplicate clause removed, then a re-measure.
+  - If not, compare against the baseline clone's evaluate output for the same rows.
+  - Keep the output directories this time.
+  - Repeat 2 itself: `TAG=<new HEAD> ROUND=r2 scripts/u14-codex62.sh`.
+- **Runner recreated** as `scripts/u14-codex62.sh` (in the repo now, `c899dee`):
+  - `TAG=<head> MODE=probe` runs the seeded-row probe above.
+  - `TAG=<head> ROUND=r2` runs both sides, judges both with HEAD's judge, and prints a
+    per-row evaluate table (score, label, model label) plus the cost report.
+  - The baseline clone of `00ce1bf` gets only the label removal and the model and
+    effort flags. `WAIT=<seconds>` waits out a usage limit instead of stopping.
+  - A dry run with `PROVIDER=controlled JUDGE=none` passed end to end (clones, patch,
+    both sides, report).
+- **Codex quota, checked 2026-11-19:** the CLI answers "try again at Nov 24th, 2026
+  8:25 AM". The CLI is now 0.170.0 (U14 was measured on 0.167.1). HEAD's lean flags
+  still parse without error on 0.170.0; record the version with repeat 2.
+- **Model matrix:** still waits on U14, per the owner's order (screen Codex 6.2-sol
+  low and medium, Sonnet 5.5 low and medium, Haiku 5.5 low).
+
+## PR #10 live benchmark checkpoint — 2026-11-19
+
+- Code and UI fixes are in PR #10. Live measurements use product commit
+  `a4d9507`. Later runner changes do not change the product under test.
+- **Deciding U14 comparison:** Codex CLI 0.170.0, gpt-6.2-sol low, six
+  non-minimal rows, frozen `00ce1bf` baseline. Both sides omit the corpus label
+  and use the same neutral posting URL and verifier record. The local provider
+  pool is the transport. Keep the two complete baselines under
+  `output/u14-codex62nl-a4d9507-n{1,2}/baseline`. The old first HEAD attempt
+  timed out on both science rows and its artifacts are in `head-void-pool-429`.
+- The prior candidate `0c31aff` passed 5/6 in the one complete repeat
+  (baseline 1/6). Five packets per side were judged, with overall 4.00 and
+  honesty 4.80 on both sides. Total input was 642k against 855k, including
+  profile interviews. A second repeat was interrupted. Keep U14 open until
+  both valid repeats on the candidate can show whether cost falls at quality
+  parity.
+- **Model screening at `a4d9507`:** Sonnet 5.5 low passed 2/6, Sonnet 5.5
+  medium 4/6, and Haiku 5.5 low 1/6. The Claude judge graded all available
+  packets for both Sonnet rows (three and four, respectively) and one of four
+  for Haiku before provider limits interrupted it. The Sonnet grades are
+  self-judged. Haiku needs a completed judge run before ranking by quality.
+  Evidence is in `output/model-matrix-a4d9507-s1`. Codex screening and the
+  follow-up screens are pending.
+- **Claude companion U14:** Sonnet 5.5 medium on both sides with the same six
+  neutralized scenarios, two rounds, judged by Codex. The earlier queue
+  stopped before producing evidence. This measures Claude separately and
+  does not decide the Codex acceptance row.
+
+### Codex reruns completed at 15:13 ET
+
+| Repeat | Scenario passes, baseline / candidate | Application calls, baseline / candidate | Total input tokens, baseline / candidate | Seeded input tokens, baseline / candidate |
+| --- | --- | --- | --- | --- |
+| n1 | 1/6 / 5/6 | 35 / 34 | 854,874 / 577,139 | 317,651 / 135,666 |
+| n2 | 1/6 / 6/6 | 30 / 32 | 742,601 / 581,909 | 231,464 / 126,303 |
+
+Application calls exclude the one-time profile interview. Total input includes
+it. In n1 the candidate's science-built evaluation asked to verify the five-year
+experience requirement because the CV had year-only dates. n2 passed that row.
+Both candidate result sets are at `output/u14-codex62nl-a4d9507-n{1,2}/head`.
+The complete baseline judge reports cover five packets in n1 and six in n2.
+The candidate's packet judgments are pending. U14 remains open.
+
+The Claude provider still returned HTTP 429 at 14:49 ET with a retry window
+through about 16:20 ET. The continuation is scheduled in this thread for
+16:24 ET. Use Claude Opus 5.5 for the pending comparison and matrix judgments,
+consistent with the earlier Claude judge in the proxy logs.
+
+Verification on the branch: `npm run test:plainhand` passed 784/784,
+`npm run test:full` passed, and simulated provider interruption and retry checks
+passed for both runners. The full suite evidence is under
+`output/verification-2026-11-19T19-56-59-241Z`.
+
+### U14 decision for `a4d9507` — 2026-11-19
+
+Claude Opus 5.5 finished the missing candidate judgments. The prior complete
+baseline judgments were reused. One rubric sample and one claim check were
+completed for each available packet.
+
+| Repeat | Packets judged, baseline / candidate | Overall, baseline / candidate | Honesty, baseline / candidate | Unsupported claims, baseline / candidate |
+| --- | --- | --- | --- | --- |
+| n1 | 5 / 6 | 4.00 / 4.00 | 4.80 / 4.50 | 0 / 0 |
+| n2 | 6 / 6 | 4.17 / 3.67 | 5.00 / 4.50 | 0 / 0 |
+
+n1 candidate honesty is 4.40 on the five scenarios judged on both sides. No
+baseline finance-seeded packet was available in that repeat. All 12 candidate
+packets completed both judge stages. The candidate met the input-cost condition
+(−32.5% and −21.6% total input), but failed the quality condition in both repeats.
+**U14 is not accepted.** Keep the register at 14/15 and PR #10 open.
+
+The largest honesty losses are on the analyst packets. The seeded CV's adjacent
+sentences specify which dashboard was adopted and say that the result followed
+adoption. The candidate sometimes dropped that temporal link. The judge also
+flagged an omitted relevant certificate and a summary that combined two
+separate dashboard projects. No unsupported claims were found. These findings
+do not change the evaluation pass counts or the recorded usage.
+
+## Model matrix and Claude companion U14 — 2026-11-19 (done)
+
+All runs are on product commit `a4d9507`, with the same six non-minimal rows and the
+neutral harness. Codex goes through the CLIProxyAPI pool. Matrix judge: Claude Opus 5.5
+(`PLAINHAND_CLAUDE_MODEL=claude-opus-5-5`); the judge is self-judging on the Claude rows.
+Evidence: `output/model-matrix-a4d9507-s{1,2}/` (`-void-*` directories are interrupted
+attempts, kept and excluded from the table).
+
+| Configuration | s1 passed | s2 passed | Calls s1/s2 | Input tokens s1/s2 | Overall s1/s2 | Honesty s1/s2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Codex gpt-6.2-sol low | 5/6 | 6/6 | 61/61 | 577k/582k | 4.00/3.67 | 4.50/4.50 |
+| Codex gpt-6.2-sol medium | 6/6 | 4/6 | 61/58 | 645k/615k | 4.17/4.00 | 4.83/4.80 |
+| Sonnet 5.5 low (self-judged) | 2/6 | 3/6 | 70/66 | 684k/650k | 4.00/4.40 | 4.67/4.40 |
+| Sonnet 5.5 medium (self-judged) | 4/6 | 2/6 | 72/66 | 705k/652k | 4.00/4.00 | 4.00/5.00 |
+| Haiku 5.5 low (self-judged) | 1/6 | not rescreened | 60 | 579k | 4.00 | 4.25 |
+
+Unsupported claims were 0% in every row. Judged packet counts follow the packets
+produced (for example, Sonnet medium s2 had 2).
+
+- **Reading:** Codex gpt-6.2-sol medium is the best screened setup: 10/12 passed, the
+  highest honesty (4.83 and 4.80), and about 8% more input than low. Low is the cheapest
+  and most reliable at 11/12, with honesty 4.50. The Claude models pass less often,
+  mostly on blocked factual reviews and packet checks. Sonnet medium once returned an
+  empty cover letter, which validation rejected (`cover letter must contain 1–25000
+  characters`); a retry on an empty letter would be a small robustness fix. Haiku was
+  not rescreened, because the owner's rule takes the top two per subscription.
+- **Default suggestion for the owner:** keep gpt-6.2-sol at low as the Codex default for
+  cost, and offer medium for quality. On Claude, Sonnet 5.5 is the better choice; low and
+  medium are within noise of each other over two rounds.
+
+**Claude companion U14** (Sonnet 5.5 medium on both sides, frozen `00ce1bf` against
+`a4d9507`, judged by Codex gpt-6.2-sol at medium, so a different family judges).
+Evidence: `output/u14-claude-a4d9507-n{1,2}/`.
+
+| Repeat | Passed, base / HEAD | Calls | Input tokens | Overall | Honesty | Unsupported |
+| --- | --- | --- | --- | --- | --- | --- |
+| n1 | 3/6 / 4/6 | 45 / 72 | 432k / 705k | 3.80 / 3.75 | 2.60 / 2.75 | 1.9% / 0% |
+| n2 | 2/6 / 2/6 | 57 / 68 | 561k / 661k | 3.83 / 3.60 | 3.50 / 2.60 | 1.6% / 0% |
+
+- On Claude, HEAD costs more, not less: +63% and +18% input, and more calls. The
+  Codex-side saving came from replacing the Codex CLI scaffolding, which Claude does not
+  have. Meanwhile HEAD's interview asks more coverage questions and its packet review
+  catches more, so it makes more calls. Unsupported claims drop to zero.
+- The Codex judge is much stricter on honesty (2.6 to 3.5) than the Claude judge (4.0 to
+  5.0) on comparable packets. Compare like with like only.
+- U14 is therefore not met on Claude either, and for a different reason: cost rises.
+  Next U14 step on Claude: cut the built-profile interview and review calls (the extra
+  calls are on built rows), measured with the same Codex judge.
+
+**Runner fixes found during these runs:** `37f0d90` stops the pool wrapper from
+resolving itself as the real binary. With its directory already on PATH, every Codex
+call recursed until the 180 s timeout, which showed up as "Provider codex is not
+usable". Earlier, `bf2e3a7` made a 429 or timeout count as a provider limit, not a
+product failure.
+
+**U14 status:** in_progress, register 14/15. The deciding Codex comparison on
+`a4d9507` cut input 22 to 32% but missed honesty parity (see above), and the analyst
+"temporal link" loss is the open fix. The owner's matrix is complete.
