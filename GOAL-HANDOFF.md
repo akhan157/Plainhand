@@ -1485,3 +1485,62 @@ adoption. The candidate sometimes dropped that temporal link. The judge also
 flagged an omitted relevant certificate and a summary that combined two
 separate dashboard projects. No unsupported claims were found. These findings
 do not change the evaluation pass counts or the recorded usage.
+
+## Model matrix and Claude companion U14 — 2026-11-19 (done)
+
+All runs are on product commit `a4d9507`, with the same six non-minimal rows and the
+neutral harness. Codex goes through the CLIProxyAPI pool. Matrix judge: Claude Opus 5.5
+(`PLAINHAND_CLAUDE_MODEL=claude-opus-5-5`); the judge is self-judging on the Claude rows.
+Evidence: `output/model-matrix-a4d9507-s{1,2}/` (`-void-*` directories are interrupted
+attempts, kept and excluded from the table).
+
+| Configuration | s1 passed | s2 passed | Calls s1/s2 | Input tokens s1/s2 | Overall s1/s2 | Honesty s1/s2 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Codex gpt-6.2-sol low | 5/6 | 6/6 | 61/61 | 577k/582k | 4.00/3.67 | 4.50/4.50 |
+| Codex gpt-6.2-sol medium | 6/6 | 4/6 | 61/58 | 645k/615k | 4.17/4.00 | 4.83/4.80 |
+| Sonnet 5.5 low (self-judged) | 2/6 | 3/6 | 70/66 | 684k/650k | 4.00/4.40 | 4.67/4.40 |
+| Sonnet 5.5 medium (self-judged) | 4/6 | 2/6 | 72/66 | 705k/652k | 4.00/4.00 | 4.00/5.00 |
+| Haiku 5.5 low (self-judged) | 1/6 | not rescreened | 60 | 579k | 4.00 | 4.25 |
+
+Unsupported claims were 0% in every row. Judged packet counts follow the packets
+produced (for example, Sonnet medium s2 had 2).
+
+- **Reading:** Codex gpt-6.2-sol medium is the best screened setup: 10/12 passed, the
+  highest honesty (4.83 and 4.80), and about 8% more input than low. Low is the cheapest
+  and most reliable at 11/12, with honesty 4.50. The Claude models pass less often,
+  mostly on blocked factual reviews and packet checks. Sonnet medium once returned an
+  empty cover letter, which validation rejected (`cover letter must contain 1–25000
+  characters`); a retry on an empty letter would be a small robustness fix. Haiku was
+  not rescreened, because the owner's rule takes the top two per subscription.
+- **Default suggestion for the owner:** keep gpt-6.2-sol at low as the Codex default for
+  cost, and offer medium for quality. On Claude, Sonnet 5.5 is the better choice; low and
+  medium are within noise of each other over two rounds.
+
+**Claude companion U14** (Sonnet 5.5 medium on both sides, frozen `00ce1bf` against
+`a4d9507`, judged by Codex gpt-6.2-sol at medium, so a different family judges).
+Evidence: `output/u14-claude-a4d9507-n{1,2}/`.
+
+| Repeat | Passed, base / HEAD | Calls | Input tokens | Overall | Honesty | Unsupported |
+| --- | --- | --- | --- | --- | --- | --- |
+| n1 | 3/6 / 4/6 | 45 / 72 | 432k / 705k | 3.80 / 3.75 | 2.60 / 2.75 | 1.9% / 0% |
+| n2 | 2/6 / 2/6 | 57 / 68 | 561k / 661k | 3.83 / 3.60 | 3.50 / 2.60 | 1.6% / 0% |
+
+- On Claude, HEAD costs more, not less: +63% and +18% input, and more calls. The
+  Codex-side saving came from replacing the Codex CLI scaffolding, which Claude does not
+  have. Meanwhile HEAD's interview asks more coverage questions and its packet review
+  catches more, so it makes more calls. Unsupported claims drop to zero.
+- The Codex judge is much stricter on honesty (2.6 to 3.5) than the Claude judge (4.0 to
+  5.0) on comparable packets. Compare like with like only.
+- U14 is therefore not met on Claude either, and for a different reason: cost rises.
+  Next U14 step on Claude: cut the built-profile interview and review calls (the extra
+  calls are on built rows), measured with the same Codex judge.
+
+**Runner fixes found during these runs:** `37f0d90` stops the pool wrapper from
+resolving itself as the real binary. With its directory already on PATH, every Codex
+call recursed until the 180 s timeout, which showed up as "Provider codex is not
+usable". Earlier, `bf2e3a7` made a 429 or timeout count as a provider limit, not a
+product failure.
+
+**U14 status:** in_progress, register 14/15. The deciding Codex comparison on
+`a4d9507` cut input 22 to 32% but missed honesty parity (see above), and the analyst
+"temporal link" loss is the open fix. The owner's matrix is complete.
