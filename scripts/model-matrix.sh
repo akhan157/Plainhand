@@ -29,7 +29,10 @@ if [ "${POOL:-}" = cliproxy ]; then
   POOL_URL="${POOL_URL:-http://127.0.0.1:8317/v1}"
   CLIPROXY_API_KEY="$(grep -A1 'api-keys:' "${POOL_CONFIG:-$HOME/.config/cli-proxy-api/config.yaml}" | tail -1 | sed -E 's/^[[:space:]]*-[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')"
   export CLIPROXY_API_KEY
-  REAL_CODEX="$(command -v codex)"
+  # The real binary, never this wrapper: a PATH that already starts with $WORK/bin would
+  # otherwise make the wrapper exec itself forever.
+  REAL_CODEX="$(PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$WORK/bin" | paste -sd:)" command -v codex)"
+  [ -n "$REAL_CODEX" ] && [ "$REAL_CODEX" != "$WORK/bin/codex" ] || { echo "real codex binary not found" >&2; exit 2; }
   mkdir -p "$WORK/bin"
   cat > "$WORK/bin/codex" <<WRAP
 #!/usr/bin/env bash
@@ -97,7 +100,7 @@ node -e '
   const providerFailure = new RegExp(pattern, "i");
   const rows = [["config", "passed", "calls", "input tokens", "judge overall", "honesty", "unsupported", "note"]];
   const interrupted = file => fs.existsSync(file) && providerFailure.test(fs.readFileSync(file, "utf8"));
-  for (const name of fs.readdirSync(out).filter(n => !n.startsWith(".") && fs.statSync(path.join(out, n)).isDirectory()).sort()) {
+  for (const name of fs.readdirSync(out).filter(n => !n.startsWith(".") && !n.includes("-void") && fs.statSync(path.join(out, n)).isDirectory()).sort()) {
     const read = f => { try { return JSON.parse(fs.readFileSync(path.join(out, name, f), "utf8")); } catch { return null; } };
     const r = read("results.json"), j = read("judge.json");
     if (interrupted(path.join(out, name + ".log"))) {

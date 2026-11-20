@@ -49,7 +49,10 @@ if [ "${POOL:-}" = cliproxy ]; then
   POOL_CONFIG="${POOL_CONFIG:-$HOME/.config/cli-proxy-api/config.yaml}"
   CLIPROXY_API_KEY="$(grep -A1 'api-keys:' "$POOL_CONFIG" | tail -1 | sed -E 's/^[[:space:]]*-[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')"
   export CLIPROXY_API_KEY
-  REAL_CODEX="$(command -v codex)"
+  # The real binary, never this wrapper: a PATH that already starts with $WORK/bin would
+  # otherwise make the wrapper exec itself forever.
+  REAL_CODEX="$(PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$WORK/bin" | paste -sd:)" command -v codex)"
+  [ -n "$REAL_CODEX" ] && [ "$REAL_CODEX" != "$WORK/bin/codex" ] || { echo "real codex binary not found" >&2; exit 2; }
   mkdir -p "$WORK/bin"
   cat > "$WORK/bin/codex" <<WRAP
 #!/usr/bin/env bash
