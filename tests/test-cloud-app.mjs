@@ -86,11 +86,19 @@ test('request-controlled error text is served as JSON, never as HTML', { skip },
   assert.doesNotMatch(error, /&lt;|&#39;|&amp;/);
 });
 
-test('signed-out visitors are sent to sign in; the API answers 401', { skip }, async () => {
+test('signed-out visitors see the landing page; the API answers 401', { skip }, async () => {
   const c = app.client();
   const home = await c.request('/');
-  assert.equal(home.status, 302);
-  assert.equal(home.headers.get('location'), '/signin');
+  assert.equal(home.status, 200);
+  assert.match(await home.text(), /href="\/signin"/);
+  assert.equal((await c.request('/', { method: 'HEAD' })).status, 200);
+  assert.equal((await c.request('/css/landing.css')).status, 200);
+  assert.equal((await c.request('/landing.js')).status, 200);
+  assert.equal((await c.request('/fonts/fonts.css')).status, 200);
+  assert.equal((await c.request('/fonts/fraunces.woff2')).status, 200);
+  assert.equal((await c.request('/fonts/fraunces-italic.woff2')).status, 200);
+  assert.equal((await c.request('/fonts/inter.woff2')).status, 200);
+  assert.equal((await c.request('/fonts/jetbrains-mono.woff2')).status, 200);
   assert.equal((await c.request('/api/state')).status, 401);
   assert.equal((await c.api('jobs', { company: 'A' })).status, 401);
   const signin = await c.request('/signin');
