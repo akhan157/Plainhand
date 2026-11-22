@@ -144,6 +144,21 @@ test('public privacy, terms, support and sign-in links work without a session an
   for (const [route,title] of [['/privacy','Privacy'],['/terms','Terms'],['/support','Support'],['/signin','Sign in to Plainhand']]) {
     const response=await page.goto(app.base+route);expect(response.status()).toBe(200);
     await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();await cleanAxe(page);
-    for(const name of ['Privacy','Terms','Support'])await expect(page.getByRole('link',{name,exact:true})).toBeVisible();
+    for(const name of ['Home','Privacy','Terms','Support'])await expect(page.getByRole('link',{name,exact:true})).toBeVisible();
   }
+});
+test('signed-out landing page renders cleanly without errors and passes axe', async ({ page, context }) => {
+  await context.setExtraHTTPHeaders({});
+  const errors = [];
+  page.on('pageerror', err => errors.push(err.message));
+  page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+  page.on('response', res => { if (res.status() >= 400) errors.push(`${res.status()} ${res.url()}`); });
+  const response = await page.goto(app.base + '/');
+  expect(response.status()).toBe(200);
+  await expect(page.getByRole('heading', { level: 1, name: /Your job applications/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Get started' }).first()).toHaveAttribute('href', '/signin');
+  await page.getByRole('tab', { name: 'Cover letter', exact: true }).click();
+  await expect(page.getByText('Dear Northstar Robotics hiring team,')).toBeVisible();
+  await cleanAxe(page);
+  expect(errors).toEqual([]);
 });

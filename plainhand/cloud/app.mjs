@@ -140,7 +140,7 @@ ${google ? '<a class="button primary" href="/auth/google">Continue with Google</
 <input id="email" name="email" type="email" autocomplete="email" required maxlength="320">
 <button type="submit">Email me a sign-in link</button>
 </form>
-<p class="note">No password needed. Your workspace is stored online.</p><nav aria-label="Information"><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a></nav>`);
+<p class="note">No password needed. Your workspace is stored online.</p><nav aria-label="Information"><a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a></nav>`);
 }
 function deletePage(csrf) {
   return page('Delete account', `<h1>Delete your account?</h1>
@@ -168,6 +168,7 @@ export function createCloudApp(deps) {
   // The page's anti-forgery token: tied to the session, never stored.
   const csrfFor = cookieValue => createHmac('sha256', env.SESSION_SECRET).update('csrf:' + cookieValue).digest('base64url');
   let indexHtml = null;
+  let landingHtml = null;
 
   // One Workspace/Workflow/registry per user, reused while this instance is warm so
   // short-lived undo tokens keep working between requests. Storage is always Postgres,
@@ -503,6 +504,10 @@ export function createCloudApp(deps) {
     }
 
     if (!session) {
+      if ((method === 'GET' || method === 'HEAD') && p === '/') {
+        landingHtml ??= await readFile(path.join(WEB_ROOT, 'landing.html'), 'utf8');
+        return html(res, 200, method === 'HEAD' ? '' : landingHtml);
+      }
       if (p.startsWith('/api/')) return json(res, 401, { error: 'Sign in to continue.' });
       return redirect(res, '/signin', [], 302);
     }

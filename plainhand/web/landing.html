@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plainhand · Your job applications, in your own words</title>
+<meta name="description" content="Plainhand writes and tailors your resume and cover letter from your own words, fills application forms and lists what it couldn't answer. It works with the Claude or ChatGPT plan you already pay for. You submit every application yourself.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Plainhand">
+<meta property="og:title" content="Plainhand · Your job applications, in your own words">
+<meta property="og:description" content="Plainhand writes and tailors your resume and cover letter from your own words, fills application forms and lists what it couldn't answer. It works with the Claude or ChatGPT plan you already pay for. You submit every application yourself.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Plainhand · Your job applications, in your own words">
+<meta name="twitter:description" content="Plainhand writes and tailors your resume and cover letter from your own words, fills application forms and lists what it couldn't answer. You submit every application yourself.">
+<meta name="theme-color" content="#f5f6f1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="css/landing.css">
+<!-- Not deferred on purpose: the first lines apply the saved theme and the "js" class before first paint. The rest waits for DOMContentLoaded. -->
+<script src="landing.js"></script>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-arrow" viewBox="0 0 20 20"><path d="M4 10h11M11 5.5 15.5 10 11 14.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 20 20"><path d="M16 10H5M9 5.5 4.5 10 9 14.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="m4.5 10.5 3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-up" viewBox="0 0 20 20"><path d="M10 15.5V5M5.5 9.5 10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 20 20"><path d="M10 4.5V15M5.5 10.5 10 15l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 14.2 8.4-8.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 20 20"><rect x="4.5" y="9" width="11" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="shackle" d="M7 9V6.8a3 3 0 0 1 6 0V9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="13" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 20 20"><rect x="7" y="7" width="9" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 4.8V4.5a1.5 1.5 0 0 0-1.5-1.5H5.5A1.5 1.5 0 0 0 4 4.5v7A1.5 1.5 0 0 0 5.5 13h.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.7 4.7l1.3 1.3M14 14l1.3 1.3M4.7 15.3 6 14M14 6l1.3-1.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 20 20"><path d="M15.8 12.4A6.3 6.3 0 0 1 7.6 4.2a6.3 6.3 0 1 0 8.2 8.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-system" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13Z" fill="currentColor"/></symbol>
+  <symbol id="i-github" viewBox="0 0 20 20"><path d="M10 2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.1-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.1 0 3.1-1.9 3.7-3.6 3.9.3.3.5.8.5 1.5v2.2c0 .2.1.5.6.4A8 8 0 0 0 10 2Z" fill="currentColor"/></symbol>
+  <symbol id="i-search" viewBox="0 0 20 20"><circle cx="8.8" cy="8.8" r="5.3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m12.8 12.8 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 20 20"><path d="M10 6.2v4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="13.8" r="1.05" fill="currentColor"/><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 20 20"><path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-signin" viewBox="0 0 20 20"><rect x="3.5" y="4" width="13" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 10h6M10.5 7.5 13 10l-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header" id="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="Plainhand, back to top">
+      <svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="14" fill="#183d32"/><path d="M17 37V13h8a8 8 0 0 1 0 16h-8" fill="none" stroke="#d6f0bd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="brand-word">Plainhand</span>
+    </a>
+    <div class="menu" id="site-menu">
+      <nav class="nav" aria-label="Sections">
+        <a href="#checked">Calibration</a>
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#sites">Job sites</a>
+        <a href="#control">Privacy</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="menu-tools">
+        <div class="theme" role="group" aria-label="Color theme">
+          <button type="button" class="theme-btn" data-theme-choice="light" aria-pressed="false" data-tip="Light"><svg aria-hidden="true"><use href="#i-sun"/></svg><span class="theme-label">Light</span></button>
+          <button type="button" class="theme-btn" data-theme-choice="dark" aria-pressed="false" data-tip="Dark"><svg aria-hidden="true"><use href="#i-moon"/></svg><span class="theme-label">Dark</span></button>
+          <button type="button" class="theme-btn" data-theme-choice="system" aria-pressed="true" data-tip="System"><svg aria-hidden="true"><use href="#i-system"/></svg><span class="theme-label">System</span></button>
+        </div>
+        <a class="gh-link" href="https://github.com/akhan157/Plainhand"><svg aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span></a>
+      </div>
+    </div>
+    <a class="btn btn-primary btn-sm head-cta" href="/signin">Get started</a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-menu"><span class="menu-lines" aria-hidden="true"><i></i><i></i></span><span class="sr">Menu</span></button>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="top" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow reveal"><span class="pulse" aria-hidden="true"></span>Job application assistant · Free and open source</p>
+      <h1 id="hero-title" class="reveal">Your job applications, <em>in your own <span class="swash">words.<svg viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true"><path d="M4 15c46-9 98-11 150-8 44 2 86 4 142-5"/></svg></span></em></h1>
+      <p class="lede reveal">Plainhand builds a profile from what you tell it, then writes and tailors your resume and cover letter, fills application forms, and lists what it couldn't answer. It works with the Claude or ChatGPT plan you already pay for.</p>
+      <p class="lede-strong reveal"><svg aria-hidden="true"><use href="#i-check"/></svg>You review, approve and submit every application yourself.</p>
+      <div class="cta-row reveal">
+        <a class="btn btn-primary btn-lg" href="/signin">Get started <svg class="arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+        <a class="btn btn-ghost btn-lg" href="#how" data-route-link="local">Run it on your computer</a>
+      </div>
+      <p class="fine reveal">Connect your plan without an API key. Plainhand doesn't store job-site passwords.</p>
+    </div>
+
+    <div class="hero-art reveal" id="hero-art">
+      <div class="art-head">
+        <div class="doc-tabs" role="tablist" aria-label="Documents in Alex Morgan's sample application">
+          <button type="button" role="tab" class="doc-tab" id="tab-resume" aria-controls="doc-resume" aria-selected="true">Resume</button>
+          <button type="button" role="tab" class="doc-tab" id="tab-letter" aria-controls="doc-letter" aria-selected="false" tabindex="-1">Cover letter</button>
+          <button type="button" role="tab" class="doc-tab" id="tab-answers" aria-controls="doc-answers" aria-selected="false" tabindex="-1">Answers</button>
+        </div>
+        <span class="sample-tag"><span aria-hidden="true">●</span> Sample workspace, fictional</span>
+      </div>
+
+      <div class="scene" id="folder">
+        <div class="rig">
+          <div class="f-shadow" aria-hidden="true"></div>
+          <div class="f-back" aria-hidden="true"><span class="f-tab">A. Morgan · Class of 2027</span></div>
+
+          <div class="sheets">
+            <article class="sheet sheet-resume" id="doc-resume" role="tabpanel" aria-labelledby="tab-resume" tabindex="0" data-sheet="resume" data-state="front">
+              <p class="sh-code" aria-hidden="true">PH/01 · Resume · Northstar Robotics</p>
+              <p class="sh-name">Alex Morgan</p>
+              <p class="sh-meta">Boston, MA · alex@example.invalid</p>
+              <p class="sh-role">Mechanical Engineering Graduate</p>
+              <div class="sh-sec">
+                <p class="sh-h">Education</p>
+                <p>B.S. Mechanical Engineering, Example University, 2027</p>
+              </div>
+              <div class="sh-sec">
+                <p class="sh-h">Projects</p>
+                <ul>
+                  <li><span class="hl">Formula SAE: Owned the design and test loop for a lightweight chassis.</span></li>
+                  <li>Ran the physical tests with two teammates.</li>
+                </ul>
+              </div>
+              <div class="sh-sec">
+                <p class="sh-h">Skills</p>
+                <p>CAD · Physical testing · Test planning</p>
+              </div>
+              <p class="sh-foot">Set in Alex's own resume layout</p>
+            </article>
+
+            <article class="sheet sheet-letter" id="doc-letter" role="tabpanel" aria-labelledby="tab-letter" data-sheet="letter" data-state="tucked" aria-hidden="true">
+              <p class="sh-code" aria-hidden="true">PH/02 · Cover letter · Northstar Robotics</p>
+              <p class="sh-meta sh-meta-top">Alex Morgan · Boston, MA</p>
+              <p class="sh-salute">Dear Northstar Robotics hiring team,</p>
+              <p>I'm interested in working on physical systems at Northstar Robotics. Through Formula SAE, I designed and tested a lightweight chassis <span class="hl">with the teammates who built it.</span></p>
+              <p>I owned the design and test loop, and I learned how much better a design gets when the people building it are part of the conversation.</p>
+              <p>I'd welcome the chance to bring that approach to your engineering team.</p>
+              <p class="sh-sign">Alex Morgan</p>
+            </article>
+
+            <article class="sheet sheet-answers" id="doc-answers" role="tabpanel" aria-labelledby="tab-answers" data-sheet="answers" data-state="tucked" aria-hidden="true">
+              <p class="sh-code" aria-hidden="true">PH/03 · Answers · Northstar Robotics</p>
+              <p class="sh-q">Tell us about a project you are proud of.</p>
+              <p class="sh-a">I designed and tested a lightweight chassis for our Formula SAE team. The most useful lesson was connecting the design process with hands-on testing.</p>
+              <p class="sh-h">Before you submit</p>
+              <ul class="sh-checks">
+                <li class="ok"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Filled: contact details, education, project answer</span></li>
+                <li class="ok"><svg aria-hidden="true"><use href="#i-check"/></svg><span>Uploaded: resume and cover letter</span></li>
+                <li class="you"><svg aria-hidden="true"><use href="#i-alert"/></svg><span>Needs you: work authorization</span></li>
+                <li class="dbl"><svg aria-hidden="true"><use href="#i-eye"/></svg><span>Double-check: earliest start date</span></li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="f-pocket" aria-hidden="true">
+            <div class="f-label">
+              <span class="f-label-k">Application · Sample</span>
+              <span class="f-label-co">Northstar Robotics</span>
+              <span class="f-label-role">Mechanical Engineer, New Graduate</span>
+            </div>
+            <div class="f-stamp"><span>Fit 4.6</span><b>Apply</b></div>
+          </div>
+          <div class="pencil" aria-hidden="true"><span class="pencil-body"><span>Plainhand · HB</span></span><span class="pencil-band"></span><span class="pencil-eraser"></span></div>
+        </div>
+      </div>
+      <p class="art-caption" id="art-caption" aria-live="polite">Resume, tailored for Northstar Robotics. The projects line was rewritten after calibration.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CALIBRATION ============ -->
+<section class="section" id="checked" aria-labelledby="checked-title">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Calibration</p>
+      <h2 id="checked-title">Your words, <em>checked.</em></h2>
+      <p class="sec-lede">Every line is graded against your evidence: undersold, balanced, stretched or unsupported. Pick a line from Alex's application to see the reason and the source behind it, then decide what to do. Plainhand learns where you draw the line from those choices.</p>
+    </div>
+
+    <div class="cal reveal" id="cal">
+      <div class="cal-doc">
+        <div class="cal-doc-head">
+          <span class="mono">Northstar Robotics · 5 lines</span>
+          <span class="sample-tag"><span aria-hidden="true">●</span> Sample workspace, fictional</span>
+        </div>
+        <div class="claims" role="tablist" aria-orientation="vertical" aria-label="Lines in the sample application">
+          <button type="button" role="tab" class="claim" id="claim-c1" data-claim="c1" data-rating="undersold" aria-controls="cal-panel" aria-selected="true">
+            <span class="claim-meta"><span class="chip" data-r="undersold"><svg aria-hidden="true"><use href="#i-up"/></svg><span class="chip-t">Undersold</span></span><span class="claim-where">Resume · Projects</span></span>
+            <span class="claim-text">Formula SAE: Designed and tested a lightweight chassis for the team.</span>
+          </button>
+          <button type="button" role="tab" class="claim" id="claim-c2" data-claim="c2" data-rating="balanced" aria-controls="cal-panel" aria-selected="false" tabindex="-1">
+            <span class="claim-meta"><span class="chip" data-r="balanced"><svg aria-hidden="true"><use href="#i-check"/></svg><span class="chip-t">Balanced</span></span><span class="claim-where">Resume · Education</span></span>
+            <span class="claim-text">B.S. Mechanical Engineering, Example University, 2027.</span>
+          </button>
+          <button type="button" role="tab" class="claim" id="claim-c3" data-claim="c3" data-rating="balanced" aria-controls="cal-panel" aria-selected="false" tabindex="-1">
+            <span class="claim-meta"><span class="chip" data-r="balanced"><svg aria-hidden="true"><use href="#i-check"/></svg><span class="chip-t">Balanced</span></span><span class="claim-where">Answer · Proud project</span></span>
+            <span class="claim-text">I designed and tested a lightweight chassis for our Formula SAE team.</span>
+          </button>
+          <button type="button" role="tab" class="claim" id="claim-c4" data-claim="c4" data-rating="stretched" aria-controls="cal-panel" aria-selected="false" tabindex="-1">
+            <span class="claim-meta"><span class="chip" data-r="stretched"><svg aria-hidden="true"><use href="#i-down"/></svg><span class="chip-t">Stretched</span></span><span class="claim-where">Cover letter · Paragraph 1</span></span>
+            <span class="claim-text">Through Formula SAE, I designed and tested a lightweight chassis and learned to connect design decisions with what happens in the workshop.</span>
+          </button>
+          <button type="button" role="tab" class="claim" id="claim-c5" data-claim="c5" data-rating="unsupported" aria-controls="cal-panel" aria-selected="false" tabindex="-1">
+            <span class="claim-meta"><span class="chip" data-r="unsupported"><svg aria-hidden="true"><use href="#i-ban"/></svg><span class="chip-t">Unsupported</span></span><span class="claim-where">Resume · Draft line</span></span>
+            <span class="claim-text">Led a team of 12 through the chassis build.</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="cal-panel" id="cal-panel" role="tabpanel" aria-labelledby="claim-c1" tabindex="0" data-rating="undersold">
+        <p class="cal-where mono" id="cal-where">Line 1 of 5 · Resume, Projects</p>
+        <p class="cal-line" id="cal-line">Formula SAE: Designed and tested a lightweight chassis for the team.</p>
+
+        <div class="gauge" aria-hidden="true">
+          <div class="gauge-scale">
+            <span class="gz" data-z="undersold">Undersold</span>
+            <span class="gz" data-z="balanced">Balanced</span>
+            <span class="gz" data-z="stretched">Stretched</span>
+          </div>
+          <span class="gauge-off" data-z="unsupported">Unsupported</span>
+          <span class="gauge-rail"><span class="gauge-needle"></span></span>
+        </div>
+
+        <dl class="cal-facts">
+          <div class="cal-row"><dt>Rating</dt><dd id="cal-rating"><span class="chip" data-r="undersold"><svg aria-hidden="true"><use href="#i-up"/></svg><span class="chip-t">Undersold</span></span></dd></div>
+          <div class="cal-row"><dt>Why</dt><dd id="cal-why">Your story says you owned the design and test loop; this reads like a supporting role.</dd></div>
+          <div class="cal-row"><dt>Traces to</dt><dd><blockquote class="quote" id="cal-quote">Our Formula SAE chassis. I owned the design and ran the physical tests with two teammates.</blockquote><p class="quote-src mono" id="cal-src">Your story · profile conversation</p></dd></div>
+          <div class="cal-row" id="cal-sugg-row"><dt>Suggestion</dt><dd id="cal-sugg">Formula SAE: Owned the design and test loop for a lightweight chassis.</dd></div>
+        </dl>
+
+        <div class="cal-actions">
+          <button type="button" class="btn btn-primary" id="cal-use">Use suggestion</button>
+          <button type="button" class="btn btn-quiet" id="cal-keep">Keep mine</button>
+        </div>
+        <p class="cal-note" id="cal-note">Choose one. Either way, Plainhand notes where you drew the line.</p>
+      </div>
+    </div>
+
+    <div class="cal-foot reveal">
+      <div class="tally" id="tally">
+        <div class="tally-head">
+          <p class="mono">Tally</p>
+          <p class="tally-usable" id="tally-usable">4 of 5 lines can be used</p>
+        </div>
+        <div class="tally-bar" aria-hidden="true">
+          <span class="seg" data-seg="undersold"></span><span class="seg" data-seg="balanced"></span><span class="seg" data-seg="stretched"></span><span class="seg" data-seg="unsupported"></span>
+        </div>
+        <ul class="tally-legend">
+          <li><span class="key" data-seg="undersold"></span>Undersold <b data-count="undersold">1</b></li>
+          <li><span class="key" data-seg="balanced"></span>Balanced <b data-count="balanced">2</b></li>
+          <li><span class="key" data-seg="stretched"></span>Stretched <b data-count="stretched">1</b></li>
+          <li><span class="key" data-seg="unsupported"></span>Unsupported <b data-count="unsupported">1</b></li>
+        </ul>
+      </div>
+      <div class="learned">
+        <p class="mono">What Plainhand learned</p>
+        <ul class="learned-list" id="learned-list"><li class="muted">Nothing yet. Decide on a flagged line and your choice shows up here.</li></ul>
+        <button type="button" class="link-btn" id="cal-reset">Start over</button>
+      </div>
+      <div class="locks">
+        <p class="mono">Always exact</p>
+        <p class="locks-lede">Titles, employers, dates and degrees are copied from your sources word for word. Select one to see what that means.</p>
+        <div class="lock-chips" role="group" aria-label="Facts that are always exact">
+          <button type="button" class="lock" data-lock="titles" aria-pressed="false" aria-controls="lock-note"><svg aria-hidden="true"><use href="#i-lock"/></svg>Titles</button>
+          <button type="button" class="lock" data-lock="employers" aria-pressed="false" aria-controls="lock-note"><svg aria-hidden="true"><use href="#i-lock"/></svg>Employers</button>
+          <button type="button" class="lock" data-lock="dates" aria-pressed="false" aria-controls="lock-note"><svg aria-hidden="true"><use href="#i-lock"/></svg>Dates</button>
+          <button type="button" class="lock" data-lock="degrees" aria-pressed="true" aria-controls="lock-note"><svg aria-hidden="true"><use href="#i-lock"/></svg>Degrees</button>
+        </div>
+        <p class="lock-note" id="lock-note" aria-live="polite">Degrees appear as your resume has them. "B.S. Mechanical Engineering, Example University, 2027" stays exactly that.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="section how" id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <div class="sec-head sec-head-split reveal">
+      <div>
+        <p class="kicker">How it works</p>
+        <h2 id="how-title">Six steps, and you take <em>the last one.</em></h2>
+      </div>
+      <fieldset class="route" id="route">
+        <legend class="mono">Pick your route</legend>
+        <div class="route-opts">
+          <label class="route-opt"><input type="radio" name="route" value="web" checked><span class="route-face"><span class="route-t">On the website</span><span class="route-s">with Claude or ChatGPT</span></span></label>
+          <label class="route-opt"><input type="radio" name="route" value="local"><span class="route-face"><span class="route-t">On your computer</span><span class="route-s">open source, MIT</span></span></label>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="stepper reveal" id="stepper">
+      <ol class="step-rail" role="tablist" aria-label="Steps" aria-orientation="vertical">
+        <li role="presentation"><button type="button" role="tab" class="step-tab" id="step-tab-1" aria-controls="step-1" aria-selected="true"><span class="step-n">1</span><span class="step-t"><span class="only-web">Sign in and connect your AI</span><span class="only-local">Install and connect your AI</span></span></button></li>
+        <li role="presentation"><button type="button" role="tab" class="step-tab" id="step-tab-2" aria-controls="step-2" aria-selected="false" tabindex="-1"><span class="step-n">2</span><span class="step-t">Build your profile</span></button></li>
+        <li role="presentation"><button type="button" role="tab" class="step-tab" id="step-tab-3" aria-controls="step-3" aria-selected="false" tabindex="-1"><span class="step-n">3</span><span class="step-t">Approve your standard application</span></button></li>
+        <li role="presentation"><button type="button" role="tab" class="step-tab" id="step-tab-4" aria-controls="step-4" aria-selected="false" tabindex="-1"><span class="step-n">4</span><span class="step-t">Tailor per role</span></button></li>
+        <li role="presentation"><button type="button" role="tab" class="step-tab" id="step-tab-5" aria-controls="step-5" aria-selected="false" tabindex="-1"><span class="step-n">5</span><span class="step-t">Fill the form</span></button></li>
+        <li role="presentation"><button type="button" role="tab" class="step-tab" id="step-tab-6" aria-controls="step-6" aria-selected="false" tabindex="-1"><span class="step-n">6</span><span class="step-t">You submit</span></button></li>
+      </ol>
+
+      <div class="step-stage">
+        <article class="step" id="step-1" role="tabpanel" aria-labelledby="step-tab-1">
+          <div class="step-copy">
+            <p class="mono step-k">Step 1 of 6</p>
+            <h3><span class="only-web">Sign in and connect your AI</span><span class="only-local">Install and connect your AI</span></h3>
+            <p class="only-web">Add your resume (a PDF or pasted text), say what roles you want, and connect the Claude or ChatGPT plan you already have. You don't need an API key or a terminal.</p>
+            <p class="only-local">Run one command on a Mac, Windows or Linux computer with Node.js 22 or later. Plainhand opens at http://127.0.0.1:3210 and works with Claude, ChatGPT or Google Antigravity (Gemini).</p>
+          </div>
+          <div class="step-visual" aria-hidden="true">
+            <ul class="v-list only-web">
+              <li><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Resume</span>Alex_Morgan_Resume.pdf</span></li>
+              <li><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Roles</span>Mechanical engineer, design engineer</span></li>
+              <li><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Your AI</span>ChatGPT plan connected</span></li>
+            </ul>
+            <ul class="v-list only-local">
+              <li><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Install</span>One command, below</span></li>
+              <li><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Open</span>http://127.0.0.1:3210</span></li>
+              <li><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Your AI</span>Claude, ChatGPT or Antigravity</span></li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step" id="step-2" role="tabpanel" aria-labelledby="step-tab-2">
+          <div class="step-copy">
+            <p class="mono step-k">Step 2 of 6</p>
+            <h3>Build your profile</h3>
+            <p>Talk through your work and add a few samples of your writing. Every claim in your profile traces back to something you said or provided.</p>
+            <p class="step-aside only-web">It's kept in your hosted workspace, encrypted at rest.</p>
+            <p class="step-aside only-local">It's kept in ~/.plainhand/workspace on your computer.</p>
+          </div>
+          <div class="step-visual" aria-hidden="true">
+            <div class="v-chat">
+              <p class="bub bub-ai">What's a project you're proud of, and what did you personally contribute?</p>
+              <p class="bub bub-me">Our Formula SAE chassis. I owned the design and ran the physical tests with two teammates.</p>
+              <p class="v-trace"><svg><use href="#i-check"/></svg>Saved to your profile, traced to this message</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="step" id="step-3" role="tabpanel" aria-labelledby="step-tab-3">
+          <div class="step-copy">
+            <p class="mono step-k">Step 3 of 6</p>
+            <h3>Approve your standard application</h3>
+            <p>Plainhand drafts one standard resume, cover letter and set of answers, set in the layout of your own resume. You approve it once. Only you can approve it.</p>
+          </div>
+          <div class="step-visual" aria-hidden="true">
+            <div class="v-packet">
+              <span class="v-doc">Resume</span><span class="v-doc">Cover letter</span><span class="v-doc">Answers</span>
+              <span class="v-stamp">Approved by Alex</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="step" id="step-4" role="tabpanel" aria-labelledby="step-tab-4">
+          <div class="step-copy">
+            <p class="mono step-k">Step 4 of 6</p>
+            <h3>Tailor per role</h3>
+            <p class="only-web">Paste a job link into your chat and ask if it's a fit. You get a score out of 5 with the evidence and the gaps. Then ask for the application and revise it in plain words.</p>
+            <p class="only-local">Give Plainhand a job link. It checks the posting is live, scores the fit out of 5 with evidence and gaps, and tailors your standard application to the role.</p>
+          </div>
+          <div class="step-visual" aria-hidden="true">
+            <div class="v-chat">
+              <p class="bub bub-me">Here's a job link, is it a fit?</p>
+              <p class="bub bub-ai"><span class="v-score">4.6<small>/5</small></span> Northstar Robotics · Apply</p>
+              <p class="bub bub-me">Write my application for it.</p>
+              <div class="v-asks"><span>Make it shorter.</span><span>Lead with the Formula SAE project.</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="step" id="step-5" role="tabpanel" aria-labelledby="step-tab-5">
+          <div class="step-copy">
+            <p class="mono step-k">Step 5 of 6</p>
+            <h3>Fill the form</h3>
+            <p>On Greenhouse, Lever, Ashby and employers' own careers sites, Plainhand fills what your approved application covers and uploads your files. Then it lists what's filled, what needs you and what to double-check.</p>
+          </div>
+          <div class="step-visual" aria-hidden="true">
+            <ul class="v-list v-pre">
+              <li class="ok"><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Filled</span>Contact details, education, two answers</span></li>
+              <li class="ok"><span class="v-ok"><svg><use href="#i-check"/></svg></span><span><span class="v-k">Uploaded</span>Resume and cover letter</span></li>
+              <li class="you"><span class="v-ok"><svg><use href="#i-alert"/></svg></span><span><span class="v-k">Needs you</span>Work authorization</span></li>
+              <li class="dbl"><span class="v-ok"><svg><use href="#i-eye"/></svg></span><span><span class="v-k">Double-check</span>Earliest start date</span></li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step" id="step-6" role="tabpanel" aria-labelledby="step-tab-6">
+          <div class="step-copy">
+            <p class="mono step-k">Step 6 of 6</p>
+            <h3>You submit</h3>
+            <p>Plainhand never presses Submit. You read the form, send it yourself, then mark "I submitted this" so it can track what's due next and draft your follow-ups.</p>
+          </div>
+          <div class="step-visual" aria-hidden="true">
+            <div class="v-submit">
+              <span class="v-btn">Submit application</span>
+              <span class="v-hand">Your click</span>
+              <span class="v-marked"><svg><use href="#i-check"/></svg>I submitted this</span>
+            </div>
+          </div>
+        </article>
+
+        <div class="step-controls">
+          <button type="button" class="btn btn-quiet" id="step-prev"><svg class="arr-l" aria-hidden="true"><use href="#i-arrow-left"/></svg>Previous</button>
+          <div class="step-progress">
+            <span class="mono" id="step-count">Step 1 of 6</span>
+            <span class="step-bar" aria-hidden="true"><span id="step-fill"></span></span>
+          </div>
+          <button type="button" class="btn btn-primary" id="step-next">Next<svg class="arr" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="route-card reveal">
+      <div class="only-web route-web">
+        <p class="mono">On the website</p>
+        <dl class="route-dl">
+          <div><dt>You need</dt><dd>A Claude or ChatGPT plan. Its usage limits apply.</dd></div>
+          <div><dt>Your data</dt><dd>A hosted Plainhand workspace, encrypted at rest. Export it or delete your account whenever you want.</dd></div>
+          <div><dt>Passwords</dt><dd>Plainhand doesn't store job-site passwords.</dd></div>
+        </dl>
+        <a class="btn btn-primary" href="/signin">Get started <svg class="arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
+      <div class="only-local route-local" id="install">
+        <div class="install-head">
+          <p class="mono">Install on your computer</p>
+          <div class="os-tabs" role="tablist" aria-label="Operating system">
+            <button type="button" role="tab" class="os-tab" id="os-tab-unix" aria-controls="os-unix" aria-selected="true">macOS / Linux</button>
+            <button type="button" role="tab" class="os-tab" id="os-tab-win" aria-controls="os-win" aria-selected="false" tabindex="-1">Windows</button>
+          </div>
+        </div>
+        <div class="os-panel" id="os-unix" role="tabpanel" aria-labelledby="os-tab-unix">
+          <p class="os-hint">In Terminal:</p>
+          <div class="cmd"><code id="cmd-unix">curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh</code><button type="button" class="copy-btn" data-copy="cmd-unix"><svg aria-hidden="true"><use href="#i-copy"/></svg><span class="copy-t">Copy</span></button></div>
+        </div>
+        <div class="os-panel" id="os-win" role="tabpanel" aria-labelledby="os-tab-win">
+          <p class="os-hint">In PowerShell:</p>
+          <div class="cmd"><code id="cmd-win">irm https://raw.githubusercontent.com/akhan157/Plainhand/main/install.ps1 | iex</code><button type="button" class="copy-btn" data-copy="cmd-win"><svg aria-hidden="true"><use href="#i-copy"/></svg><span class="copy-t">Copy</span></button></div>
+        </div>
+        <p class="copy-status" id="copy-status" aria-live="polite"></p>
+        <p class="install-notes">Needs Node.js 22 or later. Run the command again later to upgrade; your workspace is kept. Everything stays in <code>~/.plainhand/workspace</code>. <a href="https://github.com/akhan157/Plainhand">Read the source on GitHub</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="section" id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Fit, with evidence</p>
+      <h2 id="features-title">Fit scores, with the <em>evidence</em> behind them.</h2>
+      <p class="sec-lede">Each job gets a score out of 5, the evidence for it, the gaps, and a call: Apply, Investigate or Skip. Plainhand checks that a posting is live before the AI reads it.</p>
+    </div>
+
+    <div class="fit reveal">
+      <div class="fit-list" role="tablist" aria-label="Sample roles" aria-orientation="vertical">
+        <button type="button" role="tab" class="fit-role" id="fit-northstar" data-role="northstar" aria-controls="fit-panel" aria-selected="true">
+          <span class="fit-co">Northstar Robotics</span><span class="fit-title">Mechanical Engineer, New Graduate</span>
+          <span class="fit-score"><span class="pips" data-s="46" aria-hidden="true"></span><span class="fit-num">4.6</span></span><span class="rec" data-rec="apply">Apply</span>
+        </button>
+        <button type="button" role="tab" class="fit-role" id="fit-fieldwork" data-role="fieldwork" aria-controls="fit-panel" aria-selected="false" tabindex="-1">
+          <span class="fit-co">Fieldwork Systems</span><span class="fit-title">Associate Product Design Engineer</span>
+          <span class="fit-score"><span class="pips" data-s="44" aria-hidden="true"></span><span class="fit-num">4.4</span></span><span class="rec" data-rec="apply">Apply</span>
+        </button>
+        <button type="button" role="tab" class="fit-role" id="fit-tidewater" data-role="tidewater" aria-controls="fit-panel" aria-selected="false" tabindex="-1">
+          <span class="fit-co">Tidewater Instruments</span><span class="fit-title">Test Engineer I</span>
+          <span class="fit-score"><span class="pips" data-s="43" aria-hidden="true"></span><span class="fit-num">4.3</span></span><span class="rec" data-rec="apply">Apply</span>
+        </button>
+        <button type="button" role="tab" class="fit-role" id="fit-arcwell" data-role="arcwell" aria-controls="fit-panel" aria-selected="false" tabindex="-1">
+          <span class="fit-co">Arcwell Energy</span><span class="fit-title">Graduate Manufacturing Engineer</span>
+          <span class="fit-score"><span class="pips" data-s="37" aria-hidden="true"></span><span class="fit-num">3.7</span></span><span class="rec" data-rec="investigate">Investigate</span>
+        </button>
+        <button type="button" role="tab" class="fit-role" id="fit-lumen" data-role="lumen" aria-controls="fit-panel" aria-selected="false" tabindex="-1">
+          <span class="fit-co">Lumen Aerospace</span><span class="fit-title">Structures Engineer, Early Career</span>
+          <span class="fit-score"><span class="pips" data-s="0" aria-hidden="true"></span><span class="fit-num">New</span></span><span class="rec" data-rec="new">Not scored</span>
+        </button>
+      </div>
+
+      <div class="fit-panel" id="fit-panel" role="tabpanel" aria-labelledby="fit-northstar" tabindex="0">
+        <div class="fit-top">
+          <p class="fit-big"><span id="fit-big-num">4.6</span><small id="fit-big-of">/5</small></p>
+          <div>
+            <p class="fit-panel-co" id="fit-panel-co">Northstar Robotics</p>
+            <p class="fit-panel-title" id="fit-panel-title">Mechanical Engineer, New Graduate · Boston, MA</p>
+            <span class="rec rec-lg" data-rec="apply" id="fit-rec">Apply</span>
+          </div>
+        </div>
+        <div class="fit-body">
+          <div class="fit-block">
+            <p class="mono">Evidence</p>
+            <p id="fit-match">Hands-on mechanical design and testing experience.</p>
+            <blockquote class="quote" id="fit-quote">Designed and tested a lightweight chassis for the Formula SAE team.</blockquote>
+            <p class="quote-src mono" id="fit-quote-src">Your resume</p>
+          </div>
+          <div class="fit-block">
+            <p class="mono">Gaps</p>
+            <ul class="fit-gaps" id="fit-gaps"><li>Industry experience is not yet documented.</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="gap-callout reveal"><span class="mono">Across 2 roles</span><span>"No production GD&amp;T experience shown." Gaps that keep coming up go into a learning plan.</span></p>
+
+    <div class="caps">
+      <article class="cap reveal">
+        <p class="mono cap-k">Your format</p>
+        <h3>Your resume's layout, kept</h3>
+        <p>Plainhand reads the layout of your own resume PDF (fonts, margins, headings, section order, dates, bullets) and renders every resume and cover letter in it. It can also check the PDF the way an applicant tracking system (ATS) reads it.</p>
+        <div class="seg-ctl" role="group" aria-label="Preview">
+          <button type="button" class="seg-btn" data-view="layout" aria-pressed="true">Your layout</button>
+          <button type="button" class="seg-btn" data-view="ats" aria-pressed="false">ATS view</button>
+        </div>
+        <div class="fmt" id="fmt" data-view="layout" aria-live="polite">
+          <div class="fmt-layout">
+            <p class="fmt-name">Alex Morgan</p>
+            <p class="fmt-rule">Education</p>
+            <p class="fmt-line"><span>B.S. Mechanical Engineering, Example University</span><span>2027</span></p>
+            <p class="fmt-rule">Projects</p>
+            <p class="fmt-line"><span>Formula SAE: Owned the design and test loop for a lightweight chassis.</span></p>
+          </div>
+          <pre class="fmt-ats">NAME: Alex Morgan
+EDUCATION
+  Degree: B.S. Mechanical Engineering
+  School: Example University · 2027
+PROJECTS
+  Formula SAE: Owned the design and
+  test loop for a lightweight chassis.
+Read check: sections found, in order.</pre>
+        </div>
+      </article>
+
+      <article class="cap reveal">
+        <p class="mono cap-k">No AI writing</p>
+        <h3>A humanizer pass on every line</h3>
+        <p>Every line goes through a pass that removes AI writing patterns without changing a fact or number.</p>
+        <div class="seg-ctl" role="group" aria-label="Show the line">
+          <button type="button" class="seg-btn" data-hz="before" aria-pressed="false">Before</button>
+          <button type="button" class="seg-btn" data-hz="after" aria-pressed="true">After</button>
+        </div>
+        <div class="hz" id="hz" data-hz="after" aria-live="polite">
+          <!-- @specimen-start -->
+          <p class="hz-before" data-specimen><span class="mono">Draft, before the pass</span>I'm passionate about hands-on engineering, and my Formula SAE work is a testament to that: I designed and tested a lightweight chassis.</p>
+          <!-- @specimen-end -->
+          <p class="hz-after"><span class="mono">After the pass</span>I like hands-on engineering. For our Formula SAE team, I designed and tested a lightweight chassis.</p>
+        </div>
+      </article>
+
+      <article class="cap reveal">
+        <p class="mono cap-k">Less tedium</p>
+        <h3>Approve once, then tailor</h3>
+        <p>You approve one standard application, and Plainhand tailors it per role. Plain requests revise it, and queues let you review and send several in a row.</p>
+        <div class="asks" aria-label="Example requests"><span>"Make it shorter."</span><span>"Lead with the chassis project."</span></div>
+      </article>
+
+      <article class="cap reveal">
+        <p class="mono cap-k">After you apply</p>
+        <h3>Tracking, follow-ups, interviews</h3>
+        <p>Each application is tracked from packet to submitted. You see what's due next with follow-up drafts ready, and prep for scheduled interview rounds. Plainhand can read an email and propose a status change for you to confirm.</p>
+        <ol class="track" aria-label="Sample application timeline">
+          <li class="done">Packet</li><li class="done">Submitted</li><li class="now">Interview</li>
+        </ol>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ JOB SITES ============ -->
+<section class="section" id="sites" aria-labelledby="sites-title">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Job sites</p>
+      <h2 id="sites-title">Where it fills forms, and <em>where it stops.</em></h2>
+      <p class="sec-lede">Search for a site, or filter by what Plainhand does there.</p>
+    </div>
+
+    <div class="sites-tools reveal">
+      <div class="search">
+        <label for="site-q" class="search-label mono">Search job sites</label>
+        <div class="search-box"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="site-q" type="search" placeholder="For example, Workday" autocomplete="off" spellcheck="false"></div>
+      </div>
+      <div class="filters" role="group" aria-label="Filter by what Plainhand does">
+        <button type="button" class="filter" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" class="filter" data-filter="fill" aria-pressed="false">Fills the form</button>
+        <button type="button" class="filter" data-filter="signin" aria-pressed="false">Stops at sign-in</button>
+        <button type="button" class="filter" data-filter="link" aria-pressed="false">Never opened</button>
+      </div>
+    </div>
+    <p class="sites-count mono" id="sites-count" aria-live="polite">Showing all 8</p>
+
+    <ul class="sites" id="sites-list">
+      <li class="site" data-kind="fill" data-keys="greenhouse ats">
+        <div class="site-head"><span class="site-name">Greenhouse</span><span class="status" data-kind="fill"><svg aria-hidden="true"><use href="#i-check"/></svg>Fills the form</span></div>
+        <p>Fills what your approved application and profile cover, uploads your resume and cover letter, then lists what's filled, what needs you and what to double-check.</p>
+      </li>
+      <li class="site" data-kind="fill" data-keys="lever ats">
+        <div class="site-head"><span class="site-name">Lever</span><span class="status" data-kind="fill"><svg aria-hidden="true"><use href="#i-check"/></svg>Fills the form</span></div>
+        <p>The same as Greenhouse: fields filled, files uploaded, and a pre-submit list for you to read.</p>
+      </li>
+      <li class="site" data-kind="fill" data-keys="ashby ats">
+        <div class="site-head"><span class="site-name">Ashby</span><span class="status" data-kind="fill"><svg aria-hidden="true"><use href="#i-check"/></svg>Fills the form</span></div>
+        <p>Filled and uploaded. Anything your application doesn't cover goes on the list for you.</p>
+      </li>
+      <li class="site" data-kind="fill" data-keys="company careers site employer own page">
+        <div class="site-head"><span class="site-name">Company careers sites</span><span class="status" data-kind="fill"><svg aria-hidden="true"><use href="#i-check"/></svg>Fills the form</span></div>
+        <p>An employer's own application page gets the same fill, upload and pre-submit list.</p>
+      </li>
+      <li class="site" data-kind="signin" data-keys="workday sign in login account">
+        <div class="site-head"><span class="site-name">Workday</span><span class="status" data-kind="signin"><svg aria-hidden="true"><use href="#i-signin"/></svg>Stops at sign-in</span></div>
+        <p>Opens the application and stops at Workday's sign-in. You sign in, then it reads each step.</p>
+      </li>
+      <li class="site" data-kind="link" data-keys="linkedin job board easy apply">
+        <div class="site-head"><span class="site-name">LinkedIn</span><span class="status" data-kind="link"><svg aria-hidden="true"><use href="#i-ban"/></svg>Never opened</span></div>
+        <p>Its terms prohibit automation, so Plainhand never opens it in its browser. Save the posting and give Plainhand the employer's application link.</p>
+      </li>
+      <li class="site" data-kind="link" data-keys="indeed job board">
+        <div class="site-head"><span class="site-name">Indeed</span><span class="status" data-kind="link"><svg aria-hidden="true"><use href="#i-ban"/></svg>Never opened</span></div>
+        <p>Same reason, same fix: save the posting there, then hand Plainhand the employer's link.</p>
+      </li>
+      <li class="site" data-kind="link" data-keys="other job boards board aggregator">
+        <div class="site-head"><span class="site-name">Other job boards</span><span class="status" data-kind="link"><svg aria-hidden="true"><use href="#i-ban"/></svg>Never opened</span></div>
+        <p>Treated like LinkedIn and Indeed. You bring the employer's application link.</p>
+      </li>
+    </ul>
+    <p class="sites-empty" id="sites-empty" hidden></p>
+
+    <div class="always reveal">
+      <p class="mono">On every site</p>
+      <ul>
+        <li>Plainhand never presses Submit. You do, then mark "I submitted this".</li>
+        <li>Sensitive questions are always left for you.</li>
+        <li>A captcha or code pauses it until you deal with it.</li>
+        <li>If an application moves to a site it doesn't support, it says so and you finish by hand.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONTROL ============ -->
+<section class="section" id="control" aria-labelledby="control-title">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Privacy and control</p>
+      <h2 id="control-title">The AI sees only <em>what a task needs.</em></h2>
+      <p class="sec-lede">Pick a task to see which of Alex's sources go with it. Switch a source off and Plainhand leaves it out of every task.</p>
+    </div>
+
+    <div class="ctl reveal" id="ctl">
+      <div class="ctl-inputs">
+        <fieldset class="ctl-tasks">
+          <legend class="mono">Task</legend>
+          <label class="task-opt"><input type="radio" name="task" value="fit" checked><span>Score a job's fit</span></label>
+          <label class="task-opt"><input type="radio" name="task" value="letter"><span>Write a cover letter</span></label>
+          <label class="task-opt"><input type="radio" name="task" value="form"><span>Fill a form</span></label>
+        </fieldset>
+        <div class="ctl-sources" role="group" aria-labelledby="src-label">
+          <p class="mono" id="src-label">Your sources</p>
+          <div class="src"><div class="src-txt"><span class="src-name" id="src-resume">Resume</span><span class="src-sub">Alex_Morgan_Resume.pdf</span></div><button type="button" class="switch" role="switch" aria-checked="true" data-src="resume" aria-labelledby="src-resume"><span class="knob"></span></button></div>
+          <div class="src"><div class="src-txt"><span class="src-name" id="src-story">Your story</span><span class="src-sub">Profile conversation</span></div><button type="button" class="switch" role="switch" aria-checked="true" data-src="story" aria-labelledby="src-story"><span class="knob"></span></button></div>
+          <div class="src"><div class="src-txt"><span class="src-name" id="src-voice">Writing samples</span><span class="src-sub">Two samples and voice notes</span></div><button type="button" class="switch" role="switch" aria-checked="true" data-src="voice" aria-labelledby="src-voice"><span class="knob"></span></button></div>
+          <div class="src"><div class="src-txt"><span class="src-name" id="src-packet">Approved application</span><span class="src-sub">Standard resume, letter, answers</span></div><button type="button" class="switch" role="switch" aria-checked="true" data-src="packet" aria-labelledby="src-packet"><span class="knob"></span></button></div>
+          <div class="src"><div class="src-txt"><span class="src-name" id="src-prefs">Preferences</span><span class="src-sub">Roles, location, constraints</span></div><button type="button" class="switch" role="switch" aria-checked="true" data-src="prefs" aria-labelledby="src-prefs"><span class="knob"></span></button></div>
+        </div>
+      </div>
+
+      <div class="ctl-out">
+        <div class="ctl-out-head">
+          <p class="mono">What the AI gets</p>
+          <p class="ctl-count" id="ctl-count" aria-live="polite">The job posting and 3 of your 5 sources</p>
+        </div>
+        <ul class="slips" id="slips">
+          <li class="slip is-fixed" data-slip="posting"><span class="slip-name">Job posting</span><span class="slip-x">Northstar Robotics, checked live before reading</span><span class="slip-state">Sent</span></li>
+          <li class="slip" data-slip="resume" data-state="sent"><span class="slip-name">Resume</span><span class="slip-x">"Designed and tested a lightweight chassis for the Formula SAE team."</span><span class="slip-state">Sent</span></li>
+          <li class="slip" data-slip="story" data-state="sent"><span class="slip-name">Your story</span><span class="slip-x">"I owned the design and ran the physical tests with two teammates."</span><span class="slip-state">Sent</span></li>
+          <li class="slip" data-slip="prefs" data-state="sent"><span class="slip-name">Preferences</span><span class="slip-x">"An early-career role with hands-on engineering and mentorship."</span><span class="slip-state">Sent</span></li>
+          <li class="slip" data-slip="voice" data-state="idle"><span class="slip-name">Writing samples</span><span class="slip-x">"Clear, curious, and specific. I prefer showing what I built over calling myself passionate."</span><span class="slip-state">Not needed for this task</span></li>
+          <li class="slip" data-slip="packet" data-state="idle"><span class="slip-name">Approved application</span><span class="slip-x">Standard resume, cover letter and answers</span><span class="slip-state">Not needed for this task</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <ul class="facts reveal">
+      <li><span class="mono">On the website</span>Your workspace is hosted and encrypted at rest. You can export it or delete your account.</li>
+      <li><span class="mono">On your computer</span>Everything stays in <code>~/.plainhand/workspace</code>.</li>
+      <li><span class="mono">Job sites</span>Plainhand doesn't store job-site passwords.</li>
+      <li><span class="mono">On forms</span>Sensitive questions are always left for you to answer.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="section faq" id="faq" aria-labelledby="faq-title">
+  <div class="wrap faq-grid">
+    <div class="sec-head reveal">
+      <p class="kicker">FAQ</p>
+      <h2 id="faq-title">Questions people <em>ask first.</em></h2>
+      <button type="button" class="link-btn" id="faq-toggle" aria-controls="faq-list">Open all answers</button>
+    </div>
+    <div class="faq-list reveal" id="faq-list">
+      <details class="qa">
+        <summary><span>Does Plainhand submit applications for me?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>No. It fills the form, shows a pre-submit list, and stops. You press Submit, then mark the application as sent.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Do I need an API key?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>Not on the website. You connect the Claude or ChatGPT plan you already have, and that plan's usage limits apply. On your own computer, it works with Claude, ChatGPT or Google Antigravity (Gemini).</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Where does my data live?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>On the website, in your hosted Plainhand workspace, encrypted at rest. You can export it or delete your account. On your computer, in <code>~/.plainhand/workspace</code>. Neither stores job-site passwords.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Can it apply on LinkedIn or Indeed?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>No. Their terms prohibit automation, so Plainhand never opens them in its browser. Save the posting there and give Plainhand the employer's application link.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Will my resume look like a template?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>No. Plainhand reads your own resume PDF and uses its fonts, margins, headings, section order, dates and bullets for every resume and cover letter it writes.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Will it sound like AI wrote it?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>Every line goes through a humanizer pass that removes AI writing patterns without changing a fact or number. Calibration then checks each line against your evidence.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Is it open source?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>Yes, under the MIT license. The code is on <a href="https://github.com/akhan157/Plainhand">GitHub</a>, and you can run it on your own computer with one command.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta" id="start" aria-labelledby="cta-title">
+  <div class="wrap">
+    <div class="cta-card reveal" id="cta-card">
+      <div class="cta-copy">
+        <p class="kicker kicker-light">Get started</p>
+        <h2 id="cta-title">Start with the resume <em>you already have.</em></h2>
+        <p>Sign in, add your resume, say what roles you want and connect your AI. You approve every application, and you press Submit.</p>
+        <div class="cta-row">
+          <a class="btn btn-accent btn-lg" href="/signin">Get started <svg class="arr" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <a class="btn btn-line btn-lg" href="https://github.com/akhan157/Plainhand"><svg aria-hidden="true"><use href="#i-github"/></svg>Read the source</a>
+        </div>
+      </div>
+      <svg class="cta-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M17 37V13h8a8 8 0 0 1 0 16h-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap foot">
+    <div class="foot-brand">
+      <svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="14" fill="#183d32"/><path d="M17 37V13h8a8 8 0 0 1 0 16h-8" fill="none" stroke="#d6f0bd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>
+        <p class="foot-word">Plainhand</p>
+        <p class="foot-line">Your job applications, in your own words. Free and open source (MIT).</p>
+      </div>
+    </div>
+    <nav class="foot-nav" aria-label="Footer">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/support">Support</a>
+      <a href="https://github.com/akhan157/Plainhand">GitHub</a>
+    </nav>
+    <p class="foot-note">Alex Morgan and the employers in the demos are fictional.</p>
+  </div>
+</footer>
+</body>
+</html>
