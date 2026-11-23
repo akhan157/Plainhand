@@ -38,7 +38,7 @@ import { setupCoverage } from '../web/ui/connect-data.mjs';
 import { applicationsCsv, calendarIcs } from '../exports.mjs';
 
 const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web');
-const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png' };
+const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.png': 'image/png' };
 export const SESSION_COOKIE = '__Host-plainhand_session';
 export const PKCE_COOKIE = '__Host-plainhand_pkce';
 const MAX_BODY = 4 * 1024 * 1024; // Vercel's request limit is 4.5 MB
@@ -117,18 +117,34 @@ async function jsonBody(req) {
 }
 
 // Short pages for signing in. Styles come from /css/tokens.css and /auth.css (CSP: no inline).
-const AUTH_CSS = `body{margin:0;font-family:system-ui,sans-serif;background:var(--bg,#f5f6f1);color:var(--text,#1d1f1a)}
-main{max-width:26rem;margin:12vh auto;padding:0 16px}
-h1{font-size:1.6rem;margin:0 0 .5rem}p{line-height:1.5}
-.button,button{display:block;box-sizing:border-box;width:100%;padding:.8rem 1rem;margin:.6rem 0;border-radius:.6rem;border:1px solid #c9ccc0;background:#fff;color:inherit;font:inherit;font-weight:600;text-align:center;text-decoration:none;cursor:pointer}
-.primary{background:#1d1f1a;color:#fff;border-color:#1d1f1a}
-input{box-sizing:border-box;width:100%;padding:.75rem;border-radius:.6rem;border:1px solid #c9ccc0;font:inherit}
-label{display:block;margin-top:1.4rem;font-weight:600}.note{color:#5b5f54;font-size:.9rem}.error{color:#a3261b}.ok{color:#2d6a2f}
-@media (prefers-color-scheme:dark){body{background:#151612;color:#ecede6}.button,button,input{background:#22241e;color:#ecede6;border-color:#44473d}.primary{background:#ecede6;color:#151612}.note{color:#a9ad9f}}`;
+const AUTH_CSS = `*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100dvh;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg,#f5f6f1);color:var(--text,#172e24);padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+main{max-width:26rem;margin:clamp(24px,10vh,96px) auto 0;padding:24px;border-radius:14px;background:#ffffff;border:1px solid #dfe4d8;box-shadow:0 1px 2px rgb(23 46 36 / 0.05)}
+.brand-row{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;margin-bottom:16px}
+.brand-mark{display:inline-grid;place-items:center;width:32px;height:34px;border-radius:9px;background:#173d30;color:#d5ecba;font-family:"Iowan Old Style",Georgia,serif;font-weight:700;font-size:25px;line-height:1;padding-bottom:3px}
+.brand-word{font-size:20px;font-weight:650;letter-spacing:-0.03em}
+h1{font-family:"Iowan Old Style",Georgia,serif;font-weight:400;font-size:1.75rem;line-height:1.2;margin:0 0 .5rem}
+p{line-height:1.55;margin:0 0 .9rem}
+.button,button{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:.75rem 1rem;margin:.6rem 0;border-radius:10px;border:1px solid #c6d0bc;background:#ffffff;color:inherit;font:inherit;font-size:16px;font-weight:600;text-align:center;text-decoration:none;cursor:pointer;touch-action:manipulation}
+.button:hover,button:hover{background:#f1f4ec}
+.primary{background:#173d30;color:#f3f8ec;border-color:#173d30}
+.primary:hover{background:#1f4d3c;border-color:#1f4d3c}
+input{width:100%;min-height:48px;padding:.75rem .9rem;border-radius:10px;border:1px solid #c6d0bc;background:#ffffff;color:inherit;font:inherit;font-size:16px}
+:focus-visible{outline:3px solid #4f8a3a;outline-offset:2px}
+label{display:block;margin:1.25rem 0 .4rem;font-weight:600;font-size:.95rem}
+.note{color:#3f5247;font-size:.9rem}
+.error{color:#922f20;background:#fbe9e5;border:1px solid #f0cfc7;padding:.7rem .9rem;border-radius:10px}
+.ok{color:#2c5520;background:#e7f2dc;border:1px solid #cfe3bd;padding:.7rem .9rem;border-radius:10px}
+nav{margin-top:1.25rem;padding-top:1rem;border-top:1px solid #dfe4d8;font-size:.9rem;display:flex;flex-wrap:wrap;gap:.4rem .75rem}
+a{color:#2a6440;text-underline-offset:2px}
+@media (prefers-color-scheme:dark){body{background:#0f0f10;color:#ececee}main{background:#18181a;border-color:#2e2e33;box-shadow:0 1px 2px rgb(0 0 0 / 0.3)}.brand-mark{background:#2f8a52;color:#ffffff}.button,button,input{background:#202023;color:#ececee;border-color:#424249}.button:hover,button:hover{background:#2a2a2e}.primary{background:#277847;color:#ffffff;border-color:#277847}.primary:hover{background:#2f8a52;border-color:#2f8a52}.note{color:#c4c4ca}.error{color:#f4ad9f;background:#3a1d18;border-color:#5a2d25}.ok{color:#b7dd9c;background:#17291d;border-color:#2d4a31}nav{border-top-color:#2e2e33}a{color:#6fcf8f}:focus-visible{outline-color:#5fbf80}}`;
 function page(title, inner) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} · Plainhand</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/auth.css"></head>
-<body><main>${inner}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f1" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0f0f10" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Plainhand">
+<title>${escapeHtml(title)} · Plainhand</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/auth.css"></head>
+<body><main><a class="brand-row" href="/" aria-label="Plainhand home"><span class="brand-mark" aria-hidden="true">p</span><span class="brand-word">Plainhand</span></a>${inner}</main></body></html>`;
 }
 function signInPage({ message = '', error = '', google = true } = {}) {
   return page('Sign in', `<h1>Sign in to Plainhand</h1>
@@ -240,7 +256,12 @@ export function createCloudApp(deps) {
     if (!file.startsWith(WEB_ROOT + path.sep) || !type) return false;
     let content;
     try { content = await readFile(file); } catch { return false; }
-    send(res, 200, content, { 'Content-Type': type + (/^text\/|json|svg/.test(type) ? '; charset=utf-8' : ''), 'Cache-Control': 'public, max-age=300' });
+    const headers = {
+      'Content-Type': type + (/^text\/|json|svg/.test(type) ? '; charset=utf-8' : ''),
+      'Cache-Control': relative === 'sw.js' ? 'no-cache' : 'public, max-age=300',
+      ...(relative === 'sw.js' ? { 'Service-Worker-Allowed': '/' } : {}),
+    };
+    send(res, 200, content, headers);
     return true;
   }
 
@@ -547,7 +568,7 @@ export function createCloudApp(deps) {
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try { await route(req, res); }
     catch (error) {
       if (res.headersSent) { res.end(); return; }

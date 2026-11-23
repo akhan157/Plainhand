@@ -36,7 +36,7 @@ import { remoteStatus, beginVercelLogin, cancelVercelLogin, publishDashboard, up
 
 const APP_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = path.join(APP_ROOT, 'plainhand/web');
-const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png' };
+const ASSET_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.png': 'image/png' };
 const EVENT_HEARTBEAT_MS = 5000;
 export const LOCAL_API_FILE = 'data/plainhand/local-api.json';
 // Static front-end files: anything under plainhand/web with a known type, no traversal or dotfiles.
@@ -123,7 +123,7 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     try {
       const host = req.headers.host;
       if (!/^127\.0\.0\.1:\d+$/.test(host || '')) return json(res, 403, { error: 'Open Plainhand using its 127.0.0.1 address.' });
@@ -136,7 +136,12 @@ export async function createPlainhand({ root = APP_ROOT, workflowOptions = {}, b
         try { content = await readFile(asset); } catch { return json(res, 404, { error: 'Not found.' }); }
         if (path.basename(asset) === 'index.html') content = Buffer.from(content.toString().replace('__SESSION_TOKEN__', token));
         const type = ASSET_TYPES[path.extname(asset)];
-        res.writeHead(200, { 'Content-Type': type + (type.startsWith('text/') || type === 'application/json' || type === 'image/svg+xml' ? '; charset=utf-8' : '') }); return res.end(content);
+        const headers = { 'Content-Type': type + (/^text\/|json|svg/.test(type) ? '; charset=utf-8' : '') };
+        if (path.basename(asset) === 'sw.js') {
+          headers['Cache-Control'] = 'no-cache';
+          headers['Service-Worker-Allowed'] = '/';
+        }
+        res.writeHead(200, headers); return res.end(content);
       }
       if (url.pathname.startsWith('/api/mcp/')) {
         // The MCP server (plainhand-mcp.mjs) forwards its tool calls here so this process

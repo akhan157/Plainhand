@@ -61,9 +61,10 @@ body {
 
 .login-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
 .login-panel {
@@ -106,11 +107,13 @@ body {
 
 .login-input {
   width: 100%;
+  min-height: 46px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   background: #010201;
   color: var(--text);
   font: inherit;
+  font-size: 16px;
   outline: none;
 }
 
@@ -138,13 +141,23 @@ body {
 
 .login-button {
   width: 100%;
+  min-height: 46px;
   margin-top: 16px;
   padding: 12px 14px;
   border: 1px solid var(--line-strong);
   background: rgba(143, 152, 111, 0.12);
   color: var(--text);
   font: inherit;
+  font-size: 16px;
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.login-button-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .login-button:hover {

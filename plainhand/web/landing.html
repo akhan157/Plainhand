@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Plainhand · Your job applications, in your own words</title>
 <meta name="description" content="Plainhand writes and tailors your resume and cover letter from your own words, fills application forms and lists what it couldn't answer. It works with the Claude or ChatGPT plan you already pay for. You submit every application yourself.">
 <meta property="og:type" content="website">
@@ -12,8 +12,15 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Plainhand · Your job applications, in your own words">
 <meta name="twitter:description" content="Plainhand writes and tailors your resume and cover letter from your own words, fills application forms and lists what it couldn't answer. You submit every application yourself.">
-<meta name="theme-color" content="#f5f6f1">
+<meta name="theme-color" content="#f5f6f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f0f10" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Plainhand">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
@@ -722,6 +729,10 @@ Read check: sections found, in order.</pre>
       <details class="qa">
         <summary><span>Will it sound like AI wrote it?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
         <div class="qa-a"><p>Every line goes through a humanizer pass that removes AI writing patterns without changing a fact or number. Calibration then checks each line against your evidence.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span>Can I use Plainhand on my iPhone or Android phone?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>
+        <div class="qa-a"><p>Yes. Plainhand works in your mobile browser and can be installed as a web app (PWA): on iPhone, open Plainhand in Safari and choose Share → Add to Home Screen; on Android, choose Install app in Chrome or Edge (you can also share job links directly to Plainhand from Android’s Share menu). Use your phone to review packets, approve drafts, track applications and follow up; initial connector setup and automatic form filling still happen on a computer. A native iPhone app (.ipa) is deferred for later.</p></div>
       </details>
       <details class="qa">
         <summary><span>Is it open source?</span><svg aria-hidden="true"><use href="#i-plus"/></svg></summary>

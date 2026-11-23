@@ -1,0 +1,85 @@
+{
+  "id": "/",
+  "name": "Plainhand",
+  "short_name": "Plainhand",
+  "description": "Your job applications, in your own words. Review packets, track applications and follow up from your phone or computer.",
+  "start_url": "/?source=pwa#home",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f5f6f1",
+  "theme_color": "#173d30",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Home briefing",
+      "short_name": "Home",
+      "description": "Open today's briefing and next steps",
+      "url": "/#home",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Add a job",
+      "short_name": "Add job",
+      "description": "Save a new job posting link to Plainhand",
+      "url": "/?action=add-job#jobs",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Applications",
+      "short_name": "Tracker",
+      "description": "Check application statuses and follow-ups",
+      "url": "/#applications",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Profile & brain",
+      "short_name": "Profile",
+      "description": "Review your profile and master resume",
+      "url": "/#profile",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  }
+}

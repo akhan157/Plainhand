@@ -1,5 +1,5 @@
 // Jobs: discovery sources, the role list and the add-job / add-source dialogs.
-import { html, useState, store, api, refresh, toast, openJob, openDialog, closeDialog, runningTask, queueTask, Icon, ago, hostOf, safeLink, useDraft, SUBMITTED } from './core.mjs';
+import { html, useEffect, useState, store, api, refresh, toast, openJob, openDialog, closeDialog, runningTask, queueTask, Icon, ago, hostOf, safeLink, useDraft, SUBMITTED } from './core.mjs';
 import { ActionButton, Button, IconButton, Card, PageHeading, Field, Dialog, Tabs, Empty, CompanyMark, Score, StagePill } from './components.mjs';
 import { TaskCard } from './conversation.mjs';
 
@@ -76,8 +76,18 @@ export const withScheme = value => {
   return text && !/^[a-z][a-z0-9+.-]*:/i.test(text) && /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]|$)/.test(text) ? 'https://' + text : text;
 };
 
-export function AddJobDialog() {
+export function AddJobDialog({ prefill } = {}) {
   const [job, setJob, clear] = useDraft('new-job', { company: '', title: '', url: '', location: '', description: '' });
+  useEffect(() => {
+    if (!prefill) return;
+    setJob(current => ({
+      company: prefill.company || current.company,
+      title: prefill.title || current.title,
+      url: prefill.url || current.url,
+      location: prefill.location || current.location,
+      description: prefill.description || current.description,
+    }));
+  }, [prefill]);
   const set = key => value => setJob({ ...job, [key]: value });
   async function submit(event) {
     event.preventDefault();

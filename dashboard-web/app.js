@@ -65,6 +65,10 @@ window.addEventListener('resize', () => {
   }
 });
 
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+}
+
 await load();
 
 async function load() {

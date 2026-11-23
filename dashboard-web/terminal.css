@@ -560,7 +560,18 @@ tbody tr:hover,
 @media (max-width: 760px) {
   .terminal-shell {
     width: min(100vw - 12px, 100%);
-    padding: 10px 0 24px;
+    padding: max(10px, env(safe-area-inset-top)) env(safe-area-inset-right) calc(24px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+  }
+
+  .control-row input,
+  .control-row select {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .mobile-sheet-panel {
+    max-height: 84dvh;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 
   .summary-grid,

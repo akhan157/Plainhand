@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased: mobile browser polish & installable PWA (iPhone & Android)
+
+- **Installable Progressive Web App (PWA) for iPhone and Android.** Added web
+  app manifests (`plainhand/web/manifest.webmanifest` and
+  `dashboard-web/manifest.webmanifest`), raster `192×192` / `512×512` `any` and
+  `maskable` icons, opaque `180×180` `apple-touch-icon.png`, Home Screen
+  shortcuts (`Home`, `Add a job`, `Applications`, `Profile`), and Android Web
+  Share Target support (share a job link from Chrome, LinkedIn, or Indeed to
+  pre-fill **Add a job**). Native iPhone (`.ipa`) packaging is intentionally
+  deferred for later.
+- **Privacy-first service worker and offline screen.** Added `/sw.js` and
+  `/offline.html` for both the main app and the optional Vercel remote
+  dashboard. Only public static UI shell assets are cached; `/api/*`,
+  `/auth/*`, `/oauth/*`, `/account/*`, `/signin`, `/mcp`, `/dashboard-data.json`,
+  `/reports/*`, `/output/*`, and authenticated HTML are never cached.
+- **Mobile navigation and touch ergonomics.** Added a thumb-reachable bottom
+  tab bar (`Home`, `Jobs`, `Apps`, `Profile`, `More`) with live due/selected
+  and running-task badges on phones (`≤ 719px`), safe-area insets
+  (`viewport-fit=cover` + `env(safe-area-inset-*)`), `100dvh` sheets/dialogs,
+  44px+ mobile touch targets, 16px mobile inputs to prevent iOS Safari
+  auto-zoom, a **Use on your phone (iPhone & Android)** card in Workspace (with
+  one-tap Android install and a 3-step iPhone Safari guide), and upgraded
+  mobile `/signin` and public pages.
+- **Accessibility and mobile layout fixes.** Improved dark-mode primary button
+  contrast (`#277847` on `#ffffff`, 5.44:1 WCAG 2.1 AA) and fixed horizontal
+  overflow on the hosted Workspace `Upload a workspace export` file input on
+  phone viewports. See [docs/MOBILE.md](docs/MOBILE.md).
+
 ## Unreleased: fewer false review blocks, and earlier work gets its employer
 
 - **Job titles are not degrees.** "Senior Research Associate" or "Scrum Master" no

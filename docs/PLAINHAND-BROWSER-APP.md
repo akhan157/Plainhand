@@ -32,15 +32,16 @@ or remotely hosted deployment. Each classmate runs their own copy.
 
 ## Appearance
 
-The workspace has three areas: navigation on the left (a drawer on phones), the
-page you are working on in the centre, and a context panel on the right that
-shows whatever you opened: a role's fit and evaluation, its packet documents,
-form assistance, or its application record. On narrower screens the panel opens
-over the page; on phones it opens as a full-screen sheet. **Home** opens on a
-briefing computed from your workspace (overdue and upcoming follow-ups, failed
-or running tasks, roles awaiting evaluation, packets to review, upcoming
-interviews), each with a button that opens the right panel. No model call is
-made to build it.
+The workspace has three areas: navigation on the left (a slide-out drawer plus a
+fixed bottom quick-navigation bar on phones), the page you are working on in the
+centre, and a context panel on the right that shows whatever you opened: a role's
+fit and evaluation, its packet documents, form assistance, or its application
+record. On narrower screens the panel opens over the page; on phones it opens as
+a full-screen sheet with safe-area padding and 16px form inputs to prevent iOS
+Safari zoom. **Home** opens on a briefing computed from your workspace (overdue
+and upcoming follow-ups, failed or running tasks, roles awaiting evaluation,
+packets to review, upcoming interviews), each with a button that opens the right
+panel. No model call is made to build it.
 
 Use the sun/moon control in the top bar to switch between dark and light mode.
 Workspace → Appearance also offers **Follow system**. The preference is saved
@@ -433,6 +434,11 @@ assistant, form filling and submission stay on this computer and are not exposed
   credentials, browser cookies or the workspace control token. **Forget
   deployment** removes the saved URL/password locally; the site stays online
   until you delete the project in Vercel.
+- **Installable PWA:** the published remote dashboard ships with its own
+  `manifest.webmanifest`, icons, `apple-touch-icon.png`, `/offline.html`, and
+  privacy-first `/sw.js` (caching only public UI shell assets, never
+  `/dashboard-data.json`, `/reports/*`, or `/output/*`), so you can add it to
+  your iPhone or Android Home Screen.
 - **Limits:** read-only status and artifacts. You cannot talk to Plainhand, run
   tasks or apply remotely. Assets under `/assets/` are UI shell files and are not
   gated; all personal data is behind the password middleware. If you enable
@@ -482,11 +488,22 @@ they are not exercised by the offline suite.
   1.37.0 comparison. The TUI is retained as an optional pipeline/report interface
   (`npm run tui`), with Plainhand branding. Redundant modes remain during extraction.
 
+## Mobile & PWA (iPhone & Android)
+
+Plainhand works in mobile browsers and can be installed as a Progressive Web App
+(PWA) on iPhone (Safari → Share → Add to Home Screen) and Android (Chrome/Edge →
+Install app, with Home Screen shortcuts and Web Share Target support to send job
+links straight into **Add a job**). The service worker (`/sw.js`) caches only
+public UI shell files and `/offline.html` and never caches `/api/*`, auth
+routes, or authenticated HTML. A native iPhone app (`.ipa`) is deferred for a
+later release. See [docs/MOBILE.md](MOBILE.md).
+
 ## Verification
 
 ```bash
 npm run test:plainhand
 npm run test:plainhand-ui
+npm run test:mobile-pwa
 npm run test:full
 node tests/test-all.mjs --quick
 ```

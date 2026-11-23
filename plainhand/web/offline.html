@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f6f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0f10" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Plainhand">
+  <title>Offline · Plainhand</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="boot offline-screen">
+    <span class="brand-mark large" aria-hidden="true">p</span>
+    <h1>You’re offline</h1>
+    <p class="offline-copy">Plainhand couldn’t reach your workspace right now. Anything you already saved is safe.</p>
+    <p class="offline-copy muted-text">Reconnect to the internet (or check that your local Plainhand server is running), then try again.</p>
+    <div class="action-row">
+      <a class="button primary" href="/">Try again</a>
+    </div>
+  </main>
+</body>
+</html>

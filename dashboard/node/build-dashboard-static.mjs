@@ -59,6 +59,13 @@ export async function buildStaticDashboard({
 
   await copyFile(path.join(codeRoot, 'dashboard-web', 'app.js'), path.join(outDir, 'assets', 'app.js'));
   await copyFile(path.join(codeRoot, 'dashboard-web', 'favicon.svg'), path.join(outDir, 'assets', 'favicon.svg'));
+  await copyFile(path.join(codeRoot, 'dashboard-web', 'manifest.webmanifest'), path.join(outDir, 'manifest.webmanifest'));
+  await copyFile(path.join(codeRoot, 'dashboard-web', 'sw.js'), path.join(outDir, 'sw.js'));
+  await copyFile(path.join(codeRoot, 'dashboard-web', 'offline.html'), path.join(outDir, 'offline.html'));
+  await copyFile(path.join(codeRoot, 'dashboard-web', 'apple-touch-icon.png'), path.join(outDir, 'apple-touch-icon.png'));
+  for (const iconName of ['icon-192.png', 'icon-512.png', 'icon-maskable-192.png', 'icon-maskable-512.png']) {
+    await copyFile(path.join(codeRoot, 'dashboard-web', 'icons', iconName), path.join(outDir, 'icons', iconName));
+  }
   await copyFile(path.join(codeRoot, 'dashboard', 'node', 'dashboard-auth-middleware.js'), path.join(outDir, 'middleware.js'));
 
   const fontsDir = path.join(codeRoot, 'fonts');
@@ -96,6 +103,13 @@ export async function buildStaticDashboard({
           source: '/(dashboard-data\\.json|reports/.*|output/.*)',
           headers: [
             { key: 'Cache-Control', value: 'private, no-store' },
+          ],
+        },
+        {
+          source: '/sw\\.js',
+          headers: [
+            { key: 'Cache-Control', value: 'no-cache' },
+            { key: 'Service-Worker-Allowed', value: '/' },
           ],
         },
       ],

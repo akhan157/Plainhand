@@ -381,6 +381,9 @@ const ICONS = {
   lock: [R(5, 11, 14, 10, 2), P('M8 11V7a4 4 0 0 1 8 0v4')],
   edit: [P('M4 20h4L19 9l-4-4L4 16Z'), P('m13 7 4 4')],
   undo: [P('M9 14 4 9l5-5'), P('M4 9h10a6 6 0 0 1 0 12h-3')],
+  smartphone: [R(6, 2, 12, 20, 2), P('M12 18h.01')],
+  share: [P('M12 3v12m-4-8 4-4 4 4'), P('M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6')],
+  more: [C(5, 12, 1.5), C(12, 12, 1.5), C(19, 12, 1.5)],
 };
 export function Icon({ name, size, label }) {
   const parts = ICONS[name] || ICONS.circle;

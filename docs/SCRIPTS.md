@@ -46,6 +46,7 @@ Scripts live in `lib/` (engine and CLI), `tests/`, `benchmarks/` and
 | `npm run benchmark:eval` | `benchmarks/benchmark-eval.mjs` | Controlled end-to-end evaluation: profile, resume, form fill and candidate-confirmed submission to an owned sandbox |
 | `npm run benchmark:eval:live` | `benchmarks/benchmark-eval.mjs --provider claude` | Same evaluation with a real provider; opt-in, uses account quota |
 | `npm run test:remote` | `tests/test-remote.mjs` | Remote-view publish flow against a local stand-in Vercel CLI |
+| `npm run test:mobile-pwa` | `tests/test-mobile-pwa.mjs` | Mobile browser & PWA verification (manifests, icons, SW privacy, iPhone/Android Playwright + axe) |
 
 ---
 
