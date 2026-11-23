@@ -14,7 +14,7 @@ A job-application assistant that runs on your computer with your own AI account.
 ![Node 22+](https://img.shields.io/badge/node-22%2B-2f8a52)
 ![Runs locally](https://img.shields.io/badge/runs-locally-2f8a52)
 
-[Quick start](#quick-start) · [Install](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
+[Quick start](#quick-start) · [Install](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Mobile & PWA](docs/MOBILE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
@@ -76,6 +76,12 @@ is in [docs/INSTALL.md](docs/INSTALL.md).
   employers' own careers sites it fills what it can from your approved packet and profile,
   uploads your resume and cover letter, and shows a pre-submit list of what's
   filled, what needs you and what to double-check.
+- **Works on your phone too (iPhone & Android).** Use Plainhand in a mobile
+  browser or install it to your Home Screen as a web app (PWA) for quick
+  packet review, approvals, follow-ups, and tracking. On Android, you can
+  share job links straight into Plainhand from Chrome, LinkedIn, or Indeed via
+  the Share menu. Form filling stays on a computer, and a native iPhone app
+  (`.ipa`) is deferred for later. See [docs/MOBILE.md](docs/MOBILE.md).
 - **Your data stays with you.** Everything is stored in your workspace:
   `~/.plainhand` with the one-command install, or the checkout folder in a
   manual install. The AI provider sees only what a task needs, and you can
@@ -164,7 +170,7 @@ look first? **Take a look around** on the home screen opens a sample workspace.
 
 ## Help and docs
 
-- [Install guide](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md)
+- [Install guide](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Mobile & PWA (iPhone & Android)](docs/MOBILE.md)
 - [Browser app reference](docs/PLAINHAND-BROWSER-APP.md) (features, limits, data files, optional remote view)
 - [Use Plainhand from your own agent (MCP)](docs/MCP.md)
 - [What Plainhand measures](docs/METRICS-INVENTORY.md) · [Verification](docs/VERIFICATION-MATRIX.md)

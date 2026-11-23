@@ -153,6 +153,9 @@ there's enough data, and suggests changes for you to accept or reject.
   your applications, reports and PDFs to your own Vercel account. It has its own
   password, can update while Plainhand runs, and does not expose the app or let
   anyone apply remotely. See [the browser app reference](PLAINHAND-BROWSER-APP.md#remote-view-optional-vercel).
+- **Phone & PWA (iPhone & Android):** Plainhand works in mobile browsers and can
+  be installed to your Home Screen as a web app (PWA) on iPhone and Android.
+  Native iOS (`.ipa`) packaging is deferred for later. See [MOBILE.md](MOBILE.md).
 
 ## Talking to it by voice
 

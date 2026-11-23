@@ -4,6 +4,7 @@ import { html, useEffect, useState, store, api, refresh, toast, loadProviders, n
 import { ActionButton, Button, IconButton, LinkButton, Card, PageHeading, Notice, Pill, Empty, Dialog, Spinner } from './components.mjs';
 import { startDemo } from './home.mjs';
 import { agentClient } from './agent.mjs';
+import { MobileAppCard } from './pwa.mjs';
 
 function copy(text) {
   return navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard.'), () => toast('Copy failed. Select the command and copy it yourself.', true));
@@ -304,7 +305,7 @@ function RemoteCard() {
       ${remote.url ? html`
         <h3 class="sub-heading">Your dashboard is online</h3>
         <div class="code-box"><a href=${safeLink(remote.url)} target="_blank" rel="noreferrer">${remote.url}</a><${Button} class="small" icon="external" onClick=${() => window.open(safeLink(remote.url), '_blank', 'noopener')}>Open</${Button}></div>
-        <div class="field"><label for="remote-password">Password for other devices</label><div class="code-box"><code id="remote-password">${remote.password || '—'}</code><${Button} class="small" icon="copy" onClick=${() => copy(remote.password || '')}>Copy</${Button}></div><small>${remote.verifiedAt ? 'Checked and working.' : 'Not checked yet.'} Open the link on your phone or another computer${remote.protected ? '; sign in to Vercel with the same account first' : ''}, then enter this password. Use “Remember this device” so you stay signed in.</small></div>
+        <div class="field"><label for="remote-password">Password for other devices</label><div class="code-box"><code id="remote-password">${remote.password || '—'}</code><${Button} class="small" icon="copy" onClick=${() => copy(remote.password || '')}>Copy</${Button}></div><small>${remote.verifiedAt ? 'Checked and working.' : 'Not checked yet.'} Open the link on your phone or another computer${remote.protected ? '; sign in to Vercel with the same account first' : ''}, then enter this password. Use “Remember this device” so you stay signed in, and add it to your iPhone or Android Home Screen as an app (PWA).</small></div>
         <div class="action-row"><${ActionButton} class="primary" icon="upload" disabled=${busy !== null} onClick=${publish}>${publishing ? 'Publishing…' : 'Publish again'}</${ActionButton}></div>
         ${publishing ? html`<p class="muted-text"><${Spinner} /> Building and publishing; this usually takes a minute.</p>` : null}`
       : html`<${Notice} tone="info">Ready to publish. This uploads a read-only copy of your applications, reports and PDFs; it does not expose Plainhand or let anyone apply.</${Notice}>
@@ -345,7 +346,7 @@ function AutonomyCard() {
 export function WorkspacePage() {
   const state = store.state;
   const theme = useTheme();
-  if (state.cloud) return html`<${PageHeading} title="Online workspace" subtitle="Your candidate data is stored in Supabase on the server, rather than on this computer. Your connected AI receives context for the tasks you request." /><${Card} title="Your account and data"><p>Export your saved workspace before switching to the desktop app. A desktop installer has not been released yet.</p><div class="action-row"><${ActionButton} onClick=${exportWorkspace}>Export workspace</${ActionButton}><label class="button"><span>Upload a workspace export</span><input type="file" accept="application/json,.json" aria-label="Upload a workspace export" onChange=${chooseImport} /></label><a class="button" href="/account/delete">Delete my account</a><a class="button" href="#help">Get help</a></div></${Card}><${DataPanel} />`;
+  if (state.cloud) return html`<${PageHeading} title="Online workspace" subtitle="Your candidate data is stored in Supabase on the server, rather than on this computer. Your connected AI receives context for the tasks you request." /><${Card} title="Your account and data"><p>Export your saved workspace before switching to the desktop app. A desktop installer has not been released yet.</p><div class="action-row"><${ActionButton} icon="download" onClick=${exportWorkspace}>Export workspace</${ActionButton}><label class="button"><${Icon} name="upload" /><span>Upload a workspace export</span><input type="file" accept="application/json,.json" class="visually-hidden" aria-label="Upload a workspace export" onChange=${chooseImport} /></label><a class="button" href="/account/delete">Delete my account</a><a class="button" href="#help">Get help</a></div></${Card}><${MobileAppCard} cloud=${true} /><${DataPanel} />`;
   return html`
     <${PageHeading} title="Workspace" subtitle="Your data is inspectable, portable and kept separate from the application code." />
     <${Card} title="Appearance" icon=${theme.resolved === 'dark' ? 'moon' : 'sun'} id="appearance-title" subtitle="Your choice is saved in this browser and shared between its tabs.">
@@ -353,6 +354,7 @@ export function WorkspacePage() {
         <select id="theme-preference" value=${theme.preference} onChange=${e => window.plainhandTheme.set(e.currentTarget.value)}>${[['system', 'Follow system'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => html`<option value=${v}>${l}</option>`)}</select>
         <small>Follow system tracks your device, including changes while Plainhand is open.</small></div>
     </${Card}>
+    <${MobileAppCard} cloud=${false} />
     <${RoleOrderCard} />
     <${AutonomyCard} />
     <${RemoteCard} />

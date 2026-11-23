@@ -29,6 +29,7 @@ const mimeTypes = new Map([
   ['.png', 'image/png'],
   ['.svg', 'image/svg+xml'],
   ['.txt', 'text/plain; charset=utf-8'],
+  ['.webmanifest', 'application/manifest+json; charset=utf-8'],
   ['.woff2', 'font/woff2'],
 ]);
 
@@ -57,6 +58,15 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/favicon.ico') {
       return serveFile(res, path.join(staticRoot, 'favicon.svg'));
+    }
+
+    if (['/manifest.webmanifest', '/sw.js', '/offline.html', '/apple-touch-icon.png'].includes(url.pathname)) {
+      return serveFile(res, path.join(staticRoot, url.pathname.slice(1)));
+    }
+
+    if (url.pathname.startsWith('/icons/')) {
+      const iconPath = safeResolve(staticRoot, url.pathname.slice(1));
+      return serveFile(res, iconPath);
     }
 
     if (url.pathname.startsWith('/assets/')) {

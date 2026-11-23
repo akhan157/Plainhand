@@ -58,14 +58,15 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------- Theme: Light / Dark / System ---------- */
   (() => {
     const buttons = $$('[data-theme-choice]');
-    const meta = $('meta[name="theme-color"]');
+    const metas = $$('meta[name="theme-color"]');
     const media = matchMedia('(prefers-color-scheme: dark)');
     const names = { light: 'Light', dark: 'Dark', system: 'System' };
     function paint() {
       const pref = root.dataset.themePreference || 'system';
       buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeChoice === pref)));
       const dark = pref === 'dark' || (pref === 'system' && media.matches);
-      if (meta) meta.content = dark ? '#0f0f10' : '#f5f6f1';
+      const color = dark ? '#0f0f10' : '#f5f6f1';
+      metas.forEach(m => { m.content = color; });
     }
     buttons.forEach(b => b.addEventListener('click', () => {
       const pref = b.dataset.themeChoice;
@@ -78,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
     media.addEventListener('change', paint);
     paint();
   })();
+
+  /* ---------- Progressive Web App shell registration ---------- */
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  }
 
   /* ---------- Header: scrolled state, active section, mobile menu ---------- */
   (() => {

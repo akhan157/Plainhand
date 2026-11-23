@@ -13,8 +13,10 @@
     const theme = preference === 'system' ? media.matches ? 'dark' : 'light' : preference;
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.themePreference = preference;
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'dark' ? '#0e1511' : '#f5f6f1';
+    const color = theme === 'dark' ? '#0f0f10' : '#f5f6f1';
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+      meta.content = color;
+    }
     window.dispatchEvent(new CustomEvent('plainhand:theme', { detail: { theme, preference } }));
   }
   window.plainhandTheme = {
