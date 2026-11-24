@@ -14,7 +14,7 @@ A job-application assistant that runs on your computer with your own AI account.
 ![Node 22+](https://img.shields.io/badge/node-22%2B-2f8a52)
 ![Runs locally](https://img.shields.io/badge/runs-locally-2f8a52)
 
-[Quick start](#quick-start) · [Install](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Mobile & PWA](docs/MOBILE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
+[Web app & PWA](https://plainhand-cloud.vercel.app) · [Quick start](#quick-start) · [Install](docs/INSTALL.md) · [Updating](docs/UPDATING.md) · [User guide](docs/USER-GUIDE.md) · [Mobile & PWA](docs/MOBILE.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
@@ -32,9 +32,9 @@ couldn't answer. **You review and submit every application yourself.**
 
 ## Quick start
 
-With [Node.js 22 or newer](https://nodejs.org), one command downloads the
-latest release, sets it up and starts Plainhand, then opens it in your browser.
-Run it again later to upgrade; your workspace is kept.
+**Use the hosted web app & mobile PWA (no install needed):** open **[https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app)** on your computer or phone (install to your Home Screen on iPhone or Android), and pair it with the Chrome/Edge browser extension (`extension/`) for form filling. If you already have a local workspace, you can transfer it with **Workspace → Export** and **Workspace → Import**.
+
+**Or run locally on your computer:** with [Node.js 22 or newer](https://nodejs.org), one command downloads the latest release, sets it up and starts Plainhand, then opens it in your browser. Run `plainhand update` later to upgrade with automatic workspace migrations and rollback (`plainhand rollback`); your workspace is kept. See [docs/UPDATING.md](docs/UPDATING.md).
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/akhan157/Plainhand/main/install.sh | sh
@@ -64,29 +64,35 @@ is in [docs/INSTALL.md](docs/INSTALL.md).
   evidence: undersold, balanced, stretched or unsupported. It learns where you
   draw the line from your choices. Titles, employers, dates and degrees are
   always exact, and nothing you can't back up is used.
-- **Your format, no AI writing.** Plainhand reads the layout of your own
-  resume PDF (fonts, margins, headings, section order, dates, bullets) and
-  renders every resume and cover letter in it. Every line it writes goes
-  through a humanizer pass ([blader/humanizer](https://github.com/blader/humanizer))
-  that removes AI writing patterns without changing a fact or number.
+- **Your format, your voice, no AI writing.** Plainhand reads the layout of your
+  own resume PDF (fonts, margins, headings, section order, dates, bullets) and
+  renders every resume and cover letter in it. Your writing samples set the
+  sentence-length, contraction, and formality target so formal writing stays
+  formal, and every line goes through a humanizer pass
+  ([blader/humanizer](https://github.com/blader/humanizer)) that removes AI
+  writing patterns without changing a fact or number.
 - **Less tedium.** One master resume, selected and ordered per role; "make it
   shorter" or "lead with the pump project" revises it; queues let you review
   and send several in a row.
-- **Forms filled, gaps flagged.** On Greenhouse, Lever, Ashby and
-  employers' own careers sites it fills what it can from your approved packet and profile,
-  uploads your resume and cover letter, and shows a pre-submit list of what's
-  filled, what needs you and what to double-check.
-- **Works on your phone too (iPhone & Android).** Use Plainhand in a mobile
-  browser or install it to your Home Screen as a web app (PWA) for quick
-  packet review, approvals, follow-ups, and tracking. On Android, you can
-  share job links straight into Plainhand from Chrome, LinkedIn, or Indeed via
-  the Share menu. Form filling stays on a computer, and a native iPhone app
-  (`.ipa`) is deferred for later. See [docs/MOBILE.md](docs/MOBILE.md).
-- **Your data stays with you.** Everything is stored in your workspace:
-  `~/.plainhand` with the one-command install, or the checkout folder in a
-  manual install. The AI provider sees only what a task needs, and you can
-  exclude any source. An optional Vercel remote view publishes a read-only
-  copy only if you enable it.
+- **Forms filled, gaps flagged.** On Greenhouse, Lever, Ashby, Recruitee,
+  Workable, and employers' own careers sites it fills what it can from your
+  approved packet and profile (via local Playwright or the Chrome/Edge browser
+  extension), uploads your resume and cover letter (including Greenhouse S3 and
+  Ashby GraphQL uploads), and shows a pre-submit list of what's filled, what
+  needs you and what to double-check.
+- **Works on your phone too (iPhone & Android).** Open
+  **[https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app)** in
+  a mobile browser or install it to your Home Screen as a web app (PWA) for
+  quick packet review, approvals, follow-ups, and tracking. On Android, the PWA
+  installs as a standalone app with Home Screen shortcuts and **Share →
+  Plainhand** from Chrome, LinkedIn, or Indeed. Form filling stays on a
+  computer, and a native iPhone app (`.ipa`) is deferred for later. See
+  [docs/MOBILE.md](docs/MOBILE.md).
+- **Your data stays with you.** In a local install, everything stays in your
+  workspace (`~/.plainhand` with the one-command install, or the checkout folder
+  in a manual install) and you can optionally publish a password-protected
+  read-only Vercel remote dashboard or export/import into the hosted app. The AI
+  provider sees only what a task needs, and you can exclude any source.
 
 ## A look around
 
@@ -100,7 +106,7 @@ Screenshots use the built-in sample workspace (**Take a look around** on Home). 
 
 | Where the application is | What Plainhand does |
 | --- | --- |
-| Greenhouse, Lever, Ashby | Reads the form, fills what your approved packet and profile cover, uploads your resume and cover letter, and lists what's left for you. |
+| Greenhouse, Lever, Ashby, Recruitee, Workable | Reads the form, fills what your approved packet and profile cover (including Greenhouse locale/geocode/S3 and Ashby GraphQL resume uploads), uploads your resume and cover letter, and lists what's left for you. See [ATS compatibility](docs/ATS-COMPATIBILITY.md). |
 | Workday | Opens the application and stops at Workday's sign-in. Sign in or create your account in the application browser, then Plainhand reads each step. |
 | A company's own careers site | Works on the employer's own site, including Greenhouse forms embedded in it. If the application moves to a site Plainhand doesn't support, it says so and you finish by hand. |
 | LinkedIn, Indeed and other job boards | Never opened in Plainhand's browser, because their terms prohibit automation. Save the posting and give Plainhand the employer's application link. |
@@ -170,9 +176,10 @@ look first? **Take a look around** on the home screen opens a sample workspace.
 
 ## Help and docs
 
-- [Install guide](docs/INSTALL.md) · [User guide](docs/USER-GUIDE.md) · [Mobile & PWA (iPhone & Android)](docs/MOBILE.md)
+- [Hosted web app & PWA](https://plainhand-cloud.vercel.app) · [Mobile & PWA (iPhone & Android)](docs/MOBILE.md)
+- [Install guide](docs/INSTALL.md) · [Updating & rollback](docs/UPDATING.md) · [User guide](docs/USER-GUIDE.md)
 - [Browser app reference](docs/PLAINHAND-BROWSER-APP.md) (features, limits, data files, optional remote view)
-- [Use Plainhand from your own agent (MCP)](docs/MCP.md)
+- [ATS compatibility](docs/ATS-COMPATIBILITY.md) · [Use Plainhand from your own agent (MCP)](docs/MCP.md)
 - [What Plainhand measures](docs/METRICS-INVENTORY.md) · [Verification](docs/VERIFICATION-MATRIX.md)
 - [Changelog](CHANGELOG.md)
 
