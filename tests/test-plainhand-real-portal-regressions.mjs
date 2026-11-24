@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { ApplicationBrowser } from '../plainhand/jobs.mjs';
+import { ApplicationBrowser, defaultFieldAnswers } from '../plainhand/jobs.mjs';
 
 async function setup(html, captchaBody = '<p>captcha</p>') {
   const runtime = new ApplicationBrowser({ launch: async options => {
@@ -84,4 +84,15 @@ test('an embedded form whose Submit button paints before its fields is still rea
     assert.ok(fields.length >= 2, `expected fields, got ${fields.length}`);
     assert.equal((await runtime.status(job.id)).state, 'ready');
   } finally { await runtime.closeAll(); }
+});
+
+test('Greenhouse bare "Attach" file inputs map to resume/cover letter only when nativeId or name identifies them (#21)', () => {
+  const answers = defaultFieldAnswers([
+    { key: '0:9', type: 'file', label: 'Attach', nativeId: 'resume', name: '' },
+    { key: '0:10', type: 'file', label: 'Attach', nativeId: 'cover_letter', name: '' },
+    { key: '0:29', type: 'file', label: 'Attach', nativeId: 'question_8623138006', name: '' },
+  ], { name: 'Riley Chen', email: 'riley@example.invalid', phone: '555-0100', location: 'Austin, TX' });
+  assert.equal(answers['0:9'], '__resume__');
+  assert.equal(answers['0:10'], '__cover_letter__');
+  assert.equal(answers['0:29'], undefined);
 });
