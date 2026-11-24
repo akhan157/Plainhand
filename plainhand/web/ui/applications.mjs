@@ -114,7 +114,10 @@ export function ApplicationsPage() {
   const [query, setQuery] = useState('');
   const [view, setView] = useState('list');
   const jobs = state.jobs.filter(j => j.evaluation && matches(j, query));
-  const legacy = legacyTrackerRows(state).filter(row => legacyMatches(row, query));
+  const allLegacy = legacyTrackerRows(state);
+  const legacy = allLegacy.filter(row => legacyMatches(row, query));
+  // A search that matches nothing is not an empty tracker: say so and offer to clear it.
+  const searchMissed = !jobs.length && !legacy.length && query.trim() && (allLegacy.length || state.jobs.some(j => j.evaluation));
   const byStage = STATUSES.map(status => [status, jobs.filter(j => stageOf(j) === status).length]).filter(([, count]) => count);
   return html`
     <${PageHeading} title="Applications" subtitle="Every application in one clear picture: status, follow-ups and what happens next."
@@ -137,7 +140,7 @@ export function ApplicationsPage() {
           <td data-label="Next step" class="next-cell">${j.record?.nextAction ? html`<span>${j.record.nextAction.text}</span>${j.record.nextAction.due ? html`<small><${Day} iso=${j.record.nextAction.due} /></small>` : null}` : html`<span class="muted-inline">—</span>`}</td>
         </tr>`)}
         ${legacy.map((c, i) => html`<tr key=${'legacy' + i} class="legacy"><td data-label="Role">${c[4]}<span class="sub">${c[3]}</span></td><td data-label="Fit">${c[5]}</td><td data-label="Status">${c[6]}</td><td data-label="Next step"><${Pill}>Existing tracker</${Pill}> <span class="muted-inline">Managed in applications.md</span></td></tr>`)}</tbody>
-      </table></div>`}` : html`<${Empty} icon="briefcase" title="Your search is taking shape." action=${html`<${Button} class="small" iconEnd="arrow" onClick=${() => navigate('jobs')}>Browse roles</${Button}>`}>Evaluate a saved role to see it here. A prepared draft stays separate from an application you actually submitted.</${Empty}>`}
+      </table></div>`}` : searchMissed ? html`<${Empty} icon="search" title=${`No applications match “${query.trim()}”.`} action=${html`<${Button} class="small" onClick=${() => setQuery('')}>Clear search</${Button}>`}>Try a company, role or status. Your other applications are still here.</${Empty}>` : html`<${Empty} icon="briefcase" title="Your search is taking shape." action=${html`<${Button} class="small" iconEnd="arrow" onClick=${() => navigate('jobs')}>Browse roles</${Button}>`}>Evaluate a saved role to see it here. A prepared draft stays separate from an application you actually submitted.</${Empty}>`}
     </${Card}>
     <${Notice} tone="info">Statuses stay in sync with your applications tracker. Only mark Applied after you have submitted the application yourself; Plainhand asks you to confirm.</${Notice}>`;
 }

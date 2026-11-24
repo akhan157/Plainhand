@@ -186,6 +186,7 @@ ul, ol { margin: 0; }
 .context-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 
 .layer { position: fixed; inset: var(--header-h) 0 0 0; z-index: 65; }
+.sheet-handle { display: none; }
 .scrim { position: absolute; inset: 0; background: var(--scrim); animation: fade 160ms ease-out; }
 .nav-scrim { position: fixed; inset: var(--header-h) 0 0 0; z-index: 54; }
 @keyframes fade { from { opacity: 0; } }
@@ -798,7 +799,13 @@ blockquote.sample { margin: 0; padding: var(--sp-3) var(--sp-4); border-left: 3p
   .followups li { grid-template-columns: minmax(0, 1fr) auto; }
   .followups li .button { grid-column: 1 / -1; justify-self: start; }
   .layer { inset: var(--header-h) 0 0 0; }
-  .sheet { width: 100%; animation: sheet-up 220ms cubic-bezier(.2,.7,.2,1); }
+  /* A strip of scrim stays visible above the sheet so a tap outside closes it, and the
+     handle at the top drags the sheet down to dismiss it. */
+  .sheet { width: 100%; top: var(--sp-6); border-radius: var(--r-lg) var(--r-lg) 0 0; animation: sheet-up 220ms cubic-bezier(.2,.7,.2,1); display: flex; flex-direction: column; }
+  .sheet > .context-scroll { flex: 1; min-height: 0; }
+  .sheet-handle { display: flex; justify-content: center; align-items: center; height: 24px; flex: none; touch-action: none; cursor: grab; }
+  .sheet-handle::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--text-3); }
+  .sheet.dragging { animation: none; transition: none; }
   @keyframes sheet-up { from { transform: translateY(32px); opacity: 0.6; } }
   .panel-head { padding: var(--sp-3) max(var(--sp-4), env(safe-area-inset-right)) 0 max(var(--sp-4), env(safe-area-inset-left)); position: static; }
   .panel-title { font-size: var(--fs-xl); }

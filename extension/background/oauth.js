@@ -42,6 +42,15 @@ async function metadata(site) {
 }
 
 // One sign-in round: authorize in a browser window, exchange the code.
+// The authorize endpoint answers invalid_target when this copy of the extension is not
+// one the site trusts: production only accepts published extension IDs, so an unpacked
+// or self-built copy gets a chat-connector audience it cannot use.
+export function signInError(error, site, extensionId = globalThis.chrome?.runtime?.id || 'unknown') {
+  if (error === 'access_denied') return 'You cancelled the sign-in.';
+  if (error === 'invalid_target') return `${site} does not accept this copy of the extension (ID ${extensionId}). Install Plainhand from the browser's extension store, or ask whoever runs ${site} to add this ID to PLAINHAND_EXTENSION_IDS.`;
+  return 'Plainhand sign-in did not finish. Try again.';
+}
+
 export async function launchSignIn() {
   const { site = DEFAULT_SITE } = await chrome.storage.local.get(['site']);
   const auth = await metadata(site);
@@ -61,7 +70,7 @@ export async function launchSignIn() {
   const callback = new URL(returned);
   if (callback.searchParams.get('state') !== state) throw new Error('The sign-in answer did not come from Plainhand. Try again.');
   const error = callback.searchParams.get('error');
-  if (error) throw new Error(error === 'access_denied' ? 'You cancelled the sign-in.' : 'Plainhand sign-in did not finish. Try again.');
+  if (error) throw new Error(signInError(error, site));
   const code = callback.searchParams.get('code');
   if (!code) throw new Error('Plainhand sign-in did not finish. Try again.');
   const tokenResponse = await fetch(auth.token_endpoint, {

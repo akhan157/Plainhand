@@ -346,3 +346,65 @@ test('Playwright mobile & PWA workflows: iPhone, Android, Share Target, install 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// E2E swarm #17: at phone width the role sheet used to cover the whole scrim and could not
+// be dragged down, so Close and Escape were the only ways out.
+test('phone role sheet leaves scrim to tap and closes when dragged down', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'plainhand-pwa-sheet-'));
+  const local = await createPlainhand({ root, providers: fixtureProviders });
+  await new Promise(resolve => local.server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${local.server.address().port}`;
+  const browser = await chromium.launch({ headless: true });
+  try {
+    // No service worker: its first-install reload would race the navigation under test.
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+    const page = await context.newPage();
+    await page.goto(base);
+    await page.getByRole('heading', { name: 'Your next chapter starts here.' }).waitFor();
+    await page.goto(base + '/?share_title=Robotics+Engineer+at+Northstar&share_text=Role+link+https%3A%2F%2Fjobs.lever.co%2Fnorthstar%2F42#jobs');
+    const add = page.getByRole('dialog', { name: 'Add a job' });
+    await add.waitFor();
+    await add.getByRole('button', { name: 'Save role' }).click();
+    await add.waitFor({ state: 'detached' });
+    const sheet = page.getByRole('dialog', { name: 'Robotics Engineer at Northstar' });
+    const openRole = async () => {
+      if (await sheet.isVisible()) return;
+      // The toast and bottom bar can sit over the row while it settles; open it directly.
+      await page.locator('.job-title', { hasText: 'Robotics Engineer' }).first().evaluate(el => el.click());
+      await sheet.waitFor();
+    };
+    await openRole();
+
+    const geometry = await page.evaluate(() => {
+      const sheet = document.querySelector('.sheet').getBoundingClientRect();
+      const scrim = document.querySelector('.scrim').getBoundingClientRect();
+      const x = 195, y = Math.round((scrim.top + sheet.top) / 2);
+      return { sheetTop: sheet.top, scrimTop: scrim.top, hit: document.elementFromPoint(x, y)?.className, x, y };
+    });
+    assert.ok(geometry.sheetTop - geometry.scrimTop >= 16, `a scrim strip is visible above the sheet (${JSON.stringify(geometry)})`);
+    assert.equal(geometry.hit, 'scrim');
+    await page.mouse.click(geometry.x, geometry.y);
+    await sheet.waitFor({ state: 'detached' });
+    await page.waitForTimeout(500); // let the close settle before reopening, as a person would
+
+    await openRole();
+    // Measured right before each drag: the save toast leaving moves the sheet up.
+    const drag = async distance => {
+      const box = await page.locator('.sheet-handle').boundingBox();
+      assert.ok(box && box.height >= 20, 'the drag handle is visible at phone width');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + distance, { steps: 8 });
+      await page.mouse.up();
+    };
+    await drag(60);
+    assert.equal(await sheet.isVisible(), true, 'a short drag snaps back');
+    await drag(400);
+    await sheet.waitFor({ state: 'detached' });
+    await context.close();
+  } finally {
+    await browser.close();
+    await new Promise(resolve => local.server.close(resolve));
+    await rm(root, { recursive: true, force: true });
+  }
+});

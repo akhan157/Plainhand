@@ -34,14 +34,21 @@ async function ensureInjected(tabId) {
 }
 
 
-async function callPlainhand(tabId, method, ...args) {
-  const [injection] = await chrome.scripting.executeScript({
+// One result per frame (allFrames), frames without the content script dropped. Callers
+// always get an array, so a single-frame page and a page with an embedded form read alike.
+export async function callPlainhand(tabId, method, ...args) {
+  const injections = await chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
     func: (method, args) => globalThis.__plainhand ? globalThis.__plainhand[method](...args) : null,
     args: [method, args],
   });
-  return injection?.result || null;
+  return (injections || []).map(injection => injection?.result).filter(Boolean);
 }
+
+// The hosted plan API keys fields by `key` and accepts only these types; the content
+// script reads them with `id`, so the id is sent as the key and answers come back by id.
+const PLAN_TYPES = new Set(['text', 'textarea', 'email', 'tel', 'url', 'number', 'date', 'checkbox', 'file', 'select-one', 'combobox', 'radio']);
+export const planFields = fields => fields.filter(field => PLAN_TYPES.has(field.type)).map(({ id, label, type, required, options, maxLength }) => ({ key: id, label, type, required, options, maxLength }));
 
 // Host permissions for a frame the form lives in, requested on first use.
 async function ensureFrameAccess(tab, frames) {
@@ -70,7 +77,7 @@ const actions = {
   // "Save this job": the posting's company, title, link and description.
   async 'save-job'(tab) {
     await ensureInjected(tab.id);
-    const [posting] = (await callPlainhand(tab.id, 'posting')).filter(Boolean);
+    const [posting] = await callPlainhand(tab.id, 'posting');
     if (!posting || !posting.company || !posting.title) throw new Error('This page does not look like a job posting.');
     const response = await api('/api/extension/save-job', { method: 'POST', body: JSON.stringify(posting) });
     const saved = await response.json();
@@ -80,7 +87,7 @@ const actions = {
   // "Fill this page": read the form, match the role, plan answers, fill.
   async 'fill-page'(tab) {
     await ensureInjected(tab.id);
-    const reads = (await callPlainhand(tab.id, 'read')).filter(Boolean);
+    const reads = await callPlainhand(tab.id, 'read');
     const withFields = reads.filter(r => r.fields.length);
     if (!withFields.length) throw new Error('No application form was found on this page.');
     await ensureFrameAccess(tab, withFields.flatMap(r => r.frames || []));
@@ -89,7 +96,7 @@ const actions = {
     const { match, text } = await matchResponse.json();
     if (!match) throw new Error(text || 'This page is not one of your saved roles.');
     if (match.packet !== 'approved') throw new Error(match.text || 'Approve the application in Plainhand first, then fill here.');
-    const planResponse = await api('/api/extension/plan', { method: 'POST', body: JSON.stringify({ jobId: match.jobId, fields: main.fields }) });
+    const planResponse = await api('/api/extension/plan', { method: 'POST', body: JSON.stringify({ jobId: match.jobId, fields: planFields(main.fields) }) });
     const plan = await planResponse.json();
     const files = {};
     if (plan.files.resume) {
@@ -118,7 +125,7 @@ const actions = {
   // "I submitted this": records Applied on the matched role. Candidate only.
   async 'mark-submitted'(tab) {
     await ensureInjected(tab.id);
-    const reads = (await callPlainhand(tab.id, 'read')).filter(Boolean);
+    const reads = await callPlainhand(tab.id, 'read');
     const urls = [tab.url, ...reads.map(r => r.url)];
     for (const url of urls) {
       const matchResponse = await api('/api/extension/match', { method: 'POST', body: JSON.stringify({ url }) });

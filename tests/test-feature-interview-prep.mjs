@@ -296,3 +296,21 @@ test('a packet that changes while the pack is being built is not saved against t
     assert.equal(job.interviewPrep, undefined);
   } finally { await h.close(); }
 });
+
+// E2E swarm #19: a model that leaves `why` null on every question used to fail the whole
+// build with "invalid interview prep pack". The explanation is optional; the rest is not.
+test('a pack whose questions have no why is still saved, and practice tolerates a missing why', async () => {
+  const h = await harness({
+    prep: () => { const g = GOOD(); for (const q of g.questions) q.why = null; return g; },
+    practice: () => ({ ...GOOD_PRACTICE(), unsupported: [{ claim: 'It won the national title', why: null }] }),
+  });
+  try {
+    const { task, job } = await h.prep();
+    assert.equal(task.status, 'complete', task.message);
+    const pack = job.interviewPrep[h.round.id];
+    assert.deepEqual(pack.questions.map(q => q.why), ['', '']);
+    assert.equal(pack.questions[0].story, 'Formula SAE chassis');
+    const practiced = await h.practice();
+    assert.equal(practiced.task.status, 'complete', practiced.task.message);
+  } finally { await h.close(); }
+});

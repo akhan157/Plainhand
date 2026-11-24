@@ -54,7 +54,7 @@ function Pack({ job, round, pack }) {
       <p class="muted-text">Be ready to back each of these up with a specific example.</p>
       <ul class="ip-recap">${pack.recap.map((r, i) => html`<li key=${i}><strong>${r.claim}</strong><blockquote><cite>${r.label}</cite>${r.quote}</blockquote></li>`)}</ul></details>
     <details class="trace fu-trace" open><summary><${Icon} name="brain" />Likely questions · ${pack.questions.length}</summary>
-      <ol class="ip-questions">${pack.questions.map((q, i) => html`<li key=${i}><strong>${q.question}</strong><small>${q.why} Story: ${q.story}</small>
+      <ol class="ip-questions">${pack.questions.map((q, i) => html`<li key=${i}><strong>${q.question}</strong><small>${q.why ? `${q.why} ` : ''}Story: ${q.story}</small>
         <p class="ip-answer">${q.answer}</p>
         <details class="trace"><summary>Source quotes</summary><${Quotes} evidence=${q.evidence} /></details></li>`)}</ol></details>
     ${pack.bridges.length ? html`<details class="trace fu-trace" open><summary><${Icon} name="flag" />Honest answers for your gaps · ${pack.bridges.length}</summary>

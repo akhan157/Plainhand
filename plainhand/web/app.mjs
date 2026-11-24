@@ -120,7 +120,29 @@ function ContextPanel({ docked }) {
   if (!job) return docked ? html`<aside class="context" aria-label="Workspace context"><div class="context-scroll">${html`<${DefaultContext} />`}</div></aside>` : null;
   const content = html`<div class="context-scroll" ref=${ref}><${JobPanel} key=${job.id} job=${job} tab=${store.focus.tab} headingRef=${headingRef} /></div>`;
   if (docked) return html`<aside class="context has-focus" aria-label=${`${job.title} at ${job.company}`}>${content}</aside>`;
-  return html`<div class="layer sheet-layer"><div class="scrim" onClick=${closePanel}></div><aside class="context sheet" role="dialog" aria-modal="true" aria-label=${`${job.title} at ${job.company}`} onKeyDown=${e => trapTab(e, e.currentTarget)}>${content}</aside></div>`;
+  return html`<div class="layer sheet-layer"><div class="scrim" onClick=${closePanel}></div><aside class="context sheet" role="dialog" aria-modal="true" aria-label=${`${job.title} at ${job.company}`} onKeyDown=${e => trapTab(e, e.currentTarget)}><div class="sheet-handle" aria-hidden="true" onPointerDown=${dragToDismiss}></div>${content}</aside></div>`;
+}
+
+// Phone-width sheets close when dragged down past a quarter of their height (or 120px).
+export function dragToDismiss(event) {
+  const handle = event.currentTarget, sheet = handle.closest('.sheet');
+  if (!sheet || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  const start = event.clientY, limit = Math.min(120, sheet.offsetHeight / 4);
+  let offset = 0;
+  handle.setPointerCapture?.(event.pointerId);
+  sheet.classList.add('dragging');
+  const move = e => { offset = Math.max(0, e.clientY - start); sheet.style.transform = `translateY(${offset}px)`; };
+  const end = () => {
+    handle.removeEventListener('pointermove', move);
+    handle.removeEventListener('pointerup', end);
+    handle.removeEventListener('pointercancel', end);
+    sheet.classList.remove('dragging');
+    sheet.style.transform = '';
+    if (offset >= limit) closePanel();
+  };
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
 }
 
 function Dialogs() {

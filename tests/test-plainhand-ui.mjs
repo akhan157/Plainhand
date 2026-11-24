@@ -358,10 +358,14 @@ try {
   await search.fill('');
   assert.equal(await page.locator('table.tracker tbody tr').count(), 2);
   await search.fill('zzzz-no-such-role');
-  await page.getByText('Your search is taking shape.').waitFor();
+  // E2E swarm #18: a search that misses says so; it is not the empty-workspace state.
+  await page.getByText('No applications match “zzzz-no-such-role”.').waitFor();
+  assert.equal(await page.getByText('Your search is taking shape.').count(), 0, 'a missed search is not shown as an empty tracker');
   assert.equal(await page.locator('table.tracker tbody tr').count(), 0);
   assert.equal((await trackerSubtitle.innerText()).trim(), '0 evaluated roles', 'the count matches what is on screen');
-  await search.fill('');
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  assert.equal(await search.inputValue(), '', 'Clear search empties the box');
+  assert.equal(await page.locator('table.tracker tbody tr').count(), 2, 'and every application is back');
   await page.getByRole('tab', { name: 'Board', exact: true }).click();
   await legacySection.waitFor();
   // Chromium's pointer-driven drag does not carry the dragstart data transfer
