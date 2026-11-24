@@ -233,11 +233,11 @@ async function saveJob(workspace, registry, input) {
   try { normalised = jobUrl(url); } catch (error) { throw new HttpError(400, error.message); }
   const state = await workspace.load();
   const existing = matchJob(state.jobs, normalised);
-  if (existing) return { status: 200, body: { saved: false, jobId: existing.id, message: 'This job is already in Plainhand.' } };
+  if (existing) return { status: 200, body: { saved: false, jobId: existing.id, company: existing.company, title: existing.title, message: 'This job is already in Plainhand.' } };
   try {
     const { result } = await registry.run('jobs.add', { company, title, url: normalised, description, ...(location ? { location } : {}) }, { actor: 'ui' });
     const message = isBoardUrl(normalised) ? 'Saved. Add the employer’s own application link in Plainhand before applying.' : 'Saved to Plainhand.';
-    return { status: 201, body: { saved: true, jobId: result.id, message } };
+    return { status: 201, body: { saved: true, jobId: result.id, company, title, message } };
   } catch (error) {
     throw new HttpError(409, error.message || 'Plainhand could not save this job.');
   }

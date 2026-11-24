@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { ApplicationBrowser } from '../plainhand/jobs.mjs';
 
-async function setup(html) {
+async function setup(html, captchaBody = '<p>captcha</p>') {
   const runtime = new ApplicationBrowser({ launch: async options => {
     const browser = await chromium.launch(options);
     const newContext = browser.newContext.bind(browser);
@@ -14,7 +14,7 @@ async function setup(html) {
       context.newPage = async () => {
         const page = await newPage();
         await page.route('https://jobs.lever.co/**', route => route.request().method() === 'GET' ? route.fulfill({ contentType: 'text/html', body: html }) : route.abort());
-        await page.route('https://newassets.hcaptcha.com/**', route => route.fulfill({ contentType: 'text/html', body: '<p>captcha</p>' }));
+        await page.route('https://newassets.hcaptcha.com/**', route => route.fulfill({ contentType: 'text/html', body: captchaBody }));
         return page;
       };
       return context;
@@ -37,6 +37,16 @@ test('invisible preloaded hCaptcha frames are not a challenge (Lever)', async ()
     <iframe src="https://newassets.hcaptcha.com/captcha/v1/x/static/" style="position:absolute;top:-9999px;width:300px;height:150px"></iframe>
     <iframe src="https://newassets.hcaptcha.com/captcha/v1/x/static/" style="width:1px;height:1px;border:0"></iframe>
     <iframe src="https://newassets.hcaptcha.com/captcha/v1/x/static/" style="display:none"></iframe>`));
+  try { assert.equal((await runtime.status(job.id)).state, 'ready'); } finally { await runtime.closeAll(); }
+});
+
+// E2E swarm run 2 (SITE-06): Lever's hidden hCaptcha asset frames contain the words
+// "sign in with email", which made a public form read as a sign-in wall.
+test('text inside an invisible frame is not a sign-in wall (Lever)', async () => {
+  const { runtime, job } = await setup(form(`
+    <iframe src="https://newassets.hcaptcha.com/captcha/v1/x/static/" style="position:absolute;top:-9999px;width:300px;height:150px"></iframe>
+    <iframe src="https://newassets.hcaptcha.com/captcha/v1/x/static/" style="display:none"></iframe>`),
+    '<pre>{"i18n":{"login":"Sign in with email","create":"Create an account to continue"}}</pre>');
   try { assert.equal((await runtime.status(job.id)).state, 'ready'); } finally { await runtime.closeAll(); }
 });
 

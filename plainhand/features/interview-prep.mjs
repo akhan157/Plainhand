@@ -45,6 +45,9 @@ const day = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth
 const daysBetween = (from, to) => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
 const invalid = () => new Error('The agent returned an invalid interview prep pack. Retry.');
 const text = (value, max) => { if (typeof value !== 'string' || !value.trim() || value.length > max) throw invalid(); return value.trim(); };
+// An explanation the model may leave out (null or empty): kept when it is a usable string,
+// dropped otherwise. A pack is never thrown away over a missing "why".
+const note = (value, max) => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : '');
 const strs = (value, max, min = 0, width = 600) => { if (!Array.isArray(value) || value.length > max || value.length < min) throw invalid(); return value.map(v => text(v, width)); };
 const evidenceOf = value => (Array.isArray(value) ? value : []).slice(0, 8).map(e => ({ sourceId: String(e?.sourceId || ''), quote: String(e?.quote || '') }));
 export const urlLike = value => /https?:\/\/|www\.|\b[a-z0-9-]+\.(com|org|net|io|ai|co|dev|app)\b/i.test(value);
@@ -112,7 +115,7 @@ function parsePack(value, { job, context, round, submitted }) {
   const unsupported = new Error('An interview answer lacks valid source evidence. No prep pack was saved. Check your stories and retry.');
   const questionsOut = questions.map(q => {
     if (!q || typeof q !== 'object') throw invalid();
-    const item = { question: text(q.question, 500), why: text(q.why, 500), story: text(q.story, 200), answer: text(q.answer, 3000), evidence: evidenceOf(q.evidence) };
+    const item = { question: text(q.question, 500), why: note(q.why, 500), story: text(q.story, 200), answer: text(q.answer, 3000), evidence: evidenceOf(q.evidence) };
     if (!cited(item, context)) throw unsupported;
     return item;
   });
@@ -185,7 +188,7 @@ async function practiceHandler({ task, state, job, context, run, check, assertJo
   check();
   const verdicts = ['strong', 'okay', 'needs-work'];
   if (!verdicts.includes(result?.verdict) || !Array.isArray(result.supported) || !Array.isArray(result.unsupported)) throw new Error('The agent returned invalid practice feedback. Retry.');
-  const supported = [], unsupported = result.unsupported.slice(0, 20).map(u => ({ claim: text(u?.claim, 600), why: text(u?.why, 600) }));
+  const supported = [], unsupported = result.unsupported.slice(0, 20).map(u => ({ claim: text(u?.claim, 600), why: note(u?.why, 600) || 'Plainhand could not find this in your sources.' }));
   for (const s of result.supported.slice(0, 20)) {
     const item = { claim: text(s?.claim, 600), evidence: evidenceOf(s?.evidence) };
     // A claim whose quote is not in the candidate's sources is not supported, however sure the agent was.

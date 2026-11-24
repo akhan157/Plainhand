@@ -97,8 +97,13 @@ export function initPwa() {
 
   const secureLocal = location.protocol === 'https:' || location.hostname === '127.0.0.1' || location.hostname === 'localhost';
   if ('serviceWorker' in navigator && secureLocal) {
+    let hadController = Boolean(navigator.serviceWorker.controller);
     let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) {
+        hadController = true;
+        return;
+      }
       if (reloading) return;
       reloading = true;
       window.location.reload();

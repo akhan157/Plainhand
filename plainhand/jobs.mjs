@@ -258,10 +258,20 @@ export async function browserObservation(page, fields = [], jobRoot = null) {
     const box = visible ? await element.boundingBox().catch(() => null) : null;
     if (box && box.width >= 20 && box.height >= 20 && box.y + box.height > 0 && box.x + box.width > 0) { vendorChallenge = true; break; }
   }
+  // Text checks only read frames the candidate can see: Lever's invisible hCaptcha asset
+  // frames carry a large JSON body that includes "sign in with email", which read as a
+  // sign-in wall on a public form.
+  const seen = async frame => {
+    if (frame === page.mainFrame()) return true;
+    const element = await frame.frameElement().catch(() => null);
+    if (!element || !await element.isVisible().catch(() => false)) return false;
+    const box = await element.boundingBox().catch(() => null);
+    return Boolean(box && box.width >= 20 && box.height >= 20 && box.y + box.height > 0 && box.x + box.width > 0);
+  };
   for (const frame of page.frames()) {
     if (recaptchaFrame(frame.url(), 'anchor') && await frame.locator('#recaptcha-anchor').getAttribute('aria-checked', { timeout: 1000 }).catch(() => 'true') !== 'true') return { state: 'challenge', message: 'reCAPTCHA verification is required.' };
     const challenge = await frame.locator('[data-plainhand-challenge], .h-captcha iframe, iframe[src*="bframe"], iframe[src*="challenges.cloudflare.com"]').filter({ visible: true }).count().catch(() => 0);
-    const text = await frame.locator('body').innerText({ timeout: 2000 }).catch(() => '');
+    const text = await seen(frame) ? await frame.locator('body').innerText({ timeout: 2000 }).catch(() => '') : '';
     if (challenge || vendorChallenge || /verify (?:that )?you are human|complete the (?:security check|captcha)|checking your browser|unusual traffic|press (?:and|&) hold|are you a robot/i.test(text)) return { state: 'challenge', message: 'A browser verification needs attention. Resolve it in the application browser, then resume here.' };
     if (await frame.locator('input[type="password"]:visible,input[autocomplete="one-time-code"]:visible').count().catch(() => 0)) return { state: 'login', message: 'Sign-in or a verification code is required. Complete it in the application browser, then resume here.' };
     // Workday and similar portals gate the form behind SSO buttons, not a password field.

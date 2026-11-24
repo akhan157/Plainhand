@@ -330,3 +330,27 @@ test('the release gate runs the documented gates in order', async () => {
   const gateKeys = (await import('../scripts/release-check.mjs')).GATES.map(gate => gate.key);
   assert.deepEqual(gateKeys, ['unit', 'ui', 'evaluation', 'simulation']);
 });
+
+// E2E swarm #13: the newest tag can be behind a development checkout, and a release that
+// predates the updater cannot finish an update. Neither may move the code.
+test('update never downgrades a newer checkout or switches to a release without the updater', async () => {
+  const updater = await import('node:fs/promises').then(fs => fs.readFile(path.join(ROOT, 'lib', 'plainhand-update.mjs'), 'utf8'));
+  const root = await gitRepo({ VERSION: '1.0.0\n', 'README.md': 'old release\n' });
+  try {
+    execFileSync('git', ['tag', 'v1.0.0'], { cwd: root });
+    await mkdir(path.join(root, 'lib'), { recursive: true });
+    await writeFile(path.join(root, 'lib', 'plainhand-update.mjs'), updater);
+    await writeFile(path.join(root, 'VERSION'), '1.0.0\n');
+    execFileSync('git', ['add', '.'], { cwd: root });
+    execFileSync('git', ['commit', '--quiet', '-m', 'dev'], { cwd: root });
+    const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+    const run = args => execFileSync(process.execPath, [path.join(root, 'lib', 'plainhand-update.mjs'), 'apply', '--offline', '--no-install', '--remote', root, ...args], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+    const result = JSON.parse(run(['--json']).trim().split('\n').pop());
+    assert.equal(result.status, 'current');
+    assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), head, 'the code did not move');
+
+    assert.throws(() => run(['--version', 'v1.0.0']), error => /predates the Plainhand updater/.test(String(error.stderr)));
+    assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), head, 'the code did not move');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
