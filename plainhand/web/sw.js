@@ -41,7 +41,9 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE)
       .then(cache => Promise.allSettled(PRECACHE.map(url => cache.add(url))))
-      .then(() => self.skipWaiting()),
+      // Only the first install takes over at once. An update waits so the page can show
+      // "A new version of Plainhand is ready"; its Reload button sends SKIP_WAITING.
+      .then(() => { if (!self.registration.active) return self.skipWaiting(); }),
   );
 });
 

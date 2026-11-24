@@ -408,3 +408,14 @@ test('phone role sheet leaves scrim to tap and closes when dragged down', async 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+// E2E swarm (PWA-04): an update used to skip waiting during install, so the page reloaded
+// before the "new version is ready" banner could be clicked.
+test('a service worker update waits for the Reload button instead of taking over at once', async () => {
+  const sw = await readFile(path.join(ROOT, 'plainhand', 'web', 'sw.js'), 'utf8');
+  const install = sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('activate'"));
+  assert.match(install, /if \(!self\.registration\.active\) return self\.skipWaiting\(\)/, 'only the first install skips waiting');
+  assert.match(sw, /SKIP_WAITING'\) self\.skipWaiting\(\)/, 'Reload still activates the waiting worker');
+  const pwa = await readFile(path.join(ROOT, 'plainhand', 'web', 'ui', 'pwa.mjs'), 'utf8');
+  assert.match(pwa, /reg\.waiting && navigator\.serviceWorker\.controller/, 'the page offers the banner for a waiting worker');
+});
