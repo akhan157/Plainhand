@@ -1,11 +1,11 @@
 # Plainhand on Mobile (iPhone & Android)
 
-Plainhand supports **iPhone and Android today** through both **mobile browsers** and an **installable Progressive Web App (PWA)**. A native iOS app (`.ipa` / App Store build) is intentionally deferred for a later phase.
+Plainhand supports **iPhone and Android today** through both **mobile browsers** and an **installable Progressive Web App (PWA)** at **[https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app)**. A native iOS app (`.ipa` / App Store build) is intentionally deferred for a later phase, and Android's PWA installs natively as a standalone WebAPK with Share Target and Home Screen shortcuts (no separate `.apk` required).
 
 ## 1. Mobile options available today
 
 ### Option A: Mobile browser (iPhone Safari, Android Chrome / Edge / Firefox)
-Open your hosted Plainhand workspace in your phone's browser. Plainhand adapts automatically for phones:
+Open **[https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app)** (or your own hosted Plainhand workspace) in your phone's browser. Plainhand adapts automatically for phones:
 - **Thumb-reachable bottom navigation** (`Home`, `Jobs`, `Apps`, `Profile`, `More`) with due follow-up and active task badges.
 - **Full-screen role sheets** for evaluating fit, reviewing resume/cover-letter packets, checking claims, logging interviews, and setting next actions.
 - **Mobile-first ergonomics**: 44px+ touch targets, 16px form controls (preventing iOS Safari auto-zoom), safe-area inset support for iPhone notch / Dynamic Island / home indicator, and light/dark theme sync.
@@ -14,17 +14,19 @@ Open your hosted Plainhand workspace in your phone's browser. Plainhand adapts a
 Installing Plainhand as a PWA puts it on your Home Screen and launches it in standalone full-screen mode without browser chrome.
 
 - **iPhone & iPad (Safari):**
-  1. Open Plainhand in **Safari**.
+  1. Open **[https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app)** in **Safari**.
   2. Tap the **Share** button in Safari's toolbar.
   3. Tap **Add to Home Screen**, then tap **Add**.
 - **Android (Chrome, Edge, Brave, Samsung Internet):**
-  1. Open Plainhand in your browser.
+  1. Open **[https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app)** in your browser.
   2. Tap **Install app** in the browser menu — or open **Workspace → Use on your phone** and tap **Install Plainhand app**.
   3. **Android Share Target:** Once installed on Android, you can tap **Share → Plainhand** from Chrome, LinkedIn, Indeed, or messaging apps to open Plainhand's **Add a job** dialog pre-filled with the job URL and title (no automation or scraping of job boards).
   4. **App shortcuts:** Long-press the Plainhand Home Screen icon to jump straight to **Home briefing**, **Add a job**, **Applications**, or **Profile & brain**.
 
+**Moving an existing local setup to Hosted / Mobile:** In your local Plainhand app, export your workspace (**Workspace → Export**, `.json` up to 3 MiB), then sign in at [https://plainhand-cloud.vercel.app](https://plainhand-cloud.vercel.app) and import it via **Workspace → Import**. Your profile, resume, jobs, writing samples, answer bank, corrections, and core user-layer documents transfer over; credentials, browser cookies, and approvals intentionally reset so you review and reconnect safely.
+
 ### Option C: Read-only Remote Dashboard PWA (for local-only users)
-If you run Plainhand locally on your computer (`127.0.0.1:3210`) and turn on **Workspace → Open from anywhere**, the published password-protected Vercel dashboard is also an installable PWA on iPhone and Android for checking applications, reports, and PDFs on the go.
+If you keep Plainhand strictly local on your computer (`127.0.0.1:3210`) and turn on **Workspace → Open from anywhere**, the published password-protected Vercel dashboard is also an installable PWA on iPhone and Android for checking applications, reports, and PDFs on the go.
 
 ## 2. What works on your phone vs. on a computer
 
