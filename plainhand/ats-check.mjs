@@ -15,7 +15,7 @@ export const INSTALL_HINT = 'Install Poppler (pdftotext) to check how an applica
 const squash = value => String(value ?? '').normalize('NFKC').replace(/\s+/g, ' ').trim();
 const words = value => squash(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const digits = value => String(value ?? '').replace(/\D+/g, '');
-const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\/#-]/g, '\\$&');
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Does the term appear as a whole token (so "C" is not "Cassandra", "Java" is not "JavaScript")?
 export function hasTerm(text, term) {
