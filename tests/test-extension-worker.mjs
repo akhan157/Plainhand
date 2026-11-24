@@ -17,7 +17,7 @@ const READ = {
   ],
 };
 
-async function worker() {
+async function worker({ read = READ, granted = true } = {}) {
   const deps = await approvedWorkspace();
   const storage = { token: 'test-token', site: 'https://plainhand.test' };
   let listener = null;
@@ -27,17 +27,18 @@ async function worker() {
     runtime: { onMessage: { addListener: fn => { listener = fn; } }, onInstalled: { addListener() {} }, onStartup: { addListener() {} } },
     action: { setBadgeBackgroundColor() {} },
     tabs: { query: async () => [{ id: 7, url: PAGE }] },
-    permissions: { contains: async () => true, request: async () => true },
+    permissions: { contains: async () => granted, request: async () => granted },
     scripting: {
-      async executeScript({ files, func, args }) {
-        if (files) return [{ result: undefined }, { result: undefined }];
+      async executeScript({ files: injected, func, args }) {
+        if (injected) return [{ result: undefined }, { result: undefined }];
         const [method, rest] = args;
         calls.push(method);
         // Two frames: the page, and an iframe without the content script.
         if (method === 'posting') return [{ frameId: 0, result: { company: 'Acme Robotics', title: 'Mechanical Engineer', url: PAGE, description: 'Build robots.' } }, { frameId: 3, result: null }];
-        if (method === 'read') return [{ frameId: 0, result: READ }, { frameId: 3, result: null }];
+        if (method === 'read') return [{ frameId: 0, result: read }, { frameId: 3, result: null }];
         // fill: (fields, answers, identity, files)
-        const [fields, answers] = args;
+        const [fields, answers, , files] = args;
+        calls.push({ fill: fields.map(f => f.id), files });
         return [{ frameId: 0, result: { url: PAGE, filled: fields.filter(f => answers[f.id]).map(f => ({ id: f.id, label: f.label })), skipped: [], failed: [] } }];
       },
     },
@@ -84,4 +85,33 @@ test('a sign-in the site refuses for this extension copy says why and names the 
   assert.match(message, /PLAINHAND_EXTENSION_IDS/);
   assert.equal(signInError('access_denied', 'x'), 'You cancelled the sign-in.');
   assert.match(signInError('server_error', 'x'), /did not finish/);
+});
+
+// Behind the #15 crash, the E2E re-run found three more: the save confirmation printed
+// "undefined", files never reached the page (blobToBase64 was missing), and the frame
+// permission was requested from the worker, where Chrome refuses it without a gesture.
+test('Save this job confirms with the company and title', async () => {
+  const { send } = await worker();
+  const response = await send('save-job');
+  assert.equal(response.result.company, 'Acme Robotics');
+  assert.equal(response.result.title, 'Mechanical Engineer');
+});
+
+test('Fill this page attaches the approved resume as base64', async () => {
+  const read = { ...READ, fields: [...READ.fields, { id: 'co4', label: 'Resume/CV', type: 'file', required: true, options: [], filled: false }] };
+  const { send, calls } = await worker({ read });
+  const response = await send('fill-page');
+  assert.equal(response.ok, true, response.error);
+  const fill = calls.find(c => Array.isArray(c?.fill) && c.fill.includes('co4'));
+  assert.ok(fill, 'the resume field was sent to the page');
+  assert.ok(fill.files.resume?.base64 && Buffer.from(fill.files.resume.base64, 'base64').toString().startsWith('%PDF'), 'the resume bytes arrive intact');
+});
+
+test('a form in a frame without access asks the popup to request it, and fills nothing yet', async () => {
+  const read = { ...READ, frames: ['https://boards.greenhouse.io/embed/job_app?token=1'] };
+  const { send, calls } = await worker({ read, granted: false });
+  const response = await send('fill-page');
+  assert.equal(response.ok, true, response.error);
+  assert.deepEqual(response.result.needsAccess, ['https://boards.greenhouse.io/*']);
+  assert.equal(calls.some(c => Array.isArray(c?.fill)), false, 'nothing is filled before access is granted');
 });

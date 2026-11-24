@@ -51,7 +51,10 @@ const PLAN_TYPES = new Set(['text', 'textarea', 'email', 'tel', 'url', 'number',
 export const planFields = fields => fields.filter(field => PLAN_TYPES.has(field.type)).map(({ id, label, type, required, options, maxLength }) => ({ key: id, label, type, required, options, maxLength }));
 
 // Host permissions for a frame the form lives in, requested on first use.
-async function ensureFrameAccess(tab, frames) {
+// Host permissions for a frame the form lives in. chrome.permissions.request needs a user
+// gesture, which a service worker never has, so the popup asks: this returns the origins
+// still missing and the popup shows an "Allow access" button that requests them.
+export async function missingFrameAccess(frames) {
   const origins = new Set();
   for (const url of frames) { try { origins.add(new URL(url).origin + '/*'); } catch {} }
   const missing = [];
@@ -59,11 +62,15 @@ async function ensureFrameAccess(tab, frames) {
     const granted = await chrome.permissions.contains({ origins: [origin] });
     if (!granted) missing.push(origin);
   }
-  if (missing.length) {
-    // optional_host_permissions in the manifest gates what can be asked for.
-    const allowed = await chrome.permissions.request({ origins: missing });
-    if (!allowed) throw new Error('Plainhand needs access to the application form frame to fill it. Click again and allow it.');
-  }
+  return missing;
+}
+
+// The approved resume and cover letter travel to the page as base64.
+export async function blobToBase64(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
 }
 
 // ── popup actions ───────────────────────────────────────────────────────────
@@ -90,7 +97,8 @@ const actions = {
     const reads = await callPlainhand(tab.id, 'read');
     const withFields = reads.filter(r => r.fields.length);
     if (!withFields.length) throw new Error('No application form was found on this page.');
-    await ensureFrameAccess(tab, withFields.flatMap(r => r.frames || []));
+    const needsAccess = await missingFrameAccess(withFields.flatMap(r => r.frames || []));
+    if (needsAccess.length) return { needsAccess };
     const main = withFields.sort((a, b) => b.fields.length - a.fields.length)[0];
     const matchResponse = await api('/api/extension/match', { method: 'POST', body: JSON.stringify({ url: main.url }) });
     const { match, text } = await matchResponse.json();

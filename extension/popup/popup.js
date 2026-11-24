@@ -59,7 +59,21 @@ async function render() {
 function showResult(action, result) {
   clearNotes();
   if (action === 'save-job') {
-    note('ok', `Saved ${result.company} — ${result.title}. Evaluate it in Plainhand when you have a moment.`);
+    note('ok', result.company && result.title ? `${result.saved === false ? 'Already saved' : 'Saved'}: ${result.company} — ${result.title}. Evaluate it in Plainhand when you have a moment.` : (result.message || 'Saved to Plainhand.'));
+  } else if (action === 'fill-page' && result.needsAccess) {
+    // The request must come from a click in the popup: Chrome refuses it from the worker.
+    note('error', 'The application form is inside a frame from another site. Plainhand needs your permission to fill it.');
+    const allow = document.createElement('button');
+    allow.textContent = 'Allow access to the form';
+    allow.onclick = async () => {
+      const granted = await chrome.permissions.request({ origins: result.needsAccess }).catch(() => false);
+      if (!granted) { clearNotes(); note('error', 'Access was not allowed, so nothing was filled.'); return; }
+      busy(true); clearNotes();
+      try { const again = await send({ type: 'fill-page' }); if (!again.ok) throw new Error(again.error); showResult('fill-page', again.result); }
+      catch (error) { note('error', error.message); }
+      finally { busy(false); }
+    };
+    app.append(allow);
   } else if (action === 'fill-page') {
     const filled = result.filled?.length || 0, skipped = result.skipped?.length || 0, failed = result.failed?.length || 0;
     note('ok', `Filled ${filled} field${filled === 1 ? '' : 's'} for ${result.match?.company || 'your role'}.`);
