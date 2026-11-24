@@ -30,7 +30,8 @@ import recruitee from '../providers/recruitee.mjs';
 export const ATS_HOSTS = new Set(['boards.greenhouse.io', 'job-boards.greenhouse.io', 'job-boards.eu.greenhouse.io', 'jobs.lever.co', 'jobs.eu.lever.co', 'jobs.ashbyhq.com']);
 const API_HOSTS = new Set(['boards-api.greenhouse.io', 'api.lever.co', 'api.ashbyhq.com']);
 function portalAsset(url) {
-  return url.hostname === 'job-boards.cdn.greenhouse.io' && url.pathname.startsWith('/assets/') ||
+  return url.hostname === 'job-boards.cdn.greenhouse.io' && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/locales/')) ||
+    url.hostname === 'api-geocode-earth-proxy.greenhouse.io' && url.pathname.startsWith('/v1/') ||
     /^s\d+-recruiting\.cdn\.greenhouse\.io$/.test(url.hostname) && url.pathname.startsWith('/external_greenhouse_job_boards/') ||
     url.hostname === 'cdn.lever.co' && /^\/(?:fonts|css|js|images)\//.test(url.pathname) ||
     url.hostname === 'cdn.ashbyprd.com' && /^\/(?:frontend_non_user|cdn_assets)\//.test(url.pathname) ||
@@ -149,7 +150,8 @@ export async function guardBrowser(context, root = null) {
       const transfer = await transfers.get(context).allow(req);
       if (transfer) return route.fallback(transfer);
       const active = transfers.get(context).active;
-      if (active) active.events.push({ kind: 'blocked', state: 'failed' });
+      const ashbyFormSync = url.origin === 'https://jobs.ashbyhq.com' && url.pathname === '/api/non-user-graphql' && ['ApiSetFormValue', 'ApiSetFormValueToFile'].includes(url.searchParams.get('op'));
+      if (active && !ashbyFormSync) active.events.push({ kind: 'blocked', state: 'failed' });
       return route.abort();
     }
     const portalHost = root && (url.hostname === root || url.hostname.endsWith('.' + root));
@@ -202,33 +204,41 @@ export async function fieldsOn(page) {
   for (const [frameIndex, frame] of page.frames().entries()) {
     const frameUrl = frame.url() === 'about:blank' ? page.url() : frame.url();
     if (!portalFrame(frameUrl, root)) continue;
-    const form = await extractForm(frame);
-    for (const field of form.fields) {
-      if (['password', 'checkbox', 'radio'].includes(field.type)) continue;
-      const selector = `[data-co-field="${field.id}"]`;
-      const locator = frame.locator(selector);
-      const metadata = await locator.evaluate((node, allFields) => ({
-        index: [...document.querySelectorAll(allFields)].indexOf(node),
-        type: node.type || '', name: node.name || '', value: node.type === 'file' ? '' : node.value ?? node.textContent ?? '',
-        disabled: !!node.disabled || node.getAttribute('aria-disabled') === 'true',
-        hiddenContainer: (() => { for (let parent = node.parentElement; parent; parent = parent.parentElement) { const style = getComputedStyle(parent); if (parent.hidden || style.display === 'none' || style.visibility === 'hidden') return true; } return false; })(),
-        options: node.tagName === 'SELECT' ? [...node.options].map(o => ({ value: o.value, label: o.text })) : [],
-        sectionContext: (() => {
-          const section = node.closest('fieldset,[role="group"],[data-section]');
-          if (!section) return null;
-          const heading = section.querySelector(':scope > legend,:scope > h2,:scope > h3,:scope > h4');
-          const label = (section.getAttribute('aria-label') || heading?.textContent || section.getAttribute('data-section') || '').trim().slice(0, 160);
-          if (!label) return null;
-          const peers = [...document.querySelectorAll('fieldset,[role="group"],[data-section]')].filter(el => {
-            const h = el.querySelector(':scope > legend,:scope > h2,:scope > h3,:scope > h4');
-            return (el.getAttribute('aria-label') || h?.textContent || el.getAttribute('data-section') || '').trim().slice(0, 160) === label;
-          });
-          return { label, index: peers.indexOf(section), count: peers.length };
-        })(),
-      }), FIELD_SELECTOR);
-      if (metadata.type === 'password' || metadata.disabled || metadata.hiddenContainer) continue;
-      const type = field.combobox ? 'combobox' : field.type === 'select' ? 'select-one' : field.type;
-      fields.push({ ...field, ...metadata, type, label: field.label || field.nativeName || field.nativeId || 'Unlabelled field', selector, frameIndex, key: `${frameIndex}:${metadata.index}` });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const form = await extractForm(frame);
+      const frameFields = [];
+      let stale = false;
+      for (const field of form.fields) {
+        if (['password', 'checkbox', 'radio'].includes(field.type)) continue;
+        const selector = `[data-co-field="${field.id}"]`;
+        const locator = frame.locator(selector);
+        const metadata = await locator.evaluate((node, allFields) => ({
+          index: [...document.querySelectorAll(allFields)].indexOf(node),
+          type: node.type || '', name: node.name || '', value: node.type === 'file' ? '' : node.value ?? node.textContent ?? '',
+          disabled: !!node.disabled || node.getAttribute('aria-disabled') === 'true',
+          hiddenContainer: (() => { for (let parent = node.parentElement; parent; parent = parent.parentElement) { const style = getComputedStyle(parent); if (parent.hidden || style.display === 'none' || style.visibility === 'hidden') return true; } return false; })(),
+          options: node.tagName === 'SELECT' ? [...node.options].map(o => ({ value: o.value, label: o.text })) : [],
+          sectionContext: (() => {
+            const section = node.closest('fieldset,[role="group"],[data-section]');
+            if (!section) return null;
+            const heading = section.querySelector(':scope > legend,:scope > h2,:scope > h3,:scope > h4');
+            const label = (section.getAttribute('aria-label') || heading?.textContent || section.getAttribute('data-section') || '').trim().slice(0, 160);
+            if (!label) return null;
+            const peers = [...document.querySelectorAll('fieldset,[role="group"],[data-section]')].filter(el => {
+              const h = el.querySelector(':scope > legend,:scope > h2,:scope > h3,:scope > h4');
+              return (el.getAttribute('aria-label') || h?.textContent || el.getAttribute('data-section') || '').trim().slice(0, 160) === label;
+            });
+            return { label, index: peers.indexOf(section), count: peers.length };
+          })(),
+        }), FIELD_SELECTOR, { timeout: 1500 }).catch(() => null);
+        if (!metadata) { stale = true; if (attempt === 0) break; continue; }
+        if (metadata.type === 'password' || metadata.disabled || metadata.hiddenContainer) continue;
+        const type = field.combobox ? 'combobox' : field.type === 'select' ? 'select-one' : field.type;
+        frameFields.push({ ...field, ...metadata, type, label: field.label || field.nativeName || field.nativeId || 'Unlabelled field', selector, frameIndex, key: `${frameIndex}:${metadata.index}` });
+      }
+      if (stale && attempt === 0) { await page.waitForTimeout(250); continue; }
+      fields.push(...frameFields);
+      break;
     }
   }
   try { fields.push(...(await nativeChoices(page)).map(field => ({ ...field, native: true, frameIndex: 0 }))); } catch {}
@@ -682,7 +692,7 @@ export class ApplicationBrowser {
         } else await locator.fill(value.slice(0, 20000));
         filled.push(field.label);
       } else skipped.push(field.label);
-      if (filled.length > filledBefore) {
+      if (filled.length > filledBefore && !(field.type === 'file' && uploads.at(-1)?.state === 'server-accepted')) {
         const actual = await locator.evaluate(el => el.type === 'file' ? el.files?.[0]?.name || '' : el.value ?? el.textContent ?? '');
         const expected = field.type === 'file' ? (value === '__cover_letter__' ? coverPath : pdfPath).split(/[\\/]/).at(-1) : value;
         let retained = String(actual).trim() === String(expected).trim();
@@ -755,8 +765,9 @@ export function defaultFieldAnswers(fields, profile) {
     if (name && /^\W*(full |legal |your )?(full )?name\W*$|^\W*(full|legal) name/.test(label)) { answers[field.key] = profile.name; continue; }
     if (isSensitiveLabel(label)) continue;
     if (field.type === 'file') {
-      if (/cover.?letter/.test(label)) answers[field.key] = '__cover_letter__';
-      else if (isResumeLabel(label)) answers[field.key] = '__resume__';
+      const fileHint = `${label} ${field.nativeId || ''} ${field.name || ''}`.toLowerCase();
+      if (/cover.?letter/.test(fileHint)) answers[field.key] = '__cover_letter__';
+      else if (isResumeLabel(fileHint)) answers[field.key] = '__resume__';
     }
     else if (field.type === 'email' || /e.?mail/.test(label)) answers[field.key] = profile.email;
     else if (/phone|mobile/.test(label)) answers[field.key] = profile.phone;

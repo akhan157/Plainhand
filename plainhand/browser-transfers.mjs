@@ -1,7 +1,11 @@
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const HANDLE = 'https://api.ashbyhq.com/file.createFileUploadHandle';
+const GRAPHQL_HANDLE_OP = 'ApiCreateFileUploadHandle';
+// Exact public mutation document observed on jobs.ashbyhq.com, 2026-11-24.
+const GRAPHQL_HANDLE_HASH = '512339bdc70b71ab15852e143749296bc8fcb4e36d425f1237dd1554468b7022';
 function handleBody(request, file) {
   try {
     const body = request.postDataJSON();
@@ -9,11 +13,40 @@ function handleBody(request, file) {
       body.fileUploadContext === 'ApplicationForm' && body.filename === file.name && body.contentType === 'application/pdf' && body.contentLength === file.bytes.length;
   } catch { return false; }
 }
+function graphqlHandleRequest(request, file, frameUrl) {
+  try {
+    if (request.method() !== 'POST') return false;
+    const url = new URL(request.url());
+    if (url.origin !== 'https://jobs.ashbyhq.com' || url.pathname !== '/api/non-user-graphql' || url.username || url.password || url.hash) return false;
+    const keys = [...url.searchParams.keys()];
+    if (keys.length && (keys.length !== 1 || keys[0] !== 'op' || url.searchParams.get('op') !== GRAPHQL_HANDLE_OP)) return false;
+    const body = request.postDataJSON();
+    if (!body || typeof body !== 'object' || Object.keys(body).sort().join(',') !== 'operationName,query,variables') return false;
+    if (body.operationName !== GRAPHQL_HANDLE_OP || typeof body.query !== 'string' || body.query.length > 10000) return false;
+    if (createHash('sha256').update(body.query).digest('hex') !== GRAPHQL_HANDLE_HASH) return false;
+    const vars = body.variables;
+    const frameParts = new URL(frameUrl).pathname.split('/').filter(Boolean);
+    if (!frameParts.length || !vars || typeof vars !== 'object' || Array.isArray(vars)) return false;
+    return Object.keys(vars).sort().join(',') === 'contentLength,contentType,fileUploadContext,filename,organizationHostedJobsPageName' &&
+      ['ApplicationForm', 'NonUserFormEngine'].includes(vars.fileUploadContext) &&
+      vars.organizationHostedJobsPageName === decodeURIComponent(frameParts[0]) &&
+      vars.filename === file.name &&
+      vars.contentType === 'application/pdf' &&
+      vars.contentLength === file.bytes.length;
+  } catch { return false; }
+}
 function uploadDestination(value) {
   try {
     const url = new URL(value);
     return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
       /(?:^|\.)s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com$/.test(url.hostname);
+  } catch { return false; }
+}
+const GREENHOUSE_ORIGINS = new Set(['https://boards.greenhouse.io', 'https://job-boards.greenhouse.io', 'https://job-boards.eu.greenhouse.io']);
+function greenhousePresignedUrl(value) {
+  try {
+    const url = new URL(value);
+    return GREENHOUSE_ORIGINS.has(url.origin) && url.pathname === '/uncacheable_attributes/presigned_fields';
   } catch { return false; }
 }
 // Parse only this narrow presigned multipart format; never log bodies or tokens.
@@ -24,11 +57,12 @@ function signedMultipart(request, grant, file) {
   const marker = Buffer.from('--' + (boundary[1] || boundary[2]));
   const body = request.postDataBuffer();
   if (!body || body.length > file.bytes.length + 100000) return false;
+  const optional = grant.optional || {};
   const values = new Map(); let offset = 0, foundFile = false, outbound = body;
   while (offset < body.length) {
     if (!body.subarray(offset, offset + marker.length).equals(marker)) return false;
     offset += marker.length;
-    if (body.subarray(offset, offset + 2).toString() === '--') return foundFile && values.size === Object.keys(grant.fields).length ? outbound : false;
+    if (body.subarray(offset, offset + 2).toString() === '--') return foundFile && Object.keys(grant.fields).every(k => values.has(k)) ? outbound : false;
     if (body.subarray(offset, offset + 2).toString() !== '\r\n') return false;
     offset += 2;
     const endHeader = body.indexOf('\r\n\r\n', offset);
@@ -40,13 +74,18 @@ function signedMultipart(request, grant, file) {
     if (next < 0) return false;
     const content = body.subarray(endHeader + 4, next), name = disposition[1];
     if (name === 'file') {
-      if (foundFile || values.size !== Object.keys(grant.fields).length || disposition[2] !== file.name || !/^content-type: application\/pdf\r?$/im.test(header) || content.length && !content.equals(file.bytes)) return false;
+      if (foundFile || !Object.keys(grant.fields).every(k => values.has(k)) || disposition[2] !== file.name || !/^content-type: application\/pdf\r?$/im.test(header) || content.length && !content.equals(file.bytes)) return false;
       // Chromium's protocol omits disk-file bytes in intercepted multipart data.
       // Rebuild that part from our already approved bytes before it leaves.
       if (!content.length) outbound = Buffer.concat([body.subarray(0, endHeader + 4), file.bytes, body.subarray(next)]);
       foundFile = true;
     } else {
-      if (foundFile || disposition[2] || values.has(name) || !Object.hasOwn(grant.fields, name) || content.toString() !== grant.fields[name]) return false;
+      if (foundFile || disposition[2] || values.has(name)) return false;
+      if (Object.hasOwn(grant.fields, name)) {
+        if (content.toString() !== grant.fields[name]) return false;
+      } else if (Object.hasOwn(optional, name)) {
+        if (!optional[name](content.toString())) return false;
+      } else return false;
       values.set(name, true);
     }
     offset = next + 2;
@@ -60,13 +99,34 @@ export class ResumeTransfers {
   constructor(context) {
     this.active = null;
     this.pending = Promise.resolve();
+    this.greenhouseGrants = new WeakMap();
     context.on('response', response => {
+      if (response.request().method() === 'GET' && greenhousePresignedUrl(response.url()) && response.ok()) {
+        const frame = response.frame();
+        response.json().then(json => {
+          const resume = json?.resume;
+          if (!uploadDestination(json?.url) || !resume?.fields || typeof resume.fields !== 'object' || Array.isArray(resume.fields) || !Object.values(resume.fields).every(v => typeof v === 'string') || typeof resume.key !== 'string') return;
+          const keyPrefix = resume.key.split('{')[0];
+          if (!keyPrefix) return;
+          this.greenhouseGrants.set(frame, {
+            url: new URL(json.url).href,
+            fields: { ...resume.fields },
+            optional: {
+              'Content-Type': v => v === 'application/pdf' || v === 'application/octet-stream',
+              utf8: v => v.length <= 8,
+              authenticity_token: v => v.length > 0 && v.length <= 256,
+              key: v => v.startsWith(keyPrefix) && v.length <= 512,
+            },
+          });
+        }).catch(() => {});
+      }
       const active = this.active;
       if (!active || response.request() !== active.handleRequest) return;
       this.pending = (async () => {
         try {
-          const json = await response.json(), result = json.results;
-          if (!response.ok() || json.success !== true || !result || !uploadDestination(result.url) || !result.fields || typeof result.fields !== 'object' || Array.isArray(result.fields) || !Object.values(result.fields).every(v => typeof v === 'string')) return;
+          const json = await response.json();
+          const result = json.success === true ? json.results : (!json.errors?.length ? json.data?.fileUploadHandle : null);
+          if (!response.ok() || !result || !uploadDestination(result.url) || !result.fields || typeof result.fields !== 'object' || Array.isArray(result.fields) || !Object.values(result.fields).every(v => typeof v === 'string')) return;
           if (result.fields['Content-Type'] && result.fields['Content-Type'] !== 'application/pdf') return;
           if (this.active === active) active.grant = { url: result.url, fields: { 'Content-Type': 'application/pdf', ...result.fields } };
         } catch {}
@@ -87,8 +147,18 @@ export class ResumeTransfers {
     // Do not permit a request from an unrelated frame/tab to consume this grant.
     let origin;
     try { if (request.frame() !== active.frame) return false; origin = new URL(request.frame().url()).origin; } catch { return false; }
+    if (GREENHOUSE_ORIGINS.has(origin)) {
+      const grant = this.greenhouseGrants.get(active.frame);
+      if (!grant || active.consumed || request.url() !== grant.url || request.method() !== 'POST') return false;
+      const postData = signedMultipart(request, grant, active.file);
+      if (!postData) return false;
+      active.consumed = true;
+      this.observe(request, active, 'transfer');
+      return { postData };
+    }
     if (origin !== 'https://jobs.ashbyhq.com') return false;
-    if (request.url() === HANDLE && !active.handleRequest && handleBody(request, active.file)) {
+    const isHandle = (request.url() === HANDLE && handleBody(request, active.file)) || graphqlHandleRequest(request, active.file, active.frame.url());
+    if (isHandle && !active.handleRequest) {
       active.handleRequest = request;
       this.observe(request, active, 'handle');
       return {};
